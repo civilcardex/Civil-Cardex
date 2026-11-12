@@ -108,6 +108,121 @@ function pisosEjemplo(doc: DrawingData | null = docP1()): PisoRciFuente[] {
   ];
 }
 
+/** Planta con CONECTOR manual (doctrina HTML: «trace los tramos de nudo a nudo»): tronco con
+ *  2 ramales (A y B) + trazo sin rociadores que une los extremos remotos de ambos → fila T.
+ *  `conHuérfano` añade un trazo suelto que NO toca la red (sigue avisando). */
+function docConector(conector: number[][] | null, huérfano: number[][] | null = null): DrawingData {
+  const ramales: RawElement[] = [
+    {
+      id: 't1',
+      net: 'rci',
+      tipo: 'ramal',
+      pts: [
+        [0, 0],
+        [5.79, 0],
+      ],
+      totalL: 5.79,
+    },
+    ramalRci(
+      'r1',
+      [
+        [0, -10],
+        [0, 0],
+      ],
+      10,
+      2,
+    ),
+    ramalRci(
+      'r2',
+      [
+        [3.87, -10],
+        [3.87, 0],
+      ],
+      10,
+      2,
+    ),
+  ];
+  if (conector)
+    ramales.push({
+      id: 'c1',
+      net: 'rci',
+      tipo: 'ramal',
+      pts: conector,
+      totalL: 3.87,
+    });
+  if (huérfano)
+    ramales.push({
+      id: 'h1',
+      net: 'rci',
+      tipo: 'ramal',
+      pts: huérfano,
+      totalL: 2.13,
+    });
+  return { ramales, bajantes: [montanteRci()] };
+}
+
+describe('extraerGris — tramos entre nudos trazados a mano (conectores sin rociadores)', () => {
+  const { estado, avisos } = extraerGris(
+    pisosEjemplo(
+      docConector(
+        [
+          [0, -10],
+          [3.87, -10],
+        ],
+        [
+          [3.87, -26],
+          [6, -26],
+        ],
+      ),
+    ),
+  );
+  const red = estado.redes['p1'];
+
+  it('el conector que une los extremos remotos de R1 y R2 se exporta como fila T entre sus nudos', () => {
+    /* Tronco: T1 (A→B) y T2 (B→C derivación, con bajada). Conector: T3 (A→B). */
+    expect(red.tramos.map((t) => t.nombre)).toEqual(['T1', 'T2', 'T3']);
+    expect(red.tramos[2]).toMatchObject({ de: 'A', a: 'B', id: 'p1|c1' });
+    expect(Number(red.tramos[2].L)).toBeCloseTo(3.87, 6);
+    expect(Number(red.tramos[2].desgPlanta)).toBeCloseTo(3.87, 6);
+  });
+
+  it('el conector NO dispara el aviso de tramo sin rociadores fuera de la ruta', () => {
+    const solo = extraerGris(
+      pisosEjemplo(
+        docConector([
+          [0, -10],
+          [3.87, -10],
+        ]),
+      ),
+    );
+    expect(solo.avisos.map((a) => a.msg).join('\n')).not.toContain('sin rociadores no conectan');
+  });
+
+  it('el trazo suelto (sin dos contactos) SÍ avisa como huérfano', () => {
+    expect(avisos.map((a) => a.msg).join('\n')).toContain('1 tramo(s) sin rociadores no conectan');
+  });
+
+  it('conector a MITAD del tronco: crea nudo nuevo (letra tras la derivación) y corta las piezas', () => {
+    const { estado: e2 } = extraerGris(
+      pisosEjemplo(
+        docConector([
+          [0, -10],
+          [2, 0],
+        ]),
+      ),
+    );
+    const r2 = e2.redes['p1'];
+    /* A(0), B(3.87), deriv C(5.79) + nudo nuevo D en pos 2 → tronco en 3 piezas + conector. */
+    expect(Object.keys(r2.nodos || {}).sort()).toEqual(['A', 'B', 'C', 'D']);
+    expect(r2.tramos.map((t) => `${t.nombre}:${t.de}-${t.a}`)).toEqual([
+      'T1:A-D',
+      'T2:D-B',
+      'T3:B-C',
+      'T4:A-D',
+    ]);
+  });
+});
+
 describe('extraerGris — estructura contra el ejemplo de verificación', () => {
   const { estado, montDibujo, avisos } = extraerGris(pisosEjemplo());
 

@@ -7,6 +7,7 @@
  */
 
 import { num } from '../../lib/rci/hydraulics.ts';
+import { factorMPorPx } from '../../lib/PlanoEngine/planoCoords.ts';
 import type { Red, TuberiaRow } from '../../lib/rci/types.ts';
 import type { BajanteRaw, DrawingData, RawElement } from '../drawingSyncTypes.ts';
 
@@ -241,7 +242,7 @@ interface PiezaTronco {
 }
 
 /** Resultado de la extracción de UN piso: su red (o null si no se pudo) y su montante de derivación. */
-export interface RedDePiso {
+interface RedDePiso {
   red: Red | null;
   idMont: string;
   nombreMont: string;
@@ -320,9 +321,10 @@ function derivacionDe(
 
 /** Mejor conexión de un ramal: su punta más cercana al tronco, al montante (derivación) o a un
  *  ramal ya conectado (cadena ramal→ramal hereda su nudo). Null si nada queda a TOL_PUNTO.
- *  SOLO CONTACTO REAL (auditoría): sin tolerancia por proximidad — los paralelos de «Dibujar
- *  ramales paralelos» conectan por su CONECTOR físico (crea sus cabezas sobre él); el aviso
- *  de ramal suelto vuelve a dispararse para cualquier trazo huérfano. */
+ *  PARALELOS copia pura (ped. usuario): con el conector eliminado, la copia cuelga de la base
+ *  por PROXIMIDAD — tolerancia = la longitud del ramal conectado convertida a px (mPorPx del
+ *  doc): su extremo cae a la distancia de separación (≤ L) sobre la polilínea y hereda el nudo.
+ *  Ej: copia a 1,5 m de la base (113 px a escala 0,5) conecta si la base mide ≥ 1,5 m. */
 function mejorConexion(
   t: TrazoDib,
   troncoPos: readonly TramoTronco[],
@@ -330,6 +332,7 @@ function mejorConexion(
   posDer: number,
   trazos: readonly TrazoDib[],
   conectados: ReadonlyMap<number, { pos: number; punto: Punto }>,
+  mPorPx: number,
 ): { pos: number; punto: Punto } | null {
   let mejor: { pos: number; punto: Punto } | null = null;
   let mejorDist = Infinity;
@@ -350,7 +353,8 @@ function mejorConexion(
       const c = conectados.get(o.orden);
       if (!c) continue;
       const mc = masCercanoEnPolilinea(p, o.el.pts || []);
-      if (mc.dist < TOL_PUNTO && mc.dist < mejorDist) {
+      const tolPar = Math.max(TOL_PUNTO, (o.L || 0) / mPorPx);
+      if (mc.dist < tolPar && mc.dist < mejorDist) {
         mejorDist = mc.dist;
         mejor = { pos: c.pos, punto: p };
       }
@@ -468,14 +472,6 @@ export function extraerRedDePiso(
     punto = mejorBajaEsA ? mejor.b : mejor.a;
   }
   tronco.reverse(); // orden remoto → derivación
-  for (const t of trazos) {
-    if (t.roci === 0 && !enTronco.has(t.orden)) {
-      avisos.push({
-        piso: piso.label,
-        msg: 'Un tramo sin rociadores quedó fuera de la ruta al montante y no se exportó.',
-      });
-    }
-  }
   const totalTronco = tronco.reduce((s, x) => s + x.t.L, 0);
   let acum = 0;
   const troncoPos: TramoTronco[] = tronco.map((x) => {
@@ -488,12 +484,14 @@ export function extraerRedDePiso(
      montante; si toca otro ramal ya conectado (cadena), hereda su nudo. Pasadas hasta punto
      fijo: los eslabones lejanos entran cuando su vecino ya está conectado. */
   const conexiones = new Map<number, { pos: number; punto: Punto }>();
+  /* m/px del doc (tolerancia de paralelos copia pura: su separación en px sale de aquí). */
+  const mPorPx = factorMPorPx(num((doc as { scaleM?: unknown }).scaleM) || 0.5);
   let quedan = true;
   while (quedan) {
     quedan = false;
     for (const t of trazos) {
       if (t.roci === 0 || conexiones.has(t.orden)) continue;
-      const mejor = mejorConexion(t, troncoPos, posMont, totalTronco, trazos, conexiones);
+      const mejor = mejorConexion(t, troncoPos, posMont, totalTronco, trazos, conexiones, mPorPx);
       if (mejor) {
         conexiones.set(t.orden, mejor);
         quedan = true;
@@ -542,12 +540,92 @@ export function extraerRedDePiso(
   for (const n of nudos) letrasDePos.set(n.pos.toFixed(4), n.letra);
   letrasDePos.set(totalTronco.toFixed(4), letraDeriv);
 
+  /* TRAMOS ENTRE NUDOS trazados a mano (doctrina del HTML 2511/2628: «trace los tramos de nudo
+   * a nudo»; «si un ramal alimenta a otro a mitad, el pedazo que lleva los dos caudales es un
+   * tramo»): un trazo SIN rociadores que conecta DOS elementos de la red (montante, tronco,
+   * ramal ya conectado u otro conector) se exporta como FILA T con letra de nudo en cada
+   * contacto — letra existente si cae en un nudo, NUEVA (y el tronco se corta ahí) si no.
+   * El puente entre dos elementos que ya comparten nudo (A→A) es redundante: fuera, sin aviso. */
+  const conectores: { t: TrazoDib; de: string; a: string }[] = [];
+  const enConector = new Set<number>();
+  const letraDeContacto = (p: Punto): string | null => {
+    if (Math.hypot(p.x - posMont.x, p.y - posMont.y) < TOL_BAJANTE) return letraDeriv;
+    /* Tronco: el trazo con contacto MÁS CERCANO gana (los extremos compartidos del tronco
+     * podrían matchear dos piezas). */
+    let mejorTronco: { pos: number; d: number } | null = null;
+    for (const x of troncoPos) {
+      const mc = masCercanoEnPolilinea(p, x.t.el.pts || []);
+      if (mc.dist < TOL_BAJANTE && (!mejorTronco || mc.dist < mejorTronco.d))
+        mejorTronco = { pos: x.o + (x.remotoEsA ? mc.frac : 1 - mc.frac) * x.t.L, d: mc.dist };
+    }
+    if (mejorTronco) {
+      const pos = mejorTronco.pos;
+      const cerca = nudos.find((n) => Math.abs(n.pos - pos) < GAP_NUDO);
+      if (cerca) return cerca.letra;
+      if (totalTronco - pos < GAP_NUDO) return letraDeriv;
+      const nueva = {
+        pos,
+        letra: letraNudo(baseNudos + 1 + nuevosNudos++),
+        ramales: [] as number[],
+      };
+      nudos.push(nueva);
+      letrasDePos.set(pos.toFixed(4), nueva.letra);
+      return nueva.letra;
+    }
+    /* Ramal conectado: contacto/proximidad — se elige el MÁS CERCANO de todos (la tolerancia
+     * por longitud de un ramal paralelo puede abarcar a su vecino: sin "primero que matchea"
+     * el extremo del conector resolvería al ramal equivocado). */
+    let mejorRamal: { letra: string; d: number } | null = null;
+    for (const t of trazos) {
+      if (t.roci === 0 || !conexiones.has(t.orden)) continue;
+      const mc = masCercanoEnPolilinea(p, t.el.pts || []);
+      const d = Math.max(TOL_PUNTO, (t.L || 0) / mPorPx);
+      if (mc.dist < d && (!mejorRamal || mc.dist < mejorRamal.d))
+        mejorRamal = { letra: conDe.get(t.orden) || '', d: mc.dist };
+    }
+    if (mejorRamal) return mejorRamal.letra || null;
+    for (const c of conectores) {
+      if (Math.hypot(p.x - c.t.a.x, p.y - c.t.a.y) < TOL_PUNTO) return c.de;
+      if (Math.hypot(p.x - c.t.b.x, p.y - c.t.b.y) < TOL_PUNTO) return c.a;
+    }
+    return null;
+  };
+  let progreso = true;
+  /* Letra de un nudo NUEVO creado por un conector: va DESPUÉS de la derivación (que ya tomó
+   * letraNudo(baseNudos)) para no chocar con ella. Ej: nudos A,B + deriv C → nuevo = D. */
+  const baseNudos = nudos.length;
+  let nuevosNudos = 0;
+  while (progreso) {
+    progreso = false;
+    for (const t of trazos) {
+      if (t.roci > 0 || enTronco.has(t.orden) || enConector.has(t.orden)) continue;
+      const de = letraDeContacto(t.a);
+      if (!de) continue;
+      const a = letraDeContacto(t.b);
+      if (!a || a === de) continue;
+      enConector.add(t.orden);
+      conectores.push({ t, de, a });
+      progreso = true;
+    }
+  }
+  /* Huérfanos reales: trazos sin rociadores fuera del tronco y sin dos contactos de red. */
+  const huerfanosT = trazos.filter(
+    (t) => t.roci === 0 && !enTronco.has(t.orden) && !enConector.has(t.orden),
+  );
+  if (huerfanosT.length > 0) {
+    avisos.push({
+      piso: piso.label,
+      msg: `${huerfanosT.length} tramo(s) sin rociadores no conectan la red y no se exportaron: sus extremos deben tocar dos elementos de la red (montante, tronco, ramal o nudo).`,
+    });
+  }
+
   /* Piezas de tronco entre posiciones de nudo consecutivas; los accesorios se reparten por su
      posición. La primera pieza (extremo remoto sin nudo) se fusiona con la siguiente: T1 nace
      en el primer nudo y su L absorbe el tramo superior. */
   const cortes: number[] = [0];
   for (const n of nudos) cortes.push(n.pos);
   cortes.push(totalTronco);
+  cortes.sort((x, y) => x - y); // los nudos del conector pueden caer a mitad del tronco
   const posiciones: number[] = [];
   for (const c of cortes)
     if (!posiciones.length || c - posiciones[posiciones.length - 1] > 1e-9) posiciones.push(c);
@@ -717,6 +795,28 @@ export function extraerRedDePiso(
     };
     if (esLlegada) fila.desgBajada = bajada;
     tramosRows.push(fila);
+  }
+  /* Filas T de los CONECTORES trazados a mano (doctrina: son tramos). Después de las piezas
+   * del tronco; iT continúa la numeración. desgPlanta = L completa (no llegan a la derivación). */
+  for (const c of conectores) {
+    tramosRows.push({
+      nombre: `T${++iT}`,
+      de: c.de,
+      a: c.a,
+      mat: c.t.mat,
+      dn: c.t.dn || 'auto',
+      L: c.t.L,
+      c45: contarAcc(c.t.acc, RE_CODO45),
+      c90: contarAcc(c.t.acc, RE_CODO90),
+      tee: contarAcc(c.t.acc, RE_TEE),
+      mar: '',
+      comp: '',
+      ret: '',
+      esp: '',
+      leqOtros: '',
+      id: c.t.id,
+      desgPlanta: c.t.L,
+    });
   }
   if (piezasUtiles.length === 0 && tronco.length > 0) {
     avisos.push({
