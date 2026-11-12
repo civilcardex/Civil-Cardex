@@ -9,16 +9,12 @@ import {
   type ReactNode,
 } from 'react';
 import { usePlans } from './PlansContext.tsx';
-import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords.ts';
-import {
-  canalOBBDe,
-  puntoEnCanalOBB,
-  distPuntoACanalOBB,
-} from '../lib/PlanoEngine/channelAssociation';
-import { pisoCorto, pisoCortoLoose } from '../constants/helpers.ts';
-import { TRAZOS_PREFIX, ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
+import { pisoCortoLoose } from '../constants/helpers.ts';
+import { ACTIVE_NETS_KEY } from '../constants/storage-keys.ts';
 import { loadFromStorage, getActiveProyectoId } from '../services/storageService.ts';
 import { devError } from '../../../utils/devError.ts';
+import { asociarCanalesPorOBB, derivarCanalesLlAuto } from './rainwaterDerived.ts';
+import type { BajanteLL, CanalLL, RainwaterContextValue } from './rainwaterTypes.ts';
 import {
   leerEspejo,
   guardarEspejo,
@@ -30,8 +26,6 @@ import {
   quitarTumba,
 } from '../utils/rainwaterOverrideStore.ts';
 import { loadRainwaterOverrides, saveRainwaterOverrides } from './rainwaterOverridesService.ts';
-import type { DrawingData, RawElement } from '../utils/drawingSync.ts';
-import { areaParcialBajanteLl, materialComun, sumaOtrasAsociados } from '../utils/rainwaterRows.ts';
 import { sectorDe } from '../utils/formatUtils.ts';
 import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents.ts';
 
@@ -42,84 +36,7 @@ import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents.t
  * "Canales" aparece con su sector y su área, y tu edición de áreaOtras sobrevive al reload.
  */
 
-interface AreaRaw {
-  areaM2?: number;
-}
-/** Bajante pluvial de la tabla de lluvias: áreas (parcial + otras), intensidad de lluvia, coeficiente C de escorrentía (cuánta lluvia llega al tubo) y diámetro propuesto. */
-export interface BajanteLL {
-  id: string;
-  bajante: string;
-  areaParcial: number;
-  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable desde la tabla, por defecto 0. */
-  areaOtras: number;
-  /** Área TOTAL = areaParcial + areaOtras — de ella sale el caudal real (Q, o sea cuántos litros por segundo escurren). */
-  areaAcumulada: number;
-  intensidad: number;
-  coeficienteC: number;
-  /** Material de cubierta (nombre completo en MATERIALES_CUBIERTA_LL): de él sale C, el
-   *  coeficiente de escorrentía (cuánta lluvia llega al tubo y cuánta se absorbe en el
-   *  techo), según el catálogo. Sin material se usa el coeficienteC manual. */
-  materialCubierta?: string;
-  R: string;
-  manning: number;
-  diamPropuesto: number;
-}
-/** Canal pluvial de la tabla de lluvias: geometría (b, h, pendiente), material con su n de Manning (rugosidad) y borde libre. Ej: canal de concreto n=0.013 con b=30 cm. */
-export interface CanalLL {
-  id: string;
-  sector: string;
-  areaParcial: number;
-  /** Área Otras: metros cuadrados de techo extra que el usuario suma a mano (pedido del cliente); editable desde la tabla, por defecto 0. */
-  areaOtras: number;
-  /** Área TOTAL = areaParcial + areaOtras — de ella sale el caudal real (Q, o sea cuántos litros por segundo escurren). */
-  areaAcumulada: number;
-  intensidad: number;
-  coeficienteC: number;
-  manning: number;
-  pendiente: number;
-  b: number;
-  h: number;
-  /** Largo horizontal del canal (cm), solo para glifos dibujados (fromCanal). */
-  longitud?: number;
-  /** Nivel (el piso) del canal — solo glifos dibujados (fromCanal); alimenta la columna Nivel. */
-  piso?: number;
-  /** Material de cubierta (de él sale C, el coeficiente de escorrentía) y de canal (sale
-   *  n, el coeficiente de Manning, qué tan rugoso es el canal) — hoja "2. Canales". */
-  materialCubierta?: string;
-  materialCanal?: string;
-  /** Área de muro vertical que descarga sobre el canal (m²) — A efectiva = A + 0.5·muro. */
-  muroVertical?: number;
-  /** Borde libre editable por fila (cm) — port hoja 2 (antes fijo 10 cm). */
-  bordeLibreCm?: number;
-  /** Id del canal dibujado (glifo) — solo fromCanal: para escribir b/h/longitud/pendiente
-   *  de vuelta al dibujo (writeCanalDimsToDrawing). */
-  drawId?: string;
-  /** Id del plano del glifo — solo fromCanal (el write necesita el piso exacto). */
-  drawPlanId?: string | number;
-  /** Es true cuando b/h/longitud/pendiente provienen de un canal dibujado (glifo) en la
-   *  red 'll' — la tabla los muestra editables y escribe de vuelta al dibujo
-   *  (writeCanalDimsToDrawing), que sigue siendo la fuente de verdad. */
-  fromCanal?: boolean;
-}
-interface RainwaterContextValue {
-  bajantesLl: BajanteLL[];
-  addBajanteLL: () => void;
-  delBajanteLL: (id: string) => void;
-  updBajanteLL: (id: string, field: string, val: string | number) => void;
-  canalesLl: CanalLL[];
-  addCanalLL: () => void;
-  delCanalLL: (id: string) => void;
-  updCanalLL: (id: string, field: string, val: string | number) => void;
-  updCanalSector: (sector: string, field: string, val: string | number) => void;
-  /** Cambio único de material de canal: lo llaman tablas, panel derecho y menú contextual
-   *  y todos escriben por el mismo camino. `ref` = drawId del glifo o id de la fila. */
-  setMaterialCanal: (ref: string, field: 'materialCubierta' | 'materialCanal', mat: string) => void;
-  /** Bajantes asociados a cada canal (pedido del cliente): id de canal → chips "BAN1-P1". */
-  canalBajantes: Record<string, string[]>;
-  canalAlimIds: Record<string, string[]>;
-  conRecolectora: boolean;
-  setConRecolectora: (v: boolean) => void;
-}
+export type { BajanteLL, CanalLL, RainwaterContextValue } from './rainwaterTypes.ts';
 
 /** Contexto exportado para poder leerlo sin proveedor y sin romper (ej: el visor usa useCaudalLl). */
 export const RainwaterContext = createContext<RainwaterContextValue | null>(null);
@@ -341,14 +258,11 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     });
   };
 
-  // Auto-puebla las filas de canal desde los ramales 'll' dibujados (net==='ll', no bajante),
-  // con el mismo patrón de búsqueda de área por piso que ChequeoBajantesLluvias, en lugar de
-  // partir de ceros.
-  // En la misma pasada también recolecta los glifos de canal dibujados (tipo:'canal', el
-  // handleCanalDown de PlanoEngine) por piso, porque ambos necesitan la misma lectura cruda
-  // de storage por plano — los glifos de canal no pasan por TramosContext/buildTramos.ts (esa
-  // tubería solo modela ramales/bajantes con semántica sanitaria/bajante), así que se leen
-  // directo aquí, igual que `areas` arriba.
+  // Asociaciones canal↔bajante, áreas por piso y glifos de canal dibujado: derivadas del
+  // dibujo crudo en storage (cuerpo en rainwaterDerived.ts — los glifos de canal no pasan
+  // por TramosContext/buildTramos.ts, así que se leen directo, igual que `areas`). El memo
+  // conserva las mismas deps de antes: trazosTick no entra al cuerpo pero sí al recálculo,
+  // sin él editar base/pendiente en el visor no se reflejaba en la tabla hasta remontar.
   const {
     areaAcumMap,
     drawnCanalGlyphs,
@@ -356,230 +270,26 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
     canalBajantes,
     canalAlimIds,
     canalAlimInfo,
-  } = useMemo(() => {
-    const canalAreaMap: Record<string, number> = {};
-    // Bajantes asociados por canal (ítem 8 usuario): id de canal → chips "BAN1-P1".
-    const canalBajantes: Record<string, string[]> = {};
-    const canalAlimIds: Record<string, string[]> = {};
-    // Insumo por bajante para el canal (REQ canal = Σ bajantes): código (clave del override
-    // en bajantesLl) + área dibujada — la fila del canal deriva SU Parcial/Otras/Material de
-    // estos con la MISMA fórmula de la tabla de bajantes (areaParcialBajanteLl).
-    const canalAlimInfo: Record<string, Array<{ code: string; areaDib: number }>> = {};
-    const map: Record<string, number> = {};
-    const glyphs: (RawElement & { piso: string; planId: string | number })[] = [];
-    for (const plan of plans || []) {
-      if (plan.nivel == null) continue;
-      const raw = loadFromStorage<(DrawingData & { areas?: AreaRaw[] }) | string | null>(
-        TRAZOS_PREFIX + plan.id,
-        null,
-      );
-      if (!raw) continue;
-      let data: DrawingData & { areas?: AreaRaw[] } = raw as DrawingData & { areas?: AreaRaw[] };
-      if (typeof raw === 'string') {
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          continue;
-        }
-      }
-      const totalArea = (data.areas || []).reduce((s, a) => s + (a.areaM2 || 0), 0);
-      map[String(plan.nivel)] = totalArea;
-      for (const b of data.bajantes || []) {
-        if (b.tipo === 'canal' && b.net === 'll')
-          glyphs.push({ ...b, piso: String(plan.nivel), planId: plan.id });
-      }
-      // Área de cada canal = Σ áreas de los bajantes que le descargan (orig. usuario): un
-      // ramal ll con un extremo dentro del OBB del canal trae el área de SU bajante
-      // (el otro extremo a ≤2 px del glifo). OBB válido en diagonal (canalMarco).
-      const canales = (data.bajantes || []).filter(
-        (
-          b,
-        ): b is RawElement & {
-          base?: number;
-          longitud?: number;
-          angulo?: number;
-          x?: number;
-          y?: number;
-        } => b.tipo === 'canal' && b.net === 'll',
-      );
-      const bajLl = (data.bajantes || []).filter(
-        (b): b is RawElement & { area_m2?: number; x?: number; y?: number } =>
-          b.net === 'll' && b.tipo === 'bajante',
-      );
-      // Asociaciones MANUALES (checkboxes panel/menú, ped. usuario): bajante→canal (canalId)
-      // y ramal→canal (esCanalId, con bajante resoluble por extremo). Se SUMAN a la
-      // derivación geométrica para que la columna "Canales asociados" del chequeo y los
-      // chips del canal reflejen también lo asociado a mano.
-      const manuales: Record<string, Set<string>> = {};
-      const manualDe = (idCanal: string): Set<string> =>
-        (manuales[String(idCanal)] ||= new Set<string>());
-      for (const b of bajLl) {
-        const rawB = b as RawElement & { canalId?: string | null };
-        if (rawB.canalId) manualDe(rawB.canalId).add(String(b.id));
-      }
-      for (const r of data.ramales || []) {
-        const rawR = r as RawElement & { esCanalId?: string | null };
-        if (!rawR.esCanalId || !r.pts || r.pts.length < 2) continue;
-        for (const b of bajLl) {
-          if (b.x == null || b.y == null) continue;
-          if (r.pts.some((p) => Math.hypot(p[0] - (b.x as number), p[1] - (b.y as number)) < 2)) {
-            manualDe(rawR.esCanalId).add(String(b.id));
-            break;
-          }
-        }
-      }
-      const pxPerCm = cmToPlanePx(Number(data.scaleM ?? 0.5), 1); // px de plano por cm — MISMA conversión que el engine (antes: invertida, rect 25-100x el canal)
-      const etiquetaBaj = (idB: string): string => {
-        const bb = bajLl.find((x) => String(x.id) === idB);
-        const sector = sectorDe(String(bb?.code || bb?.id || idB));
-        return `${sector}-${pisoCorto(Number(plan.nivel))}`;
-      };
-      for (const c of canales) {
-        if (c.x == null || c.y == null) continue;
-        const obb = canalOBBDe(pxPerCm, c);
-        const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
-        // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
-        // Semilla = asociaciones manuales; la geometría agrega las dibujadas.
-        const alimentadores = new Set<string>(manuales[String(c.id)] || []);
-        for (const r of data.ramales || []) {
-          if (r.net !== 'll' || !r.pts || r.pts.length < 2) continue;
-          // Cualquier DIRECCIÓN: un extremo dentro del canal y el OTRO sobre el glifo del
-          // bajante (el ramal puede salir del canal o llegar a él — esCanalId marca salida).
-          const pS = r.pts[0];
-          const pE = r.pts[r.pts.length - 1];
-          const pBaj = enCanal(pS) ? pE : enCanal(pE) ? pS : null;
-          if (!pBaj) continue;
-          for (const b of bajLl) {
-            if (b.x == null || b.y == null) continue;
-            if (Math.hypot(pBaj[0] - b.x, pBaj[1] - b.y) < 2) {
-              alimentadores.add(String(b.id));
-              break;
-            }
-          }
-        }
-        // Bajante dibujado directamente sobre el canal (sin ramal): también alimentador.
-        // Distancia al OBB (no al centro) — en un canal largo el centro queda lejos.
-        for (const b of bajLl) {
-          if (b.x == null || b.y == null) continue;
-          if (distPuntoACanalOBB(obb, b.x, b.y) < 2) alimentadores.add(String(b.id));
-        }
-        canalBajantes[String(c.id)] = [...alimentadores].map(etiquetaBaj).sort();
-        canalAlimIds[String(c.id)] = [...alimentadores].map((idB) => `${String(plan.id)}|${idB}`);
-        // Insumo por bajante asociado (código SIN piso = clave del override + área dibujada).
-        canalAlimInfo[String(c.id)] = [...alimentadores]
-          .map((idB) => {
-            const b = bajLl.find((x) => String(x.id) === idB);
-            return {
-              code: sectorDe(String(b?.code || b?.id || idB)),
-              areaDib: b?.area_m2 || 0,
-            };
-          })
-          .sort((a, b) => a.code.localeCompare(b.code));
-        // Área = Σ una sola vez por bajante alimentador.
-        let area = 0;
-        for (const idB of alimentadores) {
-          const b = bajLl.find((x) => String(x.id) === idB);
-          area += b?.area_m2 || 0;
-        }
-        if (area > 0) canalAreaMap[String(c.id)] = area;
-      }
-    }
-    return {
-      areaAcumMap: map,
-      drawnCanalGlyphs: glyphs,
-      canalAreaMap,
-      canalBajantes,
-      canalAlimIds,
-      canalAlimInfo,
-    };
+  } = useMemo(
+    () => asociarCanalesPorOBB(plans),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plans, trazosTick]);
+    [plans, trazosTick],
+  );
 
-  const canalesLlAuto = useMemo(() => {
-    const manualMap = new Map<string, CanalLL>();
-    for (const c of canalesLl) manualMap.set(c.sector || c.id, c);
-    const usedManual = new Set<string>();
-    // Overrides manuales de bajantes (para etiquetar SU área asignada al canal).
-    const manualBajMap = new Map<string, (typeof bajantesLl)[number]>();
-    for (const m of bajantesLl) manualBajMap.set(m.bajante || m.id, m);
-    const out: CanalLL[] = [];
-
-    for (const glyph of drawnCanalGlyphs) {
-      // Solo el nombre base ("CNL1" de "CNL1-P1") — el piso va en su propia columna.
-      const sector = sectorDe(glyph.code || glyph.id);
-      const manual = manualMap.get(sector);
-      if (manual) usedManual.add(manual.sector || manual.id);
-      // ── Canal = Σ bajantes asociados (REQ: fuente única = overrides de los BAJANTES) ──
-      // Con bajantes asociados, Parcial/Otras/Material cubierta del canal SE DERIVAN de los
-      // overrides de aquellos con la MISMA fórmula de la tabla de bajantes
-      // (areaParcialBajanteLl); al editar, la tabla de canales escribe updBajanteLL en cada
-      // asociado (fan-out con reparto en RainChannelsCheck) y ambas tablas leen lo mismo
-      // en vivo. Sin asociados: fallbacks propios del canal (comportamiento anterior).
-      // La Intensidad queda INTENCIONALMENTE a nivel canal (los bajantes usan la suya en
-      // sus propios chequeos).
-      const alims = canalAlimInfo[String(glyph.id)] || [];
-      const conAsoc = alims.length > 0;
-      const areaParcialAsoc = alims.reduce(
-        (s, a) => s + areaParcialBajanteLl(a.areaDib, undefined, manualBajMap.get(a.code)),
-        0,
-      );
-      const areaOtrasAsoc = sumaOtrasAsociados(alims.map((a) => manualBajMap.get(a.code)));
-      // Material común SOLO si TODOS los asociados comparten el mismo; mezclados/ninguno → ''
-      // (placeholder de la celda; sin material no hay C y el cálculo del canal no dispara).
-      const matComun = materialComun(alims.map((a) => manualBajMap.get(a.code)?.materialCubierta));
-      // Área del canal = Σ áreas asignadas a los bajantes que le descargan (orig. usuario).
-      // Override manual del canal primero; total dibujado del piso solo si ningún bajante
-      // le descarga.
-      const areaDeBajantes = canalAreaMap[String(glyph.id)] || 0;
-      const manualBaj = manualBajMap.get(glyph.code || glyph.id);
-      const areaAcumFallback =
-        manual?.areaAcumulada ||
-        areaDeBajantes ||
-        manualBaj?.areaAcumulada ||
-        areaAcumMap[glyph.piso] ||
-        0;
-      const areaParcial = conAsoc
-        ? areaParcialAsoc
-        : manual?.areaParcial || areaDeBajantes || manualBaj?.areaParcial || areaAcumFallback;
-      const areaOtras = conAsoc ? areaOtrasAsoc : (manual?.areaOtras ?? 0);
-      out.push({
-        id: 'cg_' + glyph.id,
-        sector,
-        areaParcial,
-        areaOtras,
-        areaAcumulada: areaParcial + areaOtras,
-        intensidad: manual?.intensidad ?? 100,
-        coeficienteC: manual?.coeficienteC ?? 0,
-        manning: manual?.manning ?? 0.009,
-        materialCubierta: conAsoc ? matComun : manual?.materialCubierta,
-        materialCanal: manual?.materialCanal,
-        muroVertical: manual?.muroVertical,
-        bordeLibreCm: manual?.bordeLibreCm,
-        // Pendiente MANDA EL DIBUJO (ítem 7 usuario): la del glifo (default 2 en creación,
-        // 2 en legacy sin el campo — igual que antes); fila manual → su propio valor.
-        pendiente: (glyph.pendiente as number) ?? 2,
-        // b/h siempre vienen del glifo dibujado, nunca del override manual — porque son
-        // exactamente los valores que la herramienta de canal "importa" a la tabla; una
-        // entrada manual aquí igual se revertiría en silencio en el próximo render
-        // (canalesLlAuto se recalcula en cada pasada).
-        b: (glyph.base as number) || 0,
-        h: (glyph.altura as number) || 0,
-        longitud: (glyph.longitud as number) || 0,
-        piso: Number(glyph.piso),
-        fromCanal: true,
-        drawId: String(glyph.id),
-        drawPlanId: glyph.planId,
-      });
-    }
-
-    for (const m of canalesLl) {
-      const key = m.sector || m.id;
-      if (usedManual.has(key)) continue;
-      out.push(m);
-    }
-
-    return out;
-  }, [drawnCanalGlyphs, canalesLl, bajantesLl, areaAcumMap, canalAreaMap, canalAlimInfo]);
+  // Filas auto de canal: glifo dibujado + override manual + insumos de los bajantes
+  // asociados (cuerpo en rainwaterDerived.ts; mismas deps de siempre).
+  const canalesLlAuto = useMemo(
+    () =>
+      derivarCanalesLlAuto(
+        drawnCanalGlyphs,
+        canalesLl,
+        bajantesLl,
+        areaAcumMap,
+        canalAreaMap,
+        canalAlimInfo,
+      ),
+    [drawnCanalGlyphs, canalesLl, bajantesLl, areaAcumMap, canalAreaMap, canalAlimInfo],
+  );
 
   const addBajanteLL = () =>
     setBajantesLl((p) => [
