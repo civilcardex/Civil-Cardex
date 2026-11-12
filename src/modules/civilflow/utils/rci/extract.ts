@@ -379,6 +379,7 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
       K: p?.K ?? '',
       S: p?.S ?? '',
       L: p?.L ?? '',
+      Dmuro: p?.Dmuro ?? '',
       /* Salida: el extractor la propone GRIS ('Sí' con GAB dibujado) pero el desplegable de la
        * tabla es EDITABLE de nuevo (ped. usuario) — el valor digitado sobrevive. */
       salida: p?.salida ?? f.salida,

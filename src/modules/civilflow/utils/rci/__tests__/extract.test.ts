@@ -220,6 +220,7 @@ describe('mezclarOverrides — lo amarillo sobrevive por id estable', () => {
     prev.tanque.vextra = 5;
     prev.notas = 'mis notas';
     prev.pisos.rows[0].riesgo = 'Riesgo ordinario';
+    prev.pisos.rows[0].Dmuro = '1.75';
 
     /* Renombrar en el DIBUJO (code/label): el id interno no cambia. */
     const docRen = docP1();
@@ -239,6 +240,9 @@ describe('mezclarOverrides — lo amarillo sobrevive por id estable', () => {
     expect(m2.estado.redes['p1'].ramales[0].nombre).toBe('R1');
     expect(m2.estado.pisos.rows[0].nombre).toBe('P1');
     expect(m2.estado.pisos.rows[0].riesgo).toBe('Riesgo ordinario');
+    /* DMR digitada por piso sobrevive a la re-extracción (antes caía y sembrarRci
+     * re-sembraba la global — el valor "volvía a 2" al re-ingresar). */
+    expect(m2.estado.pisos.rows[0].Dmuro).toBe('1.75');
     expect(m2.estado.montantes[0].nombre).toBe('MRCI-2');
     expect(m2.huerfanos).toEqual([]);
   });
