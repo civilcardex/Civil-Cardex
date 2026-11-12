@@ -63,7 +63,9 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     dibujaCuerpoRamal(ctx, engine, r, col, sel, isPadre, isTributarioMode);
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
-      const FLOW_NETS = ['san', 'll', 'af', 'ac', 'gas'];
+      // rci incluida (ped. usuario): la flecha de flujo del ramal define la RUTA CRÍTICA —
+      // el extractor RCI conecta el ramal por su COLA (pts[0], lado de aguas arriba).
+      const FLOW_NETS = ['san', 'll', 'af', 'ac', 'gas', 'rci'];
       const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
       let flowDx = 0,
         flowDy = 0,

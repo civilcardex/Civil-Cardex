@@ -223,6 +223,61 @@ describe('extraerGris — tramos entre nudos trazados a mano (conectores sin roc
   });
 });
 
+describe('extraerGris — RUTA CRÍTICA por flechas (la cola pts[0] es el lado de aguas arriba)', () => {
+  /** docP1 + un ramal extra `r6` cuya COLA toca el tronco a mitad (pos 1.05) y cuya CABEZA
+   *  toca el cuerpo de R3 (distancia 0). Geométricamente la cabeza gana (d=0 < 0,05); con la
+   *  doctrina de flechas la COLA manda y el ramal conecta en el nudo NUEVO de su cola. */
+  function docFlechas(): DrawingData {
+    const d = docP1();
+    d.ramales!.push(
+      ramalRci(
+        'r6',
+        [
+          [1.05, 0],
+          [3.87, -2],
+        ],
+        3.3,
+        1,
+      ),
+    );
+    return d;
+  }
+  const { estado } = extraerGris(pisosEjemplo(docFlechas()));
+  const red = estado.redes['p1'];
+  /** Nudo de conexión de R3 (la base, sin flecha conflictiva): 'C' con el ramal flecha en B. */
+  const r3Con = (r: ReturnType<typeof extraerGris>['estado']['redes'][string]): string =>
+    r.ramales.find((x) => x.id === 'p1|r3')?.con || '';
+
+  it('la flecha manda sobre la geometría: el ramal conecta en el nudo de su COLA, no en la cabeza más cercana', () => {
+    const r6 = red.ramales.find((r) => r.id === 'p1|r6');
+    expect(r6).toBeTruthy();
+    /* La cola (1.05, 0) crea su PROPIO nudo a mitad del tronco (letra B por posición) y ahí
+     * conecta. Geométricamente la cabeza ganaba (d=0 del cuerpo de R3 → nudo C): la flecha
+     * manda. La derivación pasa a ser la última letra (D). */
+    expect(r6?.con).toBe('B');
+    expect(r3Con(red)).toBe('C');
+    expect(Object.keys(red.nodos || {}).sort()).toEqual(['A', 'B', 'C', 'D']);
+  });
+
+  it('sin contacto en la cola: fallback a la cabeza (trazos dibujados al revés / dibujos viejos)', () => {
+    const d2 = docP1();
+    d2.ramales!.push(
+      ramalRci(
+        'r7',
+        [
+          [9, -8],
+          [4, 0],
+        ],
+        8.06,
+        1,
+      ),
+    ); // cola flotando, cabeza en tronco
+    const { estado: e2 } = extraerGris(pisosEjemplo(d2));
+    const r7 = e2.redes['p1'].ramales.find((r) => r.id === 'p1|r7');
+    expect(r7?.con).toBe('C'); // la cabeza conecta como siempre (pos 4.0 = nudo propio tras B)
+  });
+});
+
 describe('extraerGris — estructura contra el ejemplo de verificación', () => {
   const { estado, montDibujo, avisos } = extraerGris(pisosEjemplo());
 

@@ -334,19 +334,32 @@ function mejorConexion(
   conectados: ReadonlyMap<number, { pos: number; punto: Punto }>,
   mPorPx: number,
 ): { pos: number; punto: Punto } | null {
-  let mejor: { pos: number; punto: Punto } | null = null;
-  let mejorDist = Infinity;
-  for (const p of [t.a, t.b]) {
+  /* RUTA CRÍTICA por flechas (ped. usuario): la COLA del trazo (t.a = pts[0]) es el lado de
+   * aguas ARRIBA — donde entra el flujo. Jerarquía de contacto: (1) EXACTO en la cola
+   * (montante o tronco), (2) exacto en la cabeza, (3) proximidad difusa (tolPar) en la cola,
+   * (4) difusa en la cabeza — un contacto EXACTO de la cabeza gana a una proximidad de la
+   * cola (los paralelos siguen conectando: su contacto es difuso en ambas puntas y la cola
+   * manda). Sin nada: null (trazo suelto). */
+  const evalTip = (
+    p: Punto,
+  ): {
+    exact: { pos: number; punto: Punto } | null;
+    fuzzy: { pos: number; punto: Punto } | null;
+  } => {
+    let exact: { pos: number; punto: Punto } | null = null;
+    let exactD = Infinity;
+    let fuzzy: { pos: number; punto: Punto } | null = null;
+    let fuzzyD = Infinity;
     const dDer = Math.hypot(p.x - posMont.x, p.y - posMont.y);
-    if (dDer < TOL_BAJANTE && dDer < mejorDist) {
-      mejorDist = dDer;
-      mejor = { pos: posDer, punto: p };
+    if (dDer < TOL_BAJANTE && dDer < exactD) {
+      exactD = dDer;
+      exact = { pos: posDer, punto: p };
     }
     for (const x of troncoPos) {
       const mc = masCercanoEnPolilinea(p, x.t.el.pts || []);
-      if (mc.dist < TOL_PUNTO && mc.dist < mejorDist) {
-        mejorDist = mc.dist;
-        mejor = { pos: x.o + (x.remotoEsA ? mc.frac : 1 - mc.frac) * x.t.L, punto: p };
+      if (mc.dist < TOL_PUNTO && mc.dist < exactD) {
+        exactD = mc.dist;
+        exact = { pos: x.o + (x.remotoEsA ? mc.frac : 1 - mc.frac) * x.t.L, punto: p };
       }
     }
     for (const o of trazos) {
@@ -354,13 +367,16 @@ function mejorConexion(
       if (!c) continue;
       const mc = masCercanoEnPolilinea(p, o.el.pts || []);
       const tolPar = Math.max(TOL_PUNTO, (o.L || 0) / mPorPx);
-      if (mc.dist < tolPar && mc.dist < mejorDist) {
-        mejorDist = mc.dist;
-        mejor = { pos: c.pos, punto: p };
+      if (mc.dist < tolPar && mc.dist < fuzzyD) {
+        fuzzyD = mc.dist;
+        fuzzy = { pos: c.pos, punto: p };
       }
     }
-  }
-  return mejor;
+    return { exact, fuzzy };
+  };
+  const a = evalTip(t.a); // cola: aguas arriba — manda en su nivel
+  const b = evalTip(t.b);
+  return a.exact || b.exact || a.fuzzy || b.fuzzy;
 }
 
 /** Arma la red RCI de un piso desde sus trazos: camina el tronco desde el montante, reparte
