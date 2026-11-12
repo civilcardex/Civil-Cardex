@@ -6,6 +6,13 @@ const integrantesExistentes = vi.hoisted(() => ({
   data: [] as Array<{ id: string }>,
   fail: false,
 }));
+// RPC cm_save_state configurable: fail=true = migración sin aplicar (404/PGRST202, el
+// guardado cae al camino LEGADO de olas); error=error real de la RPC (se propaga).
+const rpcSaveState = vi.hoisted(() => ({
+  fail: true,
+  error: null as { code: string; message: string } | null,
+  captured: [] as Array<{ fn: string; args: Record<string, unknown> }>,
+}));
 
 // El select de existentes se espera directo (`await supabase.from(t).select('id').eq(...)`)
 // y el del dueño encadena `.maybeSingle()`. La cadena devuelve un objeto que es AMBAS
@@ -18,6 +25,20 @@ const eqChain = (owner: string | null) => ({
 vi.mock('../../../lib/supabase', () => ({
   supabase: {
     auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
+    rpc: async (fn: string, args: Record<string, unknown>) => {
+      if (rpcSaveState.fail)
+        return {
+          data: null,
+          error: {
+            code: 'PGRST202',
+            message:
+              'Could not find the function public.cm_save_state(uuid, jsonb) in the schema cache',
+          },
+        };
+      if (rpcSaveState.error) return { data: null, error: rpcSaveState.error };
+      rpcSaveState.captured.push({ fn, args });
+      return { data: null, error: null };
+    },
     from: (table: string) => ({
       upsert: async (rows: unknown, opts: unknown) => {
         captured.push({ table, rows, opts });
@@ -178,6 +199,9 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     captured.length = 0;
     integrantesExistentes.data = [];
     integrantesExistentes.fail = false;
+    rpcSaveState.fail = true;
+    rpcSaveState.error = null;
+    rpcSaveState.captured.length = 0;
     resetLS(true);
   });
 
@@ -295,5 +319,52 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     await civilManagerSave(seedState());
     expect(captured.filter((c) => c.table === 'cm_equipos')).toHaveLength(0);
     expect(captured.filter((c) => c.table === 'cm_presupuestos')).toHaveLength(0);
+  });
+
+  // ─── Camino RPC cm_save_state (migración aplicada): una llamada, cero olas ───
+
+  it('RPC desplegada: UNA llamada cm_save_state con el estado completo y cero olas', async () => {
+    rpcSaveState.fail = false;
+    await civilManagerSave(seedState());
+    expect(rpcSaveState.captured).toHaveLength(1);
+    const { fn, args } = rpcSaveState.captured[0];
+    expect(fn).toBe('cm_save_state');
+    expect(args.p_proyecto_id).toBe(PROYECTO);
+    const st = args.p_state as Record<string, unknown>;
+    // Claves EXACTAS que espera la migración (nombres de cliente, sin extras).
+    expect(Object.keys(st).sort()).toEqual(
+      [
+        'factoresPrestaciones',
+        'cargos',
+        'proveedores',
+        'cuadrillas',
+        'equipos',
+        'insumos',
+        'apus',
+        'presupuestos',
+        'config',
+        'config_listas',
+        'categorias_apu',
+      ].sort(),
+    );
+    // El saneo viaja igual que en el legado: FK '' → null.
+    const equipos = st.equipos as Array<{ proveedor_id: string | null }>;
+    expect(equipos[0].proveedor_id).toBeNull();
+    // Integrantes anidados: cantidad NaN → 0 y el integrante sin cargo no viaja.
+    const cuadrillas = st.cuadrillas as Array<{
+      id: string;
+      integrantes: Array<{ id: string; cargo_id: string; cantidad: number }>;
+    }>;
+    expect(cuadrillas[0].integrantes).toEqual([{ id: 'it1', cargo_id: 'c1', cantidad: 0 }]);
+    // Cero round-trips de olas (todo fue por la RPC).
+    expect(captured).toHaveLength(0);
+  });
+
+  it('RPC con error real (no 404): se propaga y NO cae al legado', async () => {
+    rpcSaveState.fail = false;
+    rpcSaveState.error = { code: '23503', message: 'violates foreign key constraint' };
+    await expect(civilManagerSave(seedState())).rejects.toThrow(/cm_save_state/);
+    // Sin upserts de olas: el error real no se enmascara reintentando por tabla.
+    expect(captured).toHaveLength(0);
   });
 });

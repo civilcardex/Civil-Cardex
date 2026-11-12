@@ -19,7 +19,8 @@ import type { CivilManagerState } from './types.ts';
 
 /**
  * Persistencia del módulo CM (CivilManager): una sola verdad (Supabase) con espejo local (IndexedDB).
- * Carga: Supabase primero -> si falla/vacío, IDB (y migra lo local hacia arriba). Guardado: IDB + Supabase serializados.
+ * Carga: Supabase primero -> si falla/vacío, IDB (y migra lo local hacia arriba). Guardado: IDB +
+ * RPC cm_save_state (una transacción atómica); mientras la migración no esté aplicada, camino legado de olas paralelas.
  * Ej: civilManagerLoad() abre el proyecto con sus APU (Análisis de Precio Unitario) aunque no haya red.
  */
 const DB_NAME = 'CivilManagerDB';
@@ -206,6 +207,240 @@ async function loadFromSupabase(): Promise<CivilManagerState | null> {
   }
 }
 
+// ═══ Whitelists de columnas reales por tabla (migración cm_schema + snaps) — compartidas
+// por la RPC cm_save_state y el camino legado: todo campo de más (fuera de esta lista)
+// tumbaba el upsert del legado con 400; el RPC también las usa para limpiar el jsonb.
+const TABLE_COLUMNS: Record<string, string[]> = {
+  cm_factores_prestacionales: ['id', 'codigo', 'nombre', 'factor', 'tipo'],
+  cm_cargos: ['id', 'codigo', 'descripcion', 'num_salarios_base'],
+  cm_proveedores: [
+    'id',
+    'codigo',
+    'nombre',
+    'nit',
+    'contacto',
+    'tel1',
+    'tel2',
+    'email',
+    'direccion',
+    'ciudad',
+    'departamento',
+    'tipo',
+    'notas',
+    'activo',
+  ],
+  cm_cuadrillas: ['id', 'codigo', 'descripcion'],
+  cm_equipos: [
+    'id',
+    'codigo',
+    'nombre',
+    'tipo',
+    'unidad',
+    'costo_hora',
+    'fecha_cotizacion',
+    'proveedor_id',
+  ],
+  cm_insumos: [
+    'id',
+    'codigo',
+    'nombre',
+    'unidad',
+    'origen',
+    'categoria',
+    'subcategoria',
+    'marca_referencia',
+    'costo_unitario',
+    'fecha_cotizacion',
+    'apu_basico_id',
+    'proveedor_id',
+  ],
+  cm_apus: [
+    'id',
+    'codigo',
+    'nombre',
+    'categoria',
+    'unidad',
+    'fecha_creacion',
+    'es_basico',
+    'recursos_mo',
+    'recursos_eq',
+    'recursos_ins',
+    'recursos_transporte',
+  ],
+  cm_presupuestos: [
+    'id',
+    'codigo',
+    'nombre',
+    'entidad',
+    'contrato',
+    'objeto',
+    'plazo',
+    'fecha_creacion',
+    'ciudad',
+    'departamento',
+    'elaborado_por',
+    'activo',
+    'con_sub_proyectos',
+    'parent_id',
+    'estado',
+    'fecha_cierre',
+    'observaciones',
+    'items',
+    'aiu_override',
+    'factores_snap',
+    'cargos_snap',
+    'apus_snap',
+    'insumos_snap',
+    'equipos_snap',
+    'cuadrillas_snap',
+    'perfil_pais_snap',
+    'formulario_original',
+    'tipo_precio_formulario',
+    'alarmas_precio_faltante',
+  ],
+};
+// FKs (Foreign Key, llave foránea) anulables: '' no existe en la tabla referenciada y
+// violaba la FK con 409.
+const NULLABLE_FK_EMPTY_TO_NULL: Record<string, string[]> = {
+  cm_equipos: ['proveedor_id'],
+  cm_insumos: ['proveedor_id'],
+};
+// Columnas anulables donde null significa "limpiar el valor" — viajan tal cual. En el
+// resto, null/undefined/NaN se OMITEN: JSON.stringify(NaN) serializa a null y tumbaba el
+// upsert con 23502 (es_basico, observaciones...); omitir deja que la BD aplique su default
+// (fila nueva) o conserve el valor previo (upsert).
+const NULLABLE: Record<string, string[]> = {
+  cm_equipos: ['proveedor_id'],
+  cm_insumos: ['proveedor_id', 'apu_basico_id'],
+  cm_presupuestos: [
+    'parent_id',
+    'perfil_pais_snap',
+    'formulario_original',
+    'tipo_precio_formulario',
+    'alarmas_precio_faltante',
+  ],
+};
+
+/**
+ * Sanea filas para la BD: whitelist de columnas, null/NaN fuera en NO anulables (la BD
+ * aplica su default), '' → null en FKs anulables y sello user_id/proyecto_id.
+ * Ej: un equipo con proveedor_id:'' viaja {proveedor_id: null} para no tumbar la FK.
+ * @param table tabla destino (clave de TABLE_COLUMNS).
+ * @param rows filas crudas del estado del módulo.
+ * @param userIdEscritura user_id que se sella en cada fila (el RPC lo re-valida; el legado lo manda tal cual).
+ * @param proyectoUid proyecto al que se atribuyen las filas.
+ * @returns las filas listas para upsert (o para el jsonb de cm_save_state).
+ */
+function limpiarFilas(
+  table: string,
+  rows: unknown[],
+  userIdEscritura: string,
+  proyectoUid: string,
+): Record<string, unknown>[] {
+  const cols = TABLE_COLUMNS[table];
+  const nullFks = NULLABLE_FK_EMPTY_TO_NULL[table] || [];
+  const nullables = NULLABLE[table] || [];
+  return (rows as Record<string, unknown>[]).map((r) => {
+    const clean: Record<string, unknown> = {};
+    if (cols) {
+      for (const c of cols) {
+        if (!(c in r)) continue;
+        const v = r[c];
+        if (!nullables.includes(c)) {
+          if (v == null) continue;
+          if (typeof v === 'number' && Number.isNaN(v)) continue;
+        }
+        clean[c] = v;
+      }
+    } else {
+      Object.assign(clean, r);
+    }
+    clean.user_id = userIdEscritura;
+    clean.proyecto_id = r.proyecto_id ?? proyectoUid;
+    for (const fk of nullFks) if (clean[fk] === '') clean[fk] = null;
+    return clean;
+  });
+}
+
+/**
+ * Detecta que cm_save_state aún no existe en la BD (migración 20261112000000 sin aplicar):
+ * PostgREST responde 404 / PGRST202 "Could not find the function ... in the schema cache".
+ * Ej: usuario sin la migración aplicada → true → el guardado cae al camino legado.
+ */
+function rpcSaveStateNoDesplegada(err: unknown): boolean {
+  const e = err as {
+    code?: string;
+    message?: string;
+    status?: number;
+    context?: { status?: number };
+  } | null;
+  const status = e?.status ?? e?.context?.status;
+  return (
+    e?.code === 'PGRST202' || status === 404 || /not found|not find|404/i.test(e?.message ?? '')
+  );
+}
+
+/**
+ * Guarda el estado completo vía RPC cm_save_state: UNA llamada, UNA transacción en la BD
+ * (o todo, o nada — adiós a las ~20 llamadas de olas que podían dejar la BD a medias).
+ * El sello real lo hace el RPC (user_id = dueño del proyecto, proyecto_id del parámetro);
+ * aquí solo se manda el mismo estado limpio que serializaba el camino legado.
+ * @returns false si la función no está desplegada todavía (el llamador cae al legado).
+ */
+async function saveToSupabaseViaRpc(
+  state: CivilManagerState,
+  proyectoUid: string,
+  userId: string,
+): Promise<boolean> {
+  const payload = {
+    factoresPrestaciones: limpiarFilas(
+      'cm_factores_prestacionales',
+      state.factoresPrestaciones,
+      userId,
+      proyectoUid,
+    ),
+    cargos: limpiarFilas('cm_cargos', state.cargos, userId, proyectoUid),
+    proveedores: limpiarFilas('cm_proveedores', state.proveedores, userId, proyectoUid),
+    // Cuadrillas CON integrantes anidados: el RPC separa (upsert de cuadrilla sin
+    // integrantes + insert de integrantes con el filtro y el redondeo del legado).
+    cuadrillas: state.cuadrillas.map((q) => ({
+      id: q.id,
+      codigo: q.codigo,
+      descripcion: q.descripcion,
+      integrantes: q.integrantes
+        .filter((it) => it.cargo_id)
+        .map((it) => ({
+          id: it.id,
+          cargo_id: it.cargo_id,
+          // cantidad integer not null check >= 0: NaN serializa a null y un decimal tumba
+          // el insert — redondear y acotar antes de viajar.
+          cantidad: Math.max(0, Math.round(Number(it.cantidad) || 0)),
+        })),
+    })),
+    equipos: limpiarFilas('cm_equipos', state.equipos, userId, proyectoUid),
+    insumos: limpiarFilas('cm_insumos', state.insumos, userId, proyectoUid),
+    apus: limpiarFilas('cm_apus', state.apus, userId, proyectoUid),
+    presupuestos: limpiarFilas('cm_presupuestos', state.presupuestos, userId, proyectoUid),
+    config: state.config,
+    config_listas: state.config_listas,
+    categorias_apu: state.categorias_apu,
+  };
+  const { error } = await supabase.rpc('cm_save_state', {
+    p_proyecto_id: proyectoUid,
+    p_state: payload,
+  });
+  if (!error) return true;
+  if (rpcSaveStateNoDesplegada(error)) return false;
+  // Error real de la RPC (autorización, FK, validación): NO hay fallback — el legado
+  // fallaría igual y sin atomicidad. Se propaga para que la UI deje de decir "guardando".
+  throw new Error(`cm_save_state: ${error.message}`);
+}
+
+/**
+ * Guarda en Supabase: RPC atómica cm_save_state primero; si la migración aún no se aplicó
+ * (404/función-no-existe), cae al camino legado de olas paralelas. Sin proyecto activo no
+ * se puede atribuir ninguna fila → solo IDB (IndexedDB, espejo local).
+ */
 async function saveToSupabase(state: CivilManagerState): Promise<void> {
   const userId = await getUserId();
   if (!userId) return;
@@ -217,148 +452,46 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     return;
   }
   try {
+    if (await saveToSupabaseViaRpc(state, proyectoId, userId)) return;
+    // La RPC no existe todavía: la migración 20261112000000_cm_save_state.sql no se ha
+    // aplicado en el SQL Editor. Seguimos con el camino viejo hasta que se aplique.
+    devError(
+      'cm_save_state no desplegada: aplicar supabase/migrations/20261112000000_cm_save_state.sql en el SQL Editor. Usando camino legado de olas paralelas.',
+    );
+    await saveToSupabaseLegacy(state);
+  } catch (e) {
+    devError('saveToSupabase:', e);
+    // Nada traga errores aquí: un fallo del RPC o de la preparación deja la UI diciendo
+    // "guardado" mientras la BD tiene la versión anterior -> al recargar, presupuestos y
+    // APU revertidos. Se propaga.
+    throw e instanceof Error ? e : new Error(String(e));
+  }
+}
+
+/**
+ * Camino LEGADO (migración cm_save_state sin aplicar): ~20 round-trips en dos olas
+ * paralelas. Se mantiene solo mientras la RPC no exista en la BD.
+ */
+async function saveToSupabaseLegacy(state: CivilManagerState): Promise<void> {
+  const userId = await getUserId();
+  if (!userId) return;
+  const proyectoId = localStorage.getItem('cm_proyecto_activo_id') || null;
+  if (!proyectoId) {
+    // Sin proyecto no se puede atribuir ninguna fila (proyecto_id uuid not null) — mandar
+    // '' rompía con 400 (uuid inválido). Se guarda solo local hasta elegir proyecto.
+    devError('saveToSupabaseLegacy: sin proyecto activo, solo IDB.');
+    return;
+  }
+  try {
     const proyectoUid = proyectoId; // RLS exige proyecto válido del usuario
     // Empresarial: miembro editando el proyecto del dueño → las filas se sellan con el
     // user_id del DUEÑO (la policy RLS valida el asiento del miembro). Si no se puede
     // resolver el dueño, NO se sella con un id adivinado: se propaga el error.
     const ownerProyecto = await ownerIdProyectoActivo(proyectoUid);
     const userIdEscritura = ownerProyecto !== userId ? ownerProyecto : userId;
-    // Columnas reales por tabla (migración cm_schema + snaps): todo campo de más
-    // (fuera de esta lista) tumbaba el upsert con 400.
-    const TABLE_COLUMNS: Record<string, string[]> = {
-      cm_factores_prestacionales: ['id', 'codigo', 'nombre', 'factor', 'tipo'],
-      cm_cargos: ['id', 'codigo', 'descripcion', 'num_salarios_base'],
-      cm_proveedores: [
-        'id',
-        'codigo',
-        'nombre',
-        'nit',
-        'contacto',
-        'tel1',
-        'tel2',
-        'email',
-        'direccion',
-        'ciudad',
-        'departamento',
-        'tipo',
-        'notas',
-        'activo',
-      ],
-      cm_cuadrillas: ['id', 'codigo', 'descripcion'],
-      cm_equipos: [
-        'id',
-        'codigo',
-        'nombre',
-        'tipo',
-        'unidad',
-        'costo_hora',
-        'fecha_cotizacion',
-        'proveedor_id',
-      ],
-      cm_insumos: [
-        'id',
-        'codigo',
-        'nombre',
-        'unidad',
-        'origen',
-        'categoria',
-        'subcategoria',
-        'marca_referencia',
-        'costo_unitario',
-        'fecha_cotizacion',
-        'apu_basico_id',
-        'proveedor_id',
-      ],
-      cm_apus: [
-        'id',
-        'codigo',
-        'nombre',
-        'categoria',
-        'unidad',
-        'fecha_creacion',
-        'es_basico',
-        'recursos_mo',
-        'recursos_eq',
-        'recursos_ins',
-        'recursos_transporte',
-      ],
-      cm_presupuestos: [
-        'id',
-        'codigo',
-        'nombre',
-        'entidad',
-        'contrato',
-        'objeto',
-        'plazo',
-        'fecha_creacion',
-        'ciudad',
-        'departamento',
-        'elaborado_por',
-        'activo',
-        'con_sub_proyectos',
-        'parent_id',
-        'estado',
-        'fecha_cierre',
-        'observaciones',
-        'items',
-        'aiu_override',
-        'factores_snap',
-        'cargos_snap',
-        'apus_snap',
-        'insumos_snap',
-        'equipos_snap',
-        'cuadrillas_snap',
-        'perfil_pais_snap',
-        'formulario_original',
-        'tipo_precio_formulario',
-        'alarmas_precio_faltante',
-      ],
-    };
-    // FKs anulables: '' no existe en la tabla referenciada y violaba la FK con 409.
-    const NULLABLE_FK_EMPTY_TO_NULL: Record<string, string[]> = {
-      cm_equipos: ['proveedor_id'],
-      cm_insumos: ['proveedor_id'],
-    };
-    // Columnas anulables donde null significa "limpiar el valor" — viajan tal cual. En el
-    // resto, null/undefined/NaN se OMITEN: JSON.stringify(NaN) serializa a null y tumbaba el
-    // upsert con 23502 (es_basico, observaciones...); omitir deja que la BD aplique su default
-    // (fila nueva) o conserve el valor previo (upsert).
-    const NULLABLE: Record<string, string[]> = {
-      cm_equipos: ['proveedor_id'],
-      cm_insumos: ['proveedor_id', 'apu_basico_id'],
-      cm_presupuestos: [
-        'parent_id',
-        'perfil_pais_snap',
-        'formulario_original',
-        'tipo_precio_formulario',
-        'alarmas_precio_faltante',
-      ],
-    };
     const upsert = async (table: string, rows: unknown[]) => {
       if (!rows || (rows as unknown[]).length === 0) return;
-      const cols = TABLE_COLUMNS[table];
-      const nullFks = NULLABLE_FK_EMPTY_TO_NULL[table] || [];
-      const nullables = NULLABLE[table] || [];
-      const withUser = (rows as Record<string, unknown>[]).map((r) => {
-        const clean: Record<string, unknown> = {};
-        if (cols) {
-          for (const c of cols) {
-            if (!(c in r)) continue;
-            const v = r[c];
-            if (!nullables.includes(c)) {
-              if (v == null) continue;
-              if (typeof v === 'number' && Number.isNaN(v)) continue;
-            }
-            clean[c] = v;
-          }
-        } else {
-          Object.assign(clean, r);
-        }
-        clean.user_id = userIdEscritura;
-        clean.proyecto_id = (r as Record<string, unknown>).proyecto_id ?? proyectoUid;
-        for (const fk of nullFks) if (clean[fk] === '') clean[fk] = null;
-        return clean;
-      });
+      const withUser = limpiarFilas(table, rows, userIdEscritura, proyectoUid);
       // defaultToNull:false → header "Prefer: missing=default": las claves omitidas por el
       // saneo (null/NaN en columnas NOT NULL) las rellena PostgREST con el DEFAULT de la
       // columna; sin esto las rellenaba con NULL y tumbaba el upsert (23502).
@@ -460,7 +593,7 @@ async function saveToSupabase(state: CivilManagerState): Promise<void> {
     ]);
     void cfgRes;
   } catch (e) {
-    devError('saveToSupabase:', e);
+    devError('saveToSupabaseLegacy:', e);
     // Los upserts por tabla tragan SUS errores (devError), pero un fallo fuera de ellos
     // (e.g. el select/delete de integrantes, preparación de datos) deja la BD a medias.
     // Tragar el error dejaba la UI diciendo "guardado" mientras la BD tenía la versión
@@ -546,8 +679,13 @@ export function civilManagerSave(state: CivilManagerState): Promise<void> {
       await saveToIdb(state);
       await saveToSupabase(state);
     });
-  saveChain = job.finally(() => {
-    if (saveChain === job) saveChain = Promise.resolve();
-  });
+  // La cadena almacenada NUNCA queda en rechazo sin handler (el último save de la sesión
+  // produciría un unhandledRejection en la página). El rechazo real viaja en `job`, que es
+  // lo que se devuelve a quien llamó; a la cola solo llega una versión resuelta.
+  saveChain = job
+    .catch(() => {})
+    .finally(() => {
+      if (saveChain === job) saveChain = Promise.resolve();
+    });
   return job;
 }
