@@ -70,10 +70,16 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
     // bajante desplazado lejos de este mismo extremo); si no, clicar de vuelta sobre un extremo
     // que lleva un accesorio empieza en silencio un ramal nuevo no relacionado en vez de
     // continuar el existente.
-    let activeNetsRamales = engine.ramales.filter(
-      (rm) =>
-        rm.net === engine.activeNet && !(engine.tipoTramo === 'ramal' && rm.tipo === 'tributario'),
-    );
+    // EN rci NO se continúa (ped. usuario): todo trazo nace como RAMAL NUEVO (el que conecta
+    // ramales paralelos es un tramo propio del extractor, no una extensión del primero).
+    const buscaContinuacion = engine.activeNet !== 'rci';
+    let activeNetsRamales = buscaContinuacion
+      ? engine.ramales.filter(
+          (rm) =>
+            rm.net === engine.activeNet &&
+            !(engine.tipoTramo === 'ramal' && rm.tipo === 'tributario'),
+        )
+      : [];
     if (engine.tipoTramo === 'tributario') {
       // Continuar un tributario existente (desde su propio extremo) debe seguir siendo posible,
       // no solo continuar el padre mismo — restringir solo a `id === padreTributario` hacía que

@@ -277,7 +277,7 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       1.7,
     );
     expect(err).toBeTruthy();
-    expect(err).toContain('el muro más cercano queda a 2,65 m');
+    expect(err).toContain('una parte del muro más cercano queda a 2,65 m');
     expect(err).toContain('(DMR) es de 1,7 m');
   });
 
@@ -370,13 +370,16 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
     expect(err).toContain('grupo de 2 tramos de muro conectados');
   });
 
-  it('MUROS EN L: si el trazo cubre AMBAS patas → null (se crea)', () => {
-    // Mismo grupo de 2, pero el trazo cruza la esquina por dentro: a 80 px (1,06 m) de cada pata.
+  it('MUROS EN L: si el trazo + ramales CUBREN ambas patas (peor punto ≤ Dmuro) → null (se crea)', () => {
+    // Grupo de 2. Cobertura: el trazo horizontal a 80 px (1,06 m) cubre la pata horizontal
+    // COMPLETA y el arranque de la vertical; un ramal vertical existente cubre el resto.
+    // El PEOR punto de cada pata queda ≤ Dmuro → null. (La diagonal del test anterior dejaba
+    // la esquina (0,0) a 3,74 m: con la cobertura por muestreo ya NO basta la distancia mínima.)
     const eng = motorDe(
       [
         ramalDe('RRCI1', [
-          [80, 320],
-          [320, 80],
+          [0, 140],
+          [0, 400],
         ]),
       ],
       [
@@ -404,8 +407,8 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       chequeoMurosTrazo(
         eng,
         [
-          [80, 320],
-          [320, 80],
+          [30, 80],
+          [400, 80],
         ],
         1.7,
       ),
@@ -427,7 +430,7 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         },
       ],
     );
-    // Trazo a 80 px ≈ 1,06 m del muro (≤ 1,7).
+    // Trazo a 80 px ≈ 1,06 m del muro (≤ 1,7) y cubre TODA su longitud.
     const err = chequeoMurosTrazo(
       eng,
       [
@@ -437,6 +440,37 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       1.7,
     );
     expect(err).toBeNull();
+  });
+
+  it('MURO MÁS LARGO que la cobertura: el extremo descubierto bloquea aunque el punto más cercano cumpla', () => {
+    // Caso del muro inferior (ped. usuario): el trazo solo cubre la MITAD izquierda (x≤200);
+    // el punto (400,0) queda a 215 px ≈ 2,85 m del trazo > Dmuro 1,7 → alerta (antes la
+    // distancia MÍNIMA 0,84 m validaba el muro entero).
+    const eng = motorDe(
+      [],
+      [
+        {
+          id: 'GL1',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [400, 0],
+          ],
+        },
+      ],
+    );
+    const err = chequeoMurosTrazo(
+      eng,
+      [
+        [0, 80],
+        [200, 80],
+      ],
+      1.7,
+    );
+    expect(err).toBeTruthy();
+    expect(err).toContain('una parte del muro');
+    expect(err).toContain('2,85');
   });
 
   it('BANDA: solo los muros a ≤ 2·Dmuro del trazo se juzgan (los lejanos esperan su ramal)', () => {

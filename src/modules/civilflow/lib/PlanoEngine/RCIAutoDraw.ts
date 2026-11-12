@@ -370,12 +370,30 @@ export function chequeoMurosTrazo(
       }
     }
   }
+  /* COBERTURA real del muro (ped. usuario: el muro inferior quedaba "validado" por su punto
+   * más cercano aunque sus extremos estaban descubiertos): se muestrea cada segmento del
+   * grupo cada ~0,50 m y se toma el PEOR punto — la mayor distancia de un punto del muro al
+   * ramal rci más cercano (el trazo nuevo incluido). Ese peor punto debe quedar a ≤ Dmuro. */
+  const puntoAPoli = (p: number[], pts: number[][]): number => {
+    let m = Infinity;
+    for (let i = 0; i < pts.length - 1; i++) m = Math.min(m, distSegSeg(pts[i], pts[i + 1], p, p));
+    return m;
+  };
+  const pasoPx = cmToPlanePx(engine.scaleM, 50);
   let peor = 0;
   for (const s of grupo) {
-    const mejorM = engine.pxToM(Math.min(dSeg(s, ptsNuevos), ...polis.map((p) => dSeg(s, p))));
-    if (mejorM > dm + 1e-9 && mejorM > peor) peor = mejorM;
+    const len = Math.hypot(s.b[0] - s.a[0], s.b[1] - s.a[1]);
+    const n = Math.max(1, Math.ceil(len / pasoPx));
+    for (let k = 0; k <= n; k++) {
+      const f = k / n;
+      const p = [s.a[0] + (s.b[0] - s.a[0]) * f, s.a[1] + (s.b[1] - s.a[1]) * f];
+      const dM = engine.pxToM(
+        Math.min(puntoAPoli(p, ptsNuevos), ...polis.map((pl) => puntoAPoli(p, pl))),
+      );
+      if (dM > dm + 1e-9 && dM > peor) peor = dM;
+    }
   }
   if (peor === 0) return null;
   const nGrupo = grupo.length > 1 ? ` (grupo de ${grupo.length} tramos de muro conectados)` : '';
-  return `El trazo no se puede crear: el muro más cercano${nGrupo} queda a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
+  return `El trazo no se puede crear: una parte del muro más cercano${nGrupo} queda a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
 }

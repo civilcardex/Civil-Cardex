@@ -43,7 +43,9 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     // glifo con espacio extra cuando el ramal es VERTICAL; encima del glifo cuando es
     // HORIZONTAL — la orientación la da la dirección del trazo (dx,dy en pantalla).
     if (mRoc[1]) {
-      const fs = Math.max(11, circR * 1.05);
+      /* Proporcional al glifo (que escala con el zoom): SIN piso en px — antes el piso 11
+       * mantenía el texto grande al alejar y "crecía" respecto del dibujo (ped. usuario). */
+      const fs = circR * 1.35;
       ctx.fillStyle = '#000000';
       ctx.font = `bold ${fs}px sans-serif`;
       const vertical = Math.abs(dx) < Math.abs(dy);
