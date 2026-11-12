@@ -39,13 +39,21 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     ctx.rect(c.x - side, c.y - side, side * 2, side * 2);
     ctx.fill();
     ctx.stroke();
-    // Etiqueta ROC-N bajo el glifo (numeración consecutiva del piso, ped. usuario).
+    // Etiqueta ROC-N (numeración consecutiva del piso, ped. usuario): SIEMPRE a la derecha del
+    // glifo con espacio extra cuando el ramal es VERTICAL; encima del glifo cuando es
+    // HORIZONTAL — la orientación la da la dirección del trazo (dx,dy en pantalla).
     if (mRoc[1]) {
       const fs = Math.max(8, circR * 0.85);
       ctx.fillStyle = '#000000';
       ctx.font = `${fs}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`ROC-${mRoc[1]}`, c.x, c.y + circR + fs * 0.9);
+      const vertical = Math.abs(dx) < Math.abs(dy);
+      if (vertical) {
+        ctx.textAlign = 'left';
+        ctx.fillText(`ROC-${mRoc[1]}`, c.x + circR + fs * 0.6, c.y + fs * 0.35);
+      } else {
+        ctx.textAlign = 'center';
+        ctx.fillText(`ROC-${mRoc[1]}`, c.x, c.y - circR - fs * 0.9);
+      }
       ctx.textAlign = 'left';
     }
     return true;
