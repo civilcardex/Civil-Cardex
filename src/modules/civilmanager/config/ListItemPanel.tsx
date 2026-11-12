@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { showToast } from '../shared/Toast.tsx';
-import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
-import { DimEnLectura, TableHeader } from '../shared/EditLock.tsx';
-import { useEditable } from '../shared/EditLock.tsx';
+import { useCrudTable } from '../shared/useCrudTable.ts';
+import { CrudTable, type CrudColumn } from '../shared/CrudTable.tsx';
+import { EditableCell } from '../shared/EditableCell.tsx';
 import type { ListaItem } from '../types.ts';
 
 interface Props {
@@ -21,6 +21,9 @@ interface Props {
   usageLabel?: string;
 }
 
+/** Fila con id derivado del código (único por genCodeFor y nunca editable en la grilla). */
+type ListaRow = ListaItem & { id: string };
+
 /** Panel genérico para las listas de configuración con forma {codigo, nombre|categoria, desc}: alta/baja, conteo de uso y borrado bloqueado si el item se usa. Ej: OrigenesPanel = este panel con prefix 'OR'. */
 export function ListaItemPanel({
   title,
@@ -33,123 +36,101 @@ export function ListaItemPanel({
   countUsage,
   usageLabel,
 }: Props) {
-  const [editIdx, setEditIdxState] = useState<number | null>(null);
-  const editable = useEditable();
-  const setEditIdx = (i: number | null) => setEditIdxState(editable ? i : null);
+  // id = codigo: derivación determinista, así el write-back lo quita y el jsonb guardado no cambia de forma.
+  const rows = useMemo<ListaRow[]>(() => items.map((it) => ({ ...it, id: it.codigo })), [items]);
 
-  function add() {
-    const nuevo: ListaItem = {
-      codigo: genCodeFor(items, prefix),
-      desc: '',
-      [labelField]: 'Nuevo',
-    } as ListaItem;
-    onChange([...items, nuevo]);
-    setEditIdx(items.length);
-  }
+  // Chequeo de uso propio (el formato del mensaje difiere del de useReferentialDelete).
+  const tryDelete = useCallback(
+    (id: string, doDelete: () => void) => {
+      const it = rows.find((r) => r.id === id);
+      if (!it) return;
+      void (async () => {
+        if (countUsage) {
+          const count = countUsage(it[labelField] ?? '');
+          if (count > 0) {
+            showToast(`No se puede eliminar: usado en ${count} ${usageLabel ?? 'registro(s)'}`, {
+              type: 'err',
+            });
+            return;
+          }
+        }
+        if (!(await askConfirm(`¿Eliminar "${it[labelField]}"?`))) return;
+        doDelete();
+      })();
+    },
+    [rows, countUsage, usageLabel, labelField],
+  );
 
-  function upd(i: number, k: keyof ListaItem, v: string) {
-    const n = [...items];
-    n[i] = { ...n[i], [k]: v };
-    onChange(n);
-  }
+  const { filtered, editIdx, setEditIdx, upd, add, del, handleKeyDown } = useCrudTable<ListaRow>({
+    items: rows,
+    onChange: (next) => onChange(next.map(({ id: _id, ...it }) => it)),
+    prefix,
+    defaultItem: () =>
+      ({
+        id: crypto.randomUUID(),
+        codigo: genCodeFor(items, prefix),
+        desc: '',
+        [labelField]: 'Nuevo',
+      }) as ListaRow,
+    searchKeys: ['codigo', labelField, 'desc'],
+    confirmDel: '¿Eliminar este ítem?',
+    tryDelete,
+  });
 
-  async function del(i: number) {
-    const item = items[i];
-    if (countUsage) {
-      const count = countUsage(item[labelField] ?? '');
-      if (count > 0) {
-        showToast(`No se puede eliminar: usado en ${count} ${usageLabel ?? 'registro(s)'}`, {
-          type: 'err',
-        });
-        return;
-      }
-    }
-    if (!(await askConfirm(`¿Eliminar "${item[labelField]}"?`))) return;
-    if (editIdx === i) setEditIdx(null);
-    onChange(items.filter((_, j) => j !== i));
-  }
+  /** Columnas de la grilla: Código informativo; nombre y descripción abren edición con doble clic. */
+  const columns: CrudColumn<ListaRow>[] = [
+    {
+      label: 'Código',
+      title: 'Código único del ítem de la lista, generado automáticamente.',
+      render: (it) => it.codigo,
+    },
+    {
+      label: labelHeader,
+      render: (it, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={it[labelField] ?? ''}
+          onCommit={(v) => ctx.upd(it.id, labelField, v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title={labelHeader}
+        />
+      ),
+    },
+    {
+      label: 'Descripción',
+      title: 'Detalle del ítem; la columna anterior es su nombre.',
+      // El color tenue lo lleva el span exterior porque el input no hereda color.
+      render: (it, edit, ctx) => (
+        <span style={{ color: 'var(--txt2)' }}>
+          <EditableCell
+            editing={edit}
+            value={it.desc}
+            onCommit={(v) => ctx.upd(it.id, 'desc', v)}
+            onOpenEdit={ctx.editRow}
+            onKeyDown={ctx.handleKeyDown}
+            title="Descripción"
+          />
+        </span>
+      ),
+    },
+  ];
 
   return (
-    <XlWrap>
-      <TableHeader title={title} icon={icon} />
-      <DimEnLectura>
-        <XlScroll>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">#</th>
-                <th
-                  scope="col"
-                  title="Código único del ítem de la lista, generado automáticamente."
-                >
-                  Código
-                </th>
-                <th scope="col">{labelHeader}</th>
-                <th scope="col" title="Detalle del ítem; la columna anterior es su nombre.">
-                  Descripción
-                </th>
-                <th scope="col" aria-label="Acciones" />
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="cm-empty-row">
-                    Sin registros
-                  </td>
-                </tr>
-              )}
-              {items.map((it, i) => {
-                const editing = editIdx === i;
-                return (
-                  <tr key={it.codigo}>
-                    <XlRowNum n={i + 1} />
-                    <td>{it.codigo}</td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label={labelHeader}
-                          value={it[labelField] ?? ''}
-                          onChange={(e) => upd(i, labelField, e.target.value)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{it[labelField]}</span>
-                      )}
-                    </td>
-                    <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Descripción"
-                          value={it.desc}
-                          onChange={(e) => upd(i, 'desc', e.target.value)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)} style={{ color: 'var(--txt2)' }}>
-                          {it.desc}
-                        </span>
-                      )}
-                    </td>
-                    <XlAct onDelete={() => del(i)} />
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </XlScroll>
-        <div className="cm-xl-foot">
-          {editable && (
-            <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
-              Agregar
-            </button>
-          )}
-          <span className="cm-flex-1" />
-          <span style={{ fontSize: 11 }}>
-            Total: <b>{items.length}</b>
-          </span>
-        </div>
-      </DimEnLectura>
-    </XlWrap>
+    <CrudTable
+      title={title}
+      icon={icon}
+      columns={columns}
+      items={filtered}
+      editIdx={editIdx}
+      setEditIdx={setEditIdx}
+      del={del}
+      upd={upd}
+      handleKeyDown={handleKeyDown}
+      onAdd={add}
+      addLabel="Agregar"
+      countLabel="Total:"
+      emptyLabel="Sin registros"
+    />
   );
 }

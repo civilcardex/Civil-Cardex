@@ -3,6 +3,8 @@ import { useCivilManager } from '../context.tsx';
 import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { NumInput } from '../shared/NumInput.tsx';
+import { EditableCell } from '../shared/EditableCell.tsx';
+import { handleTabKeyDown } from '../shared/useCrudTable.ts';
 import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import { DimEnLectura, EditableSection, TableHeader, useEditable } from '../shared/EditLock.tsx';
 import { FP_CAT_DESC_DEFAULTS } from '../seedData.ts';
@@ -54,6 +56,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
   const [editIdx, setEditIdxState] = useState<number | null>(null);
   const editable = useEditable();
   const setEditIdx = (i: number | null) => setEditIdxState(editable ? i : null);
+  const handleKeyDown = handleTabKeyDown(setEditIdx);
 
   return (
     <XlWrap>
@@ -91,32 +94,33 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
                 </tr>
               )}
               {grupo.map(({ f, i }, gi) => {
-                const editing = editIdx === i;
                 return (
                   <tr key={f.id}>
                     <XlRowNum n={gi + 1} />
                     <td>{f.codigo}</td>
                     <td>
-                      {editing ? (
-                        <input
-                          className="cm-ni"
-                          aria-label="Nombre"
-                          value={f.nombre}
-                          onChange={(e) => upd(i, 'nombre', e.target.value)}
-                        />
-                      ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>{f.nombre}</span>
-                      )}
+                      <EditableCell
+                        editing={editIdx === i}
+                        value={f.nombre}
+                        onCommit={(v) => upd(i, 'nombre', v)}
+                        onOpenEdit={() => setEditIdx(i)}
+                        onKeyDown={(e) => handleKeyDown(i, e)}
+                        title="Nombre"
+                      />
                     </td>
                     <td>
-                      {editing ? (
+                      {/* Escape hatch: NumInput con decimals=2 y lectura con '%' — combo que EditableCell no cubre con 'numero'. */}
+                      {editIdx === i ? (
                         <NumInput
                           value={f.factor}
                           decimals={2}
                           onChange={(v) => upd(i, 'factor', v)}
+                          onKeyDown={(e) => handleKeyDown(i, e)}
+                          aria-label="Factor %"
+                          title="Factor %"
                         />
                       ) : (
-                        <span onDoubleClick={() => setEditIdx(i)}>
+                        <span onDoubleClick={() => setEditIdx(i)} title="Factor %">
                           {Number(f.factor).toFixed(2)}%
                         </span>
                       )}

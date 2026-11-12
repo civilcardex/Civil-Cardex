@@ -3,14 +3,12 @@ import { useCivilManager } from '../context.tsx';
 import { genCodeFor } from '../codeGen.ts';
 import { fmtMoneda } from '../calc.ts';
 import { fmtDate, isCotOld } from '../excelImport.tsx';
-import { CrudFooter } from '../shared/CrudFooter.tsx';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal.tsx';
-import { NumInput } from '../shared/NumInput.tsx';
 import { useCrudTable } from '../shared/useCrudTable.ts';
-import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock.tsx';
-
+import { CrudTable, type CrudColumn } from '../shared/CrudTable.tsx';
+import { EditableCell } from '../shared/EditableCell.tsx';
+import { EditableSection } from '../shared/EditLock.tsx';
 import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
-import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Insumo } from '../types.ts';
 
 /** Tab de insumos (materiales del catálogo): costo unitario, categoría y origen; los 'Preparado en obra' eligen su APU (Análisis de Precios Unitarios) básico como fuente de precio. */
@@ -83,173 +81,148 @@ export function InsumosTab() {
       },
     });
 
+  /** Columnas de la grilla: Código y Cotizado son informativos; el resto abre edición con doble clic. */
+  const columns: CrudColumn<Insumo>[] = [
+    {
+      label: 'Código',
+      title: 'Código único del insumo (IN-xxx), generado automáticamente.',
+      render: (x) => x.codigo,
+    },
+    {
+      label: 'Nombre',
+      title: 'Nombre comercial o descripción del material.',
+      render: (x, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={x.nombre}
+          onCommit={(v) => ctx.upd(x.id, 'nombre', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Nombre"
+        />
+      ),
+    },
+    {
+      label: 'Unidad',
+      title: 'Unidad de medida del insumo (lista editable en Configuración).',
+      render: (x, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          tipo="select"
+          value={x.unidad}
+          opciones={state.config_listas.unidades.map((u) => ({
+            value: u.abreviatura,
+            label: u.abreviatura,
+          }))}
+          onCommit={(v) => ctx.upd(x.id, 'unidad', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Unidad"
+        />
+      ),
+    },
+    {
+      label: 'Origen',
+      title: 'Local, Nacional o Preparado en obra; si es preparado, el costo viene del APU básico.',
+      render: (x, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          tipo="select"
+          value={x.origen}
+          opciones={state.config_listas.origenes.map((o) => {
+            const nombre = o.nombre ?? '';
+            return { value: nombre, label: nombre };
+          })}
+          onCommit={(v) => ctx.upd(x.id, 'origen', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Origen"
+        />
+      ),
+    },
+    {
+      label: 'Costo Unitario',
+      title: 'Precio de compra del insumo; se reparte según el consumo en el APU.',
+      // Escape hatch: si es 'Preparado en obra' el costo es derivado del APU básico (se muestra
+      // en solo lectura y la edición real es el select del APU); si no, es moneda editable.
+      render: (x, edit, ctx) => {
+        if (x.origen === 'Preparado en obra') {
+          if (edit) {
+            return (
+              <EditableCell
+                editing
+                tipo="select"
+                value={x.apu_basico_id}
+                opciones={[
+                  { value: '', label: '— seleccionar APU básico —' },
+                  ...apusBasico.map((a) => ({ value: a.id, label: a.nombre })),
+                ]}
+                onCommit={(v) => ctx.upd(x.id, 'apu_basico_id', v)}
+                onKeyDown={ctx.handleKeyDown}
+                title="APU básico"
+              />
+            );
+          }
+          const costoDerivado = apusBasicoCalcMap.get(x.apu_basico_id)?.costo_unitario ?? 0;
+          return (
+            <span onDoubleClick={ctx.editRow} title="APU básico">
+              {fmtMoneda(costoDerivado)}
+            </span>
+          );
+        }
+        return (
+          <EditableCell
+            editing={edit}
+            tipo="moneda"
+            value={String(x.costo_unitario)}
+            onCommit={(v) => ctx.upd(x.id, 'costo_unitario', Number(v) || 0)}
+            onOpenEdit={ctx.editRow}
+            onKeyDown={ctx.handleKeyDown}
+            title="Costo Unitario"
+          />
+        );
+      },
+    },
+    {
+      label: 'Cotizado',
+      title: 'Fecha de la última cotización; se resalta cuando está desactualizada.',
+      // Solo lectura (la fecha no se edita aquí); el color de alerta lo lleva el span exterior
+      // porque el input no hereda color.
+      render: (x, edit, ctx) => (
+        <span style={{ color: isCotOld(x.fecha_cotizacion) ? 'var(--warn)' : undefined }}>
+          <EditableCell
+            editing={edit}
+            value={fmtDate(x.fecha_cotizacion)}
+            onCommit={() => {}}
+            readOnly
+            onOpenEdit={ctx.editRow}
+            onKeyDown={ctx.handleKeyDown}
+            title="Cotizado"
+          />
+        </span>
+      ),
+    },
+  ];
+
   return (
     <EditableSection dim={false}>
-      <XlWrap>
-        <TableHeader title="Insumos" icon="insumos_tabla" />
-        <DimEnLectura>
-          <XlScroll>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th
-                    scope="col"
-                    title="Código único del insumo (IN-xxx), generado automáticamente."
-                  >
-                    Código
-                  </th>
-                  <th scope="col" title="Nombre comercial o descripción del material.">
-                    Nombre
-                  </th>
-                  <th
-                    scope="col"
-                    title="Unidad de medida del insumo (lista editable en Configuración)."
-                  >
-                    Unidad
-                  </th>
-                  <th
-                    scope="col"
-                    title="Local, Nacional o Preparado en obra; si es preparado, el costo viene del APU básico."
-                  >
-                    Origen
-                  </th>
-                  <th
-                    scope="col"
-                    title="Precio de compra del insumo; se reparte según el consumo en el APU."
-                  >
-                    Costo Unitario
-                  </th>
-                  <th
-                    scope="col"
-                    title="Fecha de la última cotización; se resalta cuando está desactualizada."
-                  >
-                    Cotizado
-                  </th>
-                  <th scope="col" aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="cm-empty-row">
-                      Sin insumos
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((x, i) => {
-                  const editing = editIdx === i;
-                  const preparado = x.origen === 'Preparado en obra';
-                  const costoDerivado = preparado
-                    ? (apusBasicoCalcMap.get(x.apu_basico_id)?.costo_unitario ?? 0)
-                    : x.costo_unitario;
-                  const old = isCotOld(x.fecha_cotizacion);
-                  return (
-                    <tr key={x.id}>
-                      <XlRowNum n={i + 1} />
-                      <td>{x.codigo}</td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Nombre"
-                            value={x.nombre}
-                            onChange={(e) => upd(x.id, 'nombre', e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(i, e)}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setEditIdx(i)}>{x.nombre}</span>
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <select
-                            className="cm-sel"
-                            aria-label="Unidad"
-                            value={x.unidad}
-                            onChange={(e) => upd(x.id, 'unidad', e.target.value)}
-                          >
-                            {state.config_listas.unidades.map((u) => (
-                              <option key={u.abreviatura} value={u.abreviatura}>
-                                {u.abreviatura}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          x.unidad
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <select
-                            className="cm-sel"
-                            aria-label="Origen"
-                            value={x.origen}
-                            onChange={(e) => upd(x.id, 'origen', e.target.value)}
-                          >
-                            {state.config_listas.origenes.map((o) => (
-                              <option key={o.codigo} value={o.nombre}>
-                                {o.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          x.origen
-                        )}
-                      </td>
-                      <td>
-                        {preparado ? (
-                          editing ? (
-                            <select
-                              className="cm-sel"
-                              aria-label="APU básico"
-                              value={x.apu_basico_id}
-                              onChange={(e) => upd(x.id, 'apu_basico_id', e.target.value)}
-                            >
-                              <option value="">— seleccionar APU básico —</option>
-                              {apusBasico.map((a) => (
-                                <option key={a.id} value={a.id}>
-                                  {a.nombre}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            fmtMoneda(costoDerivado)
-                          )
-                        ) : editing ? (
-                          <NumInput
-                            value={x.costo_unitario}
-                            format
-                            moneda
-                            onChange={(v) => upd(x.id, 'costo_unitario', v)}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setEditIdx(i)}>
-                            {fmtMoneda(x.costo_unitario)}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ color: old ? 'var(--warn)' : undefined }}>
-                        {fmtDate(x.fecha_cotizacion)}
-                      </td>
-                      <XlAct onDelete={() => del(i)} />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </XlScroll>
-          <CrudFooter
-            onAdd={add}
-            addLabel="Nuevo Insumo"
-            excel={excel}
-            exportLabel="Exportar"
-            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-            countLabel="Total:"
-            count={filtered.length}
-          />
-        </DimEnLectura>
-      </XlWrap>
+      <CrudTable
+        title="Insumos"
+        icon="insumos_tabla"
+        columns={columns}
+        items={filtered}
+        editIdx={editIdx}
+        setEditIdx={setEditIdx}
+        del={del}
+        upd={upd}
+        handleKeyDown={handleKeyDown}
+        onAdd={add}
+        addLabel="Nuevo Insumo"
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+        excel={excel}
+        exportLabel="Exportar"
+        emptyLabel="Sin insumos"
+      />
       <ExcelPreviewModal excel={excel} />
     </EditableSection>
   );

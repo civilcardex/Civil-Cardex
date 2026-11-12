@@ -1,16 +1,13 @@
 import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { genCodeFor } from '../codeGen.ts';
-import { fmtMoneda } from '../calc.ts';
 import { fmtDate, isCotOld } from '../excelImport.tsx';
-import { CrudFooter } from '../shared/CrudFooter.tsx';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal.tsx';
-import { NumInput } from '../shared/NumInput.tsx';
 import { useCrudTable } from '../shared/useCrudTable.ts';
-import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock.tsx';
-
+import { CrudTable, type CrudColumn } from '../shared/CrudTable.tsx';
+import { EditableCell } from '../shared/EditableCell.tsx';
+import { EditableSection } from '../shared/EditLock.tsx';
 import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
-import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Equipo } from '../types.ts';
 
 /** Tab de equipos (máquinas con costo_hora): edita precio y proveedor, y marca en rojo la fecha de cotización con más de 180 días (isCotOld). */
@@ -68,125 +65,93 @@ export function EquiposTab() {
       },
     });
 
+  /** Columnas de la grilla: Código informativo; el resto abre edición con doble clic. */
+  const columns: CrudColumn<Equipo>[] = [
+    {
+      label: 'Código',
+      title: 'Código único del equipo (EQ-xxx), generado automáticamente.',
+      render: (e) => e.codigo,
+    },
+    {
+      label: 'Nombre',
+      title: 'Nombre descriptivo del equipo.',
+      render: (e, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={e.nombre}
+          onCommit={(v) => ctx.upd(e.id, 'nombre', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Nombre"
+        />
+      ),
+    },
+    {
+      label: 'Tipo',
+      title:
+        'Clasificación: maquinaria pesada, equipo menor, transporte… (lista editable en Configuración).',
+      render: (e, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          tipo="select"
+          value={e.tipo}
+          opciones={state.config_listas.tipos_equipo.map((t) => {
+            const nombre = t.nombre ?? '';
+            return { value: nombre, label: nombre };
+          })}
+          onCommit={(v) => ctx.upd(e.id, 'tipo', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Tipo"
+        />
+      ),
+    },
+    {
+      label: 'Costo/Hora',
+      title: 'Tarifa por hora que el APU multiplica por el rendimiento del equipo.',
+      render: (e, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          tipo="moneda"
+          value={String(e.costo_hora)}
+          onCommit={(v) => ctx.upd(e.id, 'costo_hora', Number(v) || 0)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Costo/Hora"
+        />
+      ),
+    },
+    {
+      label: 'Cotizado',
+      title: 'Fecha de la última cotización; se resalta cuando está desactualizada.',
+      // Columna informativa (el color de alerta no lo puede llevar el td de CrudTable).
+      render: (e) => (
+        <span style={{ color: isCotOld(e.fecha_cotizacion) ? 'var(--warn)' : undefined }}>
+          {fmtDate(e.fecha_cotizacion)}
+        </span>
+      ),
+    },
+  ];
+
   return (
     <EditableSection dim={false}>
-      <XlWrap>
-        <TableHeader title="Equipos" icon="equipos_tabla" />
-        <DimEnLectura>
-          <XlScroll>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th
-                    scope="col"
-                    title="Código único del equipo (EQ-xxx), generado automáticamente."
-                  >
-                    Código
-                  </th>
-                  <th scope="col" title="Nombre descriptivo del equipo.">
-                    Nombre
-                  </th>
-                  <th
-                    scope="col"
-                    title="Clasificación: maquinaria pesada, equipo menor, transporte… (lista editable en Configuración)."
-                  >
-                    Tipo
-                  </th>
-                  <th
-                    scope="col"
-                    title="Tarifa por hora que el APU multiplica por el rendimiento del equipo."
-                  >
-                    Costo/Hora
-                  </th>
-                  <th
-                    scope="col"
-                    title="Fecha de la última cotización; se resalta cuando está desactualizada."
-                  >
-                    Cotizado
-                  </th>
-                  <th scope="col" aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="cm-empty-row">
-                      Sin equipos
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((e, i) => {
-                  const editing = editIdx === i;
-                  const old = isCotOld(e.fecha_cotizacion);
-                  return (
-                    <tr key={e.id}>
-                      <XlRowNum n={i + 1} />
-                      <td>{e.codigo}</td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Nombre"
-                            value={e.nombre}
-                            onChange={(ev) => upd(e.id, 'nombre', ev.target.value)}
-                            onKeyDown={(ev) => handleKeyDown(i, ev)}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setEditIdx(i)}>{e.nombre}</span>
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <select
-                            className="cm-sel"
-                            aria-label="Tipo"
-                            value={e.tipo}
-                            onChange={(ev) => upd(e.id, 'tipo', ev.target.value)}
-                          >
-                            {state.config_listas.tipos_equipo.map((t) => (
-                              <option key={t.codigo} value={t.nombre}>
-                                {t.nombre}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          e.tipo
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <NumInput
-                            value={e.costo_hora}
-                            format
-                            moneda
-                            onChange={(v) => upd(e.id, 'costo_hora', v)}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setEditIdx(i)}>{fmtMoneda(e.costo_hora)}</span>
-                        )}
-                      </td>
-                      <td style={{ color: old ? 'var(--warn)' : undefined }}>
-                        {fmtDate(e.fecha_cotizacion)}
-                      </td>
-                      <XlAct onDelete={() => del(i)} />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </XlScroll>
-          <CrudFooter
-            onAdd={add}
-            addLabel="Nuevo Equipo"
-            excel={excel}
-            exportLabel="Exportar"
-            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-            countLabel="Total:"
-            count={filtered.length}
-          />
-        </DimEnLectura>
-      </XlWrap>
+      <CrudTable
+        title="Equipos"
+        icon="equipos_tabla"
+        columns={columns}
+        items={filtered}
+        editIdx={editIdx}
+        setEditIdx={setEditIdx}
+        del={del}
+        upd={upd}
+        handleKeyDown={handleKeyDown}
+        onAdd={add}
+        addLabel="Nuevo Equipo"
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+        excel={excel}
+        exportLabel="Exportar"
+        emptyLabel="Sin equipos"
+      />
       <ExcelPreviewModal excel={excel} />
     </EditableSection>
   );

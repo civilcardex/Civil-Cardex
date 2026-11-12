@@ -8,7 +8,8 @@ function norm(s: string): string {
   return sinAcentos(s).toLowerCase();
 }
 
-function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
+/** Enter (salta al siguiente campo de la fila visible o cierra la edición) y Escape (cierra). Exportado para las tablas que editan por índice fuera del hook (ej: maestro-detalle con estado propio). */
+export function handleTabKeyDown(setEditIdx: (i: number | null) => void) {
   return (_i: number, e: React.KeyboardEvent<HTMLElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();

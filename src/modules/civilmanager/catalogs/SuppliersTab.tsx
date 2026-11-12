@@ -1,13 +1,12 @@
 import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { genCodeFor } from '../codeGen.ts';
-import { CrudFooter } from '../shared/CrudFooter.tsx';
 import { ExcelPreviewModal } from '../shared/ExcelPreviewModal.tsx';
 import { useCrudTable } from '../shared/useCrudTable.ts';
-import { DimEnLectura, EditableSection, TableHeader } from '../shared/EditLock.tsx';
-
+import { CrudTable, type CrudColumn } from '../shared/CrudTable.tsx';
+import { EditableCell } from '../shared/EditableCell.tsx';
+import { EditableSection } from '../shared/EditLock.tsx';
 import { useReferentialDelete } from '../shared/useReferentialDelete.ts';
-import { XlAct, XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
 import type { Proveedor } from '../types.ts';
 
 /** Tab de proveedores: contacto/nit/teléfonos y los tipos de suministro que manejan. Se borra solo si ningún equipo o insumo los referencia. */
@@ -72,133 +71,104 @@ export function ProveedoresTab() {
       },
     });
 
+  /** Columnas de la grilla: Código es informativo (lo genera el sistema); el resto abre edición con doble clic. */
+  const columns: CrudColumn<Proveedor>[] = [
+    {
+      label: 'Código',
+      title: 'Código único del proveedor (PR-xxx), generado automáticamente.',
+      render: (p) => p.codigo,
+    },
+    {
+      label: 'Nombre',
+      title: 'Razón social o nombre comercial.',
+      render: (p, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={p.nombre}
+          onCommit={(v) => ctx.upd(p.id, 'nombre', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Nombre"
+        />
+      ),
+    },
+    {
+      label: 'NIT',
+      title: 'Número de identificación tributaria.',
+      render: (p, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={p.nit}
+          onCommit={(v) => ctx.upd(p.id, 'nit', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="NIT"
+        />
+      ),
+    },
+    {
+      label: 'Contacto',
+      title: 'Persona de contacto del proveedor.',
+      render: (p, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={p.contacto}
+          onCommit={(v) => ctx.upd(p.id, 'contacto', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Contacto"
+        />
+      ),
+    },
+    {
+      label: 'Teléfono',
+      title: 'Teléfono principal de contacto.',
+      render: (p, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={p.tel1}
+          onCommit={(v) => ctx.upd(p.id, 'tel1', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Teléfono"
+        />
+      ),
+    },
+    {
+      label: 'Ciudad',
+      title: 'Ciudad de origen; afecta tiempos y costos de transporte.',
+      render: (p, edit, ctx) => (
+        <EditableCell
+          editing={edit}
+          value={p.ciudad}
+          onCommit={(v) => ctx.upd(p.id, 'ciudad', v)}
+          onOpenEdit={ctx.editRow}
+          onKeyDown={ctx.handleKeyDown}
+          title="Ciudad"
+        />
+      ),
+    },
+  ];
+
   return (
     <EditableSection dim={false}>
-      <XlWrap>
-        <TableHeader title="Proveedores" icon="proveedores_tabla" />
-        <DimEnLectura>
-          <XlScroll>
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th
-                    scope="col"
-                    title="Código único del proveedor (PR-xxx), generado automáticamente."
-                  >
-                    Código
-                  </th>
-                  <th scope="col" title="Razón social o nombre comercial.">
-                    Nombre
-                  </th>
-                  <th scope="col" title="Número de identificación tributaria.">
-                    NIT
-                  </th>
-                  <th scope="col" title="Persona de contacto del proveedor.">
-                    Contacto
-                  </th>
-                  <th scope="col" title="Teléfono principal de contacto.">
-                    Teléfono
-                  </th>
-                  <th scope="col" title="Ciudad de origen; afecta tiempos y costos de transporte.">
-                    Ciudad
-                  </th>
-                  <th scope="col" aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="cm-empty-row">
-                      Sin proveedores
-                    </td>
-                  </tr>
-                )}
-                {filtered.map((p, i) => {
-                  const editing = editIdx === i;
-                  return (
-                    <tr key={p.id}>
-                      <XlRowNum n={i + 1} />
-                      <td>{p.codigo}</td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Nombre"
-                            value={p.nombre}
-                            onChange={(e) => upd(p.id, 'nombre', e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(i, e)}
-                          />
-                        ) : (
-                          <span onDoubleClick={() => setEditIdx(i)}>{p.nombre}</span>
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="NIT"
-                            value={p.nit}
-                            onChange={(e) => upd(p.id, 'nit', e.target.value)}
-                          />
-                        ) : (
-                          p.nit
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Contacto"
-                            value={p.contacto}
-                            onChange={(e) => upd(p.id, 'contacto', e.target.value)}
-                          />
-                        ) : (
-                          p.contacto
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Teléfono"
-                            value={p.tel1}
-                            onChange={(e) => upd(p.id, 'tel1', e.target.value)}
-                          />
-                        ) : (
-                          p.tel1
-                        )}
-                      </td>
-                      <td>
-                        {editing ? (
-                          <input
-                            className="cm-ni"
-                            aria-label="Ciudad"
-                            value={p.ciudad}
-                            onChange={(e) => upd(p.id, 'ciudad', e.target.value)}
-                          />
-                        ) : (
-                          p.ciudad
-                        )}
-                      </td>
-                      <XlAct onDelete={() => del(i)} />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </XlScroll>
-          <CrudFooter
-            onAdd={add}
-            addLabel="Nuevo Proveedor"
-            excel={excel}
-            exportLabel="Exportar"
-            search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
-            countLabel="Total:"
-            count={filtered.length}
-          />
-        </DimEnLectura>
-      </XlWrap>
+      <CrudTable
+        title="Proveedores"
+        icon="proveedores_tabla"
+        columns={columns}
+        items={filtered}
+        editIdx={editIdx}
+        setEditIdx={setEditIdx}
+        del={del}
+        upd={upd}
+        handleKeyDown={handleKeyDown}
+        onAdd={add}
+        addLabel="Nuevo Proveedor"
+        search={{ value: search, onChange: setSearch, placeholder: 'Buscar…' }}
+        excel={excel}
+        exportLabel="Exportar"
+        emptyLabel="Sin proveedores"
+      />
       <ExcelPreviewModal excel={excel} />
     </EditableSection>
   );
