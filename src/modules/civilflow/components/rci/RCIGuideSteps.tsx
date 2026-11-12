@@ -79,6 +79,14 @@ const BLOQUE: CSSProperties = {
 };
 /* Compacto SOLO para los pasos 2 y 5 (los que pedía sin scroll): SVG a ~240px de alto. */
 const BLOQUE_COMPACTO: CSSProperties = { ...BLOQUE, maxWidth: 620, margin: '0 auto' };
+/* Fila de DOS esquemas lado a lado (el .gpair del HTML de referencia): auto-fit — 2 columnas
+ * cuando caben (~840px+), 1 columna debajo. Responsive sin media queries. */
+const GPAIR: CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+  gap: 14,
+  alignItems: 'stretch',
+};
 const BTN_CHICO: CSSProperties = {
   border: '1px solid var(--line)',
   background: 'var(--bg3)',
@@ -314,21 +322,25 @@ export function PasoGuia({
     case 2:
       return (
         <>
-          {/* Apilados a ancho completo: cada esquema ocupa toda la tarjeta y se ve grande. */}
-          <div style={BLOQUE}>
-            <PlanSvg
-              roc={ro}
-              opts={{
-                labels: true,
-                nodes: true,
-                verCorte: true,
-                label: 'Ramales paralelos que entregan en tramos hasta la derivación del montante',
-              }}
-            />
-          </div>
-          <div style={BLOQUE}>
+          {/* Los DOS esquemas en UNA fila (.gpair del HTML): planta y corte lado a lado; si no
+           * caben (modal angosto) el grid auto-fit baja uno debajo del otro. */}
+          <div style={GPAIR}>
+            <div style={BLOQUE}>
+              <PlanSvg
+                roc={ro}
+                opts={{
+                  labels: true,
+                  nodes: true,
+                  verCorte: true,
+                  label:
+                    'Ramales paralelos que entregan en tramos hasta la derivación del montante',
+                }}
+              />
+            </div>
             {/* zNudoRaiz/Nramales sin dato aquí: CorteSvg usa sus defaults internos. */}
-            <CorteSvg roc={ro} mont={estado.mont} />
+            <div style={{ ...BLOQUE, display: 'flex', alignItems: 'center' }}>
+              <CorteSvg roc={ro} mont={estado.mont} />
+            </div>
           </div>
           <p style={TXT}>
             Los rociadores de una misma línea forman un <b>ramal</b>. Cada ramal entrega su agua en

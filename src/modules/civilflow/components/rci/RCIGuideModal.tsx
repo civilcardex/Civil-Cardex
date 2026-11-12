@@ -152,8 +152,9 @@ export default function RciGuiaModal({
           border: '1px solid var(--line)',
           borderRadius: 8,
           /* Viewport-based: dentro de <dialog> el padre es fit-content y un 100%
-           * colapsaría la card al contenido (descentrado). 40px = padding del dialog. */
-          width: 'min(1120px, calc(100vw - 40px))',
+           * colapsaría la card al contenido (descentrado). 40px = padding del dialog.
+           * 1400px: los DOS esquemas del paso 3 caben en UNA fila sin scroll (ped. usuario). */
+          width: 'min(1400px, calc(100vw - 40px))',
           height: 'auto',
           maxHeight: '88vh',
           display: 'flex',

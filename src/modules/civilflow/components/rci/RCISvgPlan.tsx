@@ -48,13 +48,15 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
   const extra = 2;
   const cols = nx + extra;
   const rows = ny + (opts.ctxRow ? 1 : 0);
-  const W = 680,
-    H = Math.max(266, 106 + rows * 62);
+  const H = Math.max(266, 106 + rows * 62);
   const dx = Math.min(78, 470 / cols),
     dy = Math.min(66, (H - 110) / Math.max(rows - 1, 1));
   const x0 = 84,
     yb = H - 74,
     xf = x0 + (cols - 1) * dx + 58;
+  /* W mínimo 680 (el HTML) pero CRECE si "Derivación del montante"/"fin del cálculo del piso"
+   * no caben a la derecha del vbox (xf+22 + ~140 px de texto): sin recorte con Nramal alto. */
+  const W = Math.max(680, xf + 190);
   const Y = (j: number) => yb - j * dy,
     X = (i: number) => x0 + i * dx;
   const pipeSt: CSSProperties = { stroke: c.fire, strokeWidth: 2, strokeOpacity: 0.75 };
