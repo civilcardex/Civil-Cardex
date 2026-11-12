@@ -24,6 +24,10 @@ import { distToPolyline } from '../shared/geometry';
  */
 export function tryMergeExtensionPorExtremo(engine: IPlanoEngineCore): boolean {
   const incomingPts = engine.activeRamal!.pts;
+  // rci NO extiende ramales por llegada a extremo (ped. usuario): el trazo que conecta
+  // ramales paralelos debe nacer como RAMAL NUEVO (será un tramo T del extractor), no como
+  // extensión del primero.
+  if (engine.activeRamal?.net === 'rci') return false;
   if (incomingPts.length >= 2 && !engine.activeRamal!.id) {
     const TOL = 0.5;
     const isBajanteCode = (v: string) => engine.bajantes.some((b) => (b.code || b.id) === v);

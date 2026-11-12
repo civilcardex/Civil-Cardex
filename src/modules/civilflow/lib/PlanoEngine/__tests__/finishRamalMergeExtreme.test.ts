@@ -52,6 +52,27 @@ describe('finishRamalMergeExtremo', () => {
     expect(eng.selId).toBe('RS1');
   });
 
+  it('rci: NUNCA mergea — el conector entre paralelos nace como ramal nuevo (ped. usuario)', () => {
+    const existente = ramal('RRCI1', [
+      [0, 0],
+      [100, 0],
+    ]);
+    const eng = motor(
+      [existente],
+      [
+        [100, 0],
+        [140, 0],
+      ],
+    );
+    (eng.activeRamal as unknown as { net: string }).net = 'rci';
+    expect(mergeExtensionPorExtremoConFallback(eng)).toBe(false);
+    expect(eng.activeRamal).not.toBeNull(); // el trazo sigue vivo: se creará como ramal nuevo
+    expect(existente.pts).toEqual([
+      [0, 0],
+      [100, 0],
+    ]); // sin extensión
+  });
+
   it('extremo sobre un bajante: NO mergea (laterales separados del Y doble)', () => {
     const existente = ramal('RS1', [
       [0, 0],

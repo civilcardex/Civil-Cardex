@@ -92,7 +92,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // Continuación por LLEGADA a extremo: si un ramal nuevo aterriza exactamente en el
   // extremo de otro ramal existente (misma red), extender ese ramal existente en vez de
   // crear uno nuevo separado — extraído a finishRamalMergeExtremo.ts (try/catch incluido:
-  // si el merge lanza por cualquier razón, se cae a la creación normal del ramal).
+  // si el merge lanza por cualquier razón, se cae a la creación normal del ramal; EN rci
+  // el módulo no mergea — el conector entre paralelos nace como ramal nuevo).
   if (mergeExtensionPorExtremoConFallback(engine)) return;
   if (!engine.activeRamal) return;
 
