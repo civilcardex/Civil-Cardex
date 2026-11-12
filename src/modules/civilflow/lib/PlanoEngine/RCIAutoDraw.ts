@@ -116,9 +116,36 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
     ...(pusoInicio ? { accesorioInicio: 'rociador' } : {}),
     totalL: +calculateRamalLength(pts, engine).toFixed(3),
   });
+  renumeraRociadores(engine);
   engine.render();
   engine._markDirty();
   return inserciones.length + (pusoInicio ? 1 : 0);
+}
+
+/** RENUMERA los rociadores de todo el piso con numeración CONSECUTIVA y su etiqueta ROC-N
+ *  (ped. usuario): recorre los ramales rci en orden de creación y estampa `rociador#N` en cada
+ *  accesorio rociador (cabeza → cuerpo en orden de vértice). El valor sigue matcheando
+ *  /rociador/i (conteo del extractor y rectángulo de fuego intactos); el N del # es el que el
+ *  glifo dibuja como «ROC-N». Ej: base RRCI1 con 3 + paralelos con 3 → ROC-1…ROC-6. */
+export function renumeraRociadores(engine: IPlanoEngineCore): void {
+  let n = 0;
+  const estampa = (v: string | undefined): string | undefined =>
+    v && /^rociador(#\d+)?$/.test(v) ? `rociador#${++n}` : v;
+  for (const r of engine.ramales) {
+    if (r.net !== 'rci') continue;
+    const inicio = estampa(r.accesorioInicio);
+    if (inicio) r.accesorioInicio = inicio;
+    const fin = estampa(r.accesorioFin);
+    if (fin) r.accesorioFin = fin;
+    if (!r.accMed) continue;
+    const claves = Object.keys(r.accMed)
+      .filter((k) => /^accMed\d+$/.test(k))
+      .sort((x, y) => Number(x.slice(6)) - Number(y.slice(6)));
+    for (const k of claves) {
+      const v = estampa(r.accMed[k]);
+      if (v) r.accMed[k] = v;
+    }
+  }
 }
 
 /** Dirección ABSOLUTA de pantalla hacia donde salen los paralelos (ped. usuario): con trazo
@@ -262,34 +289,27 @@ export function crearRamalesParalelos(
       }
     }
   }
-  /* CONECTOR (ped. usuario): tramo perpendicular que une la cabeza del base con la de cada
-   * copia — vértices [cabeza base, cabeza copia 1, … cabeza copia n]. Con él el extractor
-   * une las copias POR CONTACTO REAL (TOL_PUNTO) y la longitud del conector entra al cálculo. */
-  const idConector = nextFreeRamalId(engine.ramales, 'RRCI');
-  const ptsConector: [number, number][] = [
-    base.pts[0] as [number, number],
-    ...candidatos.map((c) => c.pts[0]),
-  ];
-  engine.ramales.push(ramalDe(engine, base, idConector, ptsConector));
+  /* COPIA PURA (ped. usuario, ya resuelto antes): SIN conector entre paralelos — la conexión
+   * la resuelve el extractor por proximidad perpendicular (tolPar en ExtractNetwork). */
   const ids: string[] = [];
   for (const c of candidatos) {
     const id = nextFreeRamalId(engine.ramales, 'RRCI');
     engine.ramales.push(ramalDe(engine, base, id, c.pts));
     ids.push(id);
   }
+  renumeraRociadores(engine); // las copias heredaron los # del base: renumerar TODO el piso
   engine.render();
   engine._markDirty();
-  return { ids: [idConector, ...ids], error: null };
+  return { ids, error: null };
 }
 
 /** Chequeo EN VIVO al terminar/mover un trazo rci (ped. usuario). Dos reglas:
  *  MÍNIMO — el trazo no puede quedar pegado ni cruzar un muro: a < MIN_MURO_M (0,10 m,
  *  NFPA 13) de CUALQUIER muro → alerta (la violación clara, independiente del Dmuro).
- *  MÁXIMO — los muros de la BANDA del trazo (a ≤ 2·Dmuro de él) deben quedar a ≤ Dmuro del
- *  ramal rci más cercano (el nuevo incluido); los muros FUERA de la banda no bloquean (su
- *  cobertura la juzga la verificación de tabla). Sin esto, en un piso con muros en lados
- *  opuestos ningún trazo podría ser el primero. El Dmuro llega inyectado (engine.dmuroRci);
- *  null → el máximo no aplica.
+ *  MÁXIMO — SOLO el muro MÁS CERCANO al trazo (vertical u horizontal, da igual) debe quedar
+ *  a ≤ Dmuro del ramal rci más cercano (el nuevo incluido): si el trazo es ese ramal, él
+ *  mismo lo cubre; si otro ramal ya está más cerca, ese lo cubre y el trazo no bloquea. El
+ *  Dmuro llega inyectado (engine.dmuroRci); null → el máximo no aplica.
  *  Ej: muro en banda a 2,65 m del trazo con Dmuro 1,70 → mensaje y trazo no creado. */
 export function chequeoMurosTrazo(
   engine: IPlanoEngineCore,
@@ -308,20 +328,54 @@ export function chequeoMurosTrazo(
     }
   }
   if (!(dm && dm > 0)) return null;
-  /* MÁXIMO: banda del trazo (muros a ≤ 2·Dmuro de él), juzgados contra el ramal rci MÁS
-   * CERCANO — el nuevo incluido (ya está en engine.ramales al mover; en finRamal se pasa
-   * aparte). */
+  /* MÁXIMO (doctrina del usuario) a nivel SEGMENTO: cada tramo recto de muro se juzga por
+   * separado — una L dibujada como UNA polilínea con doblez (o dos muros que comparten
+   * vértice) exige cumplir Dmuro en AMBOS sentidos (pata vertical y horizontal). El grupo
+   * conectado (BFS por vértices compartidos, ≤ 2 px) entra completo: una caja juzga sus 4
+   * patas. Cada segmento del grupo debe quedar a ≤ Dmuro del ramal rci más cercano (el
+   * nuevo incluido). distSegSeg: la orientación da igual. */
   const polis = engine.ramales
     .filter((r) => r.net === 'rci' && r.tipo === 'ramal' && r.pts.length >= 2)
     .map((r) => r.pts);
-  const bandaPx = (2 * dm) / factorMPorPx(engine.scaleM);
+  type Seg = { a: number[]; b: number[] };
+  const segs: Seg[] = [];
+  for (const muro of muros)
+    for (let i = 0; i < muro.pts.length - 1; i++) segs.push({ a: muro.pts[i], b: muro.pts[i + 1] });
+  if (!segs.length) return null;
+  const dSeg = (s: Seg, pts: number[][]): number => distPoli([s.a, s.b], pts);
+  let cercano = segs[0];
+  let dCercano = Infinity;
+  for (const s of segs) {
+    const d = dSeg(s, ptsNuevos);
+    if (d < dCercano) {
+      dCercano = d;
+      cercano = s;
+    }
+  }
+  /* Grupo conectado del segmento más cercano: BFS por vértices compartidos (≤ 2 px — el
+   * esquinado a mano no cae exacto). Los segmentos de la MISMA polilínea siempre se tocan
+   * entre sí (comparten el vértice interior). */
+  const tocan = (p1: number[], p2: number[]): boolean =>
+    Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) < 2;
+  const grupo: Seg[] = [cercano];
+  const pendientes: Seg[] = [cercano];
+  while (pendientes.length) {
+    const cur = pendientes.pop()!;
+    for (const s of segs) {
+      if (grupo.includes(s)) continue;
+      const toca = tocan(cur.a, s.a) || tocan(cur.a, s.b) || tocan(cur.b, s.a) || tocan(cur.b, s.b);
+      if (toca) {
+        grupo.push(s);
+        pendientes.push(s);
+      }
+    }
+  }
   let peor = 0;
-  for (const muro of muros) {
-    const dTrazo = distPoli(muro.pts, ptsNuevos);
-    if (dTrazo > bandaPx) continue;
-    const mejorM = engine.pxToM(Math.min(dTrazo, ...polis.map((p) => distPoli(muro.pts, p))));
+  for (const s of grupo) {
+    const mejorM = engine.pxToM(Math.min(dSeg(s, ptsNuevos), ...polis.map((p) => dSeg(s, p))));
     if (mejorM > dm + 1e-9 && mejorM > peor) peor = mejorM;
   }
   if (peor === 0) return null;
-  return `El trazo no se puede crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
+  const nGrupo = grupo.length > 1 ? ` (grupo de ${grupo.length} tramos de muro conectados)` : '';
+  return `El trazo no se puede crear: el muro más cercano${nGrupo} queda a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
 }

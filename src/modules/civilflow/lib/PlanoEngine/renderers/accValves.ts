@@ -6,7 +6,9 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, outX, outY } = a;
   // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).
   const rad = a.rad * 1.25;
-  if (accType === 'rociador') {
+  // rociador ('rociador') o numerado ('rociador#7' → etiqueta ROC-7 del renumeraRociadores).
+  const mRoc = /^rociador(?:#(\d+))?$/.exec(accType);
+  if (mRoc) {
     // Rociador colgante rci (Red Contra Incendio): círculo blanco del tamaño de las válvulas
     // centrado sobre el trazo (como valvCheque) con una X DIAGONAL en ejes absolutos (45°
     // respecto de la pantalla, no del ramal — así se ve en la simbología de referencia) y un
@@ -37,6 +39,15 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     ctx.rect(c.x - side, c.y - side, side * 2, side * 2);
     ctx.fill();
     ctx.stroke();
+    // Etiqueta ROC-N bajo el glifo (numeración consecutiva del piso, ped. usuario).
+    if (mRoc[1]) {
+      const fs = Math.max(8, circR * 0.85);
+      ctx.fillStyle = '#000000';
+      ctx.font = `${fs}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText(`ROC-${mRoc[1]}`, c.x, c.y + circR + fs * 0.9);
+      ctx.textAlign = 'left';
+    }
     return true;
   }
   if (accType === 'valvCompuerta') {

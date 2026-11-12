@@ -55,8 +55,8 @@ describe('sembrarRociadores', () => {
     const eng = motorDe([r]);
     const n = sembrarRociadores(eng, 'RRCI1', 2.5);
     expect(n).toBe(4);
-    expect(r.accesorioInicio).toBe('rociador');
-    const marcadores = Object.values(r.accMed || {}).filter((v) => v === 'rociador');
+    expect(r.accesorioInicio).toBe('rociador#1');
+    const marcadores = Object.values(r.accMed || {}).filter((v) => /^rociador#/.test(v));
     expect(marcadores).toHaveLength(3);
   });
 
@@ -81,7 +81,7 @@ describe('sembrarRociadores', () => {
     ]);
     const eng = motorDe([r]);
     expect(sembrarRociadores(eng, 'RRCI7', 4.3)).toBe(1);
-    expect(r.accesorioInicio).toBe('rociador');
+    expect(r.accesorioInicio).toBe('rociador#1');
     expect(Object.keys(r.accMed || {})).toHaveLength(0);
   });
 
@@ -124,7 +124,7 @@ describe('sembrarRociadores', () => {
     const antes = JSON.stringify(r.pts);
     expect(sembrarRociadores(eng, 'RRCI9', 2.5)).toBe(0);
     expect(JSON.stringify(r.pts)).toBe(antes);
-    expect(Object.values(r.accMed || {}).filter((v) => v === 'rociador')).toHaveLength(3);
+    expect(Object.values(r.accMed || {}).filter((v) => /^rociador#/.test(v))).toHaveLength(3);
   });
 
   it('S inválido: no-op; ramal corto: solo la cabeza (no se queda sin rociadores)', () => {
@@ -135,8 +135,51 @@ describe('sembrarRociadores', () => {
     const eng = motorDe([r]);
     expect(sembrarRociadores(eng, 'RRCI3', 0)).toBe(0);
     expect(sembrarRociadores(eng, 'RRCI3', 5)).toBe(1); // 20 px ≈ 0.53 m < 5 m: cabeza sí
-    expect(r.accesorioInicio).toBe('rociador');
+    expect(r.accesorioInicio).toBe('rociador#1');
     expect(r.accMed).toBeUndefined();
+  });
+
+  it('NUMERACIÓN ROC-N: siembra estampa rociador#1… consecutivos POR PISO (cabeza primero)', () => {
+    const a = ramalDe('RRCI1', [
+      [0, 0],
+      [755.9, 0],
+    ]);
+    const b = ramalDe('RRCI2', [
+      [0, 200],
+      [755.9, 200],
+    ]);
+    const eng = motorDe([a, b]);
+    sembrarRociadores(eng, 'RRCI1', 2.5); // 4 rociadores → ROC-1..4
+    sembrarRociadores(eng, 'RRCI2', 2.5); // 4 más → ROC-5..8
+    expect(a.accesorioInicio).toBe('rociador#1');
+    const numsA = Object.values(a.accMed || {}).map((v) => Number(v.split('#')[1]));
+    expect(numsA).toEqual([2, 3, 4]); // vértice ASC
+    expect(b.accesorioInicio).toBe('rociador#5');
+    const numsB = Object.values(b.accMed || {}).map((v) => Number(v.split('#')[1]));
+    expect(numsB).toEqual([6, 7, 8]);
+  });
+
+  it('renumeraRociadores: la numeración continúa al sembrar el paralelo (sin duplicar #)', () => {
+    const base = ramalDe('RRCI1', [
+      [0, 0],
+      [755.9, 0],
+    ]);
+    const eng = motorDe([base]);
+    sembrarRociadores(eng, 'RRCI1', 2.5); // base: rociador#1..4
+    const { ids } = crearRamalesParalelos(eng, 'RRCI1', 3.2, 1, 'abajo', null);
+    expect(ids).toEqual(['RRCI2']);
+    const copia = eng.ramales.find((r) => r.id === 'RRCI2')!;
+    sembrarRociadores(eng, 'RRCI2', 2.5); // la copia nace sin rociadores: continúa → #5..8
+    const todos = eng.ramales
+      .filter((r) => r.net === 'rci')
+      .flatMap((r) => [
+        ...(r.accesorioInicio && /^rociador#/.test(r.accesorioInicio) ? [r.accesorioInicio] : []),
+        ...Object.values(r.accMed || {}),
+      ])
+      .map((v) => Number(String(v).split('#')[1]))
+      .sort((x, y) => x - y);
+    expect(todos).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(copia.accesorioInicio).toBe('rociador#5');
   });
 });
 
@@ -152,21 +195,19 @@ describe('crearRamalesParalelos', () => {
     ]);
     const eng = motorDe([base, r2]);
     const { ids } = crearRamalesParalelos(eng, 'RRCI1', 3.2, 2, 'abajo', null);
-    // CONECTOR (auditoría): ids[0] = conector que une cabezas [base, copia1, copia2];
-    // luego las n copias. La red queda FÍSICAMENTE unida (el extractor une por contacto).
-    expect(ids).toEqual(['RRCI3', 'RRCI4', 'RRCI5']);
+    // COPIA PURA (ped. usuario): SIN conector — solo las n copias; la conexión la hace el
+    // extractor por proximidad (tolPar). RRCI3/RRCI4 son las copias.
+    expect(ids).toEqual(['RRCI3', 'RRCI4']);
     const px2m = (2.54 * 0.5) / 96;
-    const con = eng.ramales.find((r) => r.id === 'RRCI3')!;
-    expect(con.pts.map((q) => q[1] * px2m)).toEqual([0, 3.2, 6.4]); // vertical: misma x
-    const p1 = eng.ramales.find((r) => r.id === 'RRCI4')!;
+    const p1 = eng.ramales.find((r) => r.id === 'RRCI3')!;
     expect(p1.pts[0][0]).toBe(0);
     expect(p1.pts[0][1] * px2m).toBeCloseTo(3.2, 1); // 'abajo' = +y en pantalla
-    const p2 = eng.ramales.find((r) => r.id === 'RRCI5')!;
+    const p2 = eng.ramales.find((r) => r.id === 'RRCI4')!;
     expect(p2.pts[0][1] * px2m).toBeCloseTo(6.4, 1);
     // Dirección opuesta: 'arriba' = -y (aunque el trazo se dibuje →+x o →−x).
     const { ids: idsArr } = crearRamalesParalelos(eng, 'RRCI1', 3.2, 1, 'arriba', null);
-    expect(idsArr).toEqual(['RRCI6', 'RRCI7']);
-    const p6 = eng.ramales.find((r) => r.id === 'RRCI7')!;
+    expect(idsArr).toEqual(['RRCI5']);
+    const p6 = eng.ramales.find((r) => r.id === 'RRCI5')!;
     expect(p6.pts[0][1] * px2m).toBeCloseTo(-3.2, 1);
   });
 
@@ -184,9 +225,9 @@ describe('crearRamalesParalelos', () => {
     crearRamalesParalelos(eng, 'RRCI1', 3.2, 1, 'der', null);
     crearRamalesParalelos(eng, 'RRCI2', 3.2, 1, 'der', null);
     const px2m = (2.54 * 0.5) / 96;
-    // ids por llamada: [conector, copia] — RRCI3 conector+RRCI4 copia; RRCI5 conector+RRCI6 copia.
-    const a = eng.ramales.find((r) => r.id === 'RRCI4')!;
-    const b = eng.ramales.find((r) => r.id === 'RRCI6')!;
+    // ids por llamada: [copia] — RRCI3 y RRCI4 (sin conector, copia pura).
+    const a = eng.ramales.find((r) => r.id === 'RRCI3')!;
+    const b = eng.ramales.find((r) => r.id === 'RRCI4')!;
     expect(a.pts[1][0] * px2m).toBeCloseTo(3.2, 1);
     expect(b.pts[1][0] * px2m).toBeCloseTo(3.2, 1);
   });
@@ -236,8 +277,139 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       1.7,
     );
     expect(err).toBeTruthy();
-    expect(err).toContain('un muro de su zona quedaría a 2,65 m');
+    expect(err).toContain('el muro más cercano queda a 2,65 m');
     expect(err).toContain('(DMR) es de 1,7 m');
+  });
+
+  it('MUROS EN L: el trazo cubre la pata cercana pero NO la conectada → bloquea por ambas', () => {
+    // L en la esquina (0,0): pata horizontal y=[0,400]×0 y pata vertical x=0×[0,400] (comparten
+    // el vértice (0,0)). El trazo nuevo en y=80 px (1,06 m) cubre la horizontal (≤ Dmuro 1,7)
+    // pero la vertical también queda a ≤ Dmuro de ÉL... para forzar la falla la vertical está
+    // lejos de todo ramal: trazo solo llega hasta x=100, el resto de la vertical (y>100) queda
+    // a 106 px ≈ 1,4 m... usamos Dmuro 1,0: horizontal a 1,06 NO cubre → bloquea igualmente.
+    // Caso claro: trazo a 80 px de la horizontal (1,06 m) y la vertical a > Dmuro de ambos.
+    // Trazo en x=60..460, y=120: dist a horizontal=120 px (1,59 m ≤ 1,7 ✓ si cubre él mismo),
+    // dist a vertical=60 px (0,79 m) — la vertical está MÁS cerca del trazo; para que bloquee,
+    // el trazo debe quedar lejos de la vertical: trazo en x=300..700 → dist vertical=300 px
+    // (3,97 m > 1,7) y dist horizontal=120 px (1,59 ≤ 1,7). Conector: el trazo cubre la
+    // horizontal pero la vertical (del mismo grupo) queda a 3,97 m sin ramal cerca → alerta.
+    const eng = motorDe(
+      [
+        ramalDe('RRCI1', [
+          [300, 120],
+          [700, 120],
+        ]),
+      ],
+      [
+        {
+          id: 'GL1',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [400, 0],
+          ],
+        },
+        {
+          id: 'GL2',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [0, 400],
+          ],
+        },
+      ],
+    );
+    const err = chequeoMurosTrazo(
+      eng,
+      [
+        [300, 120],
+        [700, 120],
+      ],
+      1.7,
+    );
+    expect(err).toBeTruthy();
+    expect(err).toContain('grupo de 2 tramos de muro conectados');
+    expect(err).toContain('(DMR) es de 1,7 m');
+  });
+
+  it('L dibujada como UNA polilínea con doblez: la pata lejana también bloquea', () => {
+    // Mismo escenario del test anterior pero la L es UN solo muro: [(0,400),(0,0),(400,0)] —
+    // dos segmentos compartiendo el vértice (0,0). distPoli de la polilínea entera devolvería
+    // el mínimo (la pata cercana) y la lejana escaparía; a nivel segmento se juzgan ambas.
+    const eng = motorDe(
+      [
+        ramalDe('RRCI1', [
+          [300, 120],
+          [700, 120],
+        ]),
+      ],
+      [
+        {
+          id: 'GL1',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 400],
+            [0, 0],
+            [400, 0],
+          ],
+        },
+      ],
+    );
+    const err = chequeoMurosTrazo(
+      eng,
+      [
+        [300, 120],
+        [700, 120],
+      ],
+      1.7,
+    );
+    expect(err).toBeTruthy();
+    expect(err).toContain('grupo de 2 tramos de muro conectados');
+  });
+
+  it('MUROS EN L: si el trazo cubre AMBAS patas → null (se crea)', () => {
+    // Mismo grupo de 2, pero el trazo cruza la esquina por dentro: a 80 px (1,06 m) de cada pata.
+    const eng = motorDe(
+      [
+        ramalDe('RRCI1', [
+          [80, 320],
+          [320, 80],
+        ]),
+      ],
+      [
+        {
+          id: 'GL1',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [400, 0],
+          ],
+        },
+        {
+          id: 'GL2',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [0, 400],
+          ],
+        },
+      ],
+    );
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [80, 320],
+          [320, 80],
+        ],
+        1.7,
+      ),
+    ).toBeNull();
   });
 
   it('trazo que cubre el muro (≤ Dmuro) → null (se crea)', () => {
