@@ -37,7 +37,6 @@ import {
   handleEraseDown,
   eraseRamalAt,
   handleDoubleClick,
-  setScaleM as _setScaleM,
   setDefinedScaleM as _setDefinedScaleM,
 } from './PlanoEngineDrawing.ts';
 import type { ToolType } from './PlanoEngineDrawing.ts';
@@ -53,8 +52,16 @@ import {
   realMmToCanvasPx as realMmToCanvasPxLib,
   labelScaleM as labelScaleMLib,
 } from './planoCoords.ts';
-import { zoomAnclado } from './planoCamera.ts';
 import { teardownCanvasEvents } from './events/canvasSetup.ts';
+import {
+  resizeCanvas as _resizeCanvas,
+  cancelPendingFrames,
+  scheduleRender as _scheduleRender,
+  getPos as getPosLib,
+  cachedRect as cachedRectLib,
+  wrapTouch as wrapTouchLib,
+  zoomStep as _zoomStep,
+} from './events/canvasLifecycle.ts';
 import { initEngineState } from './engineInit.ts';
 import {
   reEncuadrarContenido,
@@ -87,6 +94,16 @@ import {
   triggerOpciones as triggerOpcionesFn,
   triggerAccesorioModal as triggerAccesorioModalFn,
 } from './engineEmitters.ts';
+import {
+  setActiveNet as _setActiveNet,
+  setTipoTramo as _setTipoTramo,
+  setSnap as _setSnap,
+  setGridMode as _setGridMode,
+  setScaleM as _setScaleMConReescala,
+  getSelectedGhost as _getSelectedGhost,
+  reportePerf as _reportePerf,
+  sanearBajantesLegacy,
+} from './engineSetters.ts';
 import { renderFrame } from './render/frame.ts';
 import { loadWorkCommand } from './commands/loadWork.ts';
 import {
@@ -152,19 +169,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   get bajantes(): PlanoBajante[] {
     return this._bajantes;
   }
+  /** (saneo en engineSetters.ts — extraído por el guard de líneas) */
   set bajantes(v: PlanoBajante[]) {
-    // Saneo legacy (orig. usuario): el bug de auto-conexión trataba el canal como bajante y
-    // le guardaba recibeDeIds/alimentaIds — el canal no es bajante y esas membresías lo
-    // "llenaban" hasta disparar "Bajante completo". Limpiar al cargar, idempotente.
-    for (const b of v) {
-      if (
-        b.tipo === 'canal' &&
-        ((b.recibeDeIds?.length || 0) > 0 || (b.alimentaIds?.length || 0) > 0)
-      ) {
-        b.recibeDeIds = [];
-        b.alimentaIds = [];
-      }
-    }
+    sanearBajantesLegacy(v);
     this._bajantes = v;
   }
   crossFloorGhosts!: CrossFloorGhost[];
@@ -321,8 +328,10 @@ export default class PlanoEngine implements IPlanoEngineCore {
   multiSel!: string[];
   multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect!: { x1: number; y1: number; x2: number; y2: number } | null;
-  private _needsRender = false;
-  private _rafId: number | null = null;
+  // Públicos para events/canvasLifecycle.ts (extraído por el guard de líneas) — mismo trato
+  // que _wheelAccum/_wheelRaf: el estado del render loop vive en la clase, se lee afuera.
+  _needsRender = false;
+  _rafId: number | null = null;
 
   /** Deja listo (zoom, posición y tamaño) el lienzo donde se va a dibujar.
    *  (cuerpo en engineInit.ts — extraído por el guard de líneas) */
@@ -341,8 +350,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   /** Ancla del último evento de rueda (coords canvas); el flush usa la más reciente. */
   _wheelMX = 0;
   _wheelMY = 0;
-  /** Rect del canvas cacheado por cuadro: getBoundingClientRect fuerza layout. */
-  private _rectCache: { rect: DOMRect; t: number } | null = null;
+  /** Rect del canvas cacheado por cuadro: getBoundingClientRect fuerza layout. Público para
+   *  events/canvasLifecycle.ts (extraído por el guard de líneas). */
+  _rectCache: { rect: DOMRect; t: number } | null = null;
 
   onSelect(cb: SelectCallback): void {
     this._onSelectCb = cb;
@@ -426,16 +436,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     triggerAccesorioModalFn(this, data);
   }
 
+  /** (cuadros pendientes en events/canvasLifecycle.ts — extraído por el guard de líneas) */
   destroy(): void {
-    if (this._rafId !== null) {
-      cancelAnimationFrame(this._rafId);
-      this._rafId = null;
-    }
-    if (this._wheelRaf) {
-      cancelAnimationFrame(this._wheelRaf);
-      this._wheelRaf = 0;
-      this._wheelAccum = 0;
-    }
+    cancelPendingFrames(this);
     this.stopWatchingContainerSize();
     teardownCanvasEvents(this);
   }
@@ -445,14 +448,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.pageH = h;
   }
 
+  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
   resizeCanvas(w: number, h: number): void {
-    const dpr = this.dpr || 1;
-    this.canv.width = Math.floor(w * dpr);
-    this.canv.height = Math.floor(h * dpr);
-    this.canv.style.width = w + 'px';
-    this.canv.style.height = h + 'px';
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.render();
+    _resizeCanvas(this, w, h);
   }
 
   toCvs(px: number, py: number): Point {
@@ -543,32 +541,16 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   _wrapTouch(fn: (e: TouchEvent) => void): (e: TouchEvent) => void {
-    return (e: TouchEvent) => {
-      e.preventDefault();
-      fn(e);
-    };
+    return wrapTouchLib(fn);
   }
 
   _getPos(e: MouseEvent | TouchEvent): Point {
-    const r = this._cachedRect();
-    const t = e instanceof TouchEvent ? (e as TouchEvent).touches[0] : (e as MouseEvent);
-    /* Corrección de ESCALA (ped. usuario: en ciertos tamaños el cursor no seguía el trazo):
-     * clientX-rect.left está en px de PANTALLA (post-escala del navegador/transform de
-     * ancestros), pero el dibujo usa px CSS locales del lienzo. El factor rect.width ↔
-     * canv.width/dpr los alinea — es 1 cuando coincide, así que nunca estorba. */
-    const sx = r.width > 0 ? this.canv.width / this.dpr / r.width : 1;
-    const sy = r.height > 0 ? this.canv.height / this.dpr / r.height : 1;
-    return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy };
+    return getPosLib(this, e);
   }
 
-  /** Rect del canvas con caché de 32ms: rueda/pinch/mousemove lo piden 60-120/s. */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
   _cachedRect(): DOMRect {
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-    const c = this._rectCache;
-    if (c && now - c.t < 32) return c.rect;
-    const rect = this.canv.getBoundingClientRect();
-    this._rectCache = { rect, t: now };
-    return rect;
+    return cachedRectLib(this);
   }
 
   _statusMsg(): string {
@@ -589,31 +571,22 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTool(t: ToolType): void {
     _setTool(this, t);
   }
-  /** Cambia la red con la que se dibuja: lo que traces sale con su color y su prefijo de etiqueta
-   *  (af (Agua Fría) → RAF, ac (Agua Caliente) → RAC, san (Sanitaria) → RS, vent (Ventilación) →
-   *  REV, ll (Lluvias) → RALL, gas (Gas) → RG). Ej: pasar a 'san' hace que el próximo ramal se
-   *  llame RS3. */
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   setActiveNet(id: string): void {
-    if (this.activeNet !== id) {
-      this.activeNet = id;
-      if (this._onActiveNetChangeCb) {
-        this._onActiveNetChangeCb(id);
-      }
-    }
+    _setActiveNet(this, id);
   }
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   setTipoTramo(t: TramoType): void {
-    this.tipoTramo = t;
+    _setTipoTramo(this, t);
   }
-  /** Snap = el imán que obliga a los trazos a salir a 45°/90°. Apagarlo permite ángulos libres
-   *  (si hay un trazo a medias se cancela). */
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   setSnap(v: boolean): void {
-    if (this.snapMode !== v && this.activeRamal) this.cancelRamal();
-    this.snapMode = v;
+    _setSnap(this, v);
   }
 
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   setGridMode(v: boolean): void {
-    this.gridMode = v;
-    this.render();
+    _setGridMode(this, v);
   }
 
   setPadreTributario(ramalId: string | null): void {
@@ -629,19 +602,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setRamalDefaults(this, d);
   }
 
-  /** Fija la escala del plano (scaleM, la escala metros por pixel): 1 = 1:100, 0.5 = 1:50;
-   *  acepta texto o número. Es la que convierte longitudes de pantalla a metros reales. */
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   setScaleM(v: string | number): void {
-    const prev = this.scaleM;
-    _setScaleM(this, v);
-    // La hoja mide en px de la escala ACTUAL: al cambiar la escala (re-base del doc a la
-    // escala global, calibración) la medida de la lámina cambia con ella. Sin esto, el
-    // lienzo queda con la medida vieja y el trazo se recorta en el borde de la hoja
-    // ("recuadro", orig. usuario) hasta que el re-raster del fondo lo alcance.
-    if (this.pageW && this.pageH && prev > 0 && Math.abs(this.scaleM - prev) > 1e-9) {
-      const f = this.scaleM / prev;
-      this.setPageSize(this.pageW * f, this.pageH * f);
-    }
+    _setScaleMConReescala(this, v);
   }
   setDefinedScaleM(v: string | number): void {
     _setDefinedScaleM(this, v);
@@ -748,9 +711,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
   getBajantesFantasma(): PlanoBajante[] {
     return _getBajantesFantasma(this);
   }
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   getSelectedGhost(): CrossFloorGhost | null {
-    if (!this.selectedGhostId) return null;
-    return this.crossFloorGhosts.find((g) => g.id === this.selectedGhostId) || null;
+    return _getSelectedGhost(this);
   }
 
   _renumberRamales(netId: string): void {
@@ -837,45 +800,14 @@ export default class PlanoEngine implements IPlanoEngineCore {
     capas: {} as Record<string, number>,
   };
 
-  /** Reporte legible del último render para la consola (`__cfPerf()`). */
+  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
   reportePerf(): Record<string, unknown> {
-    const c = this._perf.capas;
-    const ms = (n: number) => Math.round((n || 0) * 10) / 10;
-    return {
-      frame: this._perf.frames,
-      totalMs: ms(this._perf.totalMs),
-      capasMs: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, ms(v)])),
-      lienzo: {
-        anchoCss: this._canvasW,
-        altoCss: this._canvasH,
-        dpr: this.dpr,
-        mp: +((this._canvasW * this._canvasH * this.dpr * this.dpr) / 1e6).toFixed(2),
-      },
-      elementos: {
-        ramales: this.ramales.length,
-        puntos: this.ramales.reduce((s, r) => s + (r.pts?.length || 0), 0),
-        bajantes: this.bajantes.length,
-        areas: this.areas.length,
-        textos: this.textAnnots.length,
-        dims: (this.dims || []).length,
-      },
-      camara: {
-        zoom: +this.zoom.toFixed(3),
-        offX: Math.round(this.offX),
-        offY: Math.round(this.offY),
-      },
-      hojas: { pageW: Math.round(this.pageW), pageH: Math.round(this.pageH) },
-    };
+    return _reportePerf(this);
   }
 
+  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
   scheduleRender(): void {
-    if (this._needsRender) return;
-    this._needsRender = true;
-    this._rafId = requestAnimationFrame(() => {
-      this._rafId = null;
-      this._needsRender = false;
-      this.render();
-    });
+    _scheduleRender(this);
   }
 
   _onDownHandler(e: MouseEvent | TouchEvent): void {
@@ -896,11 +828,9 @@ export default class PlanoEngine implements IPlanoEngineCore {
     handleDoubleClick(this);
   }
 
-  /** Zoom por botones (modo consulta móvil/tablet): escala alrededor del centro del canvas. */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
   zoomStep(factor: number): void {
-    if (!Number.isFinite(factor) || factor <= 0) return;
-    const rect = this.canv.getBoundingClientRect();
-    zoomAnclado(this, this.zoom * factor, rect.width / 2, rect.height / 2);
+    _zoomStep(this, factor);
   }
 
   _onWheelHandler(e: WheelEvent): void {
