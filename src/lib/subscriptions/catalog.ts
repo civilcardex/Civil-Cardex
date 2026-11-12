@@ -1,4 +1,4 @@
-/** Precios y descuentos de venta por módulo. AVISO: estos números son solo el respaldo — el precio real vive en la tabla app_precios (BD) y se baja con sincronizarPreciosBd; cambiarlo en SQL no necesita deploy. */
+/** Precios y descuentos de venta por módulo — copia CANÓNICA de la matemática. AVISO: estos números son solo el respaldo — el precio real vive en la tabla app_precios (BD) y se baja con sincronizarPreciosBd; cambiarlo en SQL no necesita deploy. El edge lleva un ESPEJO a mano de las constantes que necesita en supabase/functions/_shared/lemon.ts (Deno no puede importar de src/): si cambian precios, tramos o topes aquí, editar allá también. */
 import { devError } from '../../utils/devError.ts';
 
 /** Id del módulo vendible: 'flow' (diseño hidrosanitario) o 'manage' (presupuestos de obra). */
@@ -66,10 +66,10 @@ function puestosDe(puestos: PuestosPorModulo | undefined, id: ModuloId): number 
   return typeof n === 'number' && Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
 }
 
-/** Descuento por volumen según los puestos TOTALES de la compra: 1 → 0 % · 2-4 → 10 % · 5-9 → 15 % · 10-24 → 20 % · 25+ → null (se habla con ventas). */
+/** Descuento por volumen según los puestos TOTALES de la compra: 1 → 0 % · 2-4 → 10 % · 5-9 → 15 % · 10-24 → 20 % · 25+ (más que el tope) → null (se habla con ventas). */
 export function descuentoPorPuestos(totalPuestos: number): number | null {
   if (!Number.isFinite(totalPuestos) || totalPuestos < 1) return 0;
-  if (totalPuestos >= 25) return null;
+  if (totalPuestos > PUESTOS_TOPE_AUTOMATICO) return null;
   const tramo = DESCUENTO_POR_PUESTOS.find((t) => totalPuestos >= t.min && totalPuestos <= t.max);
   return tramo ? tramo.pct : 0;
 }

@@ -1,34 +1,27 @@
-// COPIA server-side del catálogo de venta (Lemon Squeezy). El servidor NUNCA
-// confía en precios del cliente. El test de paridad
-// (src/lib/subscriptions/__tests__/catalogParity.test.ts) compara este archivo
-// con src/lib/subscriptions/catalog.ts — cambiar un precio = editar AMBOS
-// (y UPDATE en app_precios, la verdad en BD).
+// ESPEJO de src/lib/subscriptions/catalog.ts — la copia CANÓNICA de precios y descuentos
+// vive en el cliente. Deno no puede importar de src/, así que las constantes que el edge
+// NECESITA para cobrar se duplican aquí a mano.
+// ESPEJO de catalog.ts — test de paridad eliminado, revisar a mano si cambian precios
+// (y recordar el UPDATE en app_precios, la verdad en BD).
 export type ModuloId = 'flow' | 'manage';
 export type Periodo = 'mensual' | 'semestral' | 'anual';
 
-export interface ModuloVenta {
-  id: ModuloId;
-  precioMensualCentavos: number;
-  precioSemestralCentavos: number;
-  precioAnualCentavos: number;
-}
-
-// Centavos USD — espejo EXACTO de catalog.ts.
-export const CATALOGO: Record<ModuloId, ModuloVenta> = {
-  flow: {
-    id: 'flow',
-    precioMensualCentavos: 2500,
-    precioSemestralCentavos: 15000,
-    precioAnualCentavos: 30000,
-  },
+// ESPEJO de catalog.ts: precios LISTA en centavos de USD. Solo sirven de fallback cuando
+// la fila del módulo falta o trae un valor no positivo en app_precios (si la LECTURA de la
+// tabla falla entera, crear-checkout es fail-closed y no cobra con estos literales).
+export const CATALOGO: Record<
+  ModuloId,
+  { precioMensualCentavos: number; precioSemestralCentavos: number; precioAnualCentavos: number }
+> = {
+  flow: { precioMensualCentavos: 2500, precioSemestralCentavos: 15000, precioAnualCentavos: 30000 },
   manage: {
-    id: 'manage',
     precioMensualCentavos: 2500,
     precioSemestralCentavos: 15000,
     precioAnualCentavos: 30000,
   },
 };
 
+// ESPEJO de catalog.ts — test de paridad eliminado, revisar a mano si cambian precios.
 export const DESCUENTO_BASE: Record<Periodo, number> = { mensual: 0, semestral: 0.1, anual: 0.15 };
 
 export const DESCUENTO_POR_MODULO = 0.1;
@@ -49,10 +42,10 @@ export function puestosDe(puestos: Record<string, number> | undefined, id: Modul
 }
 
 /** Descuento por volumen de puestos: pct del tramo que cubre el total
- *  (0 si el total es inválido o <1; null si ≥25 = excede el tope automático → venta manual). */
+ *  (0 si el total es inválido o <1; null si supera el tope automático → venta manual). */
 export function descuentoPorPuestos(totalPuestos: number): number | null {
   if (!Number.isFinite(totalPuestos) || totalPuestos < 1) return 0;
-  if (totalPuestos >= 25) return null;
+  if (totalPuestos > PUESTOS_TOPE_AUTOMATICO) return null;
   const tramo = DESCUENTO_POR_PUESTOS.find((t) => totalPuestos >= t.min && totalPuestos <= t.max);
   return tramo ? tramo.pct : 0;
 }
