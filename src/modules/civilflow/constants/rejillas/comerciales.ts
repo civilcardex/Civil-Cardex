@@ -1,4 +1,5 @@
-/** Medidas comerciales de respaldo cuando ninguna referencia del catálogo cubre el área. */
+/** Medidas comerciales de respaldo (w×h en cm) cuando ninguna referencia del catálogo
+ *  cubre el área exigida. Ej: para 200 cm² se sugiere 20×10. */
 export const COMERCIALES: Array<[number, number]> = [
   [10, 10],
   [15, 10],

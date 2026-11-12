@@ -169,7 +169,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   get bajantes(): PlanoBajante[] {
     return this._bajantes;
   }
-  /** (saneo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (saneo en engineSetters.ts — extraído al partir el archivo) */
   set bajantes(v: PlanoBajante[]) {
     sanearBajantesLegacy(v);
     this._bajantes = v;
@@ -328,13 +328,13 @@ export default class PlanoEngine implements IPlanoEngineCore {
   multiSel!: string[];
   multiDrag!: { startX: number; startY: number; origData: MultiDragOrigData } | null;
   marqueeRect!: { x1: number; y1: number; x2: number; y2: number } | null;
-  // Públicos para events/canvasLifecycle.ts (extraído por el guard de líneas) — mismo trato
+  // Públicos para events/canvasLifecycle.ts (extraído al partir el archivo) — mismo trato
   // que _wheelAccum/_wheelRaf: el estado del render loop vive en la clase, se lee afuera.
   _needsRender = false;
   _rafId: number | null = null;
 
   /** Deja listo (zoom, posición y tamaño) el lienzo donde se va a dibujar.
-   *  (cuerpo en engineInit.ts — extraído por el guard de líneas) */
+   *  (cuerpo en engineInit.ts — extraído al partir el archivo) */
   constructor(cw: HTMLElement, pdfWrap: HTMLElement | null, canv: HTMLCanvasElement) {
     initEngineState(this, cw, pdfWrap, canv);
   }
@@ -351,7 +351,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   _wheelMX = 0;
   _wheelMY = 0;
   /** Rect del canvas cacheado por cuadro: getBoundingClientRect fuerza layout. Público para
-   *  events/canvasLifecycle.ts (extraído por el guard de líneas). */
+   *  events/canvasLifecycle.ts (extraído al partir el archivo). */
   _rectCache: { rect: DOMRect; t: number } | null = null;
 
   onSelect(cb: SelectCallback): void {
@@ -403,7 +403,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this._onAccesorioModalCb = cb;
   }
 
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   triggerAlert(title: string, msg: string): void {
     triggerAlertFn(this, title, msg);
   }
@@ -415,7 +415,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
 
   /** Modal de opciones: resuelve cuando el usuario elige (o -1 si cancela). */
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   triggerOpciones(title: string, msg: string, opciones: string[]): Promise<number> {
     return triggerOpcionesFn(this, title, msg, opciones);
   }
@@ -424,7 +424,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  lee dirtyPipeline.ts (cuerpo extraído). */
   _chequeoHash: Record<string, string> = {};
 
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   triggerAccesorioModal(data: {
     ramalId: string;
     angleDeg: number;
@@ -436,7 +436,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     triggerAccesorioModalFn(this, data);
   }
 
-  /** (cuadros pendientes en events/canvasLifecycle.ts — extraído por el guard de líneas) */
+  /** (cuadros pendientes en events/canvasLifecycle.ts — extraído al partir el archivo) */
   destroy(): void {
     cancelPendingFrames(this);
     this.stopWatchingContainerSize();
@@ -448,7 +448,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     this.pageH = h;
   }
 
-  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído al partir el archivo) */
   resizeCanvas(w: number, h: number): void {
     _resizeCanvas(this, w, h);
   }
@@ -489,26 +489,26 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return labelScaleMLib(this);
   }
 
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   _emitStatus(msg: string): void {
     emitStatus(this, msg);
   }
 
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   _emitSelect(
     el: PlanoRamal | PlanoBajante | PlanoArea | PlanoTextAnnotation | PlanoDimension | null,
   ): void {
     emitSelect(this, el);
   }
 
-  /** (cuerpo en engineEmitters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineEmitters.ts — extraído al partir el archivo) */
   _emitDelete(ids: string[]): void {
     emitDelete(this, ids);
   }
 
   /** Marca el trabajo como sucio: recalcula conexiones de red y accesorios, guarda un snapshot
    *  de historial y dispara el callback onDirty (que es quien guarda a disco/BD). */
-  /** (cuerpo en dirtyPipeline.ts — extraído por el guard de líneas) */
+  /** (cuerpo en dirtyPipeline.ts — extraído al partir el archivo) */
   _markDirty(): void {
     markDirty(this);
   }
@@ -548,7 +548,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     return getPosLib(this, e);
   }
 
-  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído al partir el archivo) */
   _cachedRect(): DOMRect {
     return cachedRectLib(this);
   }
@@ -571,20 +571,20 @@ export default class PlanoEngine implements IPlanoEngineCore {
   setTool(t: ToolType): void {
     _setTool(this, t);
   }
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   setActiveNet(id: string): void {
     _setActiveNet(this, id);
   }
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   setTipoTramo(t: TramoType): void {
     _setTipoTramo(this, t);
   }
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   setSnap(v: boolean): void {
     _setSnap(this, v);
   }
 
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   setGridMode(v: boolean): void {
     _setGridMode(this, v);
   }
@@ -602,7 +602,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     _setRamalDefaults(this, d);
   }
 
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   setScaleM(v: string | number): void {
     _setScaleMConReescala(this, v);
   }
@@ -711,7 +711,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   getBajantesFantasma(): PlanoBajante[] {
     return _getBajantesFantasma(this);
   }
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   getSelectedGhost(): CrossFloorGhost | null {
     return _getSelectedGhost(this);
   }
@@ -749,7 +749,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  después del raster no puede mover los elementos a la vista (orig. usuario: «salto
    *  residual mientras se acomodan»). Sin dibujo cae a la hoja completa. Cámara quieta si el
    *  bbox y la lámina no cambiaron (mismo resultado, cero renders extra). */
-  /** (cuerpo en viewport.ts — extraído por el guard de líneas) */
+  /** (cuerpo en viewport.ts — extraído al partir el archivo) */
   reEncuadrarContenido(): void {
     reEncuadrarContenido(this);
   }
@@ -767,7 +767,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
    *  que trababa el paneo (hasta ~50 MP por frame, orig. usuario).
    *  En un motor DESACOPLADO (exportación de planos: contenedor fuera del DOM) no manda el
    *  viewport: ahí el tamaño lo fija `resizeCanvas` explícitamente. */
-  /** (cuerpo en viewport.ts — extraído por el guard de líneas) */
+  /** (cuerpo en viewport.ts — extraído al partir el archivo) */
   ensureCanvasSize(): void {
     ensureCanvasSize(this);
   }
@@ -800,12 +800,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
     capas: {} as Record<string, number>,
   };
 
-  /** (cuerpo en engineSetters.ts — extraído por el guard de líneas) */
+  /** (cuerpo en engineSetters.ts — extraído al partir el archivo) */
   reportePerf(): Record<string, unknown> {
     return _reportePerf(this);
   }
 
-  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído al partir el archivo) */
   scheduleRender(): void {
     _scheduleRender(this);
   }
@@ -818,7 +818,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     handlePointerMove(this, e);
   }
 
-  /** (cuerpo en events/pointerUp.ts — extraído por el guard de líneas) */
+  /** (cuerpo en events/pointerUp.ts — extraído al partir el archivo) */
   _onMouseUpHandler(e: MouseEvent | TouchEvent): void {
     handlePointerUp(this, e);
   }
@@ -828,7 +828,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
     handleDoubleClick(this);
   }
 
-  /** (cuerpo en events/canvasLifecycle.ts — extraído por el guard de líneas) */
+  /** (cuerpo en events/canvasLifecycle.ts — extraído al partir el archivo) */
   zoomStep(factor: number): void {
     _zoomStep(this, factor);
   }

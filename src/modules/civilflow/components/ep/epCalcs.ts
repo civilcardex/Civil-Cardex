@@ -177,7 +177,8 @@ export interface EpVerifCalc {
   hfotros: number;
 }
 
-// Excel CÁLCULO EPC: resultados a 3 decimales (usuario: unificar TODO resultado a 3 dec).
+// Formateadores de las tablas de verificación (Excel CÁLCULO EPC): TODO resultado a 2
+// decimales; '—' cuando el valor no existe (0 o negativo = celda sin dato, no un resultado).
 export const fmtMm = (v: number) => (v > 0 ? v.toFixed(2) : '—');
 export const fmtMs = (v: number) => (v > 0 ? v.toFixed(2) : '—');
 export const fmtHp = (v: number) => (v > 0 ? v.toFixed(2) : '—');
