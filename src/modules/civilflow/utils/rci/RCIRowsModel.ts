@@ -239,7 +239,7 @@ export function filasTipologias(est: RciState, tips: Tips | null): FilaTipologia
 }
 
 /** Resumen de una tipología para la línea "T1 · P3+P2+P1 · Riesgo leve · Húmedo". */
-export interface ResumenTipologia {
+interface ResumenTipologia {
   id: string;
   pisos: string;
   riesgo: string;
@@ -515,7 +515,7 @@ export function grupoDeCheck(v: Verificacion): string {
 }
 
 /** Un grupo de verificaciones ya armado para la tabla. */
-export interface GrupoChecks {
+interface GrupoChecks {
   id: string;
   l: string;
   items: Verificacion[];

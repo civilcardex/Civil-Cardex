@@ -12,7 +12,7 @@ import { sameNetGroup } from './drawingAngles.ts';
  */
 
 /** Punto donde el trazo nuevo corta el cuerpo de un ramal existente. */
-export interface CruceRecorte {
+interface CruceRecorte {
   /** Coordenadas del corte (sobre el cuerpo del ramal existente). */
   punto: [number, number];
   /** Ramal existente que corta. */
@@ -22,7 +22,7 @@ export interface CruceRecorte {
 }
 
 /** Ajustes del recorte: qué ramales ignorar y las tolerancias que distinguen un cruce real del aterrizaje normal en la punta. */
-export interface OpcionesRecorte {
+interface OpcionesRecorte {
   /** Ids que no cuentan como host (el propio trazo, o el ramal del que se desvía). */
   ignorarIds?: Array<string | null | undefined>;
   /** Distancia mínima (px) desde el inicio del trazo para considerar un corte. Evita cortar el
@@ -104,7 +104,7 @@ export function primerCruceEstricto(
 }
 
 /** Resultado del recorte: los puntos finales, si se cortó algo y en qué cruce (invalido=true = el corte dejó el trazo demasiado corto para existir). */
-export interface ResultadoRecorte {
+interface ResultadoRecorte {
   /** Puntos resultantes (recortados o los originales). */
   pts: [number, number][];
   /** ¿Se cortó el excedente? */

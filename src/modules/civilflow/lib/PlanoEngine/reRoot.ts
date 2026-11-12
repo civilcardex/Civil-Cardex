@@ -84,7 +84,7 @@ function reEnraizarDesde(engine: IPlanoEngineCore, idInicial: string): string[] 
 }
 
 /** Resultado del choque de sentidos: qué trazo quedó como dueño ('nuevo'/'existente') y los ids de los tramos que se voltearon (para un solo Ctrl+Z). */
-export interface ResolucionSentido {
+interface ResolucionSentido {
   accion: 'nuevo' | 'existente';
   invertidos: string[];
 }

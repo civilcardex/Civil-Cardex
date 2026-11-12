@@ -35,7 +35,7 @@ export interface ChipPerfil {
 }
 
 /** Una fila del perfil de presiones (una por piso con derivación), replicando perfilTable. */
-export interface FilaPerfilPiso {
+interface FilaPerfilPiso {
   i: number;
   nombre: string;
   npt: number | null;
@@ -156,7 +156,7 @@ export function accionPerfil(o: FilaPerfilPiso, Pc = 175): ChipPerfil[] {
 /* ============================ 2. Nudos (equilibrio) ============================ */
 
 /** Un aporte que llega a un nudo: su nombre visible, caudal, presión y caudal ya equilibrado. */
-export interface AporteNudo {
+interface AporteNudo {
   nombre: string;
   esRamal: boolean;
   /** Caudal propio del aporte (gpm). */
@@ -168,7 +168,7 @@ export interface AporteNudo {
 }
 
 /** Una fila de la tabla de equilibrio de nudos. */
-export interface FilaNudo {
+interface FilaNudo {
   nudo: string;
   /** true en la derivación del montante (la raíz de la red). */
   esRaiz: boolean;
@@ -233,7 +233,7 @@ export function filasNudos(red: RedResult): FilaNudo[] {
 /* ============================ 3. Detalle nudo a nudo ============================ */
 
 /** Un paso del detalle de un ramal: de nudo a nudo con presiones, caudales y pérdidas. */
-export interface PasoRamal {
+interface PasoRamal {
   ok: boolean;
   /** Error que impidió calcular el paso (null si ok). */
   err: string | null;
@@ -257,7 +257,7 @@ export interface PasoRamal {
 }
 
 /** El detalle completo de un ramal con flujo (cabecera + pasos). */
-export interface DetalleRamal {
+interface DetalleRamal {
   nombre: string;
   /** Rociadores del ramal: "5" o "1–5" (del primero al último con flujo). */
   rociadores: string;
@@ -331,7 +331,7 @@ export function filasDetalleNudo(red: RedResult): DetalleRamal[] {
 /* ============================ 4. Gabinetes ============================ */
 
 /** Una fila de la ruta de gabinetes: tramo del montante + resultados del cálculo. */
-export interface FilaGab {
+interface FilaGab {
   desde: string;
   hasta: string;
   /** true si ese nudo descarga su salida de manguera en el cálculo (las más remotas). */

@@ -5,7 +5,7 @@ import type { IPlanoEngineCore } from './PlanoState.ts';
 /** Caja inclinada de un canal recolector de lluvias (ll): dónde arranca, cuánto mide de largo
  *  (longitud) y de ancho (base), en pixels de plano, y su inclinación. Sirve para responder
  *  "¿este punto cae dentro del canal?" aunque el canal esté torcido. */
-export interface CanalOBB {
+interface CanalOBB {
   x: number;
   y: number;
   w: number;
@@ -150,7 +150,7 @@ export function norm180(deg: number): number {
 
 /** Un canal se dibuja en 3 clics: 1º el origen, 2º marca el eje (largo y dirección), 3º el ancho.
  *  Esto es lo que queda de la fase 1 (el largo en cm y el ángulo del eje). */
-export interface TrazoCanalEje {
+interface TrazoCanalEje {
   longitudCm: number;
   angulo: number;
   p2: { x: number; y: number };
@@ -193,7 +193,7 @@ export function geometriaCanalDesdePuntos(
 
 /** El canal completo, ya con su ancho (3er clic): origen, ancho, largo, ángulo y hacia dónde
  *  fluye el agua (para la flechita). */
-export interface TrazoCanal {
+interface TrazoCanal {
   x: number;
   y: number;
   baseCm: number;

@@ -101,7 +101,7 @@ export function kvSeleccion(
 }
 
 /** Agregado de una ruta (la función agg del HTML): solo si TODAS las filas cerraron. */
-export interface RutaAgregada {
+interface RutaAgregada {
   /** Caudal de la ruta (gpm). */
   Q: number;
   /** Presión al inicio (psi). */
@@ -261,7 +261,7 @@ export function kvTanque(b: BombaResult, t: TanqueResult): KvRci[] {
 /* ============================ 6. Rectángulo de fuego ============================ */
 
 /** Los datos que pinta el rectángulo de fuego (drawRect del HTML), en m y rociadores. */
-export interface RectFuego {
+interface RectFuego {
   /** Separación entre rociadores del ramal (m). */
   S: number;
   /** Separación entre ramales (m). */
@@ -349,7 +349,7 @@ export interface SismoTip {
 }
 
 /** Una fila del desglose de holguras por diámetro: pulgadas y juego (50 mm, 100 mm desde 4"). */
-export interface SismoHolg {
+interface SismoHolg {
   dn: string;
   i: number;
   mm: number;
@@ -501,7 +501,7 @@ export function stripDerivacion(red: RedResult | null): { Q: number; P: number }
 /* ============================ 10. Mapa de navegación ============================ */
 
 /** Una sub-pestaña de una página: id (para RUTA_DE) y título visible. */
-export interface SubTab {
+interface SubTab {
   id: string;
   l: string;
 }
@@ -551,7 +551,7 @@ export const SUBS_POR_TAB: Record<string, SubTab[]> = {
 };
 
 /** Destino de un "Ir al dato": pestaña + sub-pestaña (+ campo exacto si lo hay). */
-export interface RutaCheck {
+interface RutaCheck {
   tab: string;
   sub: string;
   /** El path del dato dentro del estado (ej: 'local.reqSismo'). */

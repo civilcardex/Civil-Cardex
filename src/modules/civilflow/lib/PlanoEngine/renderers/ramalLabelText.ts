@@ -5,7 +5,7 @@ import { pisoCortoLoose as getPisoCorto, matDrawingLabel } from '../../../consta
 /** Texto de las etiquetas de ramal: función pura (testeada) que arma nombre + info por red; el dibujo vive en ramalBody. */
 
 /** Partes de texto de la etiqueta de un ramal (formato por red, Ítem 1). */
-export interface RamalLabelParts {
+interface RamalLabelParts {
   /** Nombre del ramal con sufijo de piso ("RAC1-P2") — vacío si showName off o canal. */
   lbl: string;
   /** String compacto por red ("S4" CPVC 1/2" P 0.5% 3.20m") — null = usar partes genéricas. */

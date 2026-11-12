@@ -8,10 +8,10 @@ import { pointToSegmentDist } from './HitTester.ts';
 /** Qué hay en el extremo de un ramal: APARATO (llega a un inodoro, un lavamanos...), FUENTE
  *  (medidor, calentador, equipo de presión), NODO (se une a otros ramales) o LIBRE (la punta no
  *  conecta con nada). */
-export type ExtremoTipo = 'APARATO' | 'FUENTE' | 'NODO' | 'LIBRE';
+type ExtremoTipo = 'APARATO' | 'FUENTE' | 'NODO' | 'LIBRE';
 
 /** Un problema hallado en la revisión de la red: nivel error (rompe el diseño) o adv (advertencia), de qué tipo y en qué ramal. */
-export interface Incidencia {
+interface Incidencia {
   nivel: 'error' | 'adv';
   tipo: string;
   ramalId: string;

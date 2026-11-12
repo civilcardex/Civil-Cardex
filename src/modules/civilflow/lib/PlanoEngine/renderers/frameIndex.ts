@@ -8,13 +8,13 @@
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 /** Vértice concreto de un ramal (ramal + índice del punto). */
-export interface RefVertice {
+interface RefVertice {
   r: PlanoRamal;
   i: number;
 }
 
 /** Consultas del frame sobre la geometría de los ramales. */
-export interface IndiceFrame {
+interface IndiceFrame {
   /** Vértices a menos de 0.5 unidades del punto (misma tolerancia del código original). */
   tocan(x: number, y: number): RefVertice[];
   /** Ramales cuyo CUERPO pasa a menos de 0.5 del punto (extremos a más de 0.5). */

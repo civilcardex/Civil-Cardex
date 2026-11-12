@@ -87,7 +87,7 @@ export function planCodoCornerAt(
 }
 
 /** Datos de un quiebre recortado: puntos de tangencia (T_A/T_C) y perpendiculares, para que el glifo del accesorio tape exactamente el arco. */
-export interface ElbowInfo {
+interface ElbowInfo {
   T_A: { x: number; y: number };
   T_C: { x: number; y: number };
   perp_u: { x: number; y: number };
@@ -95,7 +95,7 @@ export interface ElbowInfo {
 }
 
 /** Opciones del trazo: marksOnly=true redibuja SOLO las marcas de codo (para restaurar el quiebre que un glifo blanco de accesorio tapó), sin el cuerpo. */
-export interface DrawRamalPathOpts {
+interface DrawRamalPathOpts {
   // Solo redibuja las marcas de codo de los quiebres interiores (arco/inglete + marcas T_A/T_C),
   // sin trazar el cuerpo de la tubería. Se usa para restaurar el símbolo de un quiebre que el
   // glifo blanco de un accesorio de extremo (p. ej. codo90rmSube/Baja, un disco relleno) tapa

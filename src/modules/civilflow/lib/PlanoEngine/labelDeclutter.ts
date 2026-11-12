@@ -18,7 +18,7 @@ export interface DeclutterBox {
 
 /** Un tramo de tubería visto como segmento entre dos puntos de pantalla: también es obstáculo,
  *  porque una etiqueta encima de la tubería queda tapada. */
-export interface DeclutterSeg {
+interface DeclutterSeg {
   id: string;
   x1: number;
   y1: number;

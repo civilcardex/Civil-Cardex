@@ -13,7 +13,7 @@ import type {
  * (clic/drag) — nunca cacheado, el motor reasigna sus arrays en muchos sitios y un
  * índice viejo se pudre. Ej: drag de 50 seleccionados = 50 lookups O(1), no 50×6 scans.
  */
-export interface IndicesMotor {
+interface IndicesMotor {
   ramales: Map<string, PlanoRamal>;
   bajantes: Map<string, PlanoBajante>;
   textos: Map<string, PlanoTextAnnotation>;

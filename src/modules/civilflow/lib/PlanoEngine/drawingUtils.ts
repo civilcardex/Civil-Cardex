@@ -348,7 +348,7 @@ export function recomputeDownstreamDiameters(
 }
 
 /** Resultado de asociar los extremos de un ramal recién creado a bajantes. */
-export interface AssocBajanteResult {
+interface AssocBajanteResult {
   /** La guard central rechazó la conexión: el caller debe retirar el trazo y alertar. */
   rejected: boolean;
   /** Llegó al CENTRO de una caja: sin propagación de diámetros. */

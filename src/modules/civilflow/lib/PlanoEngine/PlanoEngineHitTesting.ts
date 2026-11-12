@@ -5,7 +5,7 @@ import { pointInLabelBox, pointInPoly, pointOnAnyBodySegment } from './HitTester
 /** Hit-test del clic derecho: fantasma desplazado > contador > bajante/montante > canal > cuerpo y extremos de ramal, prioridad en ese orden. Responde QUÉ hay bajo el cursor para abrir el menú contextual correcto. */
 
 /** Qué encontró el clic derecho: el elemento, si fue sobre su fantasma entrepisos y si cayó en un punto medio del ramal (para insertar vértice). */
-export interface ContextMenuHitResult {
+interface ContextMenuHitResult {
   element: PlanoElement;
   isGhostClick: boolean;
   ramalEndpoint?: { idx: number; x: number; y: number } | null;

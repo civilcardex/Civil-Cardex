@@ -7,7 +7,7 @@ type RamalRender = IPlanoEngineCore['ramales'][number];
 
 /** Contexto del frame que el pase de flechas de extremo necesita (índices ya construidos
  *  en renderRamales — no se reconstruyen por ramal). */
-export interface FrameFlechas {
+interface FrameFlechas {
   ventRamales: RamalRender[];
   hayPuntoSanCercano: (x: number, y: number) => boolean;
   bajantesSan: IPlanoEngineCore['bajantes'];

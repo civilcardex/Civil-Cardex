@@ -61,21 +61,21 @@ export interface PisoRciFuente {
 }
 
 /** Opciones de extracción: la tipología (fase siguiente) pasará aquí su techo real. */
-export interface OpcionesExtract {
+interface OpcionesExtract {
   /** Altura del techo en m sobre el NPT; 5.3 por defecto en Fase 1. */
   techo?: number;
 }
 
 /** Lo que el dibujo dijo del montante de derivación; null = el dibujo no lo trae (al mezclar
  *  sobrevive lo digitado). Ej: { altDeriv: 2.8 } cuando la Fase 2 escriba altDeriv en el montante. */
-export interface MontDibujo {
+interface MontDibujo {
   mat: string | null;
   dn: string | null;
   altDeriv: number | null;
 }
 
 /** Lo que extraerGris produce: el estado gris completo + lo que el dibujo dijo del montante. */
-export interface GrisRci {
+interface GrisRci {
   /** RciState con la parte gris llena y lo amarillo en vacíos (listo para mezclar o mostrar). */
   estado: RciState;
   /** Datos del montante leídos del dibujo (lo ausente queda null y sobrevive lo digitado). */
@@ -88,7 +88,7 @@ export interface GrisRci {
 }
 
 /** Datos digitados que quedaron sin dueño tras re-exportar (la UI avisa, nunca borra en silencio). */
-export interface HuerfanoRci {
+interface HuerfanoRci {
   /** Qué era: ramal/tramo de una red, un piso, una red entera o un montante. */
   tipo: 'ramal' | 'tramo' | 'piso' | 'red' | 'montante';
   /** Clave de la red dueña (para ramal/tramo/red). */
@@ -103,7 +103,7 @@ export interface HuerfanoRci {
 
 /** Resultado de mezclarOverrides: el estado completo (gris fresco + amarillo conservado),
  *  la lista de huérfanos y la versión del formato. */
-export interface MezclaRci {
+interface MezclaRci {
   estado: RciState;
   huerfanos: HuerfanoRci[];
   formatVersion: number;

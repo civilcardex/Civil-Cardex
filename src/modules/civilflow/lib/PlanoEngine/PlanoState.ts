@@ -22,7 +22,7 @@ export {
 
 /** Un rectángulo en píxeles de pantalla, con su esquina superior izquierda: sirve para medir
  *  cuerpos de tubería, cajas de etiqueta y textos (el PDF de fondo ya es una imagen). */
-export interface CanvasBox {
+interface CanvasBox {
   x: number;
   y: number;
   w: number;

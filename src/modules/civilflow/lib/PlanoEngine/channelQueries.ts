@@ -104,7 +104,7 @@ export function resolveAndClampToCanal(
 
 /** Resultado de detectar canales en los extremos de un ramal nuevo: el canal tocado y si el
  *  ramal nace al revés (tocó el extremo lejano → hay que voltear la dirección del flujo). */
-export interface CanalOrigenDet {
+interface CanalOrigenDet {
   canal: PlanoBajante | null;
   voltear: boolean;
 }

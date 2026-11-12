@@ -8,7 +8,7 @@ export interface Point {
 }
 
 /** La cámara del visor: zoom y desplazamiento (pan) — todo el plano se dibuja a través de ella. */
-export interface Camara {
+interface Camara {
   zoom: number;
   offX: number;
   offY: number;

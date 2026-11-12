@@ -6,7 +6,7 @@ import type { PlanoBajante } from './PlanoState.ts';
 // herramienta pueda dejar la red en un estado inválido.
 
 /** Veredicto de la regla central: ok=true deja pasar; ok=false trae título y mensaje listos para el modal que explica por qué no. */
-export interface ConexionBajanteCheck {
+interface ConexionBajanteCheck {
   ok: boolean;
   title?: string;
   msg?: string;

@@ -4,7 +4,7 @@ export type { Point };
 
 /** Lo mínimo que necesita la cámara para pintar: cuánto se agranda el dibujo (zoom) y cuánto se
  *  ha desplazado de lado (pan). */
-export interface CamaraConRender {
+interface CamaraConRender {
   zoom: number;
   offX: number;
   offY: number;
@@ -24,7 +24,7 @@ export interface Encuadre {
 }
 
 /** Rectángulo del DIBUJO dentro de la hoja (en px de plano, no de pantalla). */
-export interface BboxDibujo {
+interface BboxDibujo {
   minX: number;
   minY: number;
   maxX: number;

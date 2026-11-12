@@ -322,7 +322,7 @@ function detectJunctionAccesorio(
 /** Una unión que todavía necesita que el usuario diga qué accesorio lleva (tee, codo o yee), con
  *  el punto exacto donde pasó y si quedó en T.
  *  Ej: al terminar RAF1 sobre el cuerpo de RAF2, salta el modal con estos datos. */
-export interface AccesorioTrigger {
+interface AccesorioTrigger {
   ramalId: string;
   angleDeg: number;
   junctionIndex: number;

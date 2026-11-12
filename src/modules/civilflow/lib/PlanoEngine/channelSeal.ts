@@ -5,7 +5,7 @@ import { canalOBBDe, puntoEnCanalOBB, pxPerCmDe } from './channelGeometry';
 
 /** Memoria del enlace canal↔bajante de cada piso: qué ramales ya quedaron sellados como
  *  ramal-de-canal y qué pares quedan vetados (para no marcar dos veces lo mismo). */
-export interface SelloCanalEstado {
+interface SelloCanalEstado {
   autoBaj: string[];
   vetoBaj: string[];
   autoRam: string[];

@@ -20,10 +20,10 @@ import { anchoTexto } from './measureText.ts';
 const FAR_LABEL_BOXES = 4;
 
 /** Memoria del des-tapado (sitios elegidos por etiqueta mientras la geometría no cambia). */
-export type MemoriaDetapado = ReturnType<typeof desTapadoConMemoria>;
+type MemoriaDetapado = ReturnType<typeof desTapadoConMemoria>;
 
 /** Vector de flujo del ramal (lo calcula renderRamales del PRIMER segmento creado). */
-export interface FlujoRamal {
+interface FlujoRamal {
   showFlow: boolean;
   flowDx: number;
   flowDy: number;

@@ -9,7 +9,7 @@ import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
 
 /** Par de puntos de una yee doble persistida (la bandera se escribe en todos los ramales
  *  que tocan la yee): a y b son las dos derivaciones del glifo doble. */
-export interface YeePair {
+interface YeePair {
   a: number[];
   b: number[];
 }
