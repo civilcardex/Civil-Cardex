@@ -1,5 +1,5 @@
 {
-  "ignoreCommand": "exit 0",
+  "github": { "enabled": false },
   "headers": [
     {
       "source": "/iconos_civilflow/(.*)",
