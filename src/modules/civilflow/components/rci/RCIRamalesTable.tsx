@@ -8,7 +8,7 @@ import { useState, type CSSProperties } from 'react';
 import { anchoValor, celdaEditable, TDC, CELDA } from './RCIEditableCell.tsx';
 import { TH } from '../../styles/sharedTableStyles.ts';
 import type { FilaRamalRci } from '../../utils/rci/RCIRowsModel.ts';
-import { DIAM_BY_MAT } from '../../constants/engineeringDataMaterials.ts';
+import { DIAM_BY_MAT, diamListPorMaterial } from '../../constants/engineeringDataMaterials.ts';
 import { ChipEstado } from './RCIUI.tsx';
 import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
@@ -30,11 +30,13 @@ const nombreDibujoDe = (f: FilaRamalRci): string => {
   const id = String(f.id || '');
   return id.includes('|') ? id.slice(id.indexOf('|') + 1) : f.nombre;
 };
-/** Opciones del desplegable Ø = MISMAS del dibujo (DIAM_BY_MAT del material de la fila);
- *  material vacío/desconocido → la default rci (Acero SCH 40). 'auto' primero. */
+/** Opciones del desplegable Ø = MISMAS del dibujo (diamListPorMaterial resuelve el alias de
+ *  migración rci); material vacío/desconocido → la default rci (Acero SCH 40). 'auto' primero. */
 const diamOpcionesDe = (mat: string): string[] => [
   'auto',
-  ...(DIAM_BY_MAT[mat] || DIAM_BY_MAT['Acero SCH 40'] || []).map((d) => d.n),
+  ...(diamListPorMaterial(mat).length
+    ? diamListPorMaterial(mat).map((d) => d.n)
+    : (DIAM_BY_MAT['Acero SCH 40'] || []).map((d) => d.n)),
 ];
 
 /** Tipos de rociador del ramal (v1.7.80) y su abreviatura en la celda. */

@@ -1,7 +1,14 @@
 /** Editor multi-tipo del menú contextual: material/diámetro de ramal, asociación bajante↔área, diámetro de contador y capacidad de calentador. Ej: clic derecho en RAF1 → cambiar material a PVC y diámetro a 2". */
 import { useEffect, useState } from 'react';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
-import { matFullName, DIAM_BY_MAT, GAS_DN_LABELS } from '../../../constants';
+import {
+  matFullName,
+  DIAM_BY_MAT,
+  GAS_DN_LABELS,
+  diamListPorMaterial,
+  matRciNormalizado,
+  MATS_DEFAULT,
+} from '../../../constants';
 import { GAS, CAT_GAS } from '../../../constants/engineeringDataGas.ts';
 import {
   VENTILACION,
@@ -118,7 +125,9 @@ export function ElementCodeEditor({
     const ramalEl = element as PlanoRamal;
     const isGas = ramalEl.net === 'gas';
     const isVen = ramalEl.net === 'vent';
-    const matList = mats?.[ramalEl.net] || [];
+    // rci SIEMPRE canónico (mismo criterio del panel derecho): mats persistidos viejos
+    // traían A.C./RDE y dejaban el desplegable sin opciones coherentes.
+    const matList = ramalEl.net === 'rci' ? MATS_DEFAULT.rci : mats?.[ramalEl.net] || [];
     const matShort = ramalEl.material || matList[0]?.val || '—';
     let diamList: Array<{ n: string }> = [];
     if (isVen) {
@@ -126,7 +135,9 @@ export function ElementCodeEditor({
     } else if (isGas) {
       diamList = GAS[0]?.rows.map((r) => ({ n: r.dn })) || [];
     } else {
-      diamList = DIAM_BY_MAT[matShort] || [];
+      // Alias de migración rci: dibujos viejos guardan 'A.C. SCH 40' etc. — la lista debe
+      // resolver igual (sin ella el desplegable de Ø quedaba vacío, ped. usuario).
+      diamList = diamListPorMaterial(matShort);
     }
 
     return (
@@ -136,7 +147,7 @@ export function ElementCodeEditor({
             <div style={MENU_SECTION_LABEL_STYLE}>Material de ramal</div>
             <div style={{ padding: '0 8px 8px' }}>
               <select
-                value={ramalEl.material || ''}
+                value={matRciNormalizado(ramalEl.material || '')}
                 aria-label="Material de ramal"
                 onChange={(e) => {
                   const val = e.target.value;

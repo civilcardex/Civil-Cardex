@@ -130,8 +130,8 @@ export const PIPES: Record<string, Record<string, PipeSpec>> = {
   'Acero SCH 40': {},
   'Acero SCH 10': {},
   'CPVC SDR 13,5': {},
-  'PVC C900 DR14': {},
-  'PVC C900 DR18': {},
+  'PVC C900 RDE 14': {},
+  'PVC C900 RDE 18': {},
 };
 NOM.forEach((n, i) => {
   PIPES['Acero SCH 40'][n] = { inch: INCH[i], od: OD[i], e: W40[i], id: OD[i] - 2 * W40[i] };
@@ -146,8 +146,8 @@ const C900_ROWS: [string, number, number, number][] = [
 ];
 C900_ROWS.forEach(([n, od, e14, e18]) => {
   const inch = INCH[NOM_IDX.get(n)!];
-  PIPES['PVC C900 DR14'][n] = { inch, od, e: e14, id: od - 2 * e14 };
-  PIPES['PVC C900 DR18'][n] = { inch, od, e: e18, id: od - 2 * e18 };
+  PIPES['PVC C900 RDE 14'][n] = { inch, od, e: e14, id: od - 2 * e14 };
+  PIPES['PVC C900 RDE 18'][n] = { inch, od, e: e18, id: od - 2 * e18 };
 });
 /* CPVC listado para rociadores (ASTM F442, SDR 13,5): Ø exterior y espesor en mm */
 const CPVC_ROWS: [string, number, number][] = [

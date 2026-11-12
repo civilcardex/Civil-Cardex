@@ -11,6 +11,12 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
+## Git: NADA se commitea ni pushea sin orden explícita del usuario
+
+- PROHIBIDO `git commit` y `git push` hasta que el usuario lo pida («commit», «pushea», «sube», «cierra la ronda»…). El working tree queda con los cambios preparados para su revisión.
+- Al terminar cada tarea: gates locales (tsc, eslint, vitest de los archivos tocados, build si aplica) y LISTO — reporta qué queda pendiente de commitear y espera la orden.
+- Esto manda sobre cualquier flujo anterior (commits por bloque, push con CI→deploy): sin orden, ni commit ni push.
+
 ## Tests: solo los de los archivos modificados (2026-10-22, REGLA PERMANENTE)
 
 Los gates de VITEST corren SOLO los tests relacionados con los archivos modificados (su lógica, sus tests propios y los módulos que los consumen directamente) — NUNCA la suite completa. La suite entera tarda ~1 minuto y casi siempre lo que rompe el cambio ya se ve en sus tests vecinos. Ej: toque drawingFlow.ts → corro nodoPressureDiameter.test.ts + los tests de quien lo importa. La suite COMPLETA queda reservada para: auditorías, pre-release/commit mayor, o cuando el usuario la pida explícitamente. tsc + eslint + build sí corren siempre (son rápidos y globales).
@@ -40,6 +46,7 @@ Reglas de la operación (ronda 2026-10-21, 718 archivos movidos):
 - Se traduce el NOMBRE, **nunca se restaura contenido de la historia**: los archivos se mueven (`git mv`) y solo se reescriben las rutas de import y las rutas fijadas (guard de arquitectura, baseline de complejidad, eslint, scripts, docs).
 - Identificadores, comentarios y textos de UI **siguen en español** (el glosario de siglas de arriba).
 - Al rehacer un renombrado: `git show --name-status --find-renames <commit>` da el mapa, pero hay que **resolver cadenas** (un archivo renombrado dos veces vuelve a su nombre original) y resolver los imports **sin extensión** (`'./complejidad'`) contra el mapa, no contra el disco (el nombre viejo ya no existe).
+- **REGLA PERMANENTE (2026-11-12): todo archivo/carpeta NUEVO se crea ya con este convenio** — nombre en inglés salvo palabras de dominio. Si un archivo sale con nombre español genérico (p. ej. `bombas.ts`, `filas.ts`, `pasoRiesgo.tsx`), se traduce AL CREARLO, no en una ronda posterior. Barrido rápido al cerrar una tarea: `git status` y cualquier basename español no-dominio se corrige en el momento (`git mv` + imports).
 
 ## Suscripciones por módulo (IMPLEMENTADAS PERO DESHABILITADAS)
 

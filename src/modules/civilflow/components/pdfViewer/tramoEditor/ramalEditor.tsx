@@ -1,5 +1,10 @@
 /** Editor en panel derecho del ramal seleccionado: material (catálogo de SU red), diámetro (bloquea el 4" de inodoro si el ramal no lo sirve), pendiente y descargas simultáneas. Ej: RAF1 san → PVC, 2", 2 %. */
-import { DIAM_BY_MAT } from '../../../constants';
+import {
+  DIAM_BY_MAT,
+  MATS_DEFAULT,
+  diamListPorMaterial,
+  matRciNormalizado,
+} from '../../../constants';
 import { VENTILACION, NETS_WITH_MULTIPLE_MATERIALS } from '../../../pages/catalog/catalogData.ts';
 import { GAS } from '../../../constants/engineeringDataGas.ts';
 import { normalizeDnLabel } from '../../../utils/formatUtils.ts';
@@ -65,14 +70,16 @@ export function RamalEditor({
   // (p. ej. sigue seleccionado tras cambiar de pestaña de red) — su material debe tomarse siempre
   // del catálogo de SU propia red, no de la red que la barra esté mostrando en ese momento.
   const matNet = selElement?.net || activeNet;
-  const matList = mats?.[matNet] || [];
+  // rci SIEMPRE canónico (claves PIPES): mats persistidos viejos traían A.C./RDE y desincronizaban
+  // el panel respecto del desplegable de diseño (ped. usuario: mismas opciones en ambos).
+  const matList = matNet === 'rci' ? MATS_DEFAULT.rci : mats?.[matNet] || [];
   const matShort = matList[0]?.val || '—';
   const matName = matLongName(matShort);
   let diamList: Array<{ n: string }> = [];
   if (isVen) {
     diamList = VENTILACION[0]?.rows.map((r) => ({ n: r.dn })) || [];
   } else {
-    diamList = DIAM_BY_MAT[matShort] || [];
+    diamList = diamListPorMaterial(matShort) || [];
   }
   let currentDiam: string = '',
     currentMat: string = '';
@@ -166,7 +173,7 @@ export function RamalEditor({
               Material
             </div>
             <select
-              value={(isSelActiveNet && selElement?.material) || matShort}
+              value={matRciNormalizado((isSelActiveNet && selElement?.material) || matShort)}
               aria-label="Material"
               onChange={(e) => {
                 const mat = e.target.value;

@@ -14,7 +14,7 @@ export {
   idsServidosPorBajante,
   upstreamRamalIdsForBajante,
   collectSourceAgg,
-} from './grafo.ts';
+} from './graph.ts';
 export {
   setBajanteDesplazamientoInStorage,
   registrarLdesvioComoAsociado,

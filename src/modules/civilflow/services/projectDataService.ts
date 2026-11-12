@@ -2,6 +2,7 @@ import { supabase } from '../../../lib/supabase';
 import { emitBdSaveError } from './storageService.ts';
 import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
+import { normalizarMatsRci } from '../constants/engineeringDataMaterials.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
 import type { Proyecto, MaterialItem, ProfItem, CritItem } from '../context/ProjectContext.tsx';
 import type { PlanMeta } from '../lib/shared/projectTypes.ts';
@@ -231,11 +232,13 @@ export async function saveProyectoCoreData(
           tipo: p.tipo,
           h: p.h ? Number(p.h) : null,
         })),
-        mats: Object.fromEntries(
-          Object.entries(core.mats).map(([categoria, items]) => [
-            categoria,
-            items.map((item) => ({ id: item.id, val: item.val })),
-          ]),
+        mats: normalizarMatsRci(
+          Object.fromEntries(
+            Object.entries(core.mats).map(([categoria, items]) => [
+              categoria,
+              items.map((item) => ({ id: item.id, val: item.val })),
+            ]),
+          ),
         ),
         profs: core.profs.map((p, i) => ({
           client_id: p.id,
@@ -533,7 +536,7 @@ export async function loadProyectoDataConError(
         proy: result.proyecto_general
           ? (proyectoGeneralRowToProy(result.proyecto_general) as Proyecto)
           : undefined,
-        mats: result.materiales ?? {},
+        mats: normalizarMatsRci(result.materiales ?? {}),
         profs: (result.profundidades ?? []).map((r) => ({
           id: r.client_id,
           red: r.red,

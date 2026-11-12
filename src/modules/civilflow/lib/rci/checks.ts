@@ -26,18 +26,18 @@ import {
   type DibujoPiso,
   type TpsItem,
 } from './checks/helpers';
-import { verificarDatosEntrada } from './checks/datosEntrada';
-import { verificarAlmacenamiento } from './checks/almacenamiento';
-import { verificarRociadores, verificarDuracion, verificarTecho } from './checks/rociadores';
-import { verificarEdificio } from './checks/edificio';
-import { verificarRedRamales } from './checks/redRamales';
-import { verificarTuberias, verificarPresionNudos } from './checks/tuberias';
-import { verificarSiamesa } from './checks/siamesa';
+import { verificarDatosEntrada } from './checks/inputData';
+import { verificarAlmacenamiento } from './checks/waterStorage';
+import { verificarRociadores, verificarDuracion, verificarTecho } from './checks/sprinklers';
+import { verificarEdificio } from './checks/building';
+import { verificarRedRamales } from './checks/networkRamales';
+import { verificarTuberias, verificarPresionNudos } from './checks/pipes';
+import { verificarSiamesa } from './checks/siamese';
 import { verificarMontantesSp } from './checks/montantesSp';
-import { verificarBombas } from './checks/bombas';
-import { verificarSismo } from './checks/sismo';
-import { verificarNormativaPais } from './checks/normativaPais';
-import { verificarMurosDibujo } from './checks/murosDibujo';
+import { verificarBombas } from './checks/pumps';
+import { verificarSismo } from './checks/seismic';
+import { verificarNormativaPais } from './checks/countryRules';
+import { verificarMurosDibujo } from './checks/drawingWalls';
 
 /** Evalúa las verificaciones sobre el resultado R. `dibujo` (opcional, del piso activo del
  *  visor) habilita la verificación de distancia de ramales a muros. No lanza: todo problema de

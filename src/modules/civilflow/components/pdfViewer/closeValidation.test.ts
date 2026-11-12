@@ -502,12 +502,12 @@ describe('validateBeforeClose — material rci (mismo piso, un mismo material)',
   it('materiales MEZCLADOS en el piso: bloquea nombrándolos', () => {
     const eng = makeEngine([
       RC({ id: 'RRCI1', label: 'RRCI1', material: 'Acero SCH 40' }),
-      RC({ id: 'RRCI2', label: 'RRCI2', material: 'PVC C900 DR14' }),
+      RC({ id: 'RRCI2', label: 'RRCI2', material: 'PVC C900 RDE 14' }),
     ]);
     expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
     expect(alertas[0].msg).toContain('Materiales mezclados');
     expect(alertas[0].msg).toContain('Acero SCH 40');
-    expect(alertas[0].msg).toContain('PVC C900 DR14');
+    expect(alertas[0].msg).toContain('PVC C900 RDE 14');
   });
 
   it('materiales mezclados en OTRO piso confirmado: bloquea nombrando el piso', () => {
@@ -527,7 +527,7 @@ describe('validateBeforeClose — material rci (mismo piso, un mismo material)',
           net: 'rci',
           tipo: 'ramal',
           label: 'RRCI2',
-          material: 'PVC C900 DR14',
+          material: 'PVC C900 RDE 14',
           diametro: '2"',
         },
       ],

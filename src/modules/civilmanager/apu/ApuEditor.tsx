@@ -1,7 +1,7 @@
 import { useCivilManager } from '../context.tsx';
 import { fmtMoneda } from '../calc.ts';
 import { useIsMobile } from '../../../hooks/useMediaQuery.ts';
-import { ApuSeccionMO } from './ApuSectionMO.tsx';
+import { ApuSeccionMO } from './ApuSectionLabor.tsx';
 import { ApuSeccionEquipo } from './ApuSectionEquipment.tsx';
 import { ApuSeccionInsumos } from './ApuSectionSupplies.tsx';
 import { ApuSeccionTransporte } from './ApuSectionTransport.tsx';

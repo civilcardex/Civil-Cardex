@@ -32,6 +32,9 @@ export {
   DIAM_BAN_LL,
   DIAM_VENT,
   DIAM_BY_MAT,
+  diamListPorMaterial,
+  matRciNormalizado,
+  normalizarMatsRci,
 } from './engineeringDataMaterials.ts';
 
 export { GAS, CAT_GAS, GAS_DN_LABELS } from './engineeringDataGas.ts';

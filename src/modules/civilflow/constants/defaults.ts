@@ -308,7 +308,7 @@ export const REDES_MAT = [
     lbl: 'Contra incendio',
     mat: 'Acero SCH 40',
     prof: -0.45,
-    opts: ['Acero SCH 10', 'Acero SCH 40', 'PVC C900 DR14', 'PVC C900 DR18', 'CPVC SDR 13,5'],
+    opts: ['Acero SCH 10', 'Acero SCH 40', 'PVC C900 RDE 14', 'PVC C900 RDE 18', 'CPVC SDR 13,5'],
   },
   {
     id: 'gas',

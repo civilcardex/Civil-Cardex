@@ -9,7 +9,7 @@ import {
   useRef,
 } from 'react';
 import { usePersistedState } from '../../../hooks/usePersistedState.ts';
-import { MATS_DEFAULT, CRIT0, PROFS_DEFAULT } from '../constants';
+import { MATS_DEFAULT, CRIT0, PROFS_DEFAULT, normalizarMatsRci } from '../constants';
 import { getActiveProyectoId } from '../services/storageService.ts';
 import { saveProyectoCoreData, loadProyectoData } from '../services/projectDataService.ts';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
@@ -155,7 +155,7 @@ export function ProjectProvider({ children }: { children?: ReactNode }) {
       for (const k of Object.keys(savedMats)) {
         merged[k] = savedMats[k];
       }
-      return merged;
+      return normalizarMatsRci(merged); // rci siempre canónico (claves PIPES)
     },
   );
   const [profs, setProfs] = usePersistedState<ProfItem[]>('civilflow_profs', PROFS_CLONED);
