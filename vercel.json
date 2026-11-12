@@ -1,4 +1,5 @@
 {
+  "ignoreCommand": "exit 0",
   "headers": [
     {
       "source": "/iconos_civilflow/(.*)",
