@@ -1,0 +1,19 @@
+# Propietarios de revisión por módulo. GitHub pide a estos usuarios review
+# automática en los PRs que tocan sus rutas (requiere rama protegida para
+# exigirlo; hoy solo es informativo).
+
+# Motor CAD y módulo civilflow
+/src/modules/civilflow/ @civilcardex
+/src/modules/civilflow/lib/PlanoEngine/ @civilcardex @Diego
+
+# Módulo civilmanager (presupuestos/APU/CRUD)
+/src/modules/civilmanager/ @civilcardex @Diego
+
+# SEO/prerender/sitemap
+/src/seo/ /scripts/prerender.mjs @civilcardex
+
+# BD y funciones edge (suscripciones/empresa)
+/supabase/ @civilcardex
+
+# Infra de CI y despliegue
+/.github/ /vercel.json @civilcardex

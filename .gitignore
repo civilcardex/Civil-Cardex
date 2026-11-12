@@ -56,3 +56,7 @@ scripts/baselineComplejidad.txt
 
 # Reportes de cobertura (vitest run --coverage)
 coverage/
+
+# Playwright e2e: resultados crudos y reporte HTML (npx playwright test)
+test-results/
+playwright-report/

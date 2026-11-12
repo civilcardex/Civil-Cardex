@@ -73,6 +73,11 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
+      # Advisory de tamaños (sustituto informativo del guard de arquitectura): lista los
+      # archivos >700 l. NO falla — si la lista crece ronda tras ronda, hay split pendiente.
+      - name: Size report (advisory)
+        run: node scripts/sizeReport.mjs
+
       # Deploy producción SOLO si TODO el CI salió verde: la integración Git de Vercel está
       # apagada (github.enabled false en vercel.json) — el CLI es el único camino a prod.
       - name: Deploy producción (solo CI verde)
@@ -82,3 +87,47 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+
+  # E2E de caminos críticos (rutas públicas, pricing interactivo, login opcional).
+  # Job SEPARADO: corre en PARALELO al job ci (sin needs) — no lo bloquea ni lo retrasa.
+  # auth.spec salta solo si los secrets E2E_EMAIL/E2E_PASS no están configurados.
+  e2e:
+    name: E2E Playwright (chromium)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Chromium + librerías del sistema del runner (apt) para que el navegador arranque.
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Las VITE_ son necesarias: la app lanza error al importar sin ellas (src/lib/supabase.ts).
+      # VITE_SUSCRIPCIONES=true enciende el modo suscripciones para que /pricing muestre el
+      # toggle y el selector que checkout-mock.spec ejercita (sin tocar la pasarela real).
+      - name: Run E2E
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUSCRIPCIONES: 'true'
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASS: ${{ secrets.E2E_PASS }}
+        run: npx playwright test
+
+      # Reporte HTML (playwright-report/) solo cuando algo falló: evidencia para depurar.
+      - name: Upload reporte Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
