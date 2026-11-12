@@ -6,7 +6,6 @@ import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { MODULES_DATA } from './moduleData.ts';
-import { supabase } from '../lib/supabase';
 import CheckoutModal from '../components/subscriptions/CheckoutModal.tsx';
 import {
   CATALOGO,
@@ -22,6 +21,7 @@ import {
   dispararRefetchSuscripciones,
   edgePagoNoDesplegada,
   estaActiva,
+  verificarPago,
 } from '../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 import { plans, FAQ_JSONLD, PRODUCT_JSONLD, BADGE_STYLE } from './pricingData.ts';
@@ -76,9 +76,7 @@ function PricingSuscripciones() {
     if (!refPago) return;
     let ignore = false;
     void (async () => {
-      const { data, error: errVerif } = await supabase.functions.invoke('verificar-pago', {
-        body: { referencia: refPago },
-      });
+      const { data, error: errVerif } = await verificarPago(refPago);
       if (ignore) return;
       if (data?.aprobado) {
         setAvisoPago(AVISO_APROBADO);
@@ -121,11 +119,7 @@ function PricingSuscripciones() {
       void (async () => {
         let data: { aprobado?: boolean; estado?: string } | null = null;
         try {
-          data = (
-            await supabase.functions.invoke('verificar-pago', {
-              body: { referencia: refPendiente },
-            })
-          ).data;
+          data = (await verificarPago(refPendiente)).data;
         } catch (e) {
           // Fallo de red/transitorio: el intervalo sigue — el tope de 20 corta.
           devError('verificar-pago (polling):', e);

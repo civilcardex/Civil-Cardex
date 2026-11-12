@@ -1,9 +1,11 @@
 import { ModalShell } from '../shared/ModalShell.tsx';
 import { useEffect, useRef, useState } from 'react';
 import { FunctionsHttpError } from '@supabase/supabase-js';
-import { supabase } from '../../lib/supabase';
 import type { ModuloId, Periodo, PuestosPorModulo } from '../../lib/subscriptions/catalog.ts';
-import { edgePagoNoDesplegada } from '../../lib/subscriptions/subscriptionsService.ts';
+import {
+  crearCheckout,
+  edgePagoNoDesplegada,
+} from '../../lib/subscriptions/subscriptionsService.ts';
 import { devError } from '../../utils/devError.ts';
 import { marcarNavInterna } from '../../utils/internalNavigation.ts';
 
@@ -32,9 +34,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
     if (pedidoRef.current) return;
     pedidoRef.current = true;
     void (async () => {
-      const { data, error: err } = await supabase.functions.invoke('crear-checkout', {
-        body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
-      });
+      const { data, error: err } = await crearCheckout(modulos, periodo, puestos);
       if (data?.checkoutUrl) {
         // Allowlist: la URL de la edge function no se asigna a ciegas — un proxy/deploys
         // confusos no deben poder redirigir el pago a un clon con el modal abierto.

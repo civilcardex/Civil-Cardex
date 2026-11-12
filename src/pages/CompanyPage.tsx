@@ -2,11 +2,17 @@
  * quitar), asignación por correo (solo usuarios registrados) y CTA para ampliar puestos. */
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { CATALOGO, SUSCRIPCIONES_ACTIVAS } from '../lib/subscriptions/catalog.ts';
-import { estaActiva, type SuscripcionRow } from '../lib/subscriptions/subscriptionsService.ts';
+import {
+  asignarPuesto,
+  cambiarPermisoMiembro,
+  estaActiva,
+  fetchMiembros,
+  quitarPuesto,
+  type SuscripcionRow,
+} from '../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 import { devError } from '../utils/devError.ts';
 
@@ -79,7 +85,7 @@ function PanelSuscripcion({
     // Mock: sin RPCs — el estado ya nace con los miembros falsos (useState) y el
     // effect de carga ni siquiera dispara (guard de abajo).
     if (mock) return;
-    const { data, error } = await supabase.rpc('mis_miembros', { p_suscripcion_id: sus.id });
+    const { data, error } = await fetchMiembros(sus.id);
     if (error) {
       devError('mis_miembros:', error.message);
       setMiembros([]);
@@ -102,10 +108,7 @@ function PanelSuscripcion({
     if (!correo || ocupado || soloLectura) return;
     setOcupado(true);
     setAviso('');
-    const { error } = await supabase.rpc('asignar_puesto', {
-      p_suscripcion_id: sus.id,
-      p_email: correo,
-    });
+    const { error } = await asignarPuesto(sus.id, correo);
     setOcupado(false);
     if (error) {
       setAvisoOk(false);
@@ -120,10 +123,7 @@ function PanelSuscripcion({
 
   async function quitar(userId: string) {
     if (mock) return; // preview: sin RPC real
-    const { error } = await supabase.rpc('quitar_puesto', {
-      p_suscripcion_id: sus.id,
-      p_user_id: userId,
-    });
+    const { error } = await quitarPuesto(sus.id, userId);
     if (error) {
       setAvisoOk(false);
       setAviso(mensajeDeError(error));
@@ -134,11 +134,7 @@ function PanelSuscripcion({
 
   async function toggleEditar(m: Miembro) {
     if (mock) return; // preview: sin RPC real
-    const { error } = await supabase.rpc('cambiar_permiso_miembro', {
-      p_suscripcion_id: sus.id,
-      p_user_id: m.user_id,
-      p_puede_editar: !m.puede_editar,
-    });
+    const { error } = await cambiarPermisoMiembro(sus.id, m.user_id, !m.puede_editar);
     if (error) {
       devError('cambiar_permiso_miembro:', error.message);
       return;

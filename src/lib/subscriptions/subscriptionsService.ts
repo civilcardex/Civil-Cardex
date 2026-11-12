@@ -1,6 +1,6 @@
 /** Suscripciones del usuario (la base de datos solo le devuelve las suyas). La app confía en la fecha de vencimiento (fecha_fin), no en promesas: si venció, se bloquea al toque. */
 import { supabase } from '../supabase';
-import type { ModuloId } from './catalog.ts';
+import type { ModuloId, Periodo, PuestosPorModulo } from './catalog.ts';
 import { devError } from '../../utils/devError.ts';
 
 /** Fila de app_suscripciones (una compra vigente de un módulo). Ej: {modulo:'flow', periodo:'mensual', fecha_fin:'2026-11-01'} -> acceso a flow hasta esa fecha. */
@@ -103,4 +103,60 @@ export function suscripcionesHabilitadas(): Promise<boolean> {
     }
   })();
   return promiseHabilitadas;
+}
+
+// ─── Empresa: puestos de una suscripción (miembros del equipo) ───
+
+/** Miembros del equipo de una suscripción empresarial (RPC mis_miembros; RPC = función de la BD que se invoca por nombre). Ej: fetchMiembros(12) -> [{user_id, email, puede_editar, asignado_en}] o {error} con el código del server. */
+export async function fetchMiembros(suscripcionId: number) {
+  return await supabase.rpc('mis_miembros', { p_suscripcion_id: suscripcionId });
+}
+
+/** Asigna un puesto (asiento de un plan empresarial) a un correo con cuenta registrada (RPC asignar_puesto). Ej: asignarPuesto(12, 'ana@x.com'). El error.message es un código ('usuario_no_encontrado', 'sin_puestos_disponibles', ...) que la UI traduce. */
+export async function asignarPuesto(suscripcionId: number, email: string) {
+  return await supabase.rpc('asignar_puesto', {
+    p_suscripcion_id: suscripcionId,
+    p_email: email,
+  });
+}
+
+/** Quita a un miembro del equipo de una suscripción empresarial (RPC quitar_puesto). Ej: quitarPuesto(12, 'uuid-del-miembro'). */
+export async function quitarPuesto(suscripcionId: number, userId: string) {
+  return await supabase.rpc('quitar_puesto', {
+    p_suscripcion_id: suscripcionId,
+    p_user_id: userId,
+  });
+}
+
+/** Cambia si un miembro puede editar los proyectos de la empresa (RPC cambiar_permiso_miembro). Ej: cambiarPermisoMiembro(12, 'uuid', false) -> el miembro queda en solo lectura. */
+export async function cambiarPermisoMiembro(
+  suscripcionId: number,
+  userId: string,
+  puedeEditar: boolean,
+) {
+  return await supabase.rpc('cambiar_permiso_miembro', {
+    p_suscripcion_id: suscripcionId,
+    p_user_id: userId,
+    p_puede_editar: puedeEditar,
+  });
+}
+
+// ─── Pago: edge functions de Lemon Squeezy ───
+
+/** Verifica el estado de un pago tras la vuelta del checkout (edge function verificar-pago: SOLO lee la fila propia, no activa nada). Ej: verificarPago('LS-123') -> {data:{aprobado:true, estado:'aprobada'}, error}. */
+export async function verificarPago(referencia: string) {
+  return await supabase.functions.invoke('verificar-pago', {
+    body: { referencia },
+  });
+}
+
+/** Pide la URL del checkout hosteado de Lemon Squeezy (edge function crear-checkout: calcula el total server-side desde app_precios e inserta la fila pendiente). Ej: crearCheckout(['flow'], 'anual', {flow:3}) -> {data:{checkoutUrl}, error}. */
+export async function crearCheckout(
+  modulos: ModuloId[],
+  periodo: Periodo,
+  puestos?: PuestosPorModulo,
+) {
+  return await supabase.functions.invoke('crear-checkout', {
+    body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
+  });
 }

@@ -30,7 +30,7 @@ import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
-import { CF_TABLES } from '../../modules/civilflow/constants/tableNames.ts';
+import { fetchPerfil as traerPerfil, savePerfil } from '../../lib/profile/profileService.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
 const campos = [
@@ -139,8 +139,7 @@ function ProfilePage() {
         userIdRef.current = user.id;
         // 401 con JWT vencido/futuro (reloj desfasado o token justo expirado): un refresh
         // de sesión + un reintento lo resuelve sin mostrar error (orig. usuario consola).
-        const queryPerfil = () =>
-          supabase.from(CF_TABLES.perfiles).select('*').eq('id', user.id).single();
+        const queryPerfil = () => traerPerfil(user.id);
         let { data, error } = await queryPerfil();
         if (error && (error as unknown as { status?: number }).status === 401) {
           try {
@@ -218,12 +217,10 @@ function ProfilePage() {
     try {
       // save_perfil (RPC SECURITY DEFINER) hace upsert del CONJUNTO editable completo —
       // hay que mandar el perfil entero o los campos omitidos se rescriben a NULL.
-      const { error } = await supabase.rpc('save_perfil', {
-        p_perfil: {
-          ...perfil,
-          email: user?.email,
-          [field]: editValue,
-        },
+      const { error } = await savePerfil({
+        ...perfil,
+        email: user?.email,
+        [field]: editValue,
       });
       if (error) {
         devError('Error guardando:', error.message);
