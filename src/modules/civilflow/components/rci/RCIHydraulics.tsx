@@ -160,7 +160,6 @@ export function RciHidraulica({
 
   const rams = filasRamales(red, rd);
   const trams = filasTramos(red, rd, techo, altDeriv);
-  const fijosR = fijosPorId(grisRed?.ramales);
   const fijosT = fijosPorId(grisRed?.tramos);
   const sProyecto = String(estado.roc.S ?? '');
   const raiz = String(red?.raiz || '').trim() || 'D';
@@ -229,12 +228,49 @@ export function RciHidraulica({
       };
     });
   /* Claves de la RED entera: material/cota de los ramales y raíz de la derivación. */
-  const setRedK = (k: 'mat' | 'zRam' | 'raiz') => (v: string) =>
+  const setRedK = (k: 'mat' | 'zRam' | 'raiz') => (v: string) => {
+    /* MATERIAL → DIBUJO (bidireccional, ped. usuario): cambiar el desplegable «Material de los
+     * ramales» escribe el material en TODOS los ramales rci del piso en el doc de trazos
+     * (regla 1: un mismo piso, un mismo material) y re-emite el guardado — el dibujo y sus
+     * etiquetas se refrescan. La BD la sube el autosave del propio visor (doc.ts). */
+    if (k === 'mat' && redKey) {
+      const doc = loadFromStorage<DrawingData | null>(TRAZOS_PREFIX + redKey, null) as unknown as {
+        ts?: number;
+        ramales?: Array<{ id?: string; net?: string; tipo?: string; material?: string }>;
+      } | null;
+      if (doc) {
+        let cambio = false;
+        for (const tr of doc.ramales || []) {
+          if (tr.net !== 'rci' || tr.tipo !== 'ramal') continue;
+          if ((tr.material || '') !== v) {
+            tr.material = v;
+            cambio = true;
+          }
+        }
+        if (cambio) {
+          doc.ts = Date.now();
+          const ok = saveToStorage(TRAZOS_PREFIX + redKey, doc, { sinDiario: true });
+          if (ok) saveTrazosToDB(String(redKey), doc);
+          emitTrazosSaved();
+        }
+      }
+    }
     editar((e) => {
       const r = e.redes[redKey];
       if (!r) return e;
-      return { ...e, redes: { ...e.redes, [redKey]: { ...r, [k]: v } } };
+      return {
+        ...e,
+        redes: {
+          ...e.redes,
+          [redKey]: {
+            ...r,
+            [k]: v,
+            ...(k === 'mat' ? { ramales: r.ramales.map((x) => ({ ...x, mat: v })) } : {}),
+          },
+        },
+      };
     });
+  };
   /* Cota de un nudo (una por nudo; crea la entrada si aún no existe). La derivación usa la
    * misma vía: nodos[raiz].z. */
   const setZNudo = (nodo: string) => (v: string) =>
@@ -341,7 +377,6 @@ export function RciHidraulica({
             </Hbar>
             <RciRamalesTable
               rams={rams}
-              fijosR={fijosR}
               red={red}
               rd={rd}
               editRam={editRam}

@@ -299,6 +299,46 @@ export function validateBeforeClose(
       return false;
     }
   }
+  /* MATERIAL rci (ped. usuario): en cada piso, TODOS los ramales rci deben tener material
+   * asignado y el MISMO para todos — un piso con materiales mezclados o vacíos rompe el
+   * «Material de los ramales» del diseño. Local (motor) + pisos confirmados (doc cached). */
+  const revisarMaterialRci = (
+    ramales: Array<{ id?: string; label?: string; net?: string; tipo?: string; material?: string }>,
+  ): string | null => {
+    const rci = (ramales || []).filter((r) => r.net === 'rci' && r.tipo === 'ramal');
+    if (rci.length === 0) return null;
+    const sinMat = rci.filter((r) => !(r.material || '').trim()).map((r) => r.label || r.id || '');
+    if (sinMat.length > 0)
+      return `${sinMat.length} ramal(es) sin material asignado: ${formatLista(sinMat)}. Asigna el material en el desplegable «Material de los ramales».`;
+    const materiales = [...new Set(rci.map((r) => (r.material || '').trim()))];
+    if (materiales.length > 1)
+      return `Materiales mezclados en el piso (${materiales.join(' · ')}): todos los ramales de un mismo piso deben llevar el mismo material. Cambia el desplegable «Material de los ramales».`;
+    return null;
+  };
+  const matLocal = revisarMaterialRci(eng.ramales as never);
+  if (matLocal) {
+    onAlert('Material de ramales pendiente', matLocal);
+    return false;
+  }
+  for (const plan of (planos || []).filter((p) => p.status === 'confirmed')) {
+    if (String(plan.id) === String(planId ?? '')) continue;
+    const data = trazosDe(plan.id);
+    if (!data) continue;
+    const matOtro = revisarMaterialRci(
+      (data.ramales || []) as never as Array<{
+        id?: string;
+        label?: string;
+        net?: string;
+        tipo?: string;
+        material?: string;
+      }>,
+    );
+    if (matOtro) {
+      const piso = plan.nivel != null ? `${pisoLbl(Number(plan.nivel))}: ` : '';
+      onAlert('Material de ramales pendiente', `${piso}${matOtro}`);
+      return false;
+    }
+  }
   return true;
 }
 

@@ -21,6 +21,16 @@ import {
   SAN_INODORO_MIN_MSG,
 } from '../../../utils/sanitaryDiamCompat.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
+import type { DrawingData } from '../../../utils/drawingSyncTypes.ts';
+import {
+  loadFromStorage,
+  saveToStorage,
+  saveTrazosToDB,
+} from '../../../services/storageService.ts';
+import { TRAZOS_PREFIX, RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
+import { emitTrazosSaved, emitRciVivoSaved } from '../../../utils/fixtureEvents.ts';
+import { saveRciDatos } from '../../../services/projectDataService.ts';
+import { getActiveProyectoId } from '../../../services/storageService.ts';
 import type {
   PlanoBajante,
   PlanoArea,
@@ -133,6 +143,62 @@ export function ElementCodeEditor({
                   const eng = engineRef.current;
                   if (!eng) return;
                   eng.updateElementById(ramalEl.id, { material: val });
+                  /* rci BIDIRECCIONAL (ped. usuario): un mismo piso, un mismo material — el
+                   * cambio en el desplegable del dibujo se propaga a TODOS los ramales rci del
+                   * piso (motor + doc de trazos + BD por autosave) y al espejo del estado RCI
+                   * (red.mat) para que el desplegable de la pestaña muestre lo mismo. */
+                  if (ramalEl.net === 'rci') {
+                    for (const rm of eng.ramales) {
+                      if (rm.net === 'rci' && rm.tipo === 'ramal' && rm.id !== ramalEl.id)
+                        rm.material = val;
+                    }
+                    const planId =
+                      (eng as unknown as { _loadedPlanId?: string })?._loadedPlanId ?? '';
+                    if (planId) {
+                      const doc = loadFromStorage<DrawingData | null>(
+                        TRAZOS_PREFIX + planId,
+                        null,
+                      ) as unknown as {
+                        ts?: number;
+                        ramales?: Array<{
+                          id?: string;
+                          net?: string;
+                          tipo?: string;
+                          material?: string;
+                        }>;
+                      } | null;
+                      if (doc) {
+                        let cambio = false;
+                        for (const tr of doc.ramales || []) {
+                          if (tr.net !== 'rci' || tr.tipo !== 'ramal') continue;
+                          if ((tr.material || '') !== val) {
+                            tr.material = val;
+                            cambio = true;
+                          }
+                        }
+                        if (cambio) {
+                          doc.ts = Date.now();
+                          const ok = saveToStorage(TRAZOS_PREFIX + planId, doc, {
+                            sinDiario: true,
+                          });
+                          if (ok) saveTrazosToDB(String(planId), doc);
+                          emitTrazosSaved();
+                        }
+                      }
+                      /* Espejo del estado RCI: red.mat = material del piso (el desplegable de
+                       * la pestaña «Material de los ramales» muestra lo mismo). */
+                      const est = loadFromStorage<{
+                        redes?: Record<string, { mat?: string }>;
+                      } | null>(RCI_ESTADO_VIVO_KEY, null);
+                      if (est?.redes?.[String(planId)]) {
+                        est.redes[String(planId)].mat = val;
+                        saveToStorage(RCI_ESTADO_VIVO_KEY, est);
+                        emitRciVivoSaved();
+                        const proyectoId = getActiveProyectoId();
+                        if (proyectoId) void saveRciDatos(proyectoId, est as never);
+                      }
+                    }
+                  }
                   const fresh = eng.ramales.find((x) => x.id === ramalEl.id);
                   if (fresh) {
                     setContextMenuState((prev) =>

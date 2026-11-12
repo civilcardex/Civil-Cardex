@@ -469,3 +469,76 @@ describe('validateBeforeClose — salidas y herencia con UD autoasignada', () =>
     expect(alertas).toHaveLength(0);
   });
 });
+
+describe('validateBeforeClose — material rci (mismo piso, un mismo material)', () => {
+  beforeEach(() => {
+    resetStorage();
+    alertas.length = 0;
+  });
+
+  const RC = (o: Partial<PlanoRamal>): PlanoRamal =>
+    R({ id: 'RRCI1', net: 'rci', label: 'RRCI1', diametro: '2"', material: 'Acero SCH 40', ...o });
+
+  it('todos los ramales rci con el mismo material: cierra sin alerta', () => {
+    const eng = makeEngine([
+      RC({ id: 'RRCI1', label: 'RRCI1', material: 'Acero SCH 40' }),
+      RC({ id: 'RRCI2', label: 'RRCI2', material: 'Acero SCH 40' }),
+    ]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+    expect(alertas).toHaveLength(0);
+  });
+
+  it('un ramal SIN material: bloquea el cierre con la lista', () => {
+    const eng = makeEngine([
+      RC({ id: 'RRCI1', label: 'RRCI1', material: 'Acero SCH 40' }),
+      RC({ id: 'RRCI2', label: 'RRCI2', material: '' }),
+    ]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
+    expect(alertas[0].title).toBe('Material de ramales pendiente');
+    expect(alertas[0].msg).toContain('sin material asignado');
+    expect(alertas[0].msg).toContain('RRCI2');
+  });
+
+  it('materiales MEZCLADOS en el piso: bloquea nombrándolos', () => {
+    const eng = makeEngine([
+      RC({ id: 'RRCI1', label: 'RRCI1', material: 'Acero SCH 40' }),
+      RC({ id: 'RRCI2', label: 'RRCI2', material: 'PVC C900 DR14' }),
+    ]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(false);
+    expect(alertas[0].msg).toContain('Materiales mezclados');
+    expect(alertas[0].msg).toContain('Acero SCH 40');
+    expect(alertas[0].msg).toContain('PVC C900 DR14');
+  });
+
+  it('materiales mezclados en OTRO piso confirmado: bloquea nombrando el piso', () => {
+    const eng = makeEngine([RC({ id: 'RRCI1', label: 'RRCI1' })]);
+    setLS('civilflow_trazos_2', {
+      ramales: [
+        {
+          id: 'RRCI1',
+          net: 'rci',
+          tipo: 'ramal',
+          label: 'RRCI1',
+          material: 'Acero SCH 40',
+          diametro: '2"',
+        },
+        {
+          id: 'RRCI2',
+          net: 'rci',
+          tipo: 'ramal',
+          label: 'RRCI2',
+          material: 'PVC C900 DR14',
+          diametro: '2"',
+        },
+      ],
+    });
+    const planos = [{ id: 2, status: 'confirmed' }];
+    expect(validateBeforeClose(eng, planos as never, onAlert)).toBe(false);
+    expect(alertas[0].msg).toContain('Materiales mezclados');
+  });
+
+  it('red san (otras redes) sin material: NO dispara el chequeo de material rci', () => {
+    const eng = makeEngine([RS1()]);
+    expect(validateBeforeClose(eng, [], onAlert)).toBe(true);
+  });
+});

@@ -15,12 +15,13 @@ const MATS_RAW = {
   vent: ['PVC-V'],
   gas: ['PE al PE', 'Cobre rígido', 'A.C.', 'Acero HG', 'Polipropileno PP-R'],
   rci: [
-    'A.C. SCH 40',
-    'A.C. SCH 10',
-    'Acero HG',
-    'CPVC CPVC-CI',
-    'PVC C900 RDE 14',
-    'PVC C900 RDE 18',
+    // Nombres = claves de PIPES (lib/rci/tables.ts): el material del dibujo viaja a las tablas
+    // de cálculo SIN mapear — un solo catálogo para dibujo y diseño (ped. usuario).
+    'Acero SCH 10',
+    'Acero SCH 40',
+    'PVC C900 DR14',
+    'PVC C900 DR18',
+    'CPVC SDR 13,5',
   ],
 };
 /** Catálogo de materiales por red. Ej: af -> [PVC-PR, CPVC, Cobre rígido, PP-R]; san -> [PVC-S, Novatec, Hierro fundido, Concreto]. */
@@ -32,10 +33,10 @@ export const MATS_DEFAULT = Object.fromEntries(
 export const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',
   'PVC-S': 'PVC Sanitario',
-  'PVC C900 RDE 14': 'PVC C900 RDE 14',
-  'PVC C900 RDE 18': 'PVC C900 RDE 18',
+  'PVC C900 DR14': 'PVC C900 DR14',
+  'PVC C900 DR18': 'PVC C900 DR18',
+  'CPVC SDR 13,5': 'CPVC SDR 13,5',
   CPVC: 'CPVC (cloruro de polivinilo clorado)',
-  'CPVC CPVC-CI': 'CPVC contra incendio',
   'Cobre rígido': 'Cobre rígido',
   'Cobre flexible': 'Cobre flexible',
   'Polipropileno PP-R': 'Polipropileno PP-R (PP-R)',
@@ -46,6 +47,8 @@ export const MAT_LONGFORM = {
   'A.C.': 'Acero al carbono',
   'A.C. SCH 10': 'Acero al carbono SCH 10',
   'A.C. SCH 40': 'Acero al carbono SCH 40',
+  'Acero SCH 10': 'Acero al carbono SCH 10',
+  'Acero SCH 40': 'Acero al carbono SCH 40',
   'Acero HG': 'Acero galvanizado (HG)',
   Novatec: 'Novatec (PVC Novafort)',
   'Hierro fundido': 'Hierro fundido',
@@ -221,7 +224,8 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '2"' },
   ],
   PEX: [{ n: '1/2"' }, { n: '3/4"' }, { n: '1"' }],
-  'A.C. SCH 40': [
+  // rci: claves = claves de PIPES (mismo catálogo que el cálculo y el desplegable del dibujo).
+  'Acero SCH 40': [
     { n: '1/2"' },
     { n: '3/4"' },
     { n: '1"' },
@@ -234,7 +238,14 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '6"' },
     { n: '8"' },
   ],
-  'A.C. SCH 10': [{ n: '2"' }, { n: '2-1/2"' }, { n: '3"' }, { n: '4"' }, { n: '6"' }, { n: '8"' }],
+  'Acero SCH 10': [
+    { n: '2"' },
+    { n: '2-1/2"' },
+    { n: '3"' },
+    { n: '4"' },
+    { n: '6"' },
+    { n: '8"' },
+  ],
   'Acero HG': [
     { n: '1/2"' },
     { n: '3/4"' },
@@ -255,10 +266,10 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '2-1/2"' },
     { n: '3"' },
   ],
-  'PVC C900 RDE 14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
+  'PVC C900 DR14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
   // id = diámetro interno (mm) del C900 DR18: OD − 2×espesor (tabla PIPES del cálculo rci:
   // 4" 121.9−2×6.78, 6" 175.3−2×9.73, 8" 229.9−2×12.78, 10" 281.9−2×15.67, 12" 335.3−2×18.62).
-  'PVC C900 RDE 18': [
+  'PVC C900 DR18': [
     { n: '4"', id: 108.34 },
     { n: '6"', id: 155.84 },
     { n: '8"', id: 204.34 },

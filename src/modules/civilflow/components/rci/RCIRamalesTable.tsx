@@ -3,11 +3,10 @@
  *  (n.º de rociadores, brazo, Ø usado, pérdidas, Pe, Q, P req, Keq, Vmax, Q/P equilibrados,
  *  estado) y los botones de orden. Extraída de RCIHydraulics por el guard de líneas (F9).
  *  El estado y los handlers viven en el padre; esta tabla es markup + handlers recibidos.
- *  Ej: <RciRamalesTable rams={rams} fijosR={fijosR} ... /> pinta «Ramales del piso». */
+ *  Ej: <RciRamalesTable rams={rams} ... /> pinta «Ramales del piso». */
 import { useState, type CSSProperties } from 'react';
 import { anchoValor, celdaEditable, TDC, CELDA } from './RCIEditableCell.tsx';
 import { TH } from '../../styles/sharedTableStyles.ts';
-import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import type { FilaRamalRci } from '../../utils/rci/RCIRowsModel.ts';
 import { DIAM_BY_MAT } from '../../constants/engineeringDataMaterials.ts';
 import { ChipEstado } from './RCIUI.tsx';
@@ -32,10 +31,10 @@ const nombreDibujoDe = (f: FilaRamalRci): string => {
   return id.includes('|') ? id.slice(id.indexOf('|') + 1) : f.nombre;
 };
 /** Opciones del desplegable Ø = MISMAS del dibujo (DIAM_BY_MAT del material de la fila);
- *  material vacío/desconocido → la default rci del dibujo (A.C. SCH 40). 'auto' primero. */
+ *  material vacío/desconocido → la default rci (Acero SCH 40). 'auto' primero. */
 const diamOpcionesDe = (mat: string): string[] => [
   'auto',
-  ...(DIAM_BY_MAT[mat] || DIAM_BY_MAT['A.C. SCH 40'] || []).map((d) => d.n),
+  ...(DIAM_BY_MAT[mat] || DIAM_BY_MAT['Acero SCH 40'] || []).map((d) => d.n),
 ];
 
 /** Tipos de rociador del ramal (v1.7.80) y su abreviatura en la celda. */
@@ -131,7 +130,6 @@ const FIN_AYUDA = (
  *  del padre vía ctx.editar; los fijos vienen de la red GRIS (candados 🔒 de dibujo). */
 export function RciRamalesTable({
   rams,
-  fijosR,
   red,
   rd,
   editRam,
@@ -143,8 +141,6 @@ export function RciRamalesTable({
 }: {
   /** Filas ya calculadas (filasRamales del padre). */
   rams: FilaRamalRci[];
-  /** Candados de dibujo por id de ramal: dn/mat true = celda gris de solo lectura. */
-  fijosR: Map<string, { dn: boolean; mat: boolean }>;
   /** Red mezclada del piso (de ahí salen la S digitada y la cota por ramal). */
   red: Red | undefined;
   /** Resultado de la red (totales del footer); null = red sin calcular. */
@@ -189,7 +185,7 @@ export function RciRamalesTable({
               <th scope="col" colSpan={3} style={THW}>
                 Rociadores
               </th>
-              <th scope="col" colSpan={4} style={THW}>
+              <th scope="col" colSpan={3} style={THW}>
                 Tubería del ramal (Ø único)
               </th>
               <th scope="col" style={THW}>
@@ -262,9 +258,6 @@ export function RciRamalesTable({
               >
                 Ø
               </th>
-              <th scope="col" style={THW} title="Material del ramal. Gris = lo trae el dibujo">
-                Material
-              </th>
               <th
                 scope="col"
                 style={THW}
@@ -334,7 +327,6 @@ export function RciRamalesTable({
           </thead>
           <tbody>
             {rams.map((f, i) => {
-              const fij = fijosR.get(f.id) || { dn: false, mat: false };
               const zrTxt = zrDeRamal(red, i);
               return (
                 <tr key={f.id || i}>
@@ -407,23 +399,6 @@ export function RciRamalesTable({
                         {diamOpcionesDe(f.mat).map((o) => (
                           <option key={o} value={o}>
                             {o}
-                          </option>
-                        ))}
-                      </select>,
-                    )}
-                  </td>
-                  <td className="c" style={{ padding: '1px 2px' }}>
-                    {celdaEditable(
-                      editRam && !fij.mat,
-                      <select
-                        value={f.mat}
-                        onChange={(e) => setRamal(i, 'mat')(e.target.value)}
-                        style={{ ...CELDA, width: anchoValor(f.mat) }}
-                      >
-                        <option value="">—</option>
-                        {MATERIALES.map((m) => (
-                          <option key={m} value={m}>
-                            {m}
                           </option>
                         ))}
                       </select>,
@@ -516,8 +491,8 @@ export function RciRamalesTable({
             })}
             {rams.length === 0 && (
               <tr>
-                {/* 23 columnas: 3+2+4+1+13 del grupo (sin la de Orden, ped. usuario). */}
-                <td colSpan={23} style={TDC}>
+                {/* 22 columnas: 3+2+3+1+13 del grupo (sin Orden ni Material, ped. usuario). */}
+                <td colSpan={22} style={TDC}>
                   Sin ramales extraídos: dibuje trazos en el plano y confírmelo.
                 </td>
               </tr>
@@ -533,7 +508,7 @@ export function RciRamalesTable({
               <td className="c" style={{ ...TDC, fontWeight: 700 }}>
                 {rd ? rd.flTot : '—'}
               </td>
-              <td colSpan={18} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
+              <td colSpan={17} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
                 {rd ? (
                   <>
                     <ChipEstado

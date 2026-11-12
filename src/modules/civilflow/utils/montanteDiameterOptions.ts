@@ -74,9 +74,9 @@ export function opcionesDiametroElemento(el: {
       if (porMat?.length) {
         out = aLista(porMat.map((d) => d.n));
       } else if (el.net === 'rci') {
-        // Sin material en el PROP: el default de la red RCI es A.C. SCH 40 (REDES_MAT) —
+        // Sin material en el PROP: el default de la red RCI es Acero SCH 40 (REDES_MAT) —
         // su lista comercial, no la de agua fría.
-        out = aLista((DIAM_BY_MAT['A.C. SCH 40'] || []).map((d) => d.n));
+        out = aLista((DIAM_BY_MAT['Acero SCH 40'] || []).map((d) => d.n));
       } else {
         out = (el.net === 'af' ? DIAMETROS_AF : DIAMETROS_AC).map((d) => ({
           pulg: d.pulg,
