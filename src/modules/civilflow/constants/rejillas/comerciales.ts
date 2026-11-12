@@ -1,0 +1,23 @@
+/** Medidas comerciales de respaldo cuando ninguna referencia del catálogo cubre el área. */
+export const COMERCIALES: Array<[number, number]> = [
+  [10, 10],
+  [15, 10],
+  [20, 10],
+  [25, 10],
+  [30, 10],
+  [20, 15],
+  [25, 15],
+  [30, 15],
+  [40, 15],
+  [20, 20],
+  [30, 20],
+  [40, 20],
+  [50, 20],
+  [60, 20],
+  [40, 25],
+  [50, 25],
+  [60, 25],
+  [40, 30],
+  [60, 30],
+  [80, 30],
+];
