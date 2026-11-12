@@ -137,3 +137,9 @@ export const Comment = ({ children }: { children: React.ReactNode }) => (
     {children}
   </span>
 );
+
+/** Texto de valor numérico en tablas del ep (Equipo de Presión): mono seminegrita. Ej: el 0.80 de la fila Qd. */
+export const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
+
+/** Igual que M pero resaltado (700): el dato protagonista de la fila. Ej: el DN elegido. */
+export const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;
