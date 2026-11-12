@@ -2,7 +2,7 @@
  *  guard de líneas): la tabla de pisos del PLANO con EDITAR en el header y los paneles «Ver
  *  ayuda» de sus columnas. El estado (edit/ph) es local; filas y setPiso llegan por props.
  *  Ej: <TablaPisos filas={filas} nota="3 piso(s)" grupos={['T1']} setPiso={setPiso} />. */
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
 import { EditTablaBtn, SecRci, useEditarTabla } from './RCIUI.tsx';
 import { celdaEditable, CELDA12 } from './RCIEditableCell.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
@@ -16,6 +16,7 @@ import {
 } from '../../utils/rci/RCIRowsModel.ts';
 import { AYUDA_SALIDA } from './RCIFloorCells.tsx';
 import { RciHelpModal } from './RCIHelpModal.tsx';
+import { HZ } from '../../lib/rci/tables.ts';
 import type { PisoRow } from '../../lib/rci/types.ts';
 /** Columnas de la tabla de pisos (tooltip = ayuda resumida del HTML de referencia). Las que
  *  traen `ph` llevan el botón «Ver ayuda» (el panel del HTML, PISOS_PHELP). */
@@ -279,6 +280,66 @@ function TablaPisos({
   const [edit, toggleEdit] = useEditarTabla();
   /* Panel «Ver ayuda» de las columnas (el phelp del HTML): una clave a la vez. */
   const [ph, setPh] = useState<string | null>(null);
+  /* Chequeo de RANGOS en S/L/DMR (mismo gesto que GrupoTabla: inválido se ve rojo pero NO se
+   * guarda; al salir del input la celda vuelve al valor persistido). Límites por RIESGO del
+   * piso: S 1,8–S máx · L 1,8–L máx · DMR ≤ S máx/2 (NFPA 13, mismos de Verificaciones). */
+  const [borrador, setBorrador] = useState<{ i: number; k: string; val: string } | null>(null);
+  const [err, setErr] = useState<{ i: number; k: string; msg: string } | null>(null);
+  const hzDe = (riesgo: string): (typeof HZ)[string] => HZ[riesgo] || HZ['Riesgo leve'];
+  const rangoDe = (k: 'S' | 'L' | 'Dmuro', riesgo: string): { min?: number; max?: number } => {
+    const hz = hzDe(riesgo);
+    return k === 'S'
+      ? { min: 1.8, max: hz.s }
+      : k === 'L'
+        ? { min: 1.8, max: hz.l }
+        : { max: hz.s / 2 };
+  };
+  const txtRango = (rg: { min?: number; max?: number }): string => {
+    const partes: string[] = [];
+    if (rg.min !== undefined) partes.push(`mínimo ${rg.min}`);
+    if (rg.max !== undefined) partes.push(`máximo ${rg.max}`);
+    return partes.join(' y ');
+  };
+  /** Cambio de S/L/DMR con rango: valida y solo persiste lo válido (vacío siempre pasa: DMR
+   *  vacía = hereda la global). Ej: S=6 en riesgo leve (máx 4,6) → rojo y sin guardar. */
+  const onChangeNum = (f: FilaTipologia, k: 'S' | 'L' | 'Dmuro', v: string): void => {
+    if (v === '') {
+      setBorrador(null);
+      setErr(null);
+      setPiso(f.i, k)('');
+      return;
+    }
+    const rg = rangoDe(k, f.riesgo);
+    const n = parseFloat(v.replace(',', '.'));
+    const fuera =
+      isNaN(n) || (rg.min !== undefined && n < rg.min) || (rg.max !== undefined && n > rg.max);
+    if (fuera) {
+      setBorrador({ i: f.i, k, val: v });
+      setErr({ i: f.i, k, msg: `Fuera de rango: ${txtRango(rg)} — no se guarda.` });
+      return;
+    }
+    setBorrador(null);
+    setErr(null);
+    setPiso(f.i, k)(v);
+  };
+  const numCel = (f: FilaTipologia, k: 'S' | 'L' | 'Dmuro'): ReactElement => (
+    <input
+      type="number"
+      step="any"
+      value={borrador && borrador.i === f.i && borrador.k === k ? borrador.val : String(f[k] ?? '')}
+      onChange={(e) => onChangeNum(f, k, e.target.value)}
+      onBlur={() => {
+        setBorrador(null);
+        setErr(null);
+      }}
+      title={err && err.i === f.i && err.k === k ? err.msg : undefined}
+      style={{
+        ...CELDA12,
+        width: 60,
+        ...(err && err.i === f.i && err.k === k ? { borderColor: '#e05252' } : {}),
+      }}
+    />
+  );
   const ayudaDe = (c: { l: string; ph?: string }): ReactNode =>
     c.ph ? (
       <button
@@ -495,41 +556,14 @@ function TablaPisos({
                   )}
                 </td>
                 <td className="c" style={TDP}>
-                  {celdaEditable(
-                    edit,
-                    <input
-                      type="number"
-                      step="any"
-                      value={f.S}
-                      onChange={(e) => setPiso(f.i, 'S')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
-                    />,
-                  )}
+                  {celdaEditable(edit, numCel(f, 'S'))}
                 </td>
                 <td className="c" style={TDP}>
-                  {celdaEditable(
-                    edit,
-                    <input
-                      type="number"
-                      step="any"
-                      value={f.L}
-                      onChange={(e) => setPiso(f.i, 'L')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
-                    />,
-                  )}
+                  {celdaEditable(edit, numCel(f, 'L'))}
                 </td>
                 <td className="c" style={TDP}>
                   {/* DMR: distancia máxima de rociador a muro (vacío = la global del proyecto). */}
-                  {celdaEditable(
-                    edit,
-                    <input
-                      type="number"
-                      step="any"
-                      value={f.Dmuro}
-                      onChange={(e) => setPiso(f.i, 'Dmuro')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
-                    />,
-                  )}
+                  {celdaEditable(edit, numCel(f, 'Dmuro'))}
                 </td>
                 <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
                   {celdaEditable(
@@ -610,6 +644,13 @@ function TablaPisos({
           </tbody>
         </table>
       </div>
+      {/* Alerta de rango (misma frase que GrupoTabla): la celda inválida se ve roja y el valor
+       *  NO se guarda — al salir del input vuelve al valor persistido. */}
+      {err ? (
+        <p role="alert" style={{ margin: '2px 0 0', fontSize: 11.5, color: '#e05252' }}>
+          {filas.find((f) => f.i === err.i)?.nombre || `Piso ${err.i + 1}`}: {err.msg}
+        </p>
+      ) : null}
       {/* Panel «Ver ayuda» (el phelp del HTML): tarjeta compartida con la ayuda de la columna. */}
       {ph && PISOS_PHELP[ph] ? (
         <RciHelpModal titulo={PISOS_PHELP[ph].t} onClose={() => setPh(null)}>

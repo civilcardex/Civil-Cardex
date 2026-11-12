@@ -7,8 +7,9 @@
 import { useState, type CSSProperties } from 'react';
 import { anchoValor, celdaEditable, TDC, CELDA } from './RCIEditableCell.tsx';
 import { TH } from '../../styles/sharedTableStyles.ts';
-import { DIAMETROS, MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
+import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import type { FilaRamalRci } from '../../utils/rci/RCIRowsModel.ts';
+import { DIAM_BY_MAT } from '../../constants/engineeringDataMaterials.ts';
 import { ChipEstado } from './RCIUI.tsx';
 import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
@@ -24,15 +25,18 @@ const THW: CSSProperties = {
   padding: '4px 3px',
   lineHeight: 1.15,
 };
-const BTN_MV: CSSProperties = {
-  border: '1px solid var(--line)',
-  background: 'var(--bg3)',
-  color: 'var(--txt2)',
-  borderRadius: 3,
-  cursor: 'pointer',
-  fontSize: 11,
-  padding: '1px 6px',
+/** Nombre EXACTO de la etiqueta del trazo en el dibujo (RRCI1…): vive en f.id tras el «|»
+ *  (planId|idTrazo). Sin id estable (fila de ejemplo) cae al nombre calculado R1… */
+const nombreDibujoDe = (f: FilaRamalRci): string => {
+  const id = String(f.id || '');
+  return id.includes('|') ? id.slice(id.indexOf('|') + 1) : f.nombre;
 };
+/** Opciones del desplegable Ø = MISMAS del dibujo (DIAM_BY_MAT del material de la fila);
+ *  material vacío/desconocido → la default rci del dibujo (A.C. SCH 40). 'auto' primero. */
+const diamOpcionesDe = (mat: string): string[] => [
+  'auto',
+  ...(DIAM_BY_MAT[mat] || DIAM_BY_MAT['A.C. SCH 40'] || []).map((d) => d.n),
+];
 
 /** Tipos de rociador del ramal (v1.7.80) y su abreviatura en la celda. */
 const TROC = ['Colgante', 'Montante', 'Oculto', 'Colgante seco'] as const;
@@ -132,7 +136,6 @@ export function RciRamalesTable({
   rd,
   editRam,
   setRamal,
-  moverRamal,
   sProyecto,
   zRamTxt,
   okN,
@@ -148,7 +151,6 @@ export function RciRamalesTable({
   rd: RedResult | null;
   editRam: boolean;
   setRamal: (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => void;
-  moverRamal: (i: number, dir: -1 | 1) => void;
   /** Separación S del proyecto (placeholder de la celda S). */
   sProyecto: string;
   /** Cota de los ramales (placeholder de la cota por ramal). */
@@ -196,7 +198,6 @@ export function RciRamalesTable({
               <th scope="col" colSpan={12} style={THW}>
                 Resultados
               </th>
-              <th scope="col" style={THW} />
             </tr>
             <tr>
               <th scope="col" style={THW}>
@@ -329,13 +330,6 @@ export function RciRamalesTable({
               <th scope="col" style={THW} title="Cálculo completo y dentro de límites">
                 Estado
               </th>
-              <th
-                scope="col"
-                style={THW}
-                title="Subir (más remoto) o bajar el ramal en el orden del cálculo"
-              >
-                Orden
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -347,8 +341,9 @@ export function RciRamalesTable({
                   <td
                     className="c"
                     style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
+                    title="Etiqueta del trazo en el dibujo"
                   >
-                    🔒 {f.nombre}
+                    {nombreDibujoDe(f)}
                   </td>
                   <td
                     className="c"
@@ -402,13 +397,14 @@ export function RciRamalesTable({
                   </td>
                   <td className="c" style={{ padding: '1px 2px' }}>
                     {celdaEditable(
-                      editRam && !fij.dn,
+                      editRam,
                       <select
                         value={f.dn}
                         onChange={(e) => setRamal(i, 'dn')(e.target.value)}
+                        title="Diámetro único del ramal. Auto: el menor que cumple la velocidad máxima. Mismas opciones que el desplegable del dibujo"
                         style={{ ...CELDA, width: anchoValor(f.dn) }}
                       >
-                        {DIAMETROS.map((o) => (
+                        {diamOpcionesDe(f.mat).map((o) => (
                           <option key={o} value={o}>
                             {o}
                           </option>
@@ -515,35 +511,13 @@ export function RciRamalesTable({
                   >
                     {f.ok ? 'OK' : 'revisar'}
                   </td>
-                  <td className="c" style={{ padding: '1px 2px', whiteSpace: 'nowrap' }}>
-                    <button
-                      type="button"
-                      title="Subir (más remoto)"
-                      aria-label={`Subir ${f.nombre}`}
-                      disabled={!editRam || i === 0}
-                      onClick={() => moverRamal(i, -1)}
-                      style={BTN_MV}
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      title="Bajar"
-                      aria-label={`Bajar ${f.nombre}`}
-                      disabled={!editRam || i === rams.length - 1}
-                      onClick={() => moverRamal(i, 1)}
-                      style={{ ...BTN_MV, marginLeft: 2 }}
-                    >
-                      ↓
-                    </button>
-                  </td>
                 </tr>
               );
             })}
             {rams.length === 0 && (
               <tr>
-                {/* 23 columnas: 3+2+4+1+12 del grupo + la de orden. */}
-                <td colSpan={24} style={TDC}>
+                {/* 23 columnas: 3+2+4+1+13 del grupo (sin la de Orden, ped. usuario). */}
+                <td colSpan={23} style={TDC}>
                   Sin ramales extraídos: dibuje trazos en el plano y confírmelo.
                 </td>
               </tr>
@@ -559,22 +533,21 @@ export function RciRamalesTable({
               <td className="c" style={{ ...TDC, fontWeight: 700 }}>
                 {rd ? rd.flTot : '—'}
               </td>
-              <td colSpan={19} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
+              <td colSpan={18} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
                 {rd ? (
                   <>
                     <ChipEstado
                       st={okN ? 'CUMPLE' : rd.flTot < roc.Nreq ? 'NO CUMPLE' : 'REVISAR'}
                     />{' '}
                     {okN
-                      ? `${rd.flTot} = ${roc.Nreq} requeridos ✓`
-                      : `${rd.flTot} con flujo · el área exige ${roc.Nreq}`}{' '}
+                      ? `Fluyen ${rd.flTot} de ${roc.Nreq} requeridos ✓`
+                      : `Fluyen ${rd.flTot} de ${roc.Nreq} requeridos`}{' '}
                     <span style={{ color: 'var(--txt3)' }}>
-                      {roc.Nramal} por ramal (lado largo {fmt(roc.Llargo)} m)
+                      · {roc.Nramal} por ramal (lado largo {fmt(roc.Llargo)} m)
                     </span>
                   </>
                 ) : null}
               </td>
-              <td style={TDC} />
             </tr>
           </tfoot>
         </table>

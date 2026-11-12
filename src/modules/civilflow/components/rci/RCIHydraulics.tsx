@@ -180,18 +180,23 @@ export function RciHidraulica({
      * visor (material + etiqueta del canvas). La fila sabe su trazo por id estable
      * `planId|idTrazo`; se escribe el doc de trazos del piso con ts FRESCO + BD (regla del
      * repo: la copia local solo gana a la BD por ts — sin ts, al reabrir el visor la BD
-     * revierte el material). Solo 'mat' — el Ø lo decide el cálculo/auto. */
-    if (k === 'mat') {
+     * revierte el material). Mismo gesto para 'dn' (Ø digitado → trazo.diametro). */
+    if (k === 'mat' || k === 'dn') {
       const filaId = String(red?.ramales?.[i]?.id ?? red?.ramales?.[i]?.nombre ?? '');
       const elId = filaId.includes('|') ? filaId.slice(filaId.indexOf('|') + 1) : '';
       if (elId && redKey) {
         const doc = loadFromStorage<DrawingData | null>(
           TRAZOS_PREFIX + redKey,
           null,
-        ) as unknown as { ts?: number; ramales?: Array<{ id?: string; material?: string }> } | null;
+        ) as unknown as {
+          ts?: number;
+          ramales?: Array<{ id?: string; material?: string; diametro?: string }>;
+        } | null;
         const trazo = doc?.ramales?.find((r) => r.id === elId);
-        if (doc && trazo && (trazo.material || '') !== v) {
-          trazo.material = v;
+        const campo = k === 'mat' ? 'material' : 'diametro';
+        const actual = trazo ? (trazo as Record<string, string | undefined>)[campo] : undefined;
+        if (doc && trazo && (actual || '') !== v) {
+          (trazo as Record<string, string | undefined>)[campo] = v;
           doc.ts = Date.now();
           const ok = saveToStorage(TRAZOS_PREFIX + redKey, doc, { sinDiario: true });
           if (ok) saveTrazosToDB(String(redKey), doc);
@@ -239,17 +244,6 @@ export function RciHidraulica({
       const nodos = { ...(r.nodos || {}) };
       nodos[nodo] = { ...(nodos[nodo] || { z: '' }), z: v };
       return { ...e, redes: { ...e.redes, [redKey]: { ...r, nodos } } };
-    });
-  /* Orden de los ramales: el primero es el más remoto; intercambia índices vecinos. */
-  const moverRamal = (i: number, dir: -1 | 1) =>
-    editar((e) => {
-      const r = e.redes[redKey];
-      if (!r) return e;
-      const j = i + dir;
-      if (j < 0 || j >= r.ramales.length) return e;
-      const ramales = r.ramales.slice();
-      [ramales[i], ramales[j]] = [ramales[j], ramales[i]];
-      return { ...e, redes: { ...e.redes, [redKey]: { ...r, ramales } } };
     });
 
   const [vrpAbierta, setVrpAbierta] = useState(false);
@@ -352,7 +346,6 @@ export function RciHidraulica({
               rd={rd}
               editRam={editRam}
               setRamal={setRamal}
-              moverRamal={moverRamal}
               sProyecto={sProyecto}
               zRamTxt={zRamTxt}
               okN={okN}
