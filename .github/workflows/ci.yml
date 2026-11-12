@@ -72,3 +72,16 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+      # Deploy producción SOLO si TODO el CI salió verde: Vercel no construye por git
+      # (ignoreCommand en vercel.json); el hook es el único camino a producción.
+      - name: Deploy producción (solo CI verde)
+        if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "VERCEL_DEPLOY_HOOK sin definir; se omite el deploy (crea el secret en el repo)."
+            exit 0
+          fi
+          curl -sf -X POST "$HOOK"
