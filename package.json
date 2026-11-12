@@ -20,7 +20,8 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "check": "tsc --noEmit && vitest run && npm run build",
     "prepare": "simple-git-hooks",
-    "postbuild": "node scripts/prerender.mjs"
+    "postbuild": "node scripts/prerender.mjs",
+    "bundle:budget": "node scripts/bundleBudget.mjs"
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"

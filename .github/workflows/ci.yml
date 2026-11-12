@@ -41,32 +41,28 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Tests relacionados solo con los archivos fuente modificados.
-      # En PR: diff contra origin/main (merge-base). En push a main: contra HEAD~1
-      # (si es el primer commit no hay base y se omiten).
-      - name: Related tests
+      # Tests: en PR solo los relacionados con lo modificado (vitest related, rápido para
+      # iterar). En push a main corre la SUITE COMPLETA: un push a main despliega a
+      # producción (job deploy) = pre-release, y AGENTS.md reserva la suite entera para eso.
+      - name: Tests (related en PR, completos en main)
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "push" ]; then
-            if git rev-parse -q --verify "HEAD~1" >/dev/null 2>&1; then
-              DIFF=$(git diff --name-only HEAD~1 HEAD -- 'src/**')
-            else
-              echo "Primer commit en main: sin base para diff; se omiten los tests relacionados."
-              DIFF=""
-            fi
+            echo "Push a main: suite completa (pre-release)."
+            npx vitest run
           else
             DIFF=$(git diff --name-only origin/main...HEAD -- 'src/**')
-          fi
-          CHANGED=$(printf '%s' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -v '.test.' || true)
-          if [ -n "$CHANGED" ]; then
-            echo "Archivos fuente modificados:"
-            echo "$CHANGED"
-            # Sin comillas: cada archivo es un argumento aparte para vitest related
-            npx vitest related --run $CHANGED
-          else
-            echo "Sin archivos .ts/.tsx modificados; se omiten los tests relacionados."
+            CHANGED=$(printf '%s' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -v '.test.' || true)
+            if [ -n "$CHANGED" ]; then
+              echo "Archivos fuente modificados (PR):"
+              echo "$CHANGED"
+              # Sin comillas: cada archivo es un argumento aparte para vitest related
+              npx vitest related --run $CHANGED
+            else
+              echo "Sin archivos .ts/.tsx modificados; se omiten los tests relacionados."
+            fi
           fi
 
       - name: Build
@@ -74,6 +70,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: npm run build
+
+      # Presupuesto de bundle ENFORZADO: falla si el entry o algún chunk supera su tope.
+      - name: Bundle budget
+        run: npm run bundle:budget
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
@@ -83,10 +83,16 @@ jobs:
       - name: Size report (advisory)
         run: node scripts/sizeReport.mjs
 
-      # Deploy producción SOLO si TODO el CI salió verde: la integración Git de Vercel está
-      # apagada (github.enabled false en vercel.json) — el CLI es el único camino a prod.
-      - name: Deploy producción (solo CI verde)
-        if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+  # Deploy producción: SOLO si el job ci (typecheck+lint+tests+build+budget) Y el job e2e
+  # salieron verdes. La integración Git de Vercel está apagada (github.enabled false en
+  # vercel.json) — este CLI es el único camino a prod.
+  deploy:
+    name: Deploy producción (ci + e2e verdes)
+    needs: [ci, e2e]
+    if: success() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy a Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
