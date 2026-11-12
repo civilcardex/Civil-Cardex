@@ -234,7 +234,9 @@ function PanelSuscripcion({
               <th scope="col" style={{ padding: '6px 8px', fontWeight: 600 }}>
                 Puede editar
               </th>
-              <th scope="col" style={{ padding: '6px 8px' }} aria-label="Acciones" />
+              <th scope="col" style={{ padding: '6px 8px' }}>
+                <span className="sr-only">Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody>
