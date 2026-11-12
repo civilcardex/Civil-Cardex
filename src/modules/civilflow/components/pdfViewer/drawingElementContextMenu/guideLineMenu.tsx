@@ -326,7 +326,8 @@ export function GuideLineMenu() {
         >
           + Crear tributarios a partir de línea guía
         </button>
-      ) : (
+      ) : effectiveNet !== 'rci' ? (
+        // rci NO tiene tributarios (doctrina): el botón singular desaparece en esa red.
         <button
           type="button"
           onClick={() => {
@@ -374,7 +375,7 @@ export function GuideLineMenu() {
         >
           + Crear tributario a partir de línea guía
         </button>
-      )}
+      ) : null}
       {/* MURO (red rci, ped. usuario): la guía marcada esMuro participa en la verificación de
           distancia de ramales a muros (checks RCI). Toggle sobre el elemento vivo. */}
       {effectiveNet === 'rci' && (

@@ -25,7 +25,13 @@ export function tribCandidatesDe(
   } | null,
   ramalEl: PlanoRamal,
 ): PlanoRamal[] {
-  if (!eng || ramalEl.tipo === 'tributario' || !ramalEl.pts || ramalEl.pts.length < 2) {
+  if (
+    !eng ||
+    ramalEl.net === 'rci' || // la red rci no tiene tributarios (doctrina): sin candidatos
+    ramalEl.tipo === 'tributario' ||
+    !ramalEl.pts ||
+    ramalEl.pts.length < 2
+  ) {
     return [];
   }
   const TOL = 0.5;

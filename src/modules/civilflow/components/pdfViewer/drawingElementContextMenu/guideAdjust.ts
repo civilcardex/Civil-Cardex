@@ -154,6 +154,8 @@ export function buildTribFromGuide(
   id: string,
   viaPts?: [number, number][],
 ): PlanoRamal | null {
+  // rci NO tiene tributarios (doctrina RCI): defensa profunda aunque la UI ya no lo ofrezca.
+  if (padre.net === 'rci') return null;
   const pStart: [number, number] = [freeEnd[0], freeEnd[1]];
   const pEnd: [number, number] = [crossPt[0], crossPt[1]];
   const via: [number, number][] = (viaPts || [])

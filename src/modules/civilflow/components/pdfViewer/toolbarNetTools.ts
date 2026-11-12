@@ -32,6 +32,8 @@ export function isToolDisabledForNet(
   if (toolId === 'gab') return net !== 'rci';
   // Muro: solo rci (la verificación de distancia de ramales a muros es del módulo RCI).
   if (toolId === 'muro') return net !== 'rci';
+  // Tributario: NO en rci (la red contra incendio no tiene tributarios — doctrina RCI).
+  if (toolId === 'line-trib') return net === 'rci';
   return false;
 }
 

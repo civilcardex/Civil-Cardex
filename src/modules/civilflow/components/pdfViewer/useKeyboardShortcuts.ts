@@ -53,7 +53,15 @@ export function useKeyboardShortcuts({
         selectTool('line');
         e.preventDefault();
       }
-      if (e.key.toLowerCase() === 't') {
+      // 't' de Tributario — NO en rci (la red contra incendio no tiene tributarios), mismo
+      // gate del botón (isToolDisabledForNet); sin modificadores como la 'o'.
+      if (
+        e.key.toLowerCase() === 't' &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        engRef.current?.activeNet !== 'rci'
+      ) {
         selectTipo('tributario');
         selectTool('line');
         e.preventDefault();

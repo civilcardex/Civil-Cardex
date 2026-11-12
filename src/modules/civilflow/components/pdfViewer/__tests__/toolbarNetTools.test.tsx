@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { buildNetTools, isToolDisabledForNet, TOOLS } from '../toolbarNetTools.ts';
+import { buildNetTools, isToolDisabledForNet } from '../toolbarNetTools.ts';
 import { STATUS, ToolbarCollapsed, ToolbarExpanded } from '../toolbarButtons.tsx';
 import { renderYVer } from '../../../../../test/render.tsx';
 
@@ -57,11 +57,14 @@ describe('buildNetTools (regla herramienta↔red)', () => {
   });
 
   it('el orden de inserciones respeta el contrato de splices (muro, gab tras Texto en rci)', () => {
-    // En rci quedan visibles gab y muro: cada splice(7) empuja al anterior → muro primero.
+    // En rci NO está el tributario (doctrina RCI: la red no tiene tributarios) — sin él quedan
+    // visibles gab y muro tras Texto: muro en el índice 6 y gab en el 7.
     const v = ids('rci');
-    expect(v.slice(0, 7)).toEqual(TOOLS.slice(0, 7).map((t) => t.id));
-    expect(v[7]).toBe('muro');
-    expect(v[8]).toBe('gab');
+    expect(v).not.toContain('line-trib');
+    expect(v[6]).toBe('muro');
+    expect(v[7]).toBe('gab');
+    // En af el tributario sigue disponible.
+    expect(ids('af')).toContain('line-trib');
   });
 
   it('isToolDisabledForNet coincide con el filtro de buildNetTools', () => {

@@ -103,7 +103,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   const diametroBornDefault = !def.diametro;
   const net = NETS.find((n) => n.id === engine.activeRamal!.net);
   const netPfx = net ? net.lbl : 'R';
-  const isTrib = engine.tipoTramo === 'tributario';
+  const isTrib = engine.tipoTramo === 'tributario' && engine.activeRamal!.net !== 'rci';
   // Autodetección de padre prioriza geometría: evita stale RS1 cuando barra quedó en RS1
   const autoPadre = isTrib
     ? detectTributaryPadre(engine, engine.activeRamal!.pts, engine.activeRamal!.net)
