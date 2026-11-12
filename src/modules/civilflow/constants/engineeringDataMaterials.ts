@@ -19,8 +19,8 @@ const MATS_RAW = {
     // de cálculo SIN mapear — un solo catálogo para dibujo y diseño (ped. usuario).
     'Acero SCH 10',
     'Acero SCH 40',
-    'PVC C900 DR14',
-    'PVC C900 DR18',
+    'PVC C900 RDE 14',
+    'PVC C900 RDE 18',
     'CPVC SDR 13,5',
   ],
 };
@@ -33,8 +33,8 @@ export const MATS_DEFAULT = Object.fromEntries(
 export const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',
   'PVC-S': 'PVC Sanitario',
-  'PVC C900 DR14': 'PVC C900 DR14',
-  'PVC C900 DR18': 'PVC C900 DR18',
+  'PVC C900 DR14': 'PVC C900 RDE 14',
+  'PVC C900 DR18': 'PVC C900 RDE 18',
   'CPVC SDR 13,5': 'CPVC SDR 13,5',
   CPVC: 'CPVC (cloruro de polivinilo clorado)',
   'Cobre rígido': 'Cobre rígido',
@@ -60,6 +60,42 @@ export const MAT_LONGFORM = {
 export function matLongName(short: string) {
   if (!short) return '—';
   return (MAT_LONGFORM as Record<string, string>)[short] || short;
+}
+
+/** Alias de MIGRACIÓN del catálogo rci (pre-unificación): los dibujos guardados antes del
+ *  cambio guardan los nombres viejos — sus listas de Ø deben seguir resolviendo y el valor
+ *  se NORMALIZA a la clave de PIPES al mostrarse/editarse. */
+export const MAT_RCI_LEGACY: Record<string, string> = {
+  'A.C. SCH 40': 'Acero SCH 40',
+  'A.C. SCH 10': 'Acero SCH 10',
+  'PVC C900 DR14': 'PVC C900 RDE 14',
+  'PVC C900 DR18': 'PVC C900 RDE 18',
+  'CPVC CPVC-CI': 'CPVC SDR 13,5',
+};
+
+/** Lista de diámetros de un material: directa por clave, o vía alias de migración rci.
+ *  Ej: diamListPorMaterial('A.C. SCH 40') = lista de 'Acero SCH 40' (dibujo viejo). */
+export function diamListPorMaterial(mat: string): Array<{ n: string; id?: number }> {
+  return DIAM_BY_MAT[mat] || DIAM_BY_MAT[MAT_RCI_LEGACY[mat] || ''] || [];
+}
+
+/** Material rci NORMALIZADO para mostrar/persistir: el alias viejo se ve con su nombre nuevo.
+ *  Ej: material guardado 'A.C. SCH 40' se despliega como 'Acero SCH 40' (al cambiar se
+ *  persiste la clave nueva). */
+export function matRciNormalizado(mat: string): string {
+  return MAT_RCI_LEGACY[mat] || mat;
+}
+
+/** NORMALIZA un mapa de materiales persistido (localStorage 'civilflow_mats' o nube): la
+ *  categoría rci SIEMPRE sale con el catálogo canónico (claves de PIPES) — los guardados
+ *  viejos traían 'A.C. SCH 40'/'PVC C900 RDE 14' y desincronizaban el desplegable del panel
+ *  respecto del de diseño. Las demás categorías pasan intactas. */
+export function normalizarMatsRci<T extends { val: string }>(
+  mats: Record<string, T[]> | null | undefined,
+): Record<string, T[]> {
+  const out: Record<string, T[]> = { ...(mats || {}) };
+  out.rci = (MATS_DEFAULT.rci || []).map((m) => ({ ...m })) as unknown as T[];
+  return out;
 }
 
 /** Reverse lookup: "PVC Sanitario" → "PVC-S". Si no encuentra, devuelve el input tal cual. */
@@ -257,7 +293,7 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '3"' },
     { n: '4"' },
   ],
-  'CPVC CPVC-CI': [
+  'CPVC SDR 13,5': [
     { n: '3/4"' },
     { n: '1"' },
     { n: '1-1/4"' },
@@ -266,10 +302,10 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '2-1/2"' },
     { n: '3"' },
   ],
-  'PVC C900 DR14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
-  // id = diámetro interno (mm) del C900 DR18: OD − 2×espesor (tabla PIPES del cálculo rci:
+  'PVC C900 RDE 14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
+  // id = diámetro interno (mm) del C900 RDE 18: OD − 2×espesor (tabla PIPES del cálculo rci:
   // 4" 121.9−2×6.78, 6" 175.3−2×9.73, 8" 229.9−2×12.78, 10" 281.9−2×15.67, 12" 335.3−2×18.62).
-  'PVC C900 DR18': [
+  'PVC C900 RDE 18': [
     { n: '4"', id: 108.34 },
     { n: '6"', id: 155.84 },
     { n: '8"', id: 204.34 },
