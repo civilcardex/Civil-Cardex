@@ -485,6 +485,43 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     r.pendiente = 2;
     if (!r.diametro) r.diametro = '2"';
   }
+  // CODO 90° AUTO EN LA ESQUINA L (ped. usuario, SOLO rci): un ramal nuevo que aterriza
+  // EXACTAMENTE en el extremo de otro ramal rci con dirección distinta forma un codo de
+  // plano — se estampa 'codo90rc' en los extremos LIBRES de ambos: el arco de esquina se
+  // dibuja (PLAN_CODO_TYPES → drawCornerCodoArc + trim de cuerpos), el extractor lo cuenta
+  // en las filas R/T y el resumen de accesorios por diámetro lo suma con el Ø del punto.
+  if (r.net === 'rci' && r.pts && r.pts.length >= 2) {
+    const TOL_CODO = 0.5;
+    const dirDeVertice = (rm: { pts: number[][] }, i: number) => {
+      const j = i === 0 ? 1 : i - 1;
+      const dx = rm.pts[j][0] - rm.pts[i][0];
+      const dy = rm.pts[j][1] - rm.pts[i][1];
+      const l = Math.hypot(dx, dy);
+      return l > 0.1 ? { x: dx / l, y: dy / l } : null;
+    };
+    for (const idx of [0, r.pts.length - 1]) {
+      const slot = idx === 0 ? 'accesorioInicio' : 'accesorioFin';
+      if (r[slot]) continue; // el extremo ya lleva accesorio (rociador de cabeza, tee…): no se pisa
+      const dPropia = dirDeVertice(r, idx);
+      if (!dPropia) continue;
+      const pt = r.pts[idx];
+      for (const o of engine.ramales) {
+        if (o.id === r.id || o.net !== 'rci' || !o.pts || o.pts.length < 2) continue;
+        const li = o.pts.length - 1;
+        for (const oi of [0, li]) {
+          if (Math.hypot(o.pts[oi][0] - pt[0], o.pts[oi][1] - pt[1]) >= TOL_CODO) continue;
+          const dOtra = dirDeVertice(o, oi);
+          if (!dOtra) continue;
+          // Colineales (misma recta) NO son codo — la esquina exige un cambio de dirección.
+          if (Math.abs(dOtra.x * dPropia.x + dOtra.y * dPropia.y) >= 0.98) continue;
+          r[slot] = 'codo90rc';
+          const oSlot = oi === 0 ? 'accesorioInicio' : 'accesorioFin';
+          if (!o[oSlot]) o[oSlot] = 'codo90rc';
+        }
+        if (r[slot]) break;
+      }
+    }
+  }
   // Llegada al CENTRO de una caja: SIN propagación de diámetros (ni herencia ramal-ramal ni
   // propagarSanDiametroAguasAbajo) — orig. usuario. SIN return temprano: el tail (activeRamal
   // = null, selId, markDirty, modal) DEBE correr o el Enter "no termina" el trazo.
