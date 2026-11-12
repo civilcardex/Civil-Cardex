@@ -1,0 +1,116 @@
+/** Campos de la sub-pestaña SIAMESA: la conexión de bomberos a nivel de andén — número,
+ *  entradas, accesorios y distancias. Todas las filas se habilitan si el código exige
+ *  montantes (dep local.exigeSP). Ej: sia.h congela el rango NFPA 14 de 0,46 a 1,22 m. */
+import type { DefCampo } from '../RCIGroupTable.tsx';
+import { NOM } from '../../../lib/rci/tables.ts';
+import { MATERIALES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
+
+export const GRUPO_SIAMESA: DefCampo[] = [
+  {
+    path: 'sia.n',
+    lbl: 'Número de siamesas',
+    num: true,
+    uni: 'un',
+    ayu: 'En edificios altos, al menos dos alejadas entre sí por zona',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.entradas',
+    lbl: 'Entradas de 2½" por siamesa',
+    num: true,
+    uni: 'un',
+    ayu: 'Lo usual son dos (siamesa en Y)',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.rosca',
+    lbl: 'Rosca de las entradas',
+    ayu: 'La define el cuerpo de bomberos local',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.npt',
+    lbl: 'NPT del andén frente a la siamesa',
+    num: true,
+    uni: 'm',
+    ayu: 'Mismo origen que los NPT de los pisos',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.h',
+    lbl: 'Altura de las entradas sobre el andén',
+    num: true,
+    uni: 'm',
+    ayu: 'NFPA 14: entre 0,46 y 1,22 m (18 y 48 in)',
+    dep: 'local.exigeSP',
+    rango: () => ({ min: 0.46, max: 1.22 }),
+  },
+  {
+    path: 'sia.mat',
+    lbl: 'Material de la tubería de la siamesa',
+    opts: MATERIALES,
+    ayu: 'Su C sale de la tabla de Tubería',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.dn',
+    lbl: 'Diámetro de la tubería de la siamesa',
+    opts: NOM,
+    ayu: 'Mínimo 4"',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.L',
+    lbl: 'Longitud de la siamesa a la base del montante',
+    num: true,
+    uni: 'm',
+    ayu: 'Recorrido real de la tubería',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.c90',
+    lbl: 'Codos 90°',
+    num: true,
+    uni: 'un',
+    ayu: 'Accesorios de la tubería de la siamesa',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.tee',
+    lbl: 'Tees con giro',
+    num: true,
+    uni: 'un',
+    ayu: 'Solo donde el flujo gira',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.chq',
+    lbl: 'Cheques (válvula de retención)',
+    num: true,
+    uni: 'un',
+    ayu: 'NFPA 14: un cheque listado en la tubería de la siamesa',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.cierre',
+    lbl: '¿Hay válvula de cierre entre la siamesa y el sistema?',
+    opts: SINO,
+    ayu: 'NFPA 14 no la permite',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.drenaje',
+    lbl: '¿Drenaje automático entre la siamesa y el cheque?',
+    opts: SINO,
+    ayu: 'Evita que la tubería quede con agua',
+    dep: 'local.exigeSP',
+  },
+  {
+    path: 'sia.hidrante',
+    lbl: 'Distancia al hidrante más cercano',
+    num: true,
+    uni: 'm',
+    ayu: 'La fija la autoridad; lo usual es 30,5 m (100 ft) o menos',
+    dep: 'local.exigeSP',
+  },
+];
