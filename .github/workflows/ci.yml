@@ -78,8 +78,8 @@ jobs:
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
-      # Advisory de tamaños (sustituto informativo del guard de arquitectura): lista los
-      # archivos >700 l. NO falla — si la lista crece ronda tras ronda, hay split pendiente.
+      # Advisory informativo complementario: lista los archivos >700 l que NO estén en el
+      # baseline (el budget ya falla por los congelados; esto avisa si uno NUEVO engorda).
       - name: Size report (advisory)
         run: node scripts/sizeReport.mjs
 

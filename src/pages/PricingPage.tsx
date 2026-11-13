@@ -24,7 +24,7 @@ import {
   verificarPago,
 } from '../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
-import { plans, FAQ_JSONLD, PRODUCT_JSONLD, BADGE_STYLE } from './pricingData.ts';
+import { plans, FAQ_JSONLD, PRODUCT_JSONLD } from './pricingData.ts';
 import PricingHero from './pricing/PricingHero.tsx';
 import { PricingPlans, PricingResumen } from './pricing/PricingPlans.tsx';
 import PricingFaq from './pricing/PricingFaq.tsx';
@@ -184,34 +184,12 @@ function PricingSuscripciones() {
   }
 
   return (
-    <div
-      className="landing-root"
-      style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
-    >
-      <style>{`
-        .pr-card { transition: border-color .15s, background .15s; }
-        .pr-cta { transition: filter .15s, transform .15s; }
-        .pr-cta:hover:not(:disabled) { filter: brightness(1.08); }
-        .pr-cta:active:not(:disabled) { transform: translateY(1px); }
-        ::-webkit-scrollbar-thumb{background:#dce3ea}
-        ::-webkit-scrollbar-track{background:#1a1c20}
-      `}</style>
+    <div className="landing-root pricing-root">
       <Navbar />
       <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
         {/* Aviso neutro de verificación pendiente (edges Lemon sin deploy) — nunca error. */}
         {avisoPago && (
-          <p
-            role="status"
-            className="max-w-4xl mx-auto mb-8 text-center"
-            style={{
-              fontSize: 14,
-              color: '#b9caca',
-              border: '1px solid #3a494a',
-              borderRadius: 10,
-              background: '#16191d',
-              padding: '12px 18px',
-            }}
-          >
+          <p role="status" className="pricing-aviso max-w-4xl mx-auto mb-8 text-center">
             {avisoPago}
           </p>
         )}
@@ -273,29 +251,20 @@ function PricingPage() {
     <>
       <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
       <script type="application/ld+json">{JSON.stringify(PRODUCT_JSONLD)}</script>
-      <style>{`::-webkit-scrollbar-thumb{background:#dce3ea}::-webkit-scrollbar-thumb:hover{background:#f0f4f8}::-webkit-scrollbar-track{background:#1a1c20}`}</style>
-      <div
-        className="landing-root"
-        style={{ background: '#111317', color: '#e2e2e8', minHeight: '100vh' }}
-      >
+      <div className="landing-root pricing-root">
         <Navbar />
         <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
           <section className="text-center space-y-4 mb-20">
-            <h1
-              className="text-primary uppercase"
-              style={{ fontSize: 40, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}
-            >
-              Planes y Precios
-            </h1>
+            <h1 className="pricing-title text-primary uppercase">Planes y Precios</h1>
             <p className="text-base text-on-surface-variant max-w-xl mx-auto">
               Elija el plan que se adapte a su firma de ingeniería. Todos los planes incluyen
               verificación automática contra normativa colombiana vigente.
             </p>
             <div className="flex justify-center gap-3 pt-2">
-              <span style={BADGE_STYLE}>NTC 1500</span>
-              <span style={BADGE_STYLE}>RAS 2000</span>
-              <span style={BADGE_STYLE}>NTC 3728</span>
-              <span style={BADGE_STYLE}>NSR-10</span>
+              <span className="pricing-badge">NTC 1500</span>
+              <span className="pricing-badge">RAS 2000</span>
+              <span className="pricing-badge">NTC 3728</span>
+              <span className="pricing-badge">NSR-10</span>
             </div>
           </section>
 
@@ -303,70 +272,37 @@ function PricingPage() {
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className="border p-8 flex flex-col relative"
-                style={{
-                  background: plan.destacado ? '#1a1c20' : '#111317',
-                  borderColor: plan.destacado ? plan.color : '#3a494a',
-                  borderWidth: plan.destacado ? 2 : 1,
-                }}
+                data-plan={plan.id}
+                data-destacado={plan.destacado ? 'true' : 'false'}
+                className="pricing-plan border p-8 flex flex-col relative"
               >
                 {plan.destacado && (
-                  <div
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[10px] font-bold uppercase tracking-widest"
-                    style={{
-                      background: plan.color,
-                      color: '#003739',
-                      fontFamily: 'Geist, monospace',
-                    }}
-                  >
+                  <div className="pricing-plan-ribbon absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 text-[10px] font-bold uppercase tracking-widest">
                     Recomendado
                   </div>
                 )}
                 <div className="text-center mb-8">
-                  <h2
-                    className="uppercase tracking-widest mb-2"
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      fontFamily: 'Geist, monospace',
-                      color: plan.color,
-                    }}
-                  >
+                  <h2 className="pricing-plan-name uppercase tracking-widest mb-2">
                     {plan.nombre}
                   </h2>
                   <div className="flex items-baseline justify-center gap-1">
-                    <span
-                      style={{
-                        fontSize: 40,
-                        fontWeight: 700,
-                        fontFamily: 'Hanken Grotesk, sans-serif',
-                        color: plan.color,
-                      }}
-                    >
-                      {plan.precio}
-                    </span>
+                    <span className="pricing-plan-price">{plan.precio}</span>
                     {plan.periodo && (
-                      <span
-                        className="text-on-surface-variant"
-                        style={{ fontSize: 14, fontFamily: 'Hanken Grotesk, sans-serif' }}
-                      >
+                      <span className="pricing-plan-period text-on-surface-variant">
                         {plan.periodo}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-on-surface-variant mt-3" style={{ minHeight: 40 }}>
+                  <p className="pricing-plan-desc text-sm text-on-surface-variant mt-3">
                     {plan.desc}
                   </p>
                 </div>
-                <ul
-                  className="flex-1 space-y-3 mb-8"
-                  style={{ listStyle: 'none', margin: 0, padding: 0 }}
-                >
+                <ul className="list-reset flex-1 space-y-3 mb-8">
                   {plan.features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <span
-                        className="material-symbols-outlined text-sm! mt-0.5"
-                        style={{ color: '#2ff801', fontSize: 16 }}
+                        aria-hidden="true"
+                        className="pricing-plan-check material-symbols-outlined text-sm! mt-0.5"
                       >
                         check_circle
                       </span>
@@ -376,8 +312,8 @@ function PricingPage() {
                   {plan.missing.map((f, i) => (
                     <li key={'m' + i} className="flex items-start gap-2 opacity-40">
                       <span
-                        className="material-symbols-outlined text-sm! mt-0.5"
-                        style={{ color: '#849495', fontSize: 16 }}
+                        aria-hidden="true"
+                        className="pricing-plan-minus material-symbols-outlined text-sm! mt-0.5"
                       >
                         remove
                       </span>
@@ -387,14 +323,8 @@ function PricingPage() {
                 </ul>
                 <Link
                   to={plan.to}
-                  className="block text-center py-3 uppercase tracking-widest font-bold transition-all"
-                  style={{
-                    fontSize: 12,
-                    fontFamily: 'Geist, monospace',
-                    background: plan.destacado ? plan.color : 'transparent',
-                    color: plan.destacado ? '#003739' : plan.color,
-                    border: plan.destacado ? 'none' : `1px solid ${plan.color}`,
-                  }}
+                  data-destacado={plan.destacado ? 'true' : 'false'}
+                  className="pricing-plan-cta block text-center py-3 uppercase tracking-widest font-bold transition-all"
                 >
                   {plan.cta}
                 </Link>
@@ -402,10 +332,7 @@ function PricingPage() {
             ))}
           </section>
 
-          <section
-            className="text-center mt-20 space-y-2"
-            style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
-          >
+          <section className="pricing-footer text-center mt-20 space-y-2">
             <p className="text-[13px] text-on-surface-variant">
               ¿Necesita algo más específico?{' '}
               <Link to="/civilflowareatrabajo" className="text-primary hover:underline">
