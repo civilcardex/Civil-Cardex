@@ -391,7 +391,7 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
   const subs = SUBS;
 
   return (
-    <SubTabsRci subs={subs} sub={activa} setSub={(id) => irA('rociadores', id)}>
+    <SubTabsRci subs={subs} sub={activa} setSub={(id) => irA('tipologias', id)}>
       {activa === 'datos' ? (
         /* Centrada en la sección (ped. usuario). */
         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -414,6 +414,35 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
         </CardLectura>
       ) : null}
     </SubTabsRci>
+  );
+}
+
+/** Sub «Criterios de diseño» como página propia de Tipologías (v1.7.82: la referencia las
+ *  tiene AQUÍ, no en una pestaña Rociadores aparte). */
+export function RciCriterios({ ctx }: { ctx: RciCtx }) {
+  const tip = ctx.R.edif.active;
+  const ro = tip ? tip.roc : ctx.R.roc;
+  const nOp = tip && tip.rd ? tip.rd.Nop : null;
+  return (
+    <CardLectura titulo="Criterios de diseño" icono="/iconos/criterios_diseno.webp">
+      <CriteriosDiseno
+        ro={ro}
+        nOp={nOp}
+        qrTxt={ctx.estado.clas.qr}
+        sistemaTxt={ctx.estado.clas.sistema}
+      />
+    </CardLectura>
+  );
+}
+
+/** Sub «Rectángulo de fuego» como página propia de Tipologías (v1.7.82). */
+export function RciRectFuego({ ctx }: { ctx: RciCtx }) {
+  const tip = ctx.R.edif.active;
+  const ro = tip ? tip.roc : ctx.R.roc;
+  return (
+    <CardLectura titulo="Rectángulo de fuego" icono="/iconos/rectangulo_fuego.webp">
+      <RectanguloFuego ro={ro} rect={ctx.rectFuego} />
+    </CardLectura>
   );
 }
 

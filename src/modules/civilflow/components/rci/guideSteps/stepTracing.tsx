@@ -1,22 +1,18 @@
 /** Pasos 2 y 3 de la Guía de diseño RCI, el trazado sobre el plano: «Distribuye los
- *  rociadores» (cuadrícula y separaciones S/L) y «Organice ramales y tramos» (líneas, nudos
- *  y la derivación del montante). Ambos dibujan el plano/corte del proyecto.
- *  Ej: <PasoRociadores ctx={ctx} chk={chk} /> pinta el plano con "Separaciones entre
- *  rociadores, entre ramales y a muro". */
-import { ChipEstado } from '../RCIUI.tsx';
+ *  rociadores» (cuadrícula y separaciones S/L) y «Organiza ramales y tramos» (líneas, nudos
+ *  y la derivación del montante). GENERAL/ILUSTRATIVA (ped. usuario): usan el ejemplo fijo
+ *  ROC_GUIA — sin datos del proyecto y sin chips de verificación.
+ *  Ej: <PasoRociadores /> pinta el plano con las cotas "S", "L" y "≤". */
 import { CorteSvg, PlanSvg } from '../RCISvgFloorplan.tsx';
-import { n2 } from '../RCISvgSchemas.tsx';
-import { BLOQUE, BLOQUE_COMPACTO, GPAIR, GST, TXT, UL, type PropsPasoGuia } from './shared.ts';
+import { BLOQUE, BLOQUE_COMPACTO, GPAIR, TXT, UL, type PropsPasoGuia, ROC_GUIA } from './shared.ts';
 
 /* 2 · Distribuye los rociadores */
-export function PasoRociadores({ ctx, chk }: PropsPasoGuia) {
-  const { R } = ctx;
-  const ro = R.roc;
+export function PasoRociadores(_props: PropsPasoGuia) {
   return (
     <>
       <div style={BLOQUE_COMPACTO}>
         <PlanSvg
-          roc={ro}
+          roc={ROC_GUIA}
           opts={{
             dims: true,
             feed: false,
@@ -30,43 +26,32 @@ export function PasoRociadores({ ctx, chk }: PropsPasoGuia) {
       </p>
       <ul style={UL}>
         <li>
-          <b>S y L</b> entre 1,80 m y {n2(ro.hz.s)} m.
+          <b>S y L</b> entre 1,80 m y el máximo de tu riesgo (en riesgo leve, 4,60 m).
         </li>
         <li>
-          <b>S × L</b> no mayor que {n2(ro.Acmax * 0.092903)} m² ({ro.Acmax} ft²). Con L ={' '}
-          {n2(ro.L)} m, S puede llegar a{' '}
-          {n2(Math.min(ro.hz.s, (ro.Acmax * 0.092903) / (ro.L || 1)))} m.
+          <b>S × L</b> no mayor que la cobertura máxima del riesgo (225 ft² en riesgo leve sin
+          obstrucción). Con L = 3,50 m, S puede llegar a ~3,9 m.
         </li>
         <li>
-          <b>Distancia a muro</b> no mayor que {n2(ro.hz.s / 2)} m (la mitad de la separación
-          máxima) ni menor que 0,10 m, <b>en las dos direcciones</b>: a lo largo del ramal y
-          perpendicular a él.
+          <b>Distancia a muro</b> no mayor que la mitad de la separación máxima (≤) ni menor que
+          0,10 m, <b>en las dos direcciones</b>: a lo largo del ramal y perpendicular a él.
         </li>
         <li>Usa la misma S y la misma L en toda el área: así el cálculo representa el plano.</li>
       </ul>
-      <div style={GST}>
-        <span>Tu proyecto: S = {n2(ro.S)} m</span>{' '}
-        <ChipEstado st={chk('Separación entre rociadores')} />
-        <span>L = {n2(ro.L)} m</span> <ChipEstado st={chk('Separación entre ramales')} />
-        <span>S × L</span> <ChipEstado st={chk('Área por rociador')} />
-        <span>Muro</span> <ChipEstado st={chk('Distancia a muro')} />
-      </div>
     </>
   );
 }
 
-/* 3 · Organice ramales y tramos */
-export function PasoRamales({ ctx }: PropsPasoGuia) {
-  const { estado, R } = ctx;
-  const ro = R.roc;
+/* 3 · Organiza ramales y tramos */
+export function PasoRamales(_props: PropsPasoGuia) {
   return (
     <>
       {/* Los DOS esquemas en UNA fila (.gpair del HTML): planta y corte lado a lado; si no
-       * caben (modal angosto) el grid auto-fit baja uno debajo del otro. */}
+       * caben el grid auto-fit baja uno debajo del otro. */}
       <div style={GPAIR}>
         <div style={BLOQUE}>
           <PlanSvg
-            roc={ro}
+            roc={ROC_GUIA}
             opts={{
               labels: true,
               nodes: true,
@@ -75,9 +60,9 @@ export function PasoRamales({ ctx }: PropsPasoGuia) {
             }}
           />
         </div>
-        {/* zNudoRaiz/Nramales sin dato aquí: CorteSvg usa sus defaults internos. */}
+        {/* mont del ejemplo: CorteSvg usa sus defaults internos. */}
         <div style={{ ...BLOQUE, display: 'flex', alignItems: 'center' }}>
-          <CorteSvg roc={ro} mont={estado.mont} />
+          <CorteSvg roc={ROC_GUIA} mont={ROC_GUIA_MONT} />
         </div>
       </div>
       <p style={TXT}>
@@ -111,3 +96,6 @@ export function PasoRamales({ ctx }: PropsPasoGuia) {
     </>
   );
 }
+
+/** Montante de EJEMPLO para el corte del paso 3 (altura derivación 2,5 m, gabinete 1,2 m). */
+const ROC_GUIA_MONT = { hD: 2.5, hS: 1.2 };

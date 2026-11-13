@@ -5,6 +5,7 @@
 import type { CSSProperties } from 'react';
 import type { RciCtx } from '../RCIUI.tsx';
 import type { Verificacion } from '../../../lib/rci/types.ts';
+import { criterios } from '../../../lib/rci/criteria.ts';
 
 /** Prefijos de verificación que la guía consulta (el chk(lab) del HTML, por startsWith). */
 export const PREFIJOS_CHK = [
@@ -17,6 +18,18 @@ export const PREFIJOS_CHK = [
 ] as const;
 /** Unión de esos prefijos: los enlaces «Ir al dato» de la guía saltan a la verificación cuyo id empieza con él. */
 export type PrefijoChk = (typeof PREFIJOS_CHK)[number];
+
+/** EJEMPLO FIJO de la guía (ped. usuario: general e ilustrativa — SIN valores del proyecto).
+ *  Riesgo leve con S 3,70 × L 3,50 m y DMR 1,85 m; 4 rociadores por ramal × 3 ramales.
+ *  Los criterios() lo calculan una vez y lo consumen PlanSvg/CorteSvg de los pasos. */
+export const RIESGO_GUIA = 'Riesgo leve';
+const ROC_GUIA_BASE = {
+  K: '5.6',
+  Pmin: '7',
+  S: '3.7',
+  L: '3.5',
+  Dmuro: '1.85',
+};
 
 /** Props comunes de los pasos: el ctx vivo del proyecto más lo que la fachada ya resolvió
  *  (chk/chkMap sobre las verificaciones). La fachada pasa los 4 a todos; cada paso toma los
@@ -91,5 +104,19 @@ const BTN_CHICO: CSSProperties = {
   fontFamily: 'var(--body)',
   whiteSpace: 'nowrap',
 };
+
+/** Criterios del EJEMPLO FIJO (calculados una vez): lo que consumen PlanSvg/CorteSvg. */
+export const ROC_GUIA = criterios(
+  {
+    riesgo: 'Riesgo leve',
+    sistema: 'Húmedo',
+    htecho: 5.3,
+    qr: 'Sí',
+    constr: 'No combustible',
+    techoIncl: 'No',
+    ocultoComb: 'No',
+  },
+  ROC_GUIA_BASE,
+);
 
 export { TXT, UL, GST, GCAP, BLOQUE, BLOQUE_COMPACTO, GPAIR, BTN_CHICO };

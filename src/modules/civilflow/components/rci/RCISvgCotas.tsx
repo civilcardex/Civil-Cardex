@@ -47,8 +47,9 @@ export function CotaH({
   return (
     <g>
       <line x1={x1} y1={y} x2={x2} y2={y} style={{ stroke: col, strokeWidth: 1 }} />
-      <Flecha x={x1} y={y} dir="l" col={col} />
-      <Flecha x={x2} y={y} dir="r" col={col} />
+      {/* Hacia AFUERA aunque los extremos lleguen invertidos (Y(0) abajo, Y(1) arriba). */}
+      <Flecha x={x1} y={y} dir={x1 <= x2 ? 'l' : 'r'} col={col} />
+      <Flecha x={x2} y={y} dir={x1 <= x2 ? 'r' : 'l'} col={col} />
     </g>
   );
 }
@@ -68,8 +69,9 @@ export function CotaV({
   return (
     <g>
       <line x1={x} y1={y1} x2={x} y2={y2} style={{ stroke: col, strokeWidth: 1 }} />
-      <Flecha x={x} y={y1} dir="u" col={col} />
-      <Flecha x={x} y={y2} dir="d" col={col} />
+      {/* Hacia AFUERA aunque y2 sea menor que y1 (la L va de abajo hacia arriba). */}
+      <Flecha x={x} y={y1} dir={y1 <= y2 ? 'u' : 'd'} col={col} />
+      <Flecha x={x} y={y2} dir={y1 <= y2 ? 'd' : 'u'} col={col} />
     </g>
   );
 }

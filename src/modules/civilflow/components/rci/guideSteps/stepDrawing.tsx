@@ -3,13 +3,11 @@
  *  (el orden de revisión y los criterios de bomba, montantes y jockey).
  *  Ej: <PasoDibujo ctx={ctx} /> pinta "Orden de trazado en el módulo de dibujo". */
 import { PlanSvg } from '../RCISvgFloorplan.tsx';
-import { n2 } from '../RCISvgSchemas.tsx';
-import { BLOQUE_COMPACTO, GST, TXT, UL, type PropsPasoGuia } from './shared.ts';
+import { BLOQUE_COMPACTO, TXT, UL, type PropsPasoGuia, ROC_GUIA } from './shared.ts';
 
 /* 8 · Captura la red en el plano */
-export function PasoDibujo({ ctx }: PropsPasoGuia) {
-  const { R } = ctx;
-  const ro = R.roc;
+export function PasoDibujo(_props: PropsPasoGuia) {
+  const ro = ROC_GUIA;
   return (
     <>
       <div style={BLOQUE_COMPACTO}>
@@ -26,7 +24,7 @@ export function PasoDibujo({ ctx }: PropsPasoGuia) {
       <ol style={{ ...UL, margin: '4px 0 8px' }}>
         <li style={{ marginBottom: 2 }}>
           <b>Calibra el plano.</b> Origen y ejes X/Y; comprueba con una cota conocida (por ejemplo,
-          S = {n2(ro.S)} m).
+          una cota conocida de la referencia).
         </li>
         <li>
           <b>Traza los ramales</b> desde la punta hacia su nudo (el orden de cálculo se ajusta en
@@ -57,9 +55,7 @@ export function PasoDibujo({ ctx }: PropsPasoGuia) {
 }
 
 /* 9 · Revisa el cálculo y las verificaciones */
-export function PasoRevision({ ctx }: PropsPasoGuia) {
-  const { R } = ctx;
-  const ro = R.roc;
+export function PasoRevision(_props: PropsPasoGuia) {
   return (
     <>
       <p style={TXT}>
@@ -67,8 +63,8 @@ export function PasoRevision({ ctx }: PropsPasoGuia) {
       </p>
       <ol style={UL}>
         <li>
-          <b>Hidráulica.</b> Que fluyan los {ro.Nreq} rociadores, que ningún tramo tenga velocidad
-          alta y que ningún nudo quede con presión baja.
+          <b>Hidráulica.</b> Que fluyan TODOS los rociadores dentro del área de diseño, que ningún
+          tramo tenga velocidad alta y que ningún nudo quede con presión baja.
         </li>
         <li>
           <b>Gabinetes.</b> Solo si el código local exige montantes. Su demanda suele gobernar la
@@ -108,13 +104,7 @@ export function PasoRevision({ ctx }: PropsPasoGuia) {
           del arranque de la jockey.
         </li>
       </ul>
-      <div style={GST}>
-        <span>
-          Estado actual: <b>{R.count['CUMPLE'] || 0}</b> cumplen, <b>{R.count['NO CUMPLE'] || 0}</b>{' '}
-          no cumplen, <b>{R.count['REVISAR'] || 0}</b> por revisar,{' '}
-          <b>{R.count['PENDIENTE'] || 0}</b> pendientes.
-        </span>
-      </div>
+      {/* Estado del cálculo: se revisa en la pestaña Verificaciones (sin resumen aquí). */}
     </>
   );
 }

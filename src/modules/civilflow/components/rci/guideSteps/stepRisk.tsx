@@ -1,11 +1,9 @@
-/** Paso 1 «Clasifique el riesgo» de la Guía de diseño RCI: la tabla de criterios NFPA 13 por
- *  riesgo (con la fila del proyecto resaltada) y la explicación de cómo elegirlo.
- *  Ej: <PasoRiesgo ctx={ctx} chk={chk} /> pinta la tabla y "Tu proyecto: Riesgo leve". */
-import { ChipEstado } from '../RCIUI.tsx';
-import { fmt } from '../../../utils/rci/RCIRowsModel2.ts';
-import { n2 } from '../RCISvgSchemas.tsx';
+/** Paso 1 «Clasifica el riesgo» de la Guía de diseño RCI: la tabla de criterios NFPA 13 por
+ *  riesgo (catálogo fijo, fila de ejemplo resaltada) y la explicación de cómo elegirlo.
+ *  GENERAL/ILUSTRATIVA (ped. usuario): sin datos del proyecto — usa el ejemplo fijo ROC_GUIA.
+ *  Ej: <PasoRiesgo /> pinta la tabla con la fila "Leve" resaltada. */
 import { HZ } from '../../../lib/rci/tables.ts';
-import { BLOQUE, GCAP, GST, TXT, UL, type PropsPasoGuia } from './shared.ts';
+import { GCAP, TXT, UL, RIESGO_GUIA, type PropsPasoGuia } from './shared.ts';
 
 /** Filas de la tabla de criterios por riesgo (catálogo fijo NFPA 13, resuelto una vez). */
 const FILAS_HZ = Object.entries(HZ);
@@ -16,16 +14,18 @@ const etiquetaRiesgo = (k: string): string => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-/* 1 · Clasifique el riesgo */
-export function PasoRiesgo({ ctx, chk }: PropsPasoGuia) {
-  const { estado, R } = ctx;
-  const ro = R.roc;
-  const pais =
-    estado.meta.pais && estado.meta.pais !== 'Internacional' && estado.meta.pais !== 'Otro'
-      ? `de ${estado.meta.pais}`
-      : 'local';
+/* 1 · Clasifica el riesgo */
+export function PasoRiesgo(_props: PropsPasoGuia) {
   const tabla = (
-    <div style={BLOQUE}>
+    <div
+      style={{
+        border: '1px solid var(--line)',
+        borderRadius: 6,
+        padding: 8,
+        background: 'var(--bg2)',
+        minWidth: 0,
+      }}
+    >
       <div style={GCAP}>Criterios por riesgo · NFPA 13 (2025), Tabla 19.2.3.1.1 y cap. 10</div>
       <div style={{ overflowX: 'auto' }}>
         <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
@@ -67,19 +67,17 @@ export function PasoRiesgo({ ctx, chk }: PropsPasoGuia) {
             {FILAS_HZ.map(([k, v]) => (
               <tr
                 key={k}
-                style={
-                  k === estado.clas.riesgo ? { background: 'rgba(240,69,69,0.10)' } : undefined
-                }
+                style={k === RIESGO_GUIA ? { background: 'rgba(240,69,69,0.10)' } : undefined}
               >
                 <td style={{ fontWeight: 600, color: 'var(--txt)', whiteSpace: 'nowrap' }}>
                   {etiquetaRiesgo(k)}
                 </td>
-                <td style={{ textAlign: 'center' }}>{fmt(v.d)}</td>
+                <td style={{ textAlign: 'center' }}>{v.d}</td>
                 <td style={{ textAlign: 'center' }}>{v.a}</td>
                 <td style={{ textAlign: 'center' }}>
                   {v.cco !== v.cnc ? `${v.cnc} / ${v.cco} / 130` : String(v.cnc)}
                 </td>
-                <td style={{ textAlign: 'center' }}>{fmt(v.s, 1)}</td>
+                <td style={{ textAlign: 'center' }}>{fmtH(v.s)}</td>
                 <td style={{ textAlign: 'center' }}>{v.hose}</td>
                 <td style={{ textAlign: 'center' }}>
                   {v.dmax !== v.dmin ? `${v.dmin}–${v.dmax}` : String(v.dmin)}
@@ -90,14 +88,14 @@ export function PasoRiesgo({ ctx, chk }: PropsPasoGuia) {
         </table>
       </div>
       <p style={GCAP}>
-        Cobertura en riesgo leve según el techo: no combustible o sin obstrucción / combustible
-        obstruido (elementos ≥ 0,91 m) / elementos a &lt; 0,91 m. NFPA 13-2025 eliminó las curvas
-        densidad/área: se usa el punto único de la tabla.
+        Cobertura en riesgo leve (NFPA 13, Tabla 10.2.4.2.1(a)): <b>225 ft²</b> no combustible o
+        combustible sin obstrucción; <b>168 ft²</b> combustible obstruido con elementos a 0,91 m o
+        más entre ejes; y <b>130 ft²</b> combustible con elementos a menos de 0,91 m. La aplicación
+        usa el que corresponda al elegido en <b>Construcción del techo</b>.
       </p>
     </div>
   );
   return (
-    /* Tabla a ancho completo (sin scroll horizontal); la explicación, debajo. */
     <div style={{ display: 'grid', gap: 12 }}>
       {tabla}
       <div>
@@ -108,7 +106,7 @@ export function PasoRiesgo({ ctx, chk }: PropsPasoGuia) {
         </p>
         <ul style={UL}>
           <li>
-            El código {pais} define <b>si</b> el sistema es obligatorio (regístralo en Normativa
+            El código de tu país define <b>si</b> el sistema es obligatorio (regístralo en Normativa
             local); NFPA 13 define <b>cómo</b> diseñarlo.
           </li>
           <li>
@@ -125,15 +123,16 @@ export function PasoRiesgo({ ctx, chk }: PropsPasoGuia) {
           <li>Presión mínima por rociador: 7 psi o la del listado.</li>
         </ul>
         <p style={TXT}>
-          Tu proyecto: <b>{estado.clas.riesgo}</b> (fila resaltada), área de diseño{' '}
-          {fmt(ro.Adis, 0)} ft² ({n2(ro.Adis * 0.092903)} m²).
+          La fila resaltada (<b>{etiquetaRiesgo(RIESGO_GUIA)}</b>) es el ejemplo que ilustran los
+          esquemas de esta guía: el riesgo lo eliges tú por piso en{' '}
+          <b>Tipologías → Pisos del edificio</b>.
         </p>
-        <div style={GST}>
-          <span>Riesgo frente a almacenamiento:</span>{' '}
-          <ChipEstado st={chk('Riesgo NFPA 13 compatible')} />
-          <span>Altura de arrume:</span> <ChipEstado st={chk('Altura de arrume')} />
-        </div>
       </div>
     </div>
   );
+}
+
+/** fmt propio de esta tabla (un decimal). */
+function fmtH(v: number): string {
+  return String(Math.round(v * 100) / 100);
 }

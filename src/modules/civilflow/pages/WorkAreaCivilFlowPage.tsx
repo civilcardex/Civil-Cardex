@@ -12,7 +12,6 @@ import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import { parseFlowSplat, rutaFlow } from '../components/workarea/tabRoute.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 /** Abre el proyecto del enlace (/civilflowareatrabajo/:id) o el activo si no hay id. Si el id cambió, recarga todo para no mezclar dibujos entre proyectos. Ej: uuid del activo. */
 function WorkAreaCivilFlowPage() {
   usePageMeta(
@@ -118,7 +117,7 @@ function WorkAreaCivilFlowPage() {
   }
   return (
     <main className="h-full">
-      <h1 style={SR_ONLY_STYLE}>Área de trabajo</h1>
+      <h1 className="sr-only">Área de trabajo</h1>
       <WorkArea tabInicial={tabUrl} />
     </main>
   );

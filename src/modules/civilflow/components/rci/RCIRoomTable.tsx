@@ -246,8 +246,6 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
       {esquema ? (
         <ModalOverlay onClose={() => setEsquema(false)}>
           <div
-            role="dialog"
-            aria-modal="true"
             aria-label="Esquema del cuarto de bombas"
             style={{
               background: 'var(--bg2)',

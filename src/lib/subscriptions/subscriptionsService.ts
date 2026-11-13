@@ -27,7 +27,8 @@ export async function fetchSuscripciones(): Promise<SuscripcionRow[]> {
   try {
     const { data, error } = await supabase
       .from('app_suscripciones')
-      .select('id, modulo, periodo, estado, fecha_fin, puestos, user_id');
+      .select('id, modulo, periodo, estado, fecha_fin, puestos, user_id')
+      .limit(100);
     if (error) {
       devError('fetchSuscripciones:', error.message);
       return [];
@@ -143,11 +144,36 @@ export async function cambiarPermisoMiembro(
 
 // ─── Pago: edge functions de Lemon Squeezy ───
 
+/** Timeout de los invokes de pago: un edge colgado no puede dejar la UI eterna en
+ *  «verificando». El race devuelve el mismo shape {data:null, error:{message:'timeout'}}:
+ *  edgePagoNoDesplegada NO matchea ese mensaje, así que la página lo trata como «webhook
+ *  aún en vuelo» y el polling de 15 s sigue intentando. */
+const EDGE_TIMEOUT_MS = 20000;
+
+async function edgeConTimeout<T>(
+  invocar: () => Promise<{ data: T | null; error: { message: string } | null }>,
+): Promise<{ data: T | null; error: { message: string } | null }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<{ data: null; error: { message: string } | null }>((resolve) => {
+    timer = setTimeout(
+      () => resolve({ data: null, error: { message: 'timeout-pago' } }),
+      EDGE_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([invocar(), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Verifica el estado de un pago tras la vuelta del checkout (edge function verificar-pago: SOLO lee la fila propia, no activa nada). Ej: verificarPago('LS-123') -> {data:{aprobado:true, estado:'aprobada'}, error}. */
 export async function verificarPago(referencia: string) {
-  return await supabase.functions.invoke('verificar-pago', {
-    body: { referencia },
-  });
+  return edgeConTimeout(() =>
+    supabase.functions.invoke<{ aprobado?: boolean; estado?: string }>('verificar-pago', {
+      body: { referencia },
+    }),
+  );
 }
 
 /** Pide la URL del checkout hosteado de Lemon Squeezy (edge function crear-checkout: calcula el total server-side desde app_precios e inserta la fila pendiente). Ej: crearCheckout(['flow'], 'anual', {flow:3}) -> {data:{checkoutUrl}, error}. */
@@ -156,7 +182,9 @@ export async function crearCheckout(
   periodo: Periodo,
   puestos?: PuestosPorModulo,
 ) {
-  return await supabase.functions.invoke('crear-checkout', {
-    body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
-  });
+  return edgeConTimeout(() =>
+    supabase.functions.invoke<{ checkoutUrl?: string }>('crear-checkout', {
+      body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
+    }),
+  );
 }

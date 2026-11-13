@@ -106,14 +106,9 @@ export function GlobalAlertDialog() {
           onClose={handleClose}
           role="alertdialog"
           aria-labelledby="global-alert-title"
+          className="global-alert-dialog"
           style={GAlertDialog_S1}
         >
-          <style>{`
-            dialog::backdrop {
-              background: rgba(10, 11, 14, 0.75);
-              backdrop-filter: blur(8px);
-            }
-          `}</style>
           <div id="global-alert-title" style={GAlertDialog_S2}>
             <span style={{ fontSize: 22, lineHeight: 1 }}>⚠️</span> {state.title}
           </div>

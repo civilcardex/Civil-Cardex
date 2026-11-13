@@ -77,19 +77,21 @@ export function EditTablaBtn({ on, onToggle }: { on: boolean; onToggle: () => vo
 
 /* ---------- Navegación (pestaña + sub-pestaña activas) ---------- */
 
-/** Ids de las pestañas principales, el orden del HTML de referencia (Tipologías antes que
- *  Rociadores: primero se registran los pisos y sus tipologías, luego sus criterios). */
+/** Ids de las pestañas principales — orden alineado a v1.7.82: la Guía de diseño abre y
+ *  «Rociadores» desaparece (QR/K/Pmin/S/L/DMR viven POR PISO en Tipologías; el grupo global
+ *  roc queda como fallback interno del cálculo). «Resumen de accesorios por diámetro» cierra
+ *  (el conteo de rociadores se verifica allí). */
 export const TABS_RCI = [
+  { id: 'guia', lbl: 'Guía de diseño' },
   { id: 'entradas', lbl: 'Entradas' },
   { id: 'tipologias', lbl: 'Tipologías' },
-  { id: 'rociadores', lbl: 'Rociadores' },
   { id: 'hidraulica', lbl: 'Hidráulica' },
   { id: 'gabinetes', lbl: 'Gabinetes' },
   { id: 'perfil', lbl: 'Perfil de presiones' },
   { id: 'bomba', lbl: 'Bomba y tanque' },
   { id: 'sismo', lbl: 'Soportes sísmicos' },
-  { id: 'accesorios', lbl: 'Resumen de accesorios por diámetro' },
   { id: 'verificaciones', lbl: 'Verificaciones' },
+  { id: 'accesorios', lbl: 'Resumen de accesorios por diámetro' },
 ] as const;
 /** Id válido de pestaña del diseño (la unión de los ids de TABS_RCI). Ej: 'hidraulica'. */
 export type TabRci = (typeof TABS_RCI)[number]['id'];
@@ -197,7 +199,6 @@ export function SubTabsRci({
   sub,
   setSub,
   children,
-  ancho = 210,
 }: {
   subs: readonly SubItemRci[];
   sub: string | null;
@@ -207,44 +208,46 @@ export function SubTabsRci({
 }) {
   const visibles = subs.filter((s) => !s.oculto);
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: `${ancho}px minmax(0, 1fr)`,
-        gap: 14,
-        alignItems: 'start',
-      }}
-    >
-      <nav style={{ position: 'sticky', top: 8 }}>
-        <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {visibles.map((s, i) => (
-            <li key={s.id}>
-              <button
-                onClick={() => setSub(s.id)}
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
-                  width: '100%',
-                  textAlign: 'left',
-                  border: 0,
-                  background: 'none',
-                  padding: '5px 10px',
-                  borderRadius: 5,
-                  cursor: 'pointer',
-                  color: sub === s.id ? 'var(--txt)' : 'var(--txt2)',
-                  fontWeight: sub === s.id ? 600 : 400,
-                  borderLeft: `3px solid ${sub === s.id ? 'var(--rci)' : 'transparent'}`,
-                }}
-              >
-                <span style={{ fontWeight: 700, minWidth: 14, color: 'var(--txt3)', fontSize: 11 }}>
-                  {i + 1}
-                </span>
-                <span style={{ flex: 1 }}>{s.titulo}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, flex: 1 }}>
+      {/* Sub-pestañas HORIZONTALES (ped. usuario): una fila de chips en la banda superior de
+       *  la página — al nivel visual de la fila de chips de verificaciones del shell. */}
+      <nav
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 2,
+          background: 'var(--bg2)',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 4,
+          padding: '4px 2px 6px',
+          borderBottom: '1px solid var(--line)',
+        }}
+      >
+        {visibles.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => setSub(s.id)}
+            aria-current={sub === s.id ? 'true' : undefined}
+            style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
+              border: 0,
+              background: 'none',
+              padding: '4px 10px',
+              borderRadius: 5,
+              cursor: 'pointer',
+              color: sub === s.id ? 'var(--txt)' : 'var(--txt2)',
+              fontWeight: sub === s.id ? 600 : 400,
+              borderBottom: `2px solid ${sub === s.id ? 'var(--rci)' : 'transparent'}`,
+              fontSize: 12.5,
+            }}
+          >
+            <span style={{ fontWeight: 700, color: 'var(--txt3)', fontSize: 10.5 }}>{i + 1}</span>
+            <span>{s.titulo}</span>
+          </button>
+        ))}
       </nav>
       <div style={{ minWidth: 0 }}>{children}</div>
     </div>

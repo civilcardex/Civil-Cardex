@@ -1,9 +1,11 @@
-import React, { type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 
 interface SectionAccordionProps {
   section: {
     title: string;
     body: ReactNode;
+    /** Id de la categoría: fija --cat-color/--section-color por CSS (docs.css). */
+    categoryId?: string;
     categoryColor?: string;
     categoryName?: string;
   };
@@ -27,9 +29,7 @@ function resaltar(title: string, q?: string): ReactNode {
   return (
     <>
       {title.slice(0, idx)}
-      <mark style={{ background: '#f5d668', color: '#111317', borderRadius: 2 }}>
-        {title.slice(idx, idx + t.length)}
-      </mark>
+      <mark className="docs-mark">{title.slice(idx, idx + t.length)}</mark>
       {title.slice(idx + t.length)}
     </>
   );
@@ -48,15 +48,10 @@ export default function SectionAccordion({
   const domContentId = `section-content-${contentId ?? sectionKey}`;
   return (
     <div
-      className="border border-outline-variant rounded-lg overflow-hidden bg-surface-container"
+      className="docs-section border border-outline-variant rounded-lg overflow-hidden bg-surface-container"
       data-section-color
-      style={
-        {
-          '--section-color': section.categoryColor,
-          borderLeft: isOpen ? `3px solid ${section.categoryColor}` : undefined,
-          boxShadow: isOpen ? '0 4px 16px rgb(0 0 0 / 0.28)' : '0 1px 4px rgb(0 0 0 / 0.18)',
-        } as React.CSSProperties
-      }
+      data-cat={section.categoryId}
+      data-open={isOpen ? 'true' : 'false'}
     >
       <button
         type="button"
@@ -74,10 +69,7 @@ export default function SectionAccordion({
           {resaltar(section.title, query)}
         </span>
         {showCategory && (
-          <span
-            className="text-[10px] px-2 py-0.5 rounded font-mono"
-            style={{ color: section.categoryColor, border: '1px solid var(--section-color)' }}
-          >
+          <span className="docs-section-chip text-[10px] px-2 py-0.5 rounded font-mono">
             {section.categoryName}
           </span>
         )}

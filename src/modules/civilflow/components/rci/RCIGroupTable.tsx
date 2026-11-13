@@ -130,13 +130,6 @@ const LBL_TD: CSSProperties = {
   color: 'var(--txt2)',
   textAlign: 'left',
 };
-/** Celda de unidad. */
-const UNI_TD: CSSProperties = {
-  ...TDC,
-  fontSize: 10.5,
-  color: 'var(--txt3)',
-  whiteSpace: 'nowrap',
-};
 /** Celda de observación: la ayuda del campo SIEMPRE visible (no solo el title), texto que
  *  puede ocupar varias líneas (maxWidth para envolver a ~2 líneas). Ej: tub.Vmax muestra
  *  «NFPA 13 no fija límite; 6 m/s es práctica común» sin pasar el mouse. */
@@ -301,19 +294,31 @@ export function GrupoTabla({
   /* Tamaños según modo: estándar (14/13/12) vs compacta (12/11/11) para subs con varias tablas. */
   const thS: CSSProperties = { ...TH10, fontSize: compacta ? 10.5 : 12 };
   const lblS: CSSProperties = { ...LBL_TD, fontSize: compacta ? 12 : 14 };
-  const uniS: CSSProperties = { ...UNI_TD, fontSize: compacta ? 11 : 13 };
   const ctrlS: CSSProperties = { ...CTRL, fontSize: compacta ? 12 : 14 };
   const tdS: CSSProperties = compacta ? { ...TDC, fontSize: 11 } : TDC;
-  /* Tabla MUY ancha (normativa, minAncho ≥ 1600): la observación envuelve en 1 línea — el
-   * scroll vertical de la pestaña se iba por las observaciones a 2 líneas (ped. usuario). */
+  /* Subpestañas MUY anchas (normativa/succión ≥1600): compacta el card para que la página
+   * quepa sin el ligero scroll vertical global (ped. usuario 2026-11-13). */
+  const ancha = !!minAncho && minAncho >= 1600;
   const obsS: CSSProperties = compacta
     ? { ...OBS_TD, fontSize: 11.5 }
     : minAncho && minAncho >= 1600
       ? { ...OBS_TD, maxWidth: undefined }
       : OBS_TD;
   return (
-    <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
-      <div className="card-h" style={{ padding: compacta ? '4px 10px' : '6px 12px' }}>
+    // Subpestañas anchas (≥1600): el card ocupa TODO el ancho y hace scroll horizontal interno
+    // — la tabla conserva su ancho real y las filas quedan compactas sin scroll vertical.
+    <section
+      className="card"
+      style={
+        ancha
+          ? { width: '100%', overflowX: 'auto', padding: '2px 6px' }
+          : { width: 'fit-content', maxWidth: '100%' }
+      }
+    >
+      <div
+        className="card-h"
+        style={{ padding: ancha ? '3px 8px' : compacta ? '4px 10px' : '6px 12px' }}
+      >
         <h3
           className="card-t"
           style={{
@@ -338,16 +343,20 @@ export function GrupoTabla({
           <EditTablaBtn on={edit} onToggle={toggleEdit} />
         </div>
       </div>
-      <div style={{ padding: 6 }}>
+      <div style={{ padding: ancha ? 2 : 6 }}>
         <div style={{ overflowX: 'auto' }}>
           <table
             className="tbl"
             style={{
               fontSize: compacta ? 11 : 12,
               borderCollapse: 'collapse',
-              width: 'auto',
-              minWidth: `min(${minAncho}px, calc(100vw - 260px))`,
-              maxWidth: '100%',
+              /* Subpestañas anchas (normativa/succión ≥1600): la tabla LLENA el card (100%,
+               * ped. usuario 2026-11-13 «estirar bien a lo ancho») — el excedente se va a la
+               * columna Observación; minWidth mantiene el ancho real con scroll interno. */
+              width: minAncho && minAncho >= 1600 ? '100%' : 'auto',
+              minWidth:
+                minAncho && minAncho >= 1600 ? minAncho : `min(${minAncho}px, calc(100vw - 260px))`,
+              maxWidth: minAncho && minAncho >= 1600 ? 'none' : '100%',
             }}
           >
             <thead>
@@ -361,9 +370,6 @@ export function GrupoTabla({
                 </th>
                 <th scope="col" style={thS} title="Amarillo = editable cuando activas EDITAR">
                   Valor
-                </th>
-                <th scope="col" style={thS} title="Unidad del valor (psi, gpm, m…)">
-                  Unidad
                 </th>
                 <th
                   scope="col"
@@ -451,7 +457,6 @@ export function GrupoTabla({
                           ),
                         )}
                       </td>
-                      <td style={uniS}>{d.uni || ''}</td>
                       <td style={tdS}>
                         <TagRci tag={TAGS_RCI[d.path]} />
                       </td>

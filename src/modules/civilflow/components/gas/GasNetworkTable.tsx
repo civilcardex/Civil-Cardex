@@ -1,18 +1,11 @@
 import React from 'react';
 import EditButton from '../shared/EditButton.tsx';
 import EmptyRow from '../shared/EmptyRow.tsx';
-import { SD, TH as _TH, TD as _TD } from '../../styles/sharedTableStyles.ts';
 import { pisoCorto } from '../../constants';
 import { fmt } from '../../utils/formatUtils.ts';
 import { gasTxt } from '../../constants/countryStandards';
 import { listaDn } from '../../utils/gasRows.ts';
 import type { FilaGasCalc } from '../../utils/gasCalcRows.ts';
-
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
-const TH = { ..._TH, fontSize: 10.5, padding: '2px 3px' };
-// ponytail: TD ya trae el padding estrecho — los td que lo necesitan a mano NO deben repetir
-// `padding: '1px 2px'` sobre el spread (antes había 13 overrides idénticos al valor de TD).
-const TD = { ..._TD, fontSize: 10.5, padding: '1px 2px' };
 
 // Columnas MOSTRADAS en la tabla (ped. usuario): las variantes sube/baja y el tapón
 // cuentan en Le pero no aparecen como columnas.
@@ -93,36 +86,27 @@ export function GasTablaRed(props: GasTablaRedProps) {
   const COLS = GasDesign_COLS;
   const tramoKey = (t: { planId: string | number; id: string }): string => `${t.planId}:${t.id}`;
   return (
-    <section className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="card-h" style={{ justifyContent: 'space-between' }}>
+    <section className="gas-col card">
+      <div className="gas-between card-h">
         <h3 className="card-t">
           <img
             src="/iconos_civilflow/diseno_redes/gas/diseno_red_gas.webp"
             alt="Diseño red de gas"
             width={20}
             height={20}
-            style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 4 }}
+            className="gas-icon-20"
             loading="lazy"
           />
           Diseño de red de gas
         </h3>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+        <div className="gas-row-auto">
           <span className="card-s">{tramos.length} tramos</span>
           <EditButton edit={edit} setEdit={setEdit} />
         </div>
       </div>
-      <div style={{ padding: 6 }}>
-        <table
-          ref={tablaRef}
-          className="tbl"
-          style={{
-            fontSize: 10.5,
-            tableLayout: 'auto',
-            width: '100%',
-            borderCollapse: 'collapse',
-          }}
-        >
-          <caption style={SR_ONLY_STYLE}>Diseño de red</caption>
+      <div className="gas-pad-6">
+        <table ref={tablaRef} className="gas-net-table tbl">
+          <caption className="sr-only">Diseño de red</caption>
           <thead>
             <tr>
               {COLS.map((c, i) => (
@@ -130,7 +114,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
                   scope="col"
                   key={i}
                   title={GasDesign_TIPS[i]}
-                  style={{ ...TH, whiteSpace: 'pre-line' }}
+                  className="ds-th gas-th-105 gas-th-preline"
                   rowSpan={2}
                 >
                   {c}
@@ -139,18 +123,18 @@ export function GasTablaRed(props: GasTablaRedProps) {
               <th
                 scope="col"
                 title="Factores de corrección por condiciones de la ciudad y del gas (celdas AB/AC/AD del método Renouard)."
-                style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                className="ds-th gas-th-105 gas-th-group"
                 colSpan={3}
               >
                 Correcciones por
               </th>
-              <th scope="col" style={{ ...TH, borderBottom: '2px solid var(--line)' }} colSpan={2}>
+              <th scope="col" className="ds-th gas-th-105 gas-th-group" colSpan={2}>
                 Consumo
               </th>
               <th
                 scope="col"
                 title="Accesorios instalados en el tramo (cantidad por tipo)."
-                style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                className="ds-th gas-th-105 gas-th-group"
                 colSpan={ACC_COLS.length}
               >
                 Accesorios
@@ -158,52 +142,75 @@ export function GasTablaRed(props: GasTablaRedProps) {
               <th
                 scope="col"
                 title="Suma de longitudes equivalentes de los accesorios (m)."
-                style={TH}
+                className="ds-th gas-th-105"
                 rowSpan={2}
               >
                 Longitud
                 <br />
                 equivalente
               </th>
-              <th scope="col" title="Pérdida de presión del tramo (mbar)." style={TH} rowSpan={2}>
+              <th
+                scope="col"
+                title="Pérdida de presión del tramo (mbar)."
+                className="ds-th gas-th-105"
+                rowSpan={2}
+              >
                 {'Δ'}P
               </th>
               <th
                 scope="col"
                 title={`Pérdida de presión acumulada desde el inicio de la red, en mbar. Límite: ${gasTxt(pais)}.`}
-                style={TH}
+                className="ds-th gas-th-105"
                 rowSpan={2}
               >
                 {'Δ'}P
                 <br />
                 acum
               </th>
-              <th scope="col" title="Velocidad del gas en el tramo (m/s)." style={TH} rowSpan={2}>
+              <th
+                scope="col"
+                title="Velocidad del gas en el tramo (m/s)."
+                className="ds-th gas-th-105"
+                rowSpan={2}
+              >
                 Velocidad
               </th>
               <th
                 scope="col"
                 title="Presión disponible al inicio y al final del tramo (mbar)."
-                style={{ ...TH, borderBottom: '2px solid var(--line)' }}
+                className="ds-th gas-th-105 gas-th-group"
                 colSpan={2}
               >
                 Presión
               </th>
-              <th scope="col" title={`O.K. según ${gasTxt(pais)}.`} style={TH} rowSpan={2}>
+              <th
+                scope="col"
+                title={`O.K. según ${gasTxt(pais)}.`}
+                className="ds-th gas-th-105"
+                rowSpan={2}
+              >
                 Chequeo
               </th>
             </tr>
             <tr>
-              <th scope="col" title="Factor por altitud: 101.325 / presión atmosférica." style={TH}>
+              <th
+                scope="col"
+                title="Factor por altitud: 101.325 / presión atmosférica."
+                className="ds-th gas-th-105"
+              >
                 Altitud
               </th>
-              <th scope="col" title="Factor por temperatura: √(288 / (273 + T °C))." style={TH}>
+              <th
+                scope="col"
+                title="Factor por temperatura: √(288 / (273 + T °C))."
+                className="ds-th gas-th-105"
+              >
                 Temperatura
               </th>
               <th
                 scope="col"
                 title="Factor por densidad relativa del gas: √(0.67 / DR)."
-                style={TH}
+                className="ds-th gas-th-105"
               >
                 Densidad
                 <br />
@@ -212,7 +219,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
               <th
                 scope="col"
                 title="Consumo total del tramo por criterio Renouard (m³/h)."
-                style={TH}
+                className="ds-th gas-th-105"
               >
                 Total Q
                 <br />
@@ -221,21 +228,29 @@ export function GasTablaRed(props: GasTablaRedProps) {
               <th
                 scope="col"
                 title="Q de diseño en m³/h: consumo corregido por los tres factores (m³/hr > 2.70 — el piso aplica a cualquier tramo)."
-                style={TH}
+                className="ds-th gas-th-105"
               >
                 Q de diseño
               </th>
               {['Codos 90° std', 'Codos 90° rl', 'Te en línea', 'Te ramal', 'Válvula de bola'].map(
                 (lbl) => (
-                  <th key={lbl} scope="col" style={{ ...TH, fontSize: 10 }}>
+                  <th key={lbl} scope="col" className="ds-th gas-th-105 gas-th-10">
                     {lbl}
                   </th>
                 ),
               )}
-              <th scope="col" title="Presión al inicio del tramo (mbar)." style={TH}>
+              <th
+                scope="col"
+                title="Presión al inicio del tramo (mbar)."
+                className="ds-th gas-th-105"
+              >
                 Inicio
               </th>
-              <th scope="col" title="Presión al final del tramo (mbar)." style={TH}>
+              <th
+                scope="col"
+                title="Presión al final del tramo (mbar)."
+                className="ds-th gas-th-105"
+              >
                 Fin
               </th>
             </tr>
@@ -252,33 +267,23 @@ export function GasTablaRed(props: GasTablaRedProps) {
               const dInt = diamInt[tramoKey(t)] || 0;
               return (
                 <tr key={tramoKey(t)}>
-                  <td className="c" style={{ padding: '0 1px' }}>
-                    <span className="sigla" style={{ fontSize: 10.5, padding: '1px 4px' }}>
+                  <td className="c gas-px-0">
+                    <span className="gas-sigla sigla">
                       {t.id}
                       {t.piso != null ? `-${pisoCorto(t.piso)}` : ''}
                     </span>
                   </td>
 
-                  <td className="c" style={{ ...TD }}>
-                    {t.ini || '—'}
-                  </td>
-                  <td className="c" style={{ ...TD, minWidth: 78 }}>
-                    {t.fin || '—'}
-                  </td>
-                  <td className="c" style={{ padding: '0 1px' }}>
+                  <td className="c ds-td gas-td-105">{t.ini || '—'}</td>
+                  <td className="c ds-td gas-td-105 gas-td-min78 c">{t.fin || '—'}</td>
+                  <td className="c gas-px-0">
                     {/* Material y diámetro separados: cada uno con su desplegable. */}
                     <select
                       aria-label="Material del tramo"
                       value={mat}
                       disabled={!edit}
                       onChange={(e) => handleMatChange(tramoKey(t), e.target.value)}
-                      style={{
-                        ...SD,
-                        width: '100%',
-                        maxWidth: 104,
-                        fontSize: 10.5,
-                        textAlign: 'center',
-                      }}
+                      className="ds-sd gas-sd-max104"
                     >
                       <option value="">—</option>
                       {[...new Set(ALL_DN.map((r) => r.mat))]
@@ -290,7 +295,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
                         ))}
                     </select>
                   </td>
-                  <td className="c" style={{ padding: '0 1px' }}>
+                  <td className="c gas-px-0">
                     <select
                       aria-label="Diámetro diseño"
                       value={dn}
@@ -303,7 +308,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
                         }
                         handleDiamChange(tramoKey(t), mat, v);
                       }}
-                      style={{ ...SD, width: '100%', fontSize: 10.5, textAlign: 'center' }}
+                      className="ds-sd gas-sd-center"
                     >
                       <option value="">—</option>
                       {ALL_DN.filter((r) => r.mat === mat).map((r) => (
@@ -313,102 +318,58 @@ export function GasTablaRed(props: GasTablaRedProps) {
                       ))}
                     </select>
                   </td>
-                  <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      color: dInt ? 'var(--txt)' : 'var(--txt3)',
-                    }}
-                  >
+                  <td className={`c ds-td gas-td-105${dInt ? '' : ' gas-zero'}`}>
                     {dInt ? dInt.toFixed(2) : '—'}
                   </td>
-                  <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      color: kVal ? 'var(--txt)' : 'var(--txt3)',
-                    }}
-                  >
+                  <td className={`c ds-td gas-td-105${kVal ? '' : ' gas-zero'}`}>
                     {kVal ? fmt(kVal, 2) : '—'}
                   </td>
-                  <td className="c" style={{ ...TD }}>
+                  <td className="c ds-td gas-td-105">
                     {t.longitud > 0 ? t.longitud.toFixed(2) : '—'}
                   </td>
                   {(['qConsumo', 'fAlt', 'fTemp', 'fDens', 'qDiseno'] as const).map((k) => (
                     <td
                       key={k}
-                      className="c"
-                      style={{
-                        ...TD,
-                        fontWeight: k === 'qDiseno' ? 600 : undefined,
-                        color: (chk?.[k] ?? 0) > 0 ? 'var(--txt)' : 'var(--txt3)',
-                      }}
+                      className={`c ds-td gas-td-105${k === 'qDiseno' ? ' gas-strong-600' : ''}${
+                        (chk?.[k] ?? 0) > 0 ? '' : ' gas-zero'
+                      }`}
                     >
                       {(chk?.[k] ?? 0) > 0 ? (chk![k] as number).toFixed(2) : '—'}
                     </td>
                   ))}
                   {ACC_COLS.map((k) => (
-                    <td key={k} className="c" style={{ padding: '1px 2px' }}>
+                    <td key={k} className="c gas-pad-xs c">
                       <span
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: 600,
-                          fontFamily: 'var(--mono)',
-                          color:
-                            (getAcc({ id: t.id, planId: t.planId })[k] || 0) > 0
-                              ? 'var(--txt)'
-                              : 'var(--txt3)',
-                        }}
+                        className={`gas-acc-600${
+                          (getAcc({ id: t.id, planId: t.planId })[k] || 0) > 0 ? '' : ' gas-zero'
+                        }`}
                       >
                         {getAcc({ id: t.id, planId: t.planId })[k] || 0}
                       </span>
                     </td>
                   ))}
-                  <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      fontWeight: 600,
-                      borderLeft: '2px solid var(--line)',
-                    }}
-                  >
+                  <td className="c ds-td gas-td-105 gas-td-left-border">
                     {(chk?.le ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD }}>
-                    {(chk?.dP ?? 0).toFixed(2)}
-                  </td>
+                  <td className="c ds-td gas-td-105">{(chk?.dP ?? 0).toFixed(2)}</td>
                   <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      fontWeight: 600,
-                      color: (chk?.dPAcum ?? 0) > 9.81 ? 'var(--err, #F04545)' : 'var(--txt)',
-                    }}
+                    className={`c ds-td gas-td-105 gas-strong-600${
+                      (chk?.dPAcum ?? 0) > 9.81 ? ' gas-td-err' : ''
+                    }`}
                   >
                     {(chk?.dPAcum ?? 0).toFixed(2)}
                   </td>
-                  <td className="c" style={{ ...TD }}>
-                    {(chk?.vel ?? 0).toFixed(2)}
-                  </td>
-                  <td className="c" style={{ ...TD }}>
-                    {(chk?.pIni ?? 0).toFixed(2)}
-                  </td>
-                  <td className="c" style={{ ...TD }}>
-                    {(chk?.pFin ?? 0).toFixed(2)}
-                  </td>
+                  <td className="c ds-td gas-td-105">{(chk?.vel ?? 0).toFixed(2)}</td>
+                  <td className="c ds-td gas-td-105">{(chk?.pIni ?? 0).toFixed(2)}</td>
+                  <td className="c ds-td gas-td-105">{(chk?.pFin ?? 0).toFixed(2)}</td>
                   <td
-                    className="c"
-                    style={{
-                      padding: '1px 2px',
-                      fontWeight: 700,
-                      fontSize: 10.5,
-                      color:
-                        chk?.chequeo === 'O.K.'
-                          ? 'var(--succ, #5DBB83)'
-                          : chk?.chequeo === 'NO'
-                            ? 'var(--err, #F04545)'
-                            : 'var(--txt3)',
-                    }}
+                    className={
+                      chk?.chequeo === 'O.K.'
+                        ? 'gas-td-ok'
+                        : chk?.chequeo === 'NO'
+                          ? 'gas-td-no'
+                          : 'gas-td-dim'
+                    }
                   >
                     {chk?.chequeo ?? '—'}
                   </td>

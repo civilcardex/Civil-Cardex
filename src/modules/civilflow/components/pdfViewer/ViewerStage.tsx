@@ -27,7 +27,6 @@ import DrawingElementContextMenu from './drawingElementContextMenu';
 import ConfirmDialog from './ConfirmDialog.tsx';
 import AccesorioModal from './FittingModal.tsx';
 import { PdfViewerRightSidebar } from './PdfViewerRightSidebar.tsx';
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 
 /**
  * El escenario del visor: barra de redes, control de grosor, sidebars, canvas del PDF, diálogos
@@ -368,7 +367,7 @@ export function ViewerStage(props: ViewerStageProps) {
           aria-label="Barra de herramientas y capas"
           style={dynamicLeftStyle}
         >
-          <h2 style={SR_ONLY_STYLE}>Panel de capas</h2>
+          <h2 className="sr-only">Panel de capas</h2>
           <div
             style={{
               height: 3,
@@ -409,7 +408,7 @@ export function ViewerStage(props: ViewerStageProps) {
           aria-label="Lienzo del visor de planos"
           style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
         >
-          <h2 style={SR_ONLY_STYLE}>Visor de planos</h2>
+          <h2 className="sr-only">Visor de planos</h2>
           <ViewerMobileChrome
             isMobile={isMobile}
             isNarrow={isNarrow}
@@ -467,7 +466,6 @@ export function ViewerStage(props: ViewerStageProps) {
         {/* Barra lateral derecha (componente: pdfViewer/PdfViewerRightSidebar) */}
         <PdfViewerRightSidebar
           style={dynamicRightStyle}
-          srOnlyStyle={SR_ONLY_STYLE}
           selectStyle={PdfViewer_S4}
           rightSidebarOpacity={rightSidebarOpacity}
           tool={tool}

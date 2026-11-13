@@ -271,6 +271,8 @@ export interface PisoRow {
   techoIncl: string;
   ocultoComb: string;
   K: NumIn;
+  /** Presión mínima del rociador del piso (psi). Vacío = la global de roc.Pmin. */
+  Pmin?: NumIn;
   S: NumIn;
   L: NumIn;
   /** Distancia máxima de rociador a muro (m). Vacío = la global de roc.Dmuro. */

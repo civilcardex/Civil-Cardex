@@ -63,7 +63,7 @@ export function ModalOverlay(props: {
       }}
     >
       {/* Contenedor de foco inicial: tabIndex -1 = enfocable por código, fuera del ciclo Tab. */}
-      <div ref={focoRef} tabIndex={-1} style={{ outline: 'none' }}>
+      <div ref={focoRef} tabIndex={-1} className="modal-overlay-focus">
         {children}
       </div>
     </dialog>
@@ -86,17 +86,8 @@ export function ModalShell(props: {
   // a mano: showModal ya la implica).
   return (
     <ModalOverlay ariaLabel={ariaLabel}>
-      <div
-        style={{
-          background: 'var(--surface-container, #1e1e24)',
-          border: '1px solid var(--outline-variant, #3a3a44)',
-          borderRadius: 8,
-          padding: 24,
-          minWidth,
-          maxWidth: 420,
-          boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
-        }}
-      >
+      {/* minWidth solo se pisa por estilo cuando el consumidor lo pide (360 es el default de la clase). */}
+      <div className="modal-shell-card" style={{ minWidth }}>
         {children}
       </div>
     </ModalOverlay>

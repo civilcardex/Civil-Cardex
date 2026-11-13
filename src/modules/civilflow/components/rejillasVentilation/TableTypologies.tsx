@@ -6,16 +6,7 @@ import { APARATOS_DEF } from '../../constants/engineeringDataFixtures.ts';
 import { SOL } from '../../constants/rejillasNTC3631';
 import { clasifRecinto, solucionAplicada } from '../../utils/rejillasCalc.ts';
 import type { RejResultado } from '../../utils/rejillasCalc.ts';
-import {
-  INP,
-  SEL,
-  TD,
-  TXT,
-  num,
-  onAparatoCol,
-  quitarColumna,
-  setCantCol,
-} from './rejillasShared.ts';
+import { num, onAparatoCol, quitarColumna, setCantCol } from './rejillasShared.ts';
 import type { RejFila } from './rejillasShared.ts';
 import type { OverridesMap, RejOverride } from './rejillasStorage.ts';
 import { useStickyThead2Offset } from '../shared/useStickyThead2Offset';
@@ -69,44 +60,16 @@ export function TablaTipologias({
   return (
     // Solo scroll horizontal aquí: el scroll VERTICAL es el del contenido de la tarjeta
     // (un solo scroller — el tope propio de la tabla daba doble scroll, orig. usuario).
-    <div style={{ overflowX: 'auto', position: 'relative' }}>
+    <div className="rt-scroll-x">
       {borrandoSub && (
-        <div
-          role="status"
-          style={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 30,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-            padding: '6px 10px',
-            background: '#E7786B',
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-          }}
-        >
+        <div role="status" className="rt-borrar-banner">
           Haz clic en la subfila del aparato a eliminar
-          <button
-            type="button"
-            onClick={() => setBorrandoSub(false)}
-            style={{
-              border: '1px solid rgba(255,255,255,.5)',
-              borderRadius: 4,
-              background: 'transparent',
-              color: '#fff',
-              fontSize: 11,
-              cursor: 'pointer',
-              padding: '1px 8px',
-            }}
-          >
+          <button type="button" onClick={() => setBorrandoSub(false)} className="rt-cancel-borrado">
             Cancelar
           </button>
         </div>
       )}
-      <table ref={tablaRef} className="tbl" style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <table ref={tablaRef} className="tbl">
         <TablaTipologiasHeader
           filas={filas}
           edit={edit}
@@ -121,16 +84,7 @@ export function TablaTipologias({
         <tbody>
           {filas.length === 0 && (
             <tr>
-              <td
-                colSpan={24}
-                style={{
-                  ...TD,
-                  padding: 16,
-                  fontSize: 13,
-                  color: 'var(--txt2)',
-                  whiteSpace: 'normal',
-                }}
-              >
+              <td colSpan={24} className="rt-td rt-td-empty">
                 Sin sectores: dibuja en el visor un <strong>Área</strong> con la pestaña{' '}
                 <strong>Gas</strong> activa (y la subred Rejillas de ventilación encendida en Redes
                 activas), nómbrala y asígnale gasodomésticos desde el panel derecho.
@@ -160,8 +114,15 @@ export function TablaTipologias({
                   : nW
                     ? `Cumple · ${nW} obs.`
                     : 'Cumple';
-            const estCol =
-              res.estado === 'vacio' ? 'var(--txt3)' : nE ? '#E7786B' : nW ? '#E3A24F' : '#5DBB83';
+            // Clase de color del estado (vacío = tenue, nE = rojo, nW = ámbar, ok = verde).
+            const estColCls =
+              res.estado === 'vacio'
+                ? 'rt-td-dim'
+                : nE
+                  ? 'rt-est-e'
+                  : nW
+                    ? 'rt-est-w'
+                    : 'rt-est-ok';
             const rejLarga = (a: NonNullable<(typeof res.aberturas)[number]>) =>
               a.ref
                 ? `${a.n > 1 ? `${a.n} × ` : ''}${a.ref.marca} ${a.ref.ref} — ${a.ref.ext} cm`
@@ -185,19 +146,16 @@ export function TablaTipologias({
                 if (enModoBorrado) e.stopPropagation();
               };
               const tdBorra = (
-                extra: React.CSSProperties,
-              ): React.HTMLAttributes<HTMLTableCellElement> & { style: React.CSSProperties } => ({
+                extraClass?: string,
+              ): React.HTMLAttributes<HTMLTableCellElement> & { className: string } => ({
                 onClick: borrarEsta,
-                style: {
-                  ...TD,
-                  padding: '2px 4px',
-                  background: enModoBorrado ? 'rgba(231,120,107,.10)' : undefined,
-                  ...extra,
-                },
+                className: `rt-td rt-borra-cell${enModoBorrado ? ' rt-borrando' : ''}${
+                  extraClass ? ` ${extraClass}` : ''
+                }`,
               });
               return (
                 <>
-                  <td {...tdBorra({})}>
+                  <td {...tdBorra()}>
                     <select
                       onClick={tragaClick}
                       aria-label={`Gasodoméstico subfila ${ci + 1} sector ${i + 1}`}
@@ -208,13 +166,7 @@ export function TablaTipologias({
                       value={ap?.id ?? ''}
                       disabled={!edit}
                       onChange={(e) => onAparatoCol(f, ci, e.target.value, onOv)}
-                      style={{
-                        ...SEL,
-                        minWidth: 0,
-                        width: '100%',
-                        background: 'var(--bg3)',
-                        borderRadius: 3,
-                      }}
+                      className="rt-sel rt-sel-full"
                     >
                       <option value="">Elegir</option>
                       {APARATOS_DEF.filter(
@@ -227,35 +179,25 @@ export function TablaTipologias({
                       ))}
                     </select>
                   </td>
-                  <td {...tdBorra({})}>
+                  <td {...tdBorra()}>
                     {edit && ap && !ap.vacio ? (
                       <input
                         onClick={tragaClick}
                         aria-label={`UN subfila ${ci + 1} sector ${i + 1}`}
-                        className="no-spin"
+                        className="no-spin rt-inp rt-inp-11"
                         type="number"
                         min="0"
                         value={ap.cant}
                         onChange={(e) =>
                           setCantCol(f, ci, Math.max(0, parseInt(e.target.value) || 0))
                         }
-                        style={{ ...INP, fontSize: 11, minWidth: 0, padding: '1px 2px' }}
                       />
                     ) : (
                       // Slot "— etc —" (vacio): sin unidades — cant=1 es solo el init del slot.
-                      <span style={TXT}>{ap && !ap.vacio && ap.cant ? ap.cant : '—'}</span>
+                      <span className="rt-txt">{ap && !ap.vacio && ap.cant ? ap.cant : '—'}</span>
                     )}
                   </td>
-                  <td
-                    style={{
-                      ...TD,
-                      fontFamily: 'var(--mono)',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      textAlign: 'center',
-                      background: enModoBorrado ? 'rgba(231,120,107,.10)' : undefined,
-                    }}
-                  >
+                  <td {...tdBorra('rt-td-kw')}>
                     {/* Botón real (no <td onClick>): el borrado tiene que ser alcanzable
                         con teclado (WCAG 2.1.1). Un <td> con onClick no es enfocable. */}
                     <button
@@ -263,20 +205,12 @@ export function TablaTipologias({
                       onClick={borrarEsta}
                       title="Potencia nominal en kW del aparato — la fija el catálogo NTC 3728 según el tipo de gas del proyecto (alimenta el requerimiento de ventilación)."
                       aria-label={`Borrar potencia nominal${ap && ap.id ? ` de ${ap.id}` : ''}`}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: 0,
-                        margin: 0,
-                        cursor: 'pointer',
-                        color: 'inherit',
-                        font: 'inherit',
-                      }}
+                      className="rt-reset-btn"
                     >
                       {ap && ap.id ? num(ap.kw, 2) : '—'}
                     </button>
                   </td>
-                  <td {...tdBorra({})}>
+                  <td {...tdBorra()}>
                     {edit && ap && !ap.vacio ? (
                       <select
                         onClick={tragaClick}
@@ -291,14 +225,14 @@ export function TablaTipologias({
                             },
                           })
                         }
-                        style={{ ...SEL, fontSize: 11, minWidth: 0, width: 34, padding: '1px 2px' }}
+                        className="rt-sel rt-sel-34"
                       >
                         <option value="A">A</option>
                         <option value="B">B</option>
                         <option value="C">C</option>
                       </select>
                     ) : (
-                      <span style={TXT} title="Tipo de recinto A/B/C (NTC 3631)">
+                      <span className="rt-txt" title="Tipo de recinto A/B/C (NTC 3631)">
                         {ap && !ap.vacio && ap.id ? ap.tipo : '—'}
                       </span>
                     )}
@@ -326,82 +260,59 @@ export function TablaTipologias({
                       onSelect(i);
                     }
                   }}
-                  style={{
-                    cursor: 'pointer',
-                    background: i === sel ? 'rgba(37,99,235,.08)' : undefined,
-                  }}
+                  className="rt-row-click"
                 >
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {i + 1}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {edit ? (
                       <input
                         aria-label={`Apto sector ${i + 1}`}
                         value={f.apto}
                         readOnly={!edit}
                         onChange={(e) => onOv(f.areaId, { apto: e.target.value })}
-                        style={INP}
+                        className="rt-inp"
                       />
                     ) : (
-                      <span style={TXT}>{f.apto || '—'}</span>
+                      <span className="rt-txt">{f.apto || '—'}</span>
                     )}
                   </td>
                   {/* Sector en 2 líneas: input editable arriba, nivel (no editable) abajo. */}
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      overflow: 'hidden',
-                    }}
+                    className={
+                      i === sel ? 'rt-td rt-td-selected rt-td-hidden' : 'rt-td rt-td-hidden'
+                    }
                   >
-                    <div style={{ display: 'grid', gap: 1 }}>
+                    <div className="rt-grid-1">
                       {edit ? (
                         <input
                           aria-label={`Nombre del sector ${i + 1}`}
                           value={f.sector}
                           readOnly={!edit}
                           onChange={(e) => onOv(f.areaId, { sector: e.target.value })}
-                          style={INP}
+                          className="rt-inp"
                         />
                       ) : (
-                        <span style={TXT}>{f.sector || '—'}</span>
+                        <span className="rt-txt">{f.sector || '—'}</span>
                       )}
                       <span
                         title="Nivel del plano donde está dibujado el sector (alimenta la restricción de sótanos)."
-                        style={{
-                          fontSize: 9.5,
-                          fontFamily: 'var(--mono)',
-                          color: 'var(--txt3)',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                        }}
+                        className="rt-piso-legend"
                       >
                         {f.piso}
                       </span>
                     </div>
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {num(f.areaM2, 2)}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {edit ? (
                       <input
                         aria-label={`Alto del sector ${i + 1}`}
-                        className="no-spin"
+                        className="no-spin rt-inp"
                         type="number"
                         step="0.01"
                         value={f.altoM}
@@ -409,34 +320,27 @@ export function TablaTipologias({
                         onChange={(e) =>
                           onOv(f.areaId, { altoM: Math.max(0, parseFloat(e.target.value) || 0) })
                         }
-                        style={INP}
                       />
                     ) : (
-                      <span style={TXT}>{num(f.altoM, 2)}</span>
+                      <span className="rt-txt">{num(f.altoM, 2)}</span>
                     )}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {edit ? (
                       <select
                         aria-label={`Mono espacio sector ${i + 1}`}
                         value={f.mono ? 'si' : 'no'}
                         onChange={(e) => onOv(f.areaId, { mono: e.target.value === 'si' })}
-                        style={SEL}
+                        className="rt-sel"
                       >
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                       </select>
                     ) : (
-                      <span style={TXT}>{f.mono ? 'Sí' : 'No'}</span>
+                      <span className="rt-txt">{f.mono ? 'Sí' : 'No'}</span>
                     )}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {res.estado === 'vacio'
                       ? ''
                       : f.mono || res.modo === 'estanco'
@@ -445,7 +349,7 @@ export function TablaTipologias({
                   </td>
                   {/* Sin aparatos: sin subfila — una celda — hasta que el ＋ agregue una. */}
                   {f.aparatos.length === 0 ? (
-                    <td colSpan={4} style={{ ...TD, color: 'var(--txt3)' }}>
+                    <td colSpan={4} className="rt-td rt-td-dim">
                       —
                     </td>
                   ) : (
@@ -453,18 +357,11 @@ export function TablaTipologias({
                   )}
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      fontWeight: 700,
-                    }}
+                    className={i === sel ? 'rt-td rt-td-selected rt-td-bold' : 'rt-td rt-td-bold'}
                   >
                     {res.estado === 'vacio' ? '' : num(res.P)}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {res.estado === 'vacio'
                       ? ''
                       : f.mono || res.modo === 'estanco'
@@ -473,37 +370,29 @@ export function TablaTipologias({
                   </td>
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      verticalAlign: 'middle',
-                      fontSize: 11,
-                      whiteSpace: 'normal',
-                      color:
-                        ccol === 'e'
-                          ? '#E7786B'
-                          : ccol === 'w'
-                            ? '#E3A24F'
-                            : ccol === 'ok'
-                              ? '#5DBB83'
-                              : undefined,
-                    }}
+                    className={`${i === sel ? 'rt-td rt-td-selected rt-td-11 rt-td-clasif rt-td-wrap' : 'rt-td rt-td-11 rt-td-clasif rt-td-wrap'}${
+                      ccol === 'e'
+                        ? ' rt-est-e'
+                        : ccol === 'w'
+                          ? ' rt-est-w'
+                          : ccol === 'ok'
+                            ? ' rt-est-ok'
+                            : ''
+                    }`}
                   >
                     {cl}
                   </td>
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      minWidth: 130,
-                    }}
+                    className={
+                      i === sel ? 'rt-td rt-td-selected rt-td-min-130' : 'rt-td rt-td-min-130'
+                    }
                   >
                     <select
                       aria-label={`Solución de ventilación del sector ${i + 1}`}
                       value={f.sol}
                       onChange={(e) => onOv(f.areaId, { sol: e.target.value })}
-                      style={{ ...SEL, minWidth: 128, background: 'var(--bg2)' }}
+                      className="rt-sel rt-sel-128"
                     >
                       {Object.entries(SOL).map(([k, v]) => (
                         <option key={k} value={k}>
@@ -512,10 +401,7 @@ export function TablaTipologias({
                       ))}
                     </select>
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {usaAdj ? (
                       <input
                         aria-label={`Volumen recinto adjunto ${i + 1}`}
@@ -526,16 +412,13 @@ export function TablaTipologias({
                         onChange={(e) =>
                           onOv(f.areaId, { vadj: Math.max(0, parseFloat(e.target.value) || 0) })
                         }
-                        style={INP}
+                        className="rt-inp"
                       />
                     ) : (
                       ''
                     )}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {usaAdj ? (
                       <input
                         aria-label={`Potencia recinto adjunto ${i + 1}`}
@@ -546,16 +429,13 @@ export function TablaTipologias({
                         onChange={(e) =>
                           onOv(f.areaId, { padj: Math.max(0, parseFloat(e.target.value) || 0) })
                         }
-                        style={INP}
+                        className="rt-inp"
                       />
                     ) : (
                       ''
                     )}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {usaCon ? (
                       <input
                         aria-label={`Área conectores ${i + 1}`}
@@ -565,7 +445,7 @@ export function TablaTipologias({
                         onChange={(e) =>
                           onOv(f.areaId, { aconec: Math.max(0, parseFloat(e.target.value) || 0) })
                         }
-                        style={INP}
+                        className="rt-inp"
                       />
                     ) : (
                       ''
@@ -573,37 +453,27 @@ export function TablaTipologias({
                   </td>
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      fontSize: 11,
-                      whiteSpace: 'normal',
-                      maxWidth: 130,
-                    }}
+                    className={
+                      i === sel
+                        ? 'rt-td rt-td-selected rt-td-11 rt-td-max-130 rt-td-wrap'
+                        : 'rt-td rt-td-11 rt-td-max-130 rt-td-wrap'
+                    }
                   >
                     {solucionAplicada(res)}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {hayAb ? num(res.aberturas[0].libre, 0) : ''}
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {hayAb ? (res.coef ?? '—') : ''}
                   </td>
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      fontSize: 11,
-                      whiteSpace: 'normal',
-                      textAlign: 'left',
-                    }}
+                    className={
+                      i === sel
+                        ? 'rt-td rt-td-selected rt-td-11 rt-td-left rt-td-wrap'
+                        : 'rt-td rt-td-11 rt-td-left rt-td-wrap'
+                    }
                   >
                     <div
                       title={
@@ -612,8 +482,8 @@ export function TablaTipologias({
                           : 'Sin rejilla superior requerida.'
                       }
                     >
-                      <b style={{ color: 'var(--txt2)' }}>Superior:</b>{' '}
-                      {sup ? rejLarga(sup) : <span style={{ color: 'var(--txt3)' }}>N.A.</span>}
+                      <b className="rt-txt2">Superior:</b>{' '}
+                      {sup ? rejLarga(sup) : <span className="rt-td-dim">N.A.</span>}
                     </div>
                     <div
                       title={
@@ -622,25 +492,16 @@ export function TablaTipologias({
                           : 'Sin rejilla inferior requerida.'
                       }
                     >
-                      <b style={{ color: 'var(--txt2)' }}>Inferior:</b>{' '}
-                      {inf ? rejLarga(inf) : <span style={{ color: 'var(--txt3)' }}>N.A.</span>}
+                      <b className="rt-txt2">Inferior:</b>{' '}
+                      {inf ? rejLarga(inf) : <span className="rt-td-dim">N.A.</span>}
                     </div>
                   </td>
-                  <td
-                    rowSpan={nSub}
-                    style={{ ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}), ...TD }}
-                  >
+                  <td rowSpan={nSub} className={i === sel ? 'rt-td rt-td-selected' : 'rt-td'}>
                     {ef !== null ? num(ef, 0) : ''}
                   </td>
                   <td
                     rowSpan={nSub}
-                    style={{
-                      ...(i === sel ? { background: 'rgba(37,99,235,.08)' } : {}),
-                      ...TD,
-                      color: estCol,
-                      fontWeight: 600,
-                      fontSize: 11,
-                    }}
+                    className={`${i === sel ? 'rt-td rt-td-selected rt-td-11 rt-td-600' : 'rt-td rt-td-11 rt-td-600'} ${estColCls}`}
                   >
                     {est}
                   </td>
@@ -652,10 +513,7 @@ export function TablaTipologias({
                       if (enModoBorrado) return; // el borrado vive SOLO en las celdas de la subfila
                       onSelect(i);
                     }}
-                    style={{
-                      cursor: 'pointer',
-                      background: i === sel ? 'rgba(37,99,235,.08)' : undefined,
-                    }}
+                    className={`rt-row-click${i === sel ? ' rt-subrow-selected' : ''}`}
                   >
                     {subAparato(ap, ci + 1)}
                   </tr>

@@ -50,8 +50,9 @@ describe('RCISvgPlan (PlanSvg)', () => {
     const cont = await renderYVer(
       <PlanSvg roc={roc} opts={{ area: true, number: true, nodes: true, dims: true }} />,
     );
-    expect(cont.textContent).toContain('Lado largo 1,2·√A = 8,50 m');
-    expect(cont.textContent).toContain('S = 4,30 m');
+    expect(cont.textContent).toContain('Lado largo 1,2·√A');
+    // Cot de S sin valor (doctrina 2026-11-13: solo la letra, el número lo da el paso).
+    expect(cont.textContent).toContain('S');
     expect(cont.textContent).toContain('Derivación del montante');
     // 9 rociadores numerados (3x3) + nudos A-D.
     expect(cont.querySelectorAll('svg circle').length).toBeGreaterThan(9);

@@ -1,5 +1,4 @@
 // Tipos, helpers de columna de aparato, formato y estilos compartidos de la tabla Rejillas.
-import React from 'react';
 import { devError } from '../../../../utils/devError.ts';
 import { CAT_GAS } from '../../constants/engineeringDataGas.ts';
 import type { GrupoGasod } from '../../constants/rejillasNTC3631';
@@ -151,62 +150,5 @@ export function grupoDe(apId: string): GrupoGasod | null {
   return 'otros';
 }
 
-// ── Estilos de celda de la tabla Rejillas (TD/TH y variantes: compartidos por la tabla y la
-// página de alzado; los nombres se explican solos).
-
-export const TD: React.CSSProperties = {
-  border: '1px solid var(--line)',
-  padding: '2px 5px',
-  fontSize: 12.5,
-  fontFamily: 'var(--mono)',
-  textAlign: 'center',
-  whiteSpace: 'nowrap',
-  color: 'var(--txt)',
-};
-export const TH: React.CSSProperties = {
-  ...TD,
-  background: 'var(--bg3)',
-  fontWeight: 600,
-  fontSize: 11.5,
-  color: 'var(--txt3)',
-  fontFamily: 'var(--mono)',
-  textTransform: 'uppercase',
-  verticalAlign: 'middle',
-  whiteSpace: 'normal',
-  lineHeight: 1.15,
-};
-
-export const THS: React.CSSProperties = { ...TH, fontSize: 11 };
-/** Campo editable con el MISMO estilo que las demás tablas de diseño (bg2 + borde line +
- *  radius 2, texto centrado). .no-spin (index.css) oculta las flechas de los number. */
-export const INP: React.CSSProperties = {
-  width: '100%',
-  minWidth: 44,
-  background: 'var(--bg2)',
-  border: '1px solid var(--line)',
-  borderRadius: 2,
-  color: 'var(--txt)',
-  fontFamily: 'var(--mono)',
-  fontSize: 11.5,
-  textAlign: 'center',
-  padding: '1px 2px',
-};
-export const SEL: React.CSSProperties = { ...INP, minWidth: 60 };
-/** Valor NO editable (patrón Diseño de red sanitario): texto plano hasta activar edición. */
-export const TXT: React.CSSProperties = {
-  fontFamily: 'var(--mono)',
-  fontSize: 11.5,
-  color: 'var(--txt)',
-  textAlign: 'center',
-  whiteSpace: 'nowrap',
-};
-export const THG: React.CSSProperties = {
-  ...TH,
-  fontSize: 12,
-  verticalAlign: 'middle',
-  whiteSpace: 'nowrap',
-  textAlign: 'center',
-  letterSpacing: 0.5,
-  textTransform: 'uppercase',
-  borderBottom: '2px solid var(--line)',
-};
+// ── Estilos de celda de la tabla Rejillas: ahora viven en tables.css (clases .rt-td/.rt-th/
+// .rt-inp/.rt-sel/.rt-txt/.rt-thg) — antes eran constantes TD/TH/… exportadas desde aquí.

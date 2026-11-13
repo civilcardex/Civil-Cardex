@@ -32,11 +32,10 @@ export interface PumpPageCtx {
 }
 /** Celda de valor con 3 decimales (mono); '—' gris si vacío. */
 const Fmt3 = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 13 }}>—</span>;
+  if (v === '' || v === null || v === undefined) return <span className="ar-dim-13">—</span>;
   const val = typeof v === 'number' ? v.toFixed(3) : v;
   return (
-    <span style={{ fontFamily: 'var(--mono)', fontSize: 14 }}>
+    <span className="ar-mono-14">
       {val}
       {u ? ` ${u}` : ''}
     </span>
@@ -45,11 +44,10 @@ const Fmt3 = (v: string | number, u = '') => {
 
 /** Celda de valor con 2 decimales (mono); '—' gris si vacío. */
 const Fmt2 = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined)
-    return <span style={{ color: 'var(--txt3)', fontSize: 13 }}>—</span>;
+  if (v === '' || v === null || v === undefined) return <span className="ar-dim-13">—</span>;
   const val = typeof v === 'number' ? v.toFixed(2) : v;
   return (
-    <span style={{ fontFamily: 'var(--mono)', fontSize: 14 }}>
+    <span className="ar-mono-14">
       {val}
       {u ? ` ${u}` : ''}
     </span>
@@ -57,17 +55,11 @@ const Fmt2 = (v: string | number, u = '') => {
 };
 
 /** Celda de encabezado de las tablas de Bomba AR. */
-const TH_AR = { fontSize: 12.5, padding: '3px 4px' };
 /** Celda de valor de las tablas de Bomba AR. */
-const TD_AR = { fontSize: 12.5, padding: '2px 4px' };
 /** Columna Parámetro/Componente compacta: sin el ancho grande por defecto de Tbl. */
-const TDL_R = { minWidth: 0, fontSize: 13.5, fontWeight: 600 };
 /** Columna de notas (Equivalencia/Fuente): el texto sí puede partir en varias líneas. */
-const NOTE_COL = { whiteSpace: 'normal' as const, minWidth: 130, fontSize: 12 };
 /** Borde EXTERIOR izquierdo en la 1ª celda (orig. usuario: al ras del contenido — el borde de <table> quedaba separado de la grilla por el reparto de columnas). */
-const EDGE_L = { borderLeft: '1px solid var(--line)' };
 /** Borde EXTERIOR derecho en la última celda (misma razón; además hereda el estilo de notas). */
-const EDGE_R = { ...NOTE_COL, borderRight: '1px solid var(--line)' };
 /** Encabezados de la tabla de ENTRADA (6 columnas). */
 const COLS_IN = ['Parámetro', 'Símbolo', 'Valor', 'Unidad', 'Equivalencia', 'Fuente / norma'];
 /** Encabezados de la tabla de SALIDA (6 columnas). */
@@ -91,7 +83,6 @@ const TIPS_OUT = [
   'Observación sobre el resultado.',
 ];
 /** Estilo por columna (índice): borde exterior + notas en 1ª y última. */
-const COL_STYLES = [EDGE_L, undefined, undefined, undefined, NOTE_COL, EDGE_R];
 
 /** Valor equivalente REAL (orig. usuario): muestra `valor × factor + unidad` de la propia
  *  celda — p.ej. Qd 12 lps → "190.20 GPM". Sin valor → "—". */
@@ -117,24 +108,30 @@ export const pageEntrada = (p: PumpPageCtx) => {
     sinBombasNote,
   } = p;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+    <div className="flex-col-12-w">
       {filtroBombas}
       {!sinBombas && sel && c && (
         <Card
-          style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+          className="ar-half"
           iconImg="/iconos_civilflow/diseno_redes/general/datos_de_entrada.webp"
-          iconImgStyle={{ width: 22, height: 22 }}
+          iconClassName="card-icon-22"
           title={`1. Datos de entrada — ${selCode}`}
           headerRight={<EditButton edit={edit} setEdit={setEdit} />}
         >
           <Tbl
-            tableStyle={{ width: '100%' }}
-            tdlStyle={TDL_R}
-            thStyle={TH_AR}
-            tdStyle={TD_AR}
+            tdlClassName="tbl-tdl-r"
+            thClassName="tbl-th-ar"
+            tdClassName="tbl-td-ar"
             cols={COLS_IN}
             tips={TIPS_IN}
-            colStyles={COL_STYLES}
+            colClasses={[
+              'tbl-edge-l',
+              undefined,
+              undefined,
+              undefined,
+              'tbl-note-col',
+              'tbl-edge-r',
+            ]}
             rows={[
               [
                 'Número de salidas simultáneas',
@@ -240,22 +237,28 @@ export const pageEntrada = (p: PumpPageCtx) => {
 export const pagePerdidas = (p: PumpPageCtx) => {
   const { sinBombas, c, selCode, sinBombasNote } = p;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+    <div className="flex-col-12-w">
       {!sinBombas && c && (
         <Card
-          style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+          className="ar-half"
           iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
-          iconImgStyle={{ width: 22, height: 22 }}
+          iconClassName="card-icon-22"
           title={`2.Cálculo de pérdidas de carga — ${selCode}`}
         >
           <Tbl
-            tableStyle={{ width: '100%' }}
-            tdlStyle={TDL_R}
-            thStyle={TH_AR}
-            tdStyle={TD_AR}
+            tdlClassName="tbl-tdl-r"
+            thClassName="tbl-th-ar"
+            tdClassName="tbl-td-ar"
             cols={COLS_OUT}
             tips={TIPS_OUT}
-            colStyles={COL_STYLES}
+            colClasses={[
+              'tbl-edge-l',
+              undefined,
+              undefined,
+              undefined,
+              'tbl-note-col',
+              'tbl-edge-r',
+            ]}
             rows={[
               [
                 'Velocidad en tubería de impulsión',
@@ -294,16 +297,7 @@ export const pagePerdidas = (p: PumpPageCtx) => {
               [
                 'Chequeo velocidad',
                 'V chk',
-                <span
-                  style={{
-                    color: c.Vch === 'O.K.' ? '#22c55e' : '#ef5350',
-                    fontWeight: 700,
-                    fontFamily: 'var(--mono)',
-                    fontSize: 13,
-                  }}
-                >
-                  {c.Vch}
-                </span>,
+                <span className={c.Vch === 'O.K.' ? 'ar-ok-13' : 'ar-err-13'}>{c.Vch}</span>,
                 '—',
                 '—',
                 'O.K. si 0.6 ≤ V ≤ 3.5 m/s',
@@ -323,24 +317,30 @@ export const pagePerdidas = (p: PumpPageCtx) => {
 export const pageBomba = (p: PumpPageCtx) => {
   const { sinBombas, sel, c, selCode, edit, setEdit, cellInp, sinBombasNote } = p;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+    <div className="flex-col-12-w">
       {!sinBombas && sel && c && (
         <>
           <Card
-            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            className="ar-half"
             iconImg="/iconos_civilflow/diseno_redes/equipos/bomba_sumergible_trituradora.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title={`3.Parámetros de diseño bomba sumergible — ${selCode}`}
             headerRight={<EditButton edit={edit} setEdit={setEdit} />}
           >
             <Tbl
-              tableStyle={{ width: '100%' }}
-              tdlStyle={TDL_R}
-              thStyle={TH_AR}
-              tdStyle={TD_AR}
+              tdlClassName="tbl-tdl-r"
+              thClassName="tbl-th-ar"
+              tdClassName="tbl-td-ar"
               cols={COLS_IN}
               tips={TIPS_IN}
-              colStyles={COL_STYLES}
+              colClasses={[
+                'tbl-edge-l',
+                undefined,
+                undefined,
+                undefined,
+                'tbl-note-col',
+                'tbl-edge-r',
+              ]}
               rows={[
                 [
                   'NPSH disponible',
@@ -355,19 +355,25 @@ export const pageBomba = (p: PumpPageCtx) => {
             />
           </Card>
           <Card
-            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            className="ar-half"
             iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_trituradora.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title={`4.Especificación — Bomba sumergible trituradora — ${selCode}`}
           >
             <Tbl
-              tableStyle={{ width: '100%' }}
-              tdlStyle={TDL_R}
-              thStyle={TH_AR}
-              tdStyle={TD_AR}
+              tdlClassName="tbl-tdl-r"
+              thClassName="tbl-th-ar"
+              tdClassName="tbl-td-ar"
               cols={COLS_OUT}
               tips={TIPS_OUT}
-              colStyles={COL_STYLES}
+              colClasses={[
+                'tbl-edge-l',
+                undefined,
+                undefined,
+                undefined,
+                'tbl-note-col',
+                'tbl-edge-r',
+              ]}
               rows={[
                 ['Caudal nominal', 'Q b', Fmt2(c.Qb), 'lps', Eq(c.Qb, 15.8503, 'GPM'), '—'],
                 ['Altura manométrica', 'H m', Fmt2(c.Hm), 'm.c.a.', Eq(c.Hm, 1.42233, 'psi'), '—'],
@@ -392,7 +398,7 @@ export const pageBomba = (p: PumpPageCtx) => {
                 [
                   'Selección comercial',
                   '—',
-                  <span style={{ fontWeight: 700, fontFamily: 'var(--mono)' }}>{c.Sel}</span>,
+                  <span className="ar-mono-700">{c.Sel}</span>,
                   '—',
                   '—',
                   'HP comercial siguiente',
@@ -412,26 +418,32 @@ export const pageBomba = (p: PumpPageCtx) => {
 export const pageCamara = (p: PumpPageCtx) => {
   const { sinBombas, sel, c, selCode, edit, setEdit, cellInp, sinBombasNote } = p;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
+    <div className="flex-col-12-w">
       {/* sel entra al guard (antes lo estrechaba el aliased `c = sel?.c` del padre): sin
           bomba seleccionada no hay c, así que el render es idéntico. */}
       {!sinBombas && sel && c && (
         <>
           <Card
-            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            className="ar-half"
             iconImg="/iconos_civilflow/diseno_redes/equipos/camara_bombeo.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title={`5.Parámetros de diseño cámara de bombeo — ${selCode}`}
             headerRight={<EditButton edit={edit} setEdit={setEdit} />}
           >
             <Tbl
-              tableStyle={{ width: '100%' }}
-              tdlStyle={TDL_R}
-              thStyle={TH_AR}
-              tdStyle={TD_AR}
+              tdlClassName="tbl-tdl-r"
+              thClassName="tbl-th-ar"
+              tdClassName="tbl-td-ar"
               cols={COLS_IN}
               tips={TIPS_IN}
-              colStyles={COL_STYLES}
+              colClasses={[
+                'tbl-edge-l',
+                undefined,
+                undefined,
+                undefined,
+                'tbl-note-col',
+                'tbl-edge-r',
+              ]}
               rows={[
                 [
                   'Tiempo de ciclo',
@@ -477,19 +489,25 @@ export const pageCamara = (p: PumpPageCtx) => {
             />
           </Card>
           <Card
-            style={{ width: '50%', margin: '0 auto', alignSelf: 'center' }}
+            className="ar-half"
             iconImg="/iconos_civilflow/diseno_redes/equipos/especificacion_camara_bombeo.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title={`6.Especificación — Cámara de bombeo — ${selCode}`}
           >
             <Tbl
-              tableStyle={{ width: '100%' }}
-              tdlStyle={TDL_R}
-              thStyle={TH_AR}
-              tdStyle={TD_AR}
+              tdlClassName="tbl-tdl-r"
+              thClassName="tbl-th-ar"
+              tdClassName="tbl-td-ar"
               cols={COLS_OUT}
               tips={TIPS_OUT}
-              colStyles={COL_STYLES}
+              colClasses={[
+                'tbl-edge-l',
+                undefined,
+                undefined,
+                undefined,
+                'tbl-note-col',
+                'tbl-edge-r',
+              ]}
               rows={[
                 [
                   'Volumen útil',
@@ -510,23 +528,14 @@ export const pageCamara = (p: PumpPageCtx) => {
                 [
                   'Chequeo',
                   '—',
-                  <span
-                    style={{
-                      color: c.Vchk === 'O.K.' ? '#22c55e' : '#ef5350',
-                      fontWeight: 700,
-                      fontFamily: 'var(--mono)',
-                      fontSize: 13,
-                    }}
-                  >
-                    {c.Vchk}
-                  </span>,
+                  <span className={c.Vchk === 'O.K.' ? 'ar-ok-13' : 'ar-err-13'}>{c.Vchk}</span>,
                   '—',
                   '—',
                   'V geom ≥ V útil',
                 ],
               ]}
             />
-            <div style={{ fontSize: 12, color: 'var(--txt3)', padding: '6px 8px' }}>
+            <div className="ar-note">
               Material: concreto impermeabilizado o polietileno PEAD. Accesorios obligatorios:
               rejilla aguas arriba + ventilación Ø2" + alarma de nivel alto.
             </div>

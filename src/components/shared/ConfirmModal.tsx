@@ -26,63 +26,13 @@ export function ConfirmModal({
 }: ConfirmModalProps) {
   return (
     <ModalShell minWidth={minWidth}>
-      <h3
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: 'var(--on-surface, #e2e2e8)',
-          margin: compactMessage ? '0 0 6px' : '0 0 4px',
-        }}
-      >
-        {title}
-      </h3>
-      <p
-        style={{
-          fontSize: compactMessage ? 13 : 12,
-          color: 'var(--on-surface-variant, #9ba8aa)',
-          margin: compactMessage ? 0 : '0 0 16px',
-        }}
-      >
-        {message}
-      </p>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 8,
-          marginTop: compactMessage ? 18 : undefined,
-        }}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            padding: '6px 14px',
-            fontSize: 12,
-            fontWeight: 600,
-            background: 'transparent',
-            border: '1px solid var(--outline-variant, #3a3a44)',
-            borderRadius: 4,
-            color: 'var(--on-surface, #e2e2e8)',
-            cursor: 'pointer',
-          }}
-        >
+      <h3 className={`dialog-title${compactMessage ? ' dialog-title-compact' : ''}`}>{title}</h3>
+      <p className={`dialog-lead${compactMessage ? ' dialog-lead-compact' : ''}`}>{message}</p>
+      <div className={`dialog-actions${compactMessage ? ' dialog-actions-compact' : ''}`}>
+        <button type="button" onClick={onClose} className="dialog-btn dialog-btn-ghost">
           {cancelLabel}
         </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          style={{
-            padding: '6px 14px',
-            fontSize: 12,
-            fontWeight: 600,
-            background: 'var(--error, #ff4444)',
-            border: 'none',
-            borderRadius: 4,
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
+        <button type="button" onClick={onConfirm} className="dialog-btn dialog-btn-danger">
           {confirmLabel}
         </button>
       </div>

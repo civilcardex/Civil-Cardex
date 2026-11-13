@@ -104,7 +104,6 @@ export default function TextInputOverlay({
           style={TextInputOverlay_S3}
           className="text-input-overlay-input"
         />
-        <style>{`.text-input-overlay-input:focus-visible { outline: 2px solid #4D8FF7; outline-offset: 2px; }`}</style>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button
             type="button"

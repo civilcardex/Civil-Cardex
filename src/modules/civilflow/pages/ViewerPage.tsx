@@ -18,7 +18,6 @@ import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import { PlansContext, usePlans } from '../context/PlansContext.tsx';
 import { ProjectContext, useProject } from '../context/ProjectContext.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 import { fetchProyectos } from '../services/projectsService.ts';
 import { abrirProyectoDesdeUrl } from '../services/workspaceReset.ts';
 import { EnlaceLegacyBanner } from './EnlaceLegacyBanner.tsx';
@@ -423,7 +422,7 @@ export default function ViewerPage() {
       <script type="application/ld+json">{JSON.stringify(VIEWER_JSONLD)}</script>
       <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
-        <h1 style={SR_ONLY_STYLE}>Visor de planos</h1>
+        <h1 className="sr-only">Visor de planos</h1>
         <div style={ViewerPage_S2}>
           <span
             style={{

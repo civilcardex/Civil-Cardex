@@ -1,0 +1,298 @@
+/* Barra de herramientas del visor PDF: franja colapsada y ruta expandida.
+   Antes vivía como estilos inline en toolbarButtons.tsx (y la paridad entre rutas es contrato). */
+
+.tb-pad {
+  padding: 4px 4px;
+  border-bottom: 1px solid #3a494a;
+}
+
+.tb-pad-bare {
+  padding: 4px 4px;
+}
+
+.tb-head {
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid #3a494a;
+}
+
+.tb-head-label {
+  font-family: 'Geist', monospace;
+  font-size: 12px;
+  color: #9ba8aa;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tb-list-3 {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.tb-list-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tb-mt-2 {
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tb-mt-4 {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Botón compacto de la franja colapsada. */
+.tb-tool {
+  width: 100%;
+  padding: 3px 0;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  color: #b9caca;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: 'Geist', monospace;
+  transition: all 0.12s;
+}
+.tb-tool[data-active='true'] {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.tb-tool[data-on='true'] {
+  background: #10b98122;
+  border-color: #10b981;
+  color: #10b981;
+}
+.tb-tool:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tb-ico {
+  font-size: 14px;
+}
+
+.tb-ico-18 {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+}
+
+.tb-kbd {
+  font-size: 9px;
+  color: #8ab4d6;
+}
+
+.tb-tool[data-active='true'] .tb-kbd {
+  color: rgba(255, 255, 255, 0.6);
+}
+.tb-tool[data-on='true'] .tb-kbd {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tb-fit {
+  border-color: #10b98155;
+  color: #10b981;
+}
+.tb-fit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tb-renew {
+  width: 100%;
+  padding: 4px 0;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  color: #ffb4ab;
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+  text-align: center;
+  font-family: 'Geist', monospace;
+  transition: all 0.12s;
+}
+
+.tb-danger {
+  border-color: rgba(255, 180, 171, 0.3);
+  color: #ffb4ab;
+}
+
+.tb-ok-soft {
+  border-color: rgba(190, 255, 190, 0.3);
+  color: #befeb;
+}
+
+/* Botones de la ruta expandida (herramientas/snap/grilla). */
+.tb-btn {
+  padding: 5px 8px;
+  font-family: 'Geist', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  color: #b9caca;
+  cursor: pointer;
+}
+.tb-btn[data-active='true'] {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.tb-btn[data-on='true'] {
+  background: #10b98122;
+  border-color: #10b981;
+  color: #10b981;
+}
+
+.tb-btn-label {
+  font-size: 12px;
+  flex: 1;
+  text-align: left;
+}
+
+.tb-shortcut {
+  font-size: 12px;
+  color: #8ab4d6;
+  font-family: 'Geist', monospace;
+  margin-left: auto;
+}
+.tb-btn[data-active='true'] .tb-shortcut {
+  color: rgba(255, 255, 255, 0.6);
+}
+.tb-btn[data-on='true'] .tb-shortcut {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tb-kbd-right {
+  font-size: 12px;
+  color: #8ab4d6;
+  font-family: 'Geist', monospace;
+}
+.tb-btn[data-on='true'] .tb-kbd-right {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Botones de acciones (ruta expandida). */
+.tb-acc {
+  padding: 6px 8px;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 4px;
+  color: #b9caca;
+  cursor: pointer;
+  font-family: 'Geist', monospace;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.12s;
+  width: 100%;
+}
+.tb-acc-fit {
+  border-color: #10b98155;
+  color: #10b981;
+}
+.tb-acc-fit:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.tb-acc-danger {
+  border-color: rgba(255, 180, 171, 0.3);
+  color: #ffb4ab;
+}
+.tb-acc-ok {
+  border-color: rgba(190, 255, 190, 0.3);
+  color: #befeb;
+}
+
+.tb-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  line-height: 1.1;
+  flex: 1;
+}
+
+.tb-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.tb-sub {
+  font-size: 12px;
+  opacity: 0.7;
+  font-weight: 400;
+  text-align: left;
+}
+
+.tb-sub-status {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+.tb-sub-status[data-status='saved'] {
+  color: #22c55e;
+}
+.tb-sub-status[data-status='saving'] {
+  color: #3b82f6;
+}
+.tb-sub-status[data-status='error'] {
+  color: #ef4444;
+}
+
+.tb-status-save {
+  font-size: 14px;
+}
+.tb-status-save[data-status='saved'] {
+  color: #22c55e;
+}
+.tb-status-save[data-status='saving'] {
+  color: #3b82f6;
+}
+.tb-status-save[data-status='error'] {
+  color: #ef4444;
+}
+
+.tb-warn-banner {
+  padding: 6px 8px;
+  background: #1e2024;
+  border: 1px solid #ef444455;
+  border-radius: 4px;
+  font-family: 'Geist', monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  color: #ffb4ab;
+}
+
+.tb-link {
+  color: #8ab4d6;
+  font-weight: 700;
+  text-decoration: underline;
+}

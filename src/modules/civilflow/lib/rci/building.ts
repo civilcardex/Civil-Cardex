@@ -158,7 +158,8 @@ export function clasificar(st: RciState): Tips {
       },
       {
         K: rp.K,
-        Pmin: st.roc.Pmin,
+        /* Pmin por piso (vacío = la global roc.Pmin), igual que S/L/K. */
+        Pmin: rp.Pmin === undefined || rp.Pmin === '' ? st.roc.Pmin : rp.Pmin,
         S: rp.S,
         L: rp.L,
         /* DMR vacío = la global (roc.Dmuro), igual que el resto de defaults del proyecto. */

@@ -73,8 +73,7 @@ describe('useActiveNetState', () => {
 describe('useDmuroRciInjection', () => {
   it('inyecta el Dmuro del piso activo al engine y reacciona a cambios', async () => {
     saveToStorage(RCI_ESTADO_VIVO_KEY, {
-      pisos: { rows: [{ planId: '9', Dmuro: '2,3' }] },
-      roc: { Dmuro: 1.5 },
+      pisos: { rows: [{ planId: '9', riesgo: 'Riesgo ordinario G1' }] },
     });
     const holder: { engine: PlanoEngine | null } = { engine: null };
     function Probe() {
@@ -88,7 +87,7 @@ describe('useDmuroRciInjection', () => {
     expect((holder.engine as unknown as { dmuroRci: number | null }).dmuroRci).toBe(2.3);
   });
 
-  it('sin valor de Dmuro (ni fila ni global) inyecta null (apagado)', async () => {
+  it('sin riesgo en la fila cae al riesgo leve: DMR = S máx / 2 = 2,3 (doctrina inalterable)', async () => {
     saveToStorage(RCI_ESTADO_VIVO_KEY, {});
     const holder: { engine: PlanoEngine | null } = { engine: null };
     function Probe() {
@@ -99,7 +98,8 @@ describe('useDmuroRciInjection', () => {
       return null;
     }
     await renderYVer(<Probe />);
-    expect((holder.engine as unknown as { dmuroRci: number | null }).dmuroRci).toBeNull();
+    // Sin riesgo elegido cae al riesgo leve: DMR inalterable = S máx 4,6 / 2 = 2,3 m.
+    expect((holder.engine as unknown as { dmuroRci: number | null }).dmuroRci).toBe(2.3);
   });
 });
 

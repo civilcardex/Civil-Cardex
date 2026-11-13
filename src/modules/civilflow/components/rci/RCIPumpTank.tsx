@@ -298,8 +298,6 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
       {esquema ? (
         <ModalOverlay zIndex={9999} onClose={() => setEsquema(null)}>
           <div
-            role="dialog"
-            aria-modal="true"
             aria-label="Esquema del cuarto de bombas"
             style={{
               background: 'var(--bg2)',

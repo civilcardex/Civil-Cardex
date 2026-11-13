@@ -19,6 +19,7 @@ import { filasTipologias, resumenTipologias } from '../../utils/rci/RCIRowsModel
 import { ElevSvg } from './RCISvgBuilding.tsx';
 import { TablaPisos } from './RCIFloorsTable.tsx';
 import { TablaTipologias } from './RCITypologiesTable.tsx';
+import { RciCriterios, RciRectFuego } from './RCISprinklers.tsx';
 import type { NumIn, PisoRow, Tips } from '../../lib/rci/types.ts';
 
 /** Sub-pestañas de la pestaña Tipologías (ids alineados con SUBS_POR_TAB['tipologias']/RUTA_DE,
@@ -26,6 +27,8 @@ import type { NumIn, PisoRow, Tips } from '../../lib/rci/types.ts';
 const SUBS: SubItemRci[] = [
   { id: 'pisos', titulo: 'Pisos del edificio' },
   { id: 'tipos', titulo: 'Tipologías y avisos' },
+  { id: 'criterios', titulo: 'Criterios de diseño' },
+  { id: 'rectangulo', titulo: 'Rectángulo de fuego' },
   { id: 'corte', titulo: 'Corte esquemático' },
 ];
 /** Item de leyenda del corte (patrón .legend del HTML). */
@@ -110,6 +113,7 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
     <SubTabsRci subs={SUBS} sub={activa} setSub={(id) => irA('tipologias', id)}>
       {activa === 'pisos' ? (
         <TablaPisos
+          globalEstado={estado}
           filas={filas}
           nota={`${filas.length} piso(s) · ${resumen.length} tipología(s)`}
           grupos={tips.groups.map((g) => g.id)}
@@ -132,6 +136,8 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
           ) : null}
         </div>
       ) : null}
+      {activa === 'criterios' ? <RciCriterios ctx={ctx} /> : null}
+      {activa === 'rectangulo' ? <RciRectFuego ctx={ctx} /> : null}
       {activa === 'corte' ? (
         <CorteEdificio pisos={estado.pisos.rows} tips={tips} zBomba={estado.pisos.zBomba} />
       ) : null}

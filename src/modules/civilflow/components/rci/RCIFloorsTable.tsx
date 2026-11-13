@@ -2,10 +2,9 @@
  *  guard de líneas): la tabla de pisos del PLANO con EDITAR en el header y los paneles «Ver
  *  ayuda» de sus columnas. El estado (edit/ph) es local; filas y setPiso llegan por props.
  *  Ej: <TablaPisos filas={filas} nota="3 piso(s)" grupos={['T1']} setPiso={setPiso} />. */
-import { useState, type CSSProperties, type ReactElement, type ReactNode } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { EditTablaBtn, SecRci, useEditarTabla } from './RCIUI.tsx';
-import { celdaEditable, CELDA12 } from './RCIEditableCell.tsx';
-import { TD, TH } from '../../styles/sharedTableStyles.ts';
+import { celdaEditable } from './RCIEditableCell.tsx';
 import {
   AUTO_SI_NO,
   CONSTR_OPCIONES,
@@ -17,7 +16,7 @@ import {
 import { AYUDA_SALIDA } from './RCIFloorCells.tsx';
 import { RciHelpModal } from './RCIHelpModal.tsx';
 import { HZ } from '../../lib/rci/tables.ts';
-import type { PisoRow } from '../../lib/rci/types.ts';
+import type { PisoRow, RciState } from '../../lib/rci/types.ts';
 /** Columnas de la tabla de pisos (tooltip = ayuda resumida del HTML de referencia). Las que
  *  traen `ph` llevan el botón «Ver ayuda» (el panel del HTML, PISOS_PHELP). */
 const COLS: { l: string; tip?: string; ph?: string }[] = [
@@ -52,13 +51,13 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
     l: 'QR',
     tip: 'Rociador de respuesta rápida en toda el área: puede reducir el área de diseño.',
   },
-  { l: 'K', tip: 'Factor K del rociador del piso (gpm/psi½).' },
-  { l: 'S (m)', tip: 'Separación entre rociadores en el ramal.' },
-  { l: 'L (m)', tip: 'Separación entre ramales.' },
+  { l: 'K', tip: 'Factor K del rociador del piso (gpm/psi½). Vacío = la global del proyecto.' },
   {
-    l: 'DMR (m)',
-    tip: 'Distancia máxima de rociador a muro (DMR): ningún rociador debe quedar más lejos de un muro o partición. NFPA 13 la limita a S máx/2 en las dos direcciones; vacío = la DMR global del proyecto.',
+    l: 'Pmin (psi)',
+    tip: 'Presión mínima de operación del rociador del piso. Vacío = la global del proyecto (7 psi o la del listado).',
   },
+  { l: 'S (m)', tip: 'Separación entre rociadores en el ramal del piso.' },
+  { l: 'L (m)', tip: 'Separación entre ramales del piso.' },
   {
     l: 'Salidas',
     tip: AYUDA_SALIDA,
@@ -84,8 +83,8 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
 const GRUPOS_PISOS: [string, number][] = [
   ['Identificación', 3], // Piso · NPT (m) · Uso
   ['Clasificación NFPA 13', 6], // Riesgo · Sistema · H techo · Techo · Pend. · Ocultos
-  ['Rociador', 2], // Resp. rápida (QR) · K
-  ['Separación', 3], // S (m) · L (m) · DMR (m) — la distancia a muro es el límite de S/2
+  ['Rociador', 3], // Resp. rápida (QR) · K · Pmin
+  ['Separación (rociador/ramal)', 2], // S (m) · L (m)
   ['Montante', 3], // Salidas · V.reg · VRP
   ['Asignación', 1], // Tip.
 ];
@@ -260,7 +259,6 @@ const CONSTR_CORTO: [string, string][] = [
   [CONSTR_OPCIONES[1], 'Comb. ≥ 0,91'],
   [CONSTR_OPCIONES[2], 'Comb. < 0,91'],
 ];
-const TDP: CSSProperties = { ...TD, fontSize: 13, padding: '1px 2px' }; // celda compacta de pisos
 /** Bloque "Pisos del edificio" (ancla rci-tipologias del «Ir al dato»): la tabla de pisos del
  *  PLANO con su botón EDITAR en el header del card. Ej: el select de riesgo mueve el piso de
  *  tipología al vuelo (clasificar reagrupa por criterios). */
@@ -269,6 +267,7 @@ function TablaPisos({
   nota,
   grupos,
   setPiso,
+  globalEstado,
 }: {
   filas: FilaTipologia[];
   /** Nota del header: cuántos pisos y tipologías hay. */
@@ -276,6 +275,8 @@ function TablaPisos({
   /** Ids de tipología existentes (T1…): opciones del desplegable de Asignación. */
   grupos: string[];
   setPiso: (i: number, k: keyof PisoRow) => (v: string) => void;
+  /** Estado completo del proyecto (para los placeholders de la global). */
+  globalEstado?: RciState | null;
 }) {
   const [edit, toggleEdit] = useEditarTabla();
   /* Panel «Ver ayuda» de las columnas (el phelp del HTML): una clave a la vez. */
@@ -286,13 +287,14 @@ function TablaPisos({
   const [borrador, setBorrador] = useState<{ i: number; k: string; val: string } | null>(null);
   const [err, setErr] = useState<{ i: number; k: string; msg: string } | null>(null);
   const hzDe = (riesgo: string): (typeof HZ)[string] => HZ[riesgo] || HZ['Riesgo leve'];
-  const rangoDe = (k: 'S' | 'L' | 'Dmuro', riesgo: string): { min?: number; max?: number } => {
+  /** Valor GLOBAL del proyecto para un campo (placeholder de K/Pmin/S/L cuando la fila está vacía). */
+  const sProy = (k: 'K' | 'Pmin' | 'S' | 'L' | 'Dmuro'): string => {
+    const v = globalEstado?.roc?.[k];
+    return v === undefined || v === null || v === '' ? '' : String(v);
+  };
+  const rangoDe = (k: 'S' | 'L', riesgo: string): { min?: number; max?: number } => {
     const hz = hzDe(riesgo);
-    return k === 'S'
-      ? { min: 1.8, max: hz.s }
-      : k === 'L'
-        ? { min: 1.8, max: hz.l }
-        : { max: hz.s / 2 };
+    return k === 'S' ? { min: 1.8, max: hz.s } : { min: 1.8, max: hz.l };
   };
   const txtRango = (rg: { min?: number; max?: number }): string => {
     const partes: string[] = [];
@@ -302,7 +304,7 @@ function TablaPisos({
   };
   /** Cambio de S/L/DMR con rango: valida y solo persiste lo válido (vacío siempre pasa: DMR
    *  vacía = hereda la global). Ej: S=6 en riesgo leve (máx 4,6) → rojo y sin guardar. */
-  const onChangeNum = (f: FilaTipologia, k: 'S' | 'L' | 'Dmuro', v: string): void => {
+  const onChangeNum = (f: FilaTipologia, k: 'S' | 'L', v: string): void => {
     if (v === '') {
       setBorrador(null);
       setErr(null);
@@ -322,7 +324,7 @@ function TablaPisos({
     setErr(null);
     setPiso(f.i, k)(v);
   };
-  const numCel = (f: FilaTipologia, k: 'S' | 'L' | 'Dmuro'): ReactElement => (
+  const numCel = (f: FilaTipologia, k: 'S' | 'L'): ReactElement => (
     <input
       type="number"
       step="any"
@@ -333,11 +335,7 @@ function TablaPisos({
         setErr(null);
       }}
       title={err && err.i === f.i && err.k === k ? err.msg : undefined}
-      style={{
-        ...CELDA12,
-        width: 60,
-        ...(err && err.i === f.i && err.k === k ? { borderColor: '#e05252' } : {}),
-      }}
+      className={`ds-celda12 ds-px-60${err && err.i === f.i && err.k === k ? ' ds-err-border' : ''}`}
     />
   );
   const ayudaDe = (c: { l: string; ph?: string }): ReactNode =>
@@ -347,19 +345,7 @@ function TablaPisos({
         onClick={() => setPh(c.ph ?? null)}
         aria-expanded={ph === c.ph}
         title="Ver ayuda"
-        style={{
-          display: 'block',
-          margin: '1px auto 0',
-          border: 0,
-          background: 'none',
-          padding: 0,
-          font: 'inherit',
-          fontSize: 10,
-          fontWeight: 500,
-          color: 'var(--acc)',
-          textDecoration: 'underline',
-          cursor: 'pointer',
-        }}
+        className="rci-help-btn"
       >
         Ver ayuda
       </button>
@@ -367,7 +353,6 @@ function TablaPisos({
   /* La cubierta no participa en la tabla ni en el desplegable: sin rociadores, no tiene red
    * que calcular. Match EXACTO del nombre («Cubierta técnica» sigue siendo piso editable).
    * Se filtra SOLO la vista — los datos quedan intactos para el motor. */
-  const SIN_CUBIERTA = filas.filter((f) => f.nombre.trim().toLowerCase() !== 'cubierta');
   return (
     <SecRci
       id="tipologias"
@@ -376,30 +361,20 @@ function TablaPisos({
       icono="/iconos/pisos_edificio.webp"
       extra={<EditTablaBtn on={edit} onToggle={toggleEdit} />}
     >
-      <div style={{ overflowX: 'auto' }}>
-        <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
-          <caption
-            style={{
-              position: 'absolute',
-              width: 1,
-              height: 1,
-              overflow: 'hidden',
-              clip: 'rect(0 0 0 0)',
-            }}
-          >
-            Pisos y tipologías
-          </caption>
+      <div className="ds-scroll-x">
+        <table className="ds-tbl-12 tbl">
+          <caption className="sr-only">Pisos y tipologías</caption>
           <thead>
             <tr>
               {GRUPOS_PISOS.map(([g, n]) => (
-                <th key={g} colSpan={n} scope="colgroup" style={{ ...TH, fontSize: 12 }}>
+                <th key={g} colSpan={n} scope="colgroup" className="ds-th">
                   {g}
                 </th>
               ))}
             </tr>
             <tr>
               {COLS.map((c) => (
-                <th key={c.l} scope="col" title={c.tip} style={{ ...TH, fontSize: 12 }}>
+                <th key={c.l} scope="col" title={c.tip} className="ds-th">
                   {c.l}
                   {ayudaDe(c)}
                 </th>
@@ -407,40 +382,31 @@ function TablaPisos({
             </tr>
           </thead>
           <tbody>
-            {SIN_CUBIERTA.map((f) => (
+            {filas.map((f) => (
               <tr key={f.i}>
-                <td
-                  className="c"
-                  style={{ ...TDP, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                  title="Del plano (no editable aquí)"
-                >
+                <td className="ds-td-13 ds-td-bg3 c" title="Del plano (no editable aquí)">
                   {f.nombre}{' '}
                   {f.esRep ? <span title="Piso representativo de su tipología">★</span> : null}
                 </td>
-                <td
-                  className="c"
-                  style={{ ...TDP, background: 'var(--bg3)', color: 'var(--txt3)' }}
-                >
-                  {f.npt}
-                </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 ds-td-bg3 c">{f.npt}</td>
+                <td className="ds-td-13 c">
                   {/* Uso: dato del proyecto SIEMPRE editable (sin EDITAR, ped. usuario). */}
                   {celdaEditable(
                     true,
                     <input
                       value={f.uso}
                       onChange={(e) => setPiso(f.i, 'uso')(e.target.value)}
-                      style={{ ...CELDA12, width: 84 }}
+                      className="ds-celda12 ds-px-84"
                     />,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.riesgo}
                       onChange={(e) => setPiso(f.i, 'riesgo')(e.target.value)}
-                      style={{ ...CELDA12, width: 116 }}
+                      className="ds-celda12 ds-px-116"
                     >
                       {RIESGOS.map((o) => (
                         <option key={o} value={o}>
@@ -450,13 +416,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.sistema}
                       onChange={(e) => setPiso(f.i, 'sistema')(e.target.value)}
-                      style={{ ...CELDA12, width: 84 }}
+                      className="ds-celda12 ds-px-84"
                     >
                       {SISTEMAS.map((o) => (
                         <option key={o} value={o}>
@@ -466,7 +432,7 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <input
@@ -474,18 +440,18 @@ function TablaPisos({
                       step="any"
                       value={f.htecho}
                       onChange={(e) => setPiso(f.i, 'htecho')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
+                      className="ds-celda12 ds-px-60"
                     />,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.constr}
                       onChange={(e) => setPiso(f.i, 'constr')(e.target.value)}
                       title={CONSTR_AYU[f.constr] || f.constr}
-                      style={{ ...CELDA12, width: 84 }}
+                      className="ds-celda12 ds-px-84"
                     >
                       {CONSTR_CORTO.map(([v, l]) => (
                         <option key={v} value={v} title={CONSTR_AYU[v]}>
@@ -495,13 +461,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.techoIncl}
                       onChange={(e) => setPiso(f.i, 'techoIncl')(e.target.value)}
-                      style={{ ...CELDA12, width: 58 }}
+                      className="ds-celda12 ds-px-58"
                     >
                       {SINO.map((o) => (
                         <option key={o} value={o}>
@@ -511,13 +477,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.ocultoComb}
                       onChange={(e) => setPiso(f.i, 'ocultoComb')(e.target.value)}
-                      style={{ ...CELDA12, width: 58 }}
+                      className="ds-celda12 ds-px-58"
                     >
                       {SINO.map((o) => (
                         <option key={o} value={o}>
@@ -527,13 +493,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.qr}
                       onChange={(e) => setPiso(f.i, 'qr')(e.target.value)}
-                      style={{ ...CELDA12, width: 58 }}
+                      className="ds-celda12 ds-px-58"
                     >
                       {SINO.map((o) => (
                         <option key={o} value={o}>
@@ -543,7 +509,7 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <input
@@ -551,27 +517,34 @@ function TablaPisos({
                       step="any"
                       value={f.K}
                       onChange={(e) => setPiso(f.i, 'K')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
+                      className="ds-celda12 ds-px-60"
                     />,
                   )}
                 </td>
-                <td className="c" style={TDP}>
-                  {celdaEditable(edit, numCel(f, 'S'))}
+                <td className="ds-td-13 c">
+                  {celdaEditable(
+                    edit,
+                    <input
+                      type="number"
+                      step="any"
+                      value={f.Pmin ?? ''}
+                      placeholder={sProy('Pmin') || ''}
+                      onChange={(e) => setPiso(f.i, 'Pmin')(e.target.value)}
+                      aria-label="Presión mínima del piso"
+                      className="ds-celda12 ds-px-60"
+                    />,
+                  )}
                 </td>
-                <td className="c" style={TDP}>
-                  {celdaEditable(edit, numCel(f, 'L'))}
-                </td>
-                <td className="c" style={TDP}>
-                  {/* DMR: distancia máxima de rociador a muro (vacío = la global del proyecto). */}
-                  {celdaEditable(edit, numCel(f, 'Dmuro'))}
-                </td>
-                <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
+                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'S'))}</td>
+                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'L'))}</td>
+
+                <td className="ds-td-13 ds-td-nowrap c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.salida}
                       onChange={(e) => setPiso(f.i, 'salida')(e.target.value)}
-                      style={{ ...CELDA12, width: 96 }}
+                      className="ds-celda12 ds-px-96"
                     >
                       {SALIDAS.map((o) => (
                         <option key={o} value={o}>
@@ -581,13 +554,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.vreg}
                       onChange={(e) => setPiso(f.i, 'vreg')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
+                      className="ds-celda12 ds-px-60"
                     >
                       {AUTO_SI_NO.map((o) => (
                         <option key={o} value={o}>
@@ -597,13 +570,13 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={TDP}>
+                <td className="ds-td-13 c">
                   {celdaEditable(
                     edit,
                     <select
                       value={f.vrp}
                       onChange={(e) => setPiso(f.i, 'vrp')(e.target.value)}
-                      style={{ ...CELDA12, width: 60 }}
+                      className="ds-celda12 ds-px-60"
                     >
                       {AUTO_SI_NO.map((o) => (
                         <option key={o} value={o}>
@@ -613,7 +586,7 @@ function TablaPisos({
                     </select>,
                   )}
                 </td>
-                <td className="c" style={{ ...TDP, whiteSpace: 'nowrap' }}>
+                <td className="ds-td-13 ds-td-nowrap c">
                   {/* Asignación DESPLEGABLE (ped. usuario): Auto agrupa por criterios; forzar
                      un T$n clava el piso dentro de esa tipología (p.tip del HTML). */}
                   {celdaEditable(
@@ -621,7 +594,7 @@ function TablaPisos({
                     <select
                       value={f.tip || 'auto'}
                       onChange={(e) => setPiso(f.i, 'tip')(e.target.value)}
-                      style={{ ...CELDA12, width: 76 }}
+                      className="ds-celda12 ds-px-76"
                     >
                       <option value="auto">Auto</option>
                       {grupos.map((g) => (
@@ -634,9 +607,9 @@ function TablaPisos({
                 </td>
               </tr>
             ))}
-            {SIN_CUBIERTA.length === 0 && (
+            {filas.length === 0 && (
               <tr>
-                <td colSpan={COLS.length} style={{ ...TDP, color: 'var(--txt3)' }}>
+                <td colSpan={COLS.length} className="ds-td-13 ds-td-txt3">
                   Sin pisos: confirme planos en el proyecto para registrarlos aquí.
                 </td>
               </tr>
@@ -647,7 +620,7 @@ function TablaPisos({
       {/* Alerta de rango (misma frase que GrupoTabla): la celda inválida se ve roja y el valor
        *  NO se guarda — al salir del input vuelve al valor persistido. */}
       {err ? (
-        <p role="alert" style={{ margin: '2px 0 0', fontSize: 11.5, color: '#e05252' }}>
+        <p role="alert" className="rci-err-note">
           {filas.find((f) => f.i === err.i)?.nombre || `Piso ${err.i + 1}`}: {err.msg}
         </p>
       ) : null}
@@ -660,4 +633,4 @@ function TablaPisos({
     </SecRci>
   );
 }
-export { CELDA12, TablaPisos };
+export { TablaPisos };

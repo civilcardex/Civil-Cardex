@@ -36,8 +36,6 @@ export function ModalNivelPiso(props: ModalNivelPisoProps) {
   return (
     <ModalOverlay onClose={onClose}>
       <div
-        role="dialog"
-        aria-modal="true"
         aria-label="Asignar piso al plano"
         style={{
           background: 'var(--bg2)',
@@ -134,8 +132,6 @@ export function ModalOrigenPlan(props: ModalOrigenPlanProps) {
     // Escape -> onClose.
     <ModalOverlay onClose={onClose}>
       <div
-        role="dialog"
-        aria-modal="true"
         aria-label="Definir origen de la lámina"
         style={{
           background: 'var(--bg2)',

@@ -1,0 +1,145 @@
+/* Guía de diseño RCI: nav de pasos + tarjeta del paso activo.
+   Antes vivía como estilos inline en GuiaRci.tsx. */
+
+.guia-rci {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.guia-grid {
+  display: grid;
+  grid-template-columns: 185px minmax(0, 1fr);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.guia-nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+}
+
+.guia-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.guia-fase {
+  margin: 10px 0 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--txt3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--mono);
+}
+
+.guia-step {
+  display: flex;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 4px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  color: var(--txt2);
+  font-weight: 400;
+  border-left: 3px solid transparent;
+  font-size: 13.5px;
+}
+
+.guia-step[data-current='true'] {
+  color: var(--txt);
+  font-weight: 600;
+  border-left-color: var(--rci);
+}
+
+.guia-num {
+  font-weight: 700;
+  min-width: 14px;
+  color: var(--txt3);
+  font-size: 11px;
+}
+
+.guia-step-label {
+  flex: 1;
+}
+
+.guia-content {
+  min-width: 0;
+}
+
+.guia-head {
+  margin-bottom: 8px;
+}
+
+.guia-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--txt);
+}
+
+.guia-meta {
+  font-size: 11px;
+  color: var(--txt3);
+  font-family: var(--mono);
+}
+
+.guia-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding: 6px 12px;
+}
+
+.guia-spacer {
+  flex: 1;
+}
+
+.guia-btn {
+  border: 1px solid var(--line);
+  background: var(--bg3);
+  color: var(--txt);
+  border-radius: var(--r);
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: var(--body);
+  white-space: nowrap;
+}
+
+.guia-btn-primary {
+  background: var(--rci);
+  border-color: var(--rci);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Paso «Ubica el área de diseño»: notas bajo el SVG centrado (ped. usuario 2026-11-13). */
+.guia-paso-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Bloque del SVG AMPLIO y centrado del paso (variante de BLOQUE a 980px). */
+.guia-bloque-ancho {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px;
+  background: var(--bg2);
+  min-width: 0;
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}

@@ -99,7 +99,7 @@ export const GRUPO_NORMATIVA: DefCampo[] = [
     path: 'local.cp',
     lbl: 'Coeficiente sísmico Cp (NFPA 13)',
     num: true,
-    ayu: 'Vacío = 0,5 (valor por defecto de NFPA 13); define la separación de riostras en las tablas de la norma',
+    ayu: 'Vacío = 0,5 (default NFPA 13)',
     dep: 'local.reqSismo',
   },
   {
@@ -107,6 +107,6 @@ export const GRUPO_NORMATIVA: DefCampo[] = [
     lbl: '¿Las losas restringen el montante? (paso ajustado)',
     opts: SINO,
     dep: 'local.reqSismo',
-    ayu: 'Sí: la losa apoya el montante al atravesarla y no se exige riostra de cuatro vías intermedia. No (shaft abierto): cuatro vías cada ≤ 7,6 m (NFPA 13 cap. 18)',
+    ayu: 'Sí: riostra de cuatro vías intermedia no exigida (NFPA 13 cap. 18)',
   },
 ];

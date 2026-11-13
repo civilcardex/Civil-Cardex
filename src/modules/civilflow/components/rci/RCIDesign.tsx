@@ -48,7 +48,6 @@ import {
 } from './RCIUI.tsx';
 import RciInputs from './RCIInputs.tsx';
 import { RciTipologias } from './RCITypologies.tsx';
-import { RciRociadores } from './RCISprinklers.tsx';
 import { RciHidraulica } from './RCIHydraulics.tsx';
 import RciGabinetes from './RCICabinets.tsx';
 import RciPerfil from './RCIProfile.tsx';
@@ -115,10 +114,10 @@ function RciDesign() {
   const [planActivo, setPlanActivo] = useState<string | null>(null);
   /** Mensajes de huérfanos del último merge (avisos, jamás borrado silencioso). */
   const [huerfanos, setHuerfanos] = useState<string[]>([]);
+  const [guiaOpen, setGuiaOpen] = useState(false);
   /** Pestaña activa + la sub-pestaña abierta de cada una (se recuerda al volver). */
   const [tab, setTab] = useState<TabRci>('entradas');
   const [subs, setSubs] = useState<Partial<Record<TabRci, string | null>>>({});
-  const [guiaOpen, setGuiaOpen] = useState(false);
   const estadoRef = useRef<RciState | null>(null);
   const cargadoRef = useRef(false);
   /* Tick que refresca TODO lo leído del doc de trazos cuando el autosave del visor escribe
@@ -397,7 +396,7 @@ function RciDesign() {
    * adelante (la tipología activa y el rectángulo de fuego se calculan sobre el piso activo).
    * Entradas y Tipologías muestran TODOS los pisos en su tabla, ahí el desplegable sobra. */
   const idxTab = TABS_RCI.findIndex((t) => t.id === tab);
-  const idxRoc = TABS_RCI.findIndex((t) => t.id === 'rociadores');
+  const idxRoc = TABS_RCI.findIndex((t) => t.id === 'tipologias');
   const verPiso = idxTab >= idxRoc;
 
   /** Conteo por estado para el chip resumen de la barra (clic → Verificaciones/Todas). */
@@ -415,7 +414,19 @@ function RciDesign() {
         style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}
       >
         {/* Fila superior: las PÁGINAS centradas (mismo patrón que las otras redes). */}
-        <TabBarRci tab={tab} setTab={(t) => irA(t)} noCumplen={noCumplen} />
+        {/* Guía de diseño: la PESTAÑA abre el MODAL (ped. usuario: se comporta como modal,
+         *  no como página) — la pestaña activa NO cambia. */}
+        <TabBarRci
+          tab={tab}
+          setTab={(t) => {
+            if (t === 'guia') {
+              setGuiaOpen(true);
+              return;
+            }
+            irA(t);
+          }}
+          noCumplen={noCumplen}
+        />
         {/* Segunda fila (sección piso activo): Guía · pisos · estado de verificaciones */}
         <div
           style={{
@@ -426,24 +437,6 @@ function RciDesign() {
             padding: '0 0',
           }}
         >
-          <button
-            type="button"
-            onClick={() => setGuiaOpen(true)}
-            style={{
-              border: '1px solid var(--rci)',
-              background: 'var(--rci)',
-              color: '#fff',
-              borderRadius: 'var(--r)',
-              padding: '4px 12px',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-              fontFamily: 'var(--body)',
-            }}
-            title="Guía de diseño: los 9 pasos del cálculo, con esquemas de su proyecto"
-          >
-            Guía de diseño
-          </button>
           {verPiso ? (
             <>
               <span style={{ fontSize: 11, color: 'var(--txt3)', fontFamily: 'var(--mono)' }}>
@@ -535,7 +528,6 @@ function RciDesign() {
           style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}
         >
           {tab === 'entradas' ? <RciInputs ctx={ctx} /> : null}
-          {tab === 'rociadores' ? <RciRociadores ctx={ctx} /> : null}
           {tab === 'tipologias' ? <RciTipologias ctx={ctx} /> : null}
           {tab === 'hidraulica' ? (
             <RciHidraulica

@@ -15,8 +15,6 @@ function ModalClases({ cerrar }: { cerrar: () => void }) {
   return (
     <ModalOverlay zIndex={60}>
       <div
-        role="dialog"
-        aria-modal="true"
         aria-label="¿Qué clase elegir?"
         style={{
           background: 'var(--bg2)',

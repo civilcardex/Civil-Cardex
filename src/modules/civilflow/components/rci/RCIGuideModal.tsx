@@ -8,6 +8,7 @@ import type { CSSProperties, ReactNode } from 'react';
 import { useNavRci, type RciCtx, type TabRci } from './RCIUI.tsx';
 import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { PasoGuia } from './RCIGuideSteps.tsx';
+import './guideSteps/rciGuide.css';
 import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /* ---------------- Datos del recorrido (los del GUIDE del HTML) ---------------- */
@@ -92,12 +93,12 @@ export default function RciGuiaModal({
     if (go[0] === 'pisos' || go[0] === 'tipologias') {
       irA('tipologias', 'pisos');
     } else if (go[0] === 'entradas' && campo === 'clas.qr') {
-      irA('rociadores', 'datos', campo);
+      irA('tipologias', 'pisos');
     } else if (go[0] === 'entradas' && campo?.startsWith('roc.')) {
       /* S, L y DMR viven en la tabla de pisos (columnas), no en Datos del rociador. */
       irA('tipologias', 'pisos');
     } else if (go[0] === 'rociadores') {
-      irA('rociadores', 'rectangulo');
+      irA('tipologias', 'pisos');
     } else {
       const r = RUTA_DE(go);
       irA(r.tab as TabRci, r.sub, r.campo);
@@ -144,8 +145,6 @@ export default function RciGuiaModal({
     <ModalOverlay zIndex={99999} onClose={onClose}>
       <div
         className="guia-rci"
-        role="dialog"
-        aria-modal="true"
         aria-label="Guía de diseño contra incendio"
         style={{
           background: 'var(--bg2)',

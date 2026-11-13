@@ -5,7 +5,6 @@ import { loadFromStorage } from '../../services/storageService.ts';
 import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys.ts';
 import { factoresGas, qDisenoGas, renouardByType } from '../../utils/gasUtils.ts';
 
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const TXT_VAL: React.CSSProperties = {
   fontFamily: 'var(--mono)',
   fontWeight: 600,
@@ -148,7 +147,7 @@ export function GasDatosGenerales(props: GasDatosGeneralesProps) {
             }}
           >
             <table className="tbl" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
-              <caption style={SR_ONLY_STYLE}>Datos generales</caption>
+              <caption className="sr-only">Datos generales</caption>
               <tbody>
                 {filas.map((row, i, arr) => (
                   <tr key={row.lbl}>

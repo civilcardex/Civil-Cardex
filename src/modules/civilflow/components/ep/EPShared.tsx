@@ -1,10 +1,9 @@
-import React from 'react';
-import { SI } from '../../styles/sharedTableStyles.ts';
-import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
-
 /** Datos del formulario del módulo ep (Equipo de Presión): caudales, alturas y pérdidas,
  *  presiones (mín/máx), geometría de cisterna y parámetros de bomba. Todo texto (campos de
  *  entrada); lo comparten las 3 páginas del módulo (entrada, tanque, verificación). */
+import React from 'react';
+import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
+
 export interface EPData {
   qac: string;
   qasc: string;
@@ -82,17 +81,18 @@ export const EP_DEFAULTS: EPData = {
 
 /** Entrada decimal ligada a un campo de EPData: solo commitea al perder el foco, así el
  *  recálculo del módulo ep (Equipo de Presión) no corre con cada tecla. Ej: el campo Presión
- *  mínima es <LazyInp field="pmin" … />. */
+ *  mínima es <LazyInp field="pmin" className="ds-si" ariaLabel="..." />. */
 export function LazyInp({
   field,
-  style,
+  className = '',
   ariaLabel,
   disabled,
   ep,
   updEP,
 }: {
   field: keyof EPData;
-  style?: React.CSSProperties;
+  /** Clases extra (variantes .ds-si-*: tamaño, acento…). */
+  className?: string;
   ariaLabel?: string;
   disabled?: boolean;
   ep: EPData;
@@ -104,11 +104,7 @@ export function LazyInp({
       onCommit={(v) => updEP(field, v)}
       ariaLabel={ariaLabel}
       disabled={disabled}
-      style={{
-        ...(style || SI),
-        opacity: disabled ? 0.7 : 1,
-        cursor: disabled ? 'default' : 'text',
-      }}
+      className={`ds-si${disabled ? ' ds-si-off' : ''}${className ? ` ${className}` : ''}`}
     />
   );
 }
@@ -117,29 +113,13 @@ export function LazyInp({
  *  subtítulo aclaratorio pequeño debajo (ej: unidad o fórmula). */
 export const Param = ({ name, sub }: { name: string; sub?: React.ReactNode }) => (
   <div>
-    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--txt)' }}>{name}</div>
-    {sub && <div style={{ fontSize: 12, color: 'var(--txt3)', marginTop: 1 }}>{sub}</div>}
+    <div className="ep-param-name">{name}</div>
+    {sub && <div className="ep-param-sub">{sub}</div>}
   </div>
 );
 
 /** Nota gris pequeña del formulario ep (Equipo de Presión): aclaraciones que no son campos,
  *  ej: "Se consideran pérdidas por el método de Hazen-Williams". */
 export const Comment = ({ children }: { children: React.ReactNode }) => (
-  <span
-    style={{
-      fontSize: 12,
-      color: 'var(--txt3)',
-      lineHeight: 1.2,
-      wordBreak: 'break-word',
-      whiteSpace: 'normal',
-    }}
-  >
-    {children}
-  </span>
+  <span className="ep-comment">{children}</span>
 );
-
-/** Texto de valor numérico en tablas del ep (Equipo de Presión): mono seminegrita. Ej: el 0.80 de la fila Qd. */
-export const M = { fontFamily: 'var(--mono)', fontWeight: 600, color: 'var(--txt)' } as const;
-
-/** Igual que M pero resaltado (700): el dato protagonista de la fila. Ej: el DN elegido. */
-export const MB = { fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--txt)' } as const;

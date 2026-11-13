@@ -105,7 +105,6 @@ function DocsPage() {
         });
 
   // En búsqueda el listado queda dentro de la categoría activa: el hero sigue representándola.
-  const heroColor = activeCategory?.color ?? '#4D8FF7';
 
   const selectCat = (id: string) => {
     setActiveCat(id);
@@ -131,75 +130,8 @@ function DocsPage() {
           about: 'NTC 1500, RAS 2000, NSR-10, NFPA 13, ingeniería hidrosanitaria',
         })}
       </script>
-      <style>{`::-webkit-scrollbar-thumb{background:#dce3ea}::-webkit-scrollbar-thumb:hover{background:#f0f4f8}::-webkit-scrollbar-track{background:#1a1c20}`}</style>
       <Navbar />
       <div className="flex flex-col md:flex-row gap-4 h-[calc(100vh-64px)] pt-16 overflow-y-auto md:overflow-hidden">
-        <style>{`
-        [data-section-color] .text-primary,
-        [data-section-color] .\\!text-primary {
-          color: var(--section-color) !important;
-        }
-        .docs-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .docs-scroll::-webkit-scrollbar-track {
-          background: #1a1c20;
-        }
-        .docs-scroll::-webkit-scrollbar-thumb {
-          background: #3a494a;
-          border-radius: 3px;
-        }
-        .docs-scroll::-webkit-scrollbar-thumb:hover {
-          background: #4d8ff7;
-        }
-        /* Cuerpo de documentación: des-aplanado sin tocar los 11 data files — solo
-           selectores sobre el markup existente (fórmulas, callouts, definiciones, tablas). */
-        .docs-body div.bg-surface-bg.border {
-          box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
-          border-left: 3px solid var(--section-color);
-        }
-        .docs-body div[class*="border-l-2"] {
-          position: relative;
-          background: color-mix(in srgb, var(--section-color) 9%, transparent);
-          border-radius: 0 8px 8px 0;
-          padding: 8px 12px 8px 34px;
-        }
-        .docs-body div[class*="border-l-2"]::before {
-          content: '\\24D8';
-          position: absolute;
-          left: 11px;
-          top: 8px;
-          font-size: 14px;
-          color: var(--section-color);
-        }
-        .docs-body div.grid {
-          background: rgb(255 255 255 / 0.02);
-          border: 1px solid var(--outline-variant, #3a3a44);
-          border-radius: 8px;
-          padding: 8px 12px;
-        }
-        .docs-body table {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          border: 1px solid var(--outline-variant, #3a3a44);
-          border-radius: 8px;
-          overflow: hidden;
-          font-size: 13px;
-        }
-        .docs-body table th {
-          background: color-mix(in srgb, var(--section-color) 16%, transparent);
-          padding: 6px 10px;
-          text-align: left;
-        }
-        .docs-body table td {
-          padding: 6px 10px;
-          border-top: 1px solid var(--outline-variant, #3a3a44);
-        }
-        .docs-body table tbody tr:nth-child(even) {
-          background: rgb(255 255 255 / 0.025);
-        }
-      `}</style>
         <nav
           aria-label="Categorías de documentación"
           className="w-full md:w-72 shrink-0 border border-outline-variant bg-surface-container flex flex-col"
@@ -209,7 +141,7 @@ function DocsPage() {
               Categorías
             </span>
           </div>
-          <div className="flex-1 overflow-auto docs-scroll" style={{ padding: '4px 0' }}>
+          <div className="docs-nav-scroll flex-1 overflow-auto docs-scroll">
             {MODULOS.map((mod) => {
               const on = modsOpen[mod.label] ?? true;
               return (
@@ -225,14 +157,14 @@ function DocsPage() {
                   >
                     <span
                       aria-hidden="true"
-                      className="material-symbols-outlined text-base! transition-transform duration-200 text-on-surface-variant"
-                      style={{ transform: on ? 'rotate(90deg)' : 'none' }}
+                      data-open={on ? 'true' : 'false'}
+                      className="docs-mod-chevron material-symbols-outlined text-base! text-on-surface-variant"
                     >
                       chevron_right
                     </span>
                     <span
-                      className="text-[12px] font-bold tracking-widest uppercase"
-                      style={{ color: mod.label === 'Civil Flow' ? '#4D8FF7' : '#A78BFA' }}
+                      data-cat={mod.label === 'Civil Flow' ? 'manual' : 'manager'}
+                      className="docs-mod-label text-[12px] font-bold tracking-widest uppercase"
                     >
                       {mod.label}
                     </span>
@@ -241,7 +173,7 @@ function DocsPage() {
                     </span>
                   </button>
                   {on && (
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                    <ul className="docs-list">
                       {mod.cats.map((cid) => {
                         const cat = categories.find((c) => c.id === cid);
                         if (!cat) return null;
@@ -251,22 +183,17 @@ function DocsPage() {
                             <button
                               type="button"
                               onClick={() => selectCat(cid)}
-                              className={`w-full flex items-center gap-3 pl-8 pr-3 py-2.5 text-left transition-colors ${
+                              data-cat={cid}
+                              data-selected={sel ? 'true' : 'false'}
+                              className={`docs-cat-btn w-full flex items-center gap-3 pl-8 pr-3 py-2.5 text-left transition-colors ${
                                 sel
                                   ? 'bg-surface-container-high text-on-surface'
                                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low'
                               }`}
-                              style={{
-                                borderLeft: `3px solid ${sel ? cat.color : 'transparent'}`,
-                              }}
                             >
                               <span
-                                className="material-symbols-outlined text-[19px]! rounded-md"
-                                style={{
-                                  color: sel ? cat.color : undefined,
-                                  background: sel ? `${cat.color}1c` : 'transparent',
-                                  padding: 3,
-                                }}
+                                data-selected={sel ? 'true' : 'false'}
+                                className="docs-cat-icon material-symbols-outlined text-[19px]! rounded-md"
                               >
                                 {cat.icon}
                               </span>
@@ -288,23 +215,11 @@ function DocsPage() {
         <main className="flex-1 flex flex-col min-w-0">
           {/* Encabezado de categoría: hero con color — tile grande + gradiente + sombra. */}
           <div
-            className="mb-4 rounded-xl border border-outline-variant px-5 py-4"
-            style={{
-              background: `radial-gradient(420px 120px at 12% 0%, ${heroColor}26, transparent 70%), linear-gradient(135deg, ${heroColor}14, transparent 55%), var(--surface-container)`,
-              boxShadow: '0 4px 18px rgb(0 0 0 / 0.25)',
-            }}
+            data-cat={activeCategory?.id}
+            className="docs-hero mb-4 rounded-xl border border-outline-variant px-5 py-4"
           >
             <div className="flex items-center gap-4 flex-wrap">
-              <span
-                className="material-symbols-outlined rounded-xl"
-                style={{
-                  fontSize: 34,
-                  color: heroColor,
-                  background: `${heroColor}26`,
-                  padding: 12,
-                  border: `1px solid ${heroColor}44`,
-                }}
-              >
+              <span className="docs-hero-icon material-symbols-outlined rounded-xl">
                 {activeCategory?.icon}
               </span>
               <div className="flex-1 min-w-[200px]">

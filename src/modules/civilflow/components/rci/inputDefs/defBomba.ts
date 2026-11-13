@@ -70,7 +70,7 @@ export const GRUPO_SUCCION: DefCampo[] = [
     lbl: 'Nivel mínimo de agua sobre el eje de la bomba',
     num: true,
     uni: 'm',
-    ayu: 'Nivel más bajo tras la demanda y duración de diseño; con él se calculan la succión y el NPSH',
+    ayu: 'Nivel más bajo tras la demanda; define la succión y el NPSH',
   },
   {
     path: 'bomba.hmax',

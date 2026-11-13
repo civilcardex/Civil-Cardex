@@ -479,8 +479,6 @@ export function RciHidraulica({
         <ModalOverlay zIndex={60}>
           {' '}
           <div
-            role="dialog"
-            aria-modal="true"
             aria-label="Instalación típica de la derivación"
             style={{
               background: 'var(--bg2)',

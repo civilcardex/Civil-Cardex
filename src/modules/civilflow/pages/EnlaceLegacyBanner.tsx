@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 
 const ESTILO: React.CSSProperties = {
   display: 'flex',
@@ -31,7 +30,7 @@ const AVISO_ESTILO: React.CSSProperties = {
 export function EnlaceLegacyBanner() {
   return (
     <main className="h-full" style={ESTILO}>
-      <h1 style={SR_ONLY_STYLE}>Área de trabajo</h1>
+      <h1 className="sr-only">Área de trabajo</h1>
       <div role="alert" style={AVISO_ESTILO}>
         Este enlace corresponde a una versión antigua del proyecto — ábrelo desde tu lista de
         proyectos.

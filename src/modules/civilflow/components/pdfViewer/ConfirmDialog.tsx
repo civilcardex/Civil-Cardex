@@ -87,13 +87,9 @@ export default function ConfirmDialog({ confirmState, setConfirmState }: Confirm
       onClose={handleClose}
       role="alertdialog"
       aria-labelledby="confirm-dialog-title"
+      className="confirm-dialog"
       style={ConfirmDialog_S1}
     >
-      <style>{`
-        dialog::backdrop {
-          background: rgba(0,0,0,0.6);
-        }
-      `}</style>
       <div
         id="confirm-dialog-title"
         style={{

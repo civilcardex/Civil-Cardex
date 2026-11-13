@@ -5,75 +5,27 @@
  * orden, mismos títulos). Los handlers llegan por props desde el orquestador.
  * Ej: <ToolbarCollapsed visibleTools={...} isToolActive={...} onToolClick={...} />.
  */
+import './toolbarButtons.css';
 import { Link } from 'react-router-dom';
 import type { ToolDef } from './toolbarNetTools.ts';
 
-const PdfViewerToolbar_S2: React.CSSProperties = {
-  padding: '5px 8px',
-  fontFamily: "'Geist',monospace",
-  fontWeight: 600,
-  transition: 'all .12s',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  width: '100%',
-};
-const PdfViewerToolbar_S3: React.CSSProperties = {
-  padding: '5px 8px',
-  fontFamily: "'Geist',monospace",
-  fontWeight: 600,
-  transition: 'all .12s',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  width: '100%',
-  fontSize: 12,
-};
-
 export const STATUS: Record<string, { color: string; label: string }> = {
-  saved: { color: '#22c55e', label: '\u2714 Guardado' },
-  saving: { color: '#3b82f6', label: '\u23F3 Guardando...' },
-  error: { color: '#ef4444', label: '\u26A0 Sin guardar' },
+  saved: { color: '#22c55e', label: '✔ Guardado' },
+  saving: { color: '#3b82f6', label: '⏳ Guardando...' },
+  error: { color: '#ef4444', label: '⚠ Sin guardar' },
 };
 
 /** Mensaje amable cuando el guardado a BD falla por suscripción vencida (excepción Postgres 'suscripcion_requerida'). */
 export const SUSCRIPCION_VENCIDA_TXT =
   'Suscripción vencida — tu trabajo se guarda solo en este dispositivo. Renueva en Precios para volver a guardar en la nube.';
 
-const accBtn: React.CSSProperties = {
-  padding: '6px 8px',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: '4px',
-  color: '#b9caca',
-  cursor: 'pointer',
-  fontFamily: "'Geist',monospace",
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  transition: 'all .12s',
-};
-
-const compactBtn: React.CSSProperties = {
-  width: '100%',
-  padding: '3px 0',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: '3px',
-  color: '#b9caca',
-  cursor: 'pointer',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 1,
-  fontFamily: "'Geist',monospace",
-  transition: 'all .12s',
-};
-
 // "Espacio" ya no aparece en la barra (herramienta Mover eliminada) — el helper queda por si
 // algún shortcut vuelve a necesitar abreviarse en la franja colapsada.
 export const compactShortcut = (s: string) => (s === 'Espacio' ? 'Esp' : s);
+
+/** Estado efectivo del guardado (cualquier valor desconocido cae a 'error', como antes). */
+const statusDe = (s: string): 'saved' | 'saving' | 'error' =>
+  s === 'saved' || s === 'saving' ? s : 'error';
 
 /** Props compartidas por las dos rutas: las herramientas ya filtradas + la regla de resaltado
  *  + los handlers. isToolActive/onToolClick son funciones (no identidad estable). */
@@ -119,9 +71,10 @@ export function ToolbarCollapsed({
 }: ToolbarRouteProps) {
   return (
     <>
-      <div style={{ padding: '4px 4px', borderBottom: '1px solid #3a494a' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="tb-pad">
+        <div className="tb-list">
           {visibleTools.map((t) => {
+            const activo = isToolActive(t.id);
             return (
               <button
                 type="button"
@@ -129,93 +82,61 @@ export function ToolbarCollapsed({
                 onClick={() => onToolClick(t.id)}
                 aria-label={t.label}
                 title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
-                style={{
-                  ...compactBtn,
-                  background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
-                  border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
-                  cursor: 'pointer',
-                }}
+                data-active={activo ? 'true' : 'false'}
+                className="tb-tool"
               >
-                <span style={{ fontSize: 14, color: isToolActive(t.id) ? '#fff' : t.icoCol }}>
+                {/* Color del ícono: viene del catálogo de herramientas (fijo por herramienta). */}
+                <span className="tb-ico" style={{ color: activo ? '#fff' : t.icoCol }}>
                   {t.ico}
                 </span>
-                <span
-                  style={{
-                    fontSize: 9,
-                    color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
-                  }}
-                >
-                  {compactShortcut(t.shortcut)}
-                </span>
+                <span className="tb-kbd">{compactShortcut(t.shortcut)}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ marginTop: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="tb-mt-2">
           <button
             type="button"
             onClick={onSnapToggle}
             aria-label="Snap"
             title={`Snap (${'G'})`}
-            style={{
-              ...compactBtn,
-              background: snapOn ? '#10B98122' : '#1e2024',
-              border: `1px solid ${snapOn ? '#10B981' : '#3a494a'}`,
-              color: snapOn ? '#10B981' : '#9BA8AA',
-            }}
+            data-on={snapOn ? 'true' : 'false'}
+            className="tb-tool"
           >
-            <span style={{ fontSize: 14, color: snapOn ? '#10B981' : '#8AB4D6' }}>
-              {snapOn ? '◉' : '○'}
-            </span>
-            <span style={{ fontSize: 9, color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
-              G
-            </span>
+            <span className="tb-ico">{snapOn ? '◉' : '○'}</span>
+            <span className="tb-kbd">G</span>
           </button>
           <button
             type="button"
             onClick={onGridToggle}
             aria-label="Grilla (H)"
             title="Mostrar/ocultar grilla (H)"
-            style={{
-              ...compactBtn,
-              background: gridOn ? '#10B98122' : '#1e2024',
-              border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
-              color: gridOn ? '#10B981' : '#9BA8AA',
-            }}
+            data-on={gridOn ? 'true' : 'false'}
+            className="tb-tool"
           >
-            <span style={{ fontSize: 14, color: gridOn ? '#10B981' : '#8AB4D6' }}>
-              {gridOn ? '▦' : '▢'}
-            </span>
-            <span style={{ fontSize: 9, color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6' }}>
-              #
-            </span>
+            <span className="tb-ico">{gridOn ? '▦' : '▢'}</span>
+            <span className="tb-kbd">#</span>
           </button>
         </div>
       </div>
 
-      <div style={{ padding: '4px 4px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      <div className="tb-pad-bare">
+        <div className="tb-list">
           <button
             type="button"
             onClick={onFit}
             disabled={!currentFile}
             aria-label="Ajustar PDF al visor"
-            style={{
-              ...compactBtn,
-              borderColor: '#10B98155',
-              color: '#10B981',
-              opacity: !currentFile ? 0.4 : 1,
-              cursor: !currentFile ? 'not-allowed' : 'pointer',
-            }}
             title={currentFile ? 'Ajustar PDF al visor' : 'Carga un plano para poder ajustarlo'}
+            className="tb-tool tb-fit"
           >
-            <span style={{ fontSize: 14 }}>{'⛶'}</span>
+            <span className="tb-ico">{'⛶'}</span>
           </button>
           <button
             type="button"
             onClick={onSave}
             aria-label="Guardar"
-            style={compactBtn}
+            className="tb-tool"
             title={
               esSuscripcionVencida
                 ? SUSCRIPCION_VENCIDA_TXT
@@ -224,7 +145,7 @@ export function ToolbarCollapsed({
                   : 'Guarda los trazados y cambios realizados en el plano para la red activa'
             }
           >
-            <span style={{ fontSize: 14, color: STATUS[saveStatus]?.color || STATUS.error.color }}>
+            <span className="tb-status-save" data-status={statusDe(saveStatus)}>
               {'💾'}
             </span>
           </button>
@@ -232,14 +153,7 @@ export function ToolbarCollapsed({
             <Link
               to="/pricing"
               title="Ir a Precios para renovar la suscripción"
-              style={{
-                ...compactBtn,
-                padding: '4px 0',
-                fontSize: 10,
-                fontWeight: 700,
-                color: '#ffb4ab',
-                textDecoration: 'none',
-              }}
+              className="tb-renew"
             >
               Renovar
             </Link>
@@ -248,37 +162,37 @@ export function ToolbarCollapsed({
             type="button"
             onClick={onUndo}
             aria-label="Deshacer"
-            style={compactBtn}
+            className="tb-tool"
             title="Deshacer (Ctrl + Z)"
           >
-            <span style={{ fontSize: 14 }}>{'↩'}</span>
+            <span className="tb-ico">{'↩'}</span>
           </button>
           <button
             type="button"
             onClick={onRedo}
             aria-label="Rehacer"
-            style={compactBtn}
+            className="tb-tool"
             title="Rehacer (Ctrl + Y)"
           >
-            <span style={{ fontSize: 14 }}>{'↪'}</span>
+            <span className="tb-ico">{'↪'}</span>
           </button>
           <button
             type="button"
             onClick={onClear}
             aria-label="Limpiar trazado de la red activa"
-            style={{ ...compactBtn, borderColor: 'rgba(255,180,171,.3)', color: '#ffb4ab' }}
+            className="tb-tool tb-danger"
             title="Eliminar todo el trazado de la red activa"
           >
-            <span style={{ fontSize: 14 }}>{'🗑'}</span>
+            <span className="tb-ico">{'🗑'}</span>
           </button>
           <button
             type="button"
             onClick={onClearGuides}
             aria-label="Borrar todas las líneas guía"
-            style={{ ...compactBtn, borderColor: 'rgba(190,255,190,.3)', color: '#befeb' }}
+            className="tb-tool tb-ok-soft"
             title="Borrar todas las líneas guía de todos los pisos"
           >
-            <span style={{ fontSize: 14 }}>{'≋'}</span>
+            <span className="tb-ico">{'≋'}</span>
           </button>
         </div>
       </div>
@@ -307,165 +221,66 @@ export function ToolbarExpanded({
 }: ToolbarRouteProps) {
   return (
     <>
-      <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 4,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Herramientas
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+      <div className="tb-head">
+        <div className="tb-head-label">Herramientas</div>
+        <div className="tb-list-3">
           {visibleTools.map((t) => {
+            const activo = isToolActive(t.id);
             return (
               <button
                 type="button"
                 key={t.id}
                 onClick={() => onToolClick(t.id)}
+                aria-label={t.label}
                 title={t.shortcut ? `${t.label} (${t.shortcut})` : t.label}
-                style={{
-                  ...PdfViewerToolbar_S2,
-                  background: isToolActive(t.id) ? '#2563EB' : '#1e2024',
-                  border: `1px solid ${isToolActive(t.id) ? '#2563EB' : '#3a494a'}`,
-                  borderRadius: '3px',
-                  color: '#b9caca',
-                  cursor: 'pointer',
-                }}
+                data-active={activo ? 'true' : 'false'}
+                className="tb-btn"
               >
-                <span
-                  style={{
-                    fontSize: 14,
-                    width: 18,
-                    textAlign: 'center',
-                    color: isToolActive(t.id) ? '#fff' : t.icoCol,
-                  }}
-                >
+                <span className="tb-ico-18" style={{ color: activo ? '#fff' : t.icoCol }}>
                   {t.ico}
                 </span>
-                <span style={{ fontSize: 12, flex: 1, textAlign: 'left' }}>{t.label}</span>
-                <span
-                  style={{
-                    fontSize: 12,
-                    color: isToolActive(t.id) ? 'rgba(255,255,255,.6)' : '#8AB4D6',
-                    fontFamily: "'Geist',monospace",
-                    marginLeft: 'auto',
-                  }}
-                >
-                  {t.shortcut}
-                </span>
+                <span className="tb-btn-label">{t.label}</span>
+                <span className="tb-shortcut">{t.shortcut}</span>
               </button>
             );
           })}
         </div>
-        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="tb-mt-4">
           <button
             type="button"
             onClick={onSnapToggle}
-            style={{
-              ...PdfViewerToolbar_S3,
-              background: snapOn ? '#10B98122' : '#1e2024',
-              border: `1px solid ${snapOn ? '#10B981' : '#3a494a'}`,
-              borderRadius: '3px',
-              color: snapOn ? '#10B981' : '#9BA8AA',
-              cursor: 'pointer',
-            }}
+            aria-label="Snap"
+            data-on={snapOn ? 'true' : 'false'}
+            className="tb-btn"
           >
-            <span
-              style={{
-                fontSize: 14,
-                width: 18,
-                textAlign: 'center',
-                color: snapOn ? '#10B981' : '#8AB4D6',
-              }}
-            >
-              {snapOn ? '\u25C9' : '\u25CB'}
-            </span>
-            <span style={{ flex: 1 }}>Snap</span>
-            <span
-              style={{
-                fontSize: 12,
-                color: snapOn ? 'rgba(255,255,255,.6)' : '#8AB4D6',
-                fontFamily: "'Geist',monospace",
-              }}
-            >
-              G
-            </span>
+            <span className="tb-ico-18">{snapOn ? '◉' : '○'}</span>
+            <span className="tb-btn-label">Snap</span>
+            <span className="tb-kbd-right">G</span>
           </button>
           <button
             type="button"
             onClick={onGridToggle}
             aria-label="Mostrar/ocultar grilla"
-            style={{
-              ...PdfViewerToolbar_S3,
-              background: gridOn ? '#10B98122' : '#1e2024',
-              border: `1px solid ${gridOn ? '#10B981' : '#3a494a'}`,
-              borderRadius: '3px',
-              color: gridOn ? '#10B981' : '#9BA8AA',
-              cursor: 'pointer',
-            }}
+            data-on={gridOn ? 'true' : 'false'}
+            className="tb-btn"
           >
-            <span
-              style={{
-                fontSize: 14,
-                width: 18,
-                textAlign: 'center',
-                color: gridOn ? '#10B981' : '#8AB4D6',
-              }}
-            >
-              {gridOn ? '▦' : '▢'}
-            </span>
-            <span style={{ flex: 1 }}>Grilla</span>
-            <span
-              style={{
-                fontSize: 12,
-                color: gridOn ? 'rgba(255,255,255,.6)' : '#8AB4D6',
-                fontFamily: "'Geist',monospace",
-              }}
-            >
-              H
-            </span>
+            <span className="tb-ico-18">{gridOn ? '▦' : '▢'}</span>
+            <span className="tb-btn-label">Grilla</span>
+            <span className="tb-kbd-right">H</span>
           </button>
         </div>
       </div>
 
-      <div style={{ padding: '6px 8px 4px', borderBottom: '1px solid #3a494a' }}>
-        <div
-          style={{
-            fontFamily: "'Geist',monospace",
-            fontSize: 12,
-            color: '#9BA8AA',
-            marginBottom: 4,
-            textTransform: 'uppercase',
-            letterSpacing: 1,
-          }}
-        >
-          Acciones
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="tb-head">
+        <div className="tb-head-label">Acciones</div>
+        <div className="tb-list-4">
           {esSuscripcionVencida && (
-            <div
-              role="alert"
-              style={{
-                padding: '6px 8px',
-                background: '#1e2024',
-                border: '1px solid #ef444455',
-                borderRadius: '4px',
-                fontFamily: "'Geist',monospace",
-                fontSize: 11,
-                lineHeight: 1.35,
-                color: '#ffb4ab',
-              }}
-            >
+            <div role="alert" className="tb-warn-banner">
               {SUSCRIPCION_VENCIDA_TXT}{' '}
               <Link
                 to="/pricing"
                 title="Ir a Precios para renovar la suscripción"
-                style={{ color: '#8AB4D6', fontWeight: 700, textDecoration: 'underline' }}
+                className="tb-link"
               >
                 Renovar
               </Link>
@@ -475,163 +290,65 @@ export function ToolbarExpanded({
             type="button"
             onClick={onFit}
             disabled={!currentFile}
-            style={{
-              ...accBtn,
-              width: '100%',
-              borderColor: '#10B98155',
-              color: '#10B981',
-              opacity: !currentFile ? 0.4 : 1,
-              cursor: !currentFile ? 'not-allowed' : 'pointer',
-            }}
+            className="tb-acc tb-acc-fit"
             title={currentFile ? 'Ajustar PDF al visor' : 'Carga un plano para poder ajustarlo'}
           >
-            <span style={{ fontSize: 14 }}>{'\u26F6'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Ajustar</span>
-              <span style={{ fontSize: 12, opacity: 0.7, fontWeight: 400, textAlign: 'left' }}>
-                Encajar PDF al visor
-              </span>
+            <span className="tb-ico">{'⛶'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Ajustar</span>
+              <span className="tb-sub">Encajar PDF al visor</span>
             </div>
           </button>
           <button
             type="button"
             onClick={onSave}
-            style={{ ...accBtn, width: '100%' }}
+            className="tb-acc"
             title={
               esSuscripcionVencida
                 ? SUSCRIPCION_VENCIDA_TXT
                 : 'Guarda los trazados y cambios realizados en el plano para la red activa'
             }
           >
-            <span style={{ fontSize: 14 }}>{'\uD83D\uDCBE'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>Guardar</span>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textAlign: 'left',
-                  color: STATUS[saveStatus]?.color || STATUS.error.color,
-                }}
-              >
-                {STATUS[saveStatus]?.label || STATUS.error.label}
+            <span className="tb-ico">{'\uD83D\uDCBE'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Guardar</span>
+              <span className="tb-sub-status" data-status={statusDe(saveStatus)}>
+                {STATUS[saveStatus]?.label ?? STATUS.error.label}
               </span>
             </div>
           </button>
-          <button
-            type="button"
-            onClick={onUndo}
-            style={{ ...accBtn, width: '100%' }}
-            title="Deshacer (Ctrl + Z)"
-          >
-            <span style={{ fontSize: 14 }}>{'\u21A9'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-                Deshacer (Ctrl + Z)
-              </span>
+          <button type="button" onClick={onUndo} className="tb-acc" title="Deshacer (Ctrl + Z)">
+            <span className="tb-ico">{'\u21A9'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Deshacer (Ctrl + Z)</span>
             </div>
           </button>
-          <button
-            type="button"
-            onClick={onRedo}
-            style={{ ...accBtn, width: '100%' }}
-            title="Rehacer (Ctrl + Y)"
-          >
-            <span style={{ fontSize: 14 }}>{'\u21AA'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-                Rehacer (Ctrl + Y)
-              </span>
+          <button type="button" onClick={onRedo} className="tb-acc" title="Rehacer (Ctrl + Y)">
+            <span className="tb-ico">{'\u21AA'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Rehacer (Ctrl + Y)</span>
             </div>
           </button>
           <button
             type="button"
             onClick={onClear}
-            style={{
-              ...accBtn,
-              width: '100%',
-              borderColor: 'rgba(255,180,171,.3)',
-              color: '#ffb4ab',
-            }}
+            className="tb-acc tb-acc-danger"
             title="Eliminar todo el trazado de la red activa"
           >
-            <span style={{ fontSize: 14 }}>{'\uD83D\uDDD1'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-                Borrar elementos de red
-              </span>
+            <span className="tb-ico">{'\uD83D\uDDD1'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Borrar elementos de red</span>
             </div>
           </button>
           <button
             type="button"
             onClick={onClearGuides}
-            style={{
-              ...accBtn,
-              width: '100%',
-              borderColor: 'rgba(190,255,190,.3)',
-              color: '#befeb',
-            }}
+            className="tb-acc tb-acc-ok"
             title="Borrar todas las líneas guía de todos los pisos"
           >
-            <span style={{ fontSize: 14 }}>{'\u224B'}</span>
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0,
-                lineHeight: 1.1,
-                flex: 1,
-              }}
-            >
-              <span style={{ fontSize: 12, fontWeight: 700, textAlign: 'left' }}>
-                Borrar líneas guía
-              </span>
+            <span className="tb-ico">{'\u224B'}</span>
+            <div className="tb-stack">
+              <span className="tb-title">Borrar líneas guía</span>
             </div>
           </button>
         </div>

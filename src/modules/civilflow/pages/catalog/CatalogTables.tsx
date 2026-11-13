@@ -7,82 +7,38 @@ import {
 } from '../../constants/engineeringDataMaterials.ts';
 import { normalizeDnLabel } from '../../utils/formatUtils.ts';
 
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
-const CatalogTables_S6: React.CSSProperties = {
-  padding: '2px 8px',
-  textAlign: 'center',
-  fontWeight: 700,
-  fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: 0.3,
-  background: 'var(--bg2)',
-  border: '1px solid var(--line)',
-  color: 'var(--txt)',
-};
-
-const HEADER_BG = 'var(--bg3)';
-const HEADER_TXT = '#00dce5';
-const CatalogTables_thBase: React.CSSProperties = {
-  background: HEADER_BG,
-  color: HEADER_TXT,
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0.6,
-  padding: '4px 8px',
-  border: '1px solid var(--line)',
-  textAlign: 'center',
-  whiteSpace: 'nowrap',
-  position: 'sticky',
-  top: 0,
-  zIndex: 5,
-};
-
-function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
+function Th({
+  children,
+  w,
+  className = '',
+}: {
+  children?: React.ReactNode;
+  /** Ancho en % (atributo data-w, ver tables.css). */
+  w?: string;
+  className?: string;
+}) {
   return (
-    <th scope="col" className="td-mono-b" style={{ ...CatalogTables_thBase, ...style }}>
+    <th scope="col" className={`td-mono-b cat-th ${className}`.trim()} data-w={w}>
       {children}
     </th>
   );
 }
 
-function Tr({
-  children,
-  index,
-  style,
-}: {
-  children?: React.ReactNode;
-  index: number;
-  style?: React.CSSProperties;
-}) {
-  const bg = index % 2 === 0 ? 'var(--bg3)' : 'var(--bg)';
-  return <tr style={{ background: bg, ...style }}>{children}</tr>;
+function Tr({ children, index }: { children?: React.ReactNode; index: number }) {
+  return <tr className={index % 2 === 0 ? 'cat-tr-even' : 'cat-tr-odd'}>{children}</tr>;
 }
 
 function Td({
   children,
-  style,
   mono = false,
+  className = '',
 }: {
   children?: React.ReactNode;
-  style?: React.CSSProperties;
   mono?: boolean;
-  center?: boolean;
+  className?: string;
 }) {
   return (
-    <td
-      className={mono ? 'td-mono' : ''}
-      style={{
-        ...(mono ? {} : { fontFamily: 'var(--body)' }),
-        fontSize: 12,
-        fontWeight: 500,
-        padding: '5px 10px',
-        textAlign: 'center',
-        color: 'var(--txt)',
-        border: '1px solid var(--line)',
-        ...style,
-      }}
-    >
+    <td className={`cat-td${mono ? ' cat-td-mono' : ''}${className ? ` ${className}` : ''}`}>
       {children}
     </td>
   );
@@ -102,54 +58,14 @@ interface GasGroupType {
  *  celda con rowSpan). La muestra el catálogo maestro; compact = métricas apretadas para caber
  *  en informes. */
 export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: boolean }) {
-  const cp = compact
-    ? {
-        thPad: '3px 8px',
-        thFs: 11,
-        thLs: 0.5,
-        tdPad: '3px 8px',
-        tdFs: 12,
-        matFs: 14,
-        matPad: '3px 8px',
-        matFw: 700,
-      }
-    : {
-        thPad: '4px 8px',
-        thFs: 10,
-        thLs: 0.6,
-        tdPad: '5px 10px',
-        tdFs: 12,
-        matFs: 11,
-        matPad: '4px 8px',
-        matFw: 600,
-      };
   return (
-    <table
-      style={{
-        width: '100%',
-        borderCollapse: 'collapse',
-        tableLayout: 'fixed',
-        border: '1px solid var(--line)',
-      }}
-    >
-      <caption style={SR_ONLY_STYLE}>Diámetros nominales e interiores por material</caption>
+    <table className={`cat-table-fixed${compact ? ' cat-table-compact' : ''}`}>
+      <caption className="sr-only">Diámetros nominales e interiores por material</caption>
       <thead>
         <tr>
-          <Th
-            style={{ width: '25%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Material
-          </Th>
-          <Th
-            style={{ width: '35%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Diámetro Nominal
-          </Th>
-          <Th
-            style={{ width: '40%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Ø Interior (mm)
-          </Th>
+          <Th w="25">Material</Th>
+          <Th w="35">Diámetro Nominal</Th>
+          <Th w="40">Ø Interior (mm)</Th>
         </tr>
       </thead>
       <tbody>
@@ -158,27 +74,12 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
           return grp.rows.map((r, ri) => (
             <Tr key={`${gi}-${ri}`} index={idx++}>
               {ri === 0 && (
-                <td
-                  rowSpan={grp.rows.length}
-                  style={{
-                    padding: cp.matPad,
-                    fontSize: cp.matFs,
-                    fontWeight: cp.matFw,
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                    color: 'var(--txt2)',
-                    border: '1px solid var(--line)',
-                  }}
-                >
+                <td rowSpan={grp.rows.length} className="cat-mat">
                   {grp.mat}
                 </td>
               )}
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
-                {normalizeDnLabel(r.dn)}
-              </Td>
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
-                {r.d.toFixed(2)}
-              </Td>
+              <Td mono>{normalizeDnLabel(r.dn)}</Td>
+              <Td mono>{r.d.toFixed(2)}</Td>
             </Tr>
           ));
         })}
@@ -192,61 +93,17 @@ export function PipeTable({ groups, compact }: { groups: GroupType[]; compact?: 
 export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact?: boolean }) {
   let idx = 0;
   const data = groups || GAS;
-  const cp = compact
-    ? {
-        thPad: '3px 8px',
-        thFs: 11,
-        thLs: 0.5,
-        tdPad: '3px 8px',
-        tdFs: 12,
-        matFs: 14,
-        matPad: '3px 8px',
-        matFw: 700,
-      }
-    : {
-        thPad: '4px 8px',
-        thFs: 10,
-        thLs: 0.6,
-        tdPad: '5px 10px',
-        tdFs: 12,
-        matFs: 11,
-        matPad: '4px 8px',
-        matFw: 600,
-      };
   return (
-    <table
-      style={{
-        width: '100%',
-        borderCollapse: 'collapse',
-        tableLayout: 'fixed',
-        border: '1px solid var(--line)',
-      }}
-    >
-      <caption style={SR_ONLY_STYLE}>
+    <table className={`cat-table-fixed${compact ? ' cat-table-compact' : ''}`}>
+      <caption className="sr-only">
         Diámetros nominales, interiores y coeficiente K para gas
       </caption>
       <thead>
         <tr>
-          <Th
-            style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Material
-          </Th>
-          <Th
-            style={{ width: '28%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Diámetro Nominal
-          </Th>
-          <Th
-            style={{ width: '24%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Ø Interior (mm)
-          </Th>
-          <Th
-            style={{ width: '20%', padding: cp.thPad, fontSize: cp.thFs, letterSpacing: cp.thLs }}
-          >
-            Coef. K
-          </Th>
+          <Th w="28">Material</Th>
+          <Th w="28">Diámetro Nominal</Th>
+          <Th w="24">Ø Interior (mm)</Th>
+          <Th w="20">Coef. K</Th>
         </tr>
       </thead>
       <tbody>
@@ -254,30 +111,13 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
           grp.rows.map((r: { dn: string; d: number }, ri: number) => (
             <Tr key={`${gi}-${ri}`} index={idx++}>
               {ri === 0 && (
-                <td
-                  rowSpan={grp.rows.length}
-                  style={{
-                    padding: cp.matPad,
-                    fontSize: cp.matFs,
-                    fontWeight: cp.matFw,
-                    textAlign: 'center',
-                    verticalAlign: 'middle',
-                    color: 'var(--txt2)',
-                    border: '1px solid var(--line)',
-                  }}
-                >
+                <td rowSpan={grp.rows.length} className="cat-mat">
                   {grp.mat}
                 </td>
               )}
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
-                {normalizeDnLabel(r.dn)}
-              </Td>
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
-                {r.d.toFixed(2)}
-              </Td>
-              <Td mono style={{ padding: cp.tdPad, fontSize: cp.tdFs }}>
-                {grp.K.toFixed(2)}
-              </Td>
+              <Td mono>{normalizeDnLabel(r.dn)}</Td>
+              <Td mono>{r.d.toFixed(2)}</Td>
+              <Td mono>{grp.K.toFixed(2)}</Td>
             </Tr>
           )),
         )}
@@ -290,12 +130,12 @@ export function GasTable({ groups, compact }: { groups?: GasGroupType[]; compact
  *  diámetro — referencia para chequear si el contador del proyecto aguanta el caudal. */
 export function ContadoresTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={SR_ONLY_STYLE}>Caudales nominales de contadores por diámetro</caption>
+    <table className="cat-table">
+      <caption className="sr-only">Caudales nominales de contadores por diámetro</caption>
       <thead>
         <tr>
-          <Th style={{ width: '50%' }}>Diámetro</Th>
-          <Th style={{ width: '50%' }}>Qn (LPS)</Th>
+          <Th w="50">Diámetro</Th>
+          <Th w="50">Qn (LPS)</Th>
         </tr>
       </thead>
       <tbody>
@@ -303,7 +143,7 @@ export function ContadoresTable() {
           let label = normalizeDnLabel(c.dn);
           if (!label.endsWith('"') && !label.endsWith('mm')) label += '"';
           return (
-            <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
+            <tr key={i} className={i % 2 === 0 ? 'cat-tr-even' : 'cat-tr-odd'}>
               <Td mono>{label}</Td>
               <Td mono>{c.q.toFixed(2)}</Td>
             </tr>
@@ -314,29 +154,27 @@ export function ContadoresTable() {
   );
 }
 
-const cmpTd = { padding: '2px 6px', fontSize: 13 };
-
 /** Tabla de materiales recomendados por tipo de red. Ej: Agua caliente -> CPVC
  *  (Cloruro de Polivinilo Clorado); Sanitaria -> PVC-S. */
 export function MaterialesPorRedTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={SR_ONLY_STYLE}>Materiales recomendados por tipo de red</caption>
+    <table className="cat-table">
+      <caption className="sr-only">Materiales recomendados por tipo de red</caption>
       <thead>
         <tr>
-          <Th style={{ width: '30%', padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>
+          <Th w="30" className="cat-th-cmp">
             Red
           </Th>
-          <Th style={{ padding: '2px 6px', fontSize: 12, letterSpacing: 0.4 }}>Materiales</Th>
+          <Th className="cat-th-cmp">Materiales</Th>
         </tr>
       </thead>
       <tbody>
         {MATERIALES_POR_RED.map((c, i) => (
           <Tr key={i} index={i}>
-            <Td mono style={cmpTd}>
+            <Td mono className="cat-td-cmp">
               {c.red}
             </Td>
-            <Td style={cmpTd}>{'mat' in c ? c.mat : c.mats ? c.mats.join(', ') : ''}</Td>
+            <Td className="cat-td-cmp">{'mat' in c ? c.mat : c.mats ? c.mats.join(', ') : ''}</Td>
           </Tr>
         ))}
       </tbody>
@@ -344,45 +182,21 @@ export function MaterialesPorRedTable() {
   );
 }
 
-const coefTh = {
-  background: HEADER_BG,
-  color: HEADER_TXT,
-  fontFamily: 'var(--mono)',
-  fontSize: 12,
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: 0.4,
-  padding: '1px 4px',
-  border: '1px solid var(--line)',
-  textAlign: 'center',
-  whiteSpace: 'nowrap',
-} as React.CSSProperties;
-
-const coefTd = {
-  fontFamily: 'var(--mono)',
-  fontSize: 13,
-  fontWeight: 500,
-  padding: '0px 3px',
-  textAlign: 'center',
-  color: 'var(--txt)',
-  border: '1px solid var(--line)',
-} as React.CSSProperties;
-
 /** Coeficiente de escorrentía C por material de cubierta (aguas lluvias) — sin columna de referencia. */
 export function EscorrentiaCubiertaTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={SR_ONLY_STYLE}>Coeficiente de escorrentía por material de cubierta</caption>
+    <table className="cat-table">
+      <caption className="sr-only">Coeficiente de escorrentía por material de cubierta</caption>
       <thead>
         <tr>
-          <Th style={{ width: '70%' }}>Material de cubierta</Th>
-          <Th style={{ width: '30%' }}>C</Th>
+          <Th w="70">Material de cubierta</Th>
+          <Th w="30">C</Th>
         </tr>
       </thead>
       <tbody>
         {MATERIALES_CUBIERTA_LL.map((m, i) => (
           <Tr key={m.nombre} index={i}>
-            <Td style={{ textAlign: 'left' }}>{m.nombre}</Td>
+            <Td className="cat-td-left">{m.nombre}</Td>
             <Td mono>{m.C.toFixed(2)}</Td>
           </Tr>
         ))}
@@ -394,18 +208,18 @@ export function EscorrentiaCubiertaTable() {
 /** Rugosidad que frena el agua (mientras más áspero, más lento). Ej: Manning (formula de flujo en tuberia) n por material de canal, sin referencia. */
 export function ManningCanalesLlTable() {
   return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-      <caption style={SR_ONLY_STYLE}>Coeficiente de Manning por material (canales)</caption>
+    <table className="cat-table">
+      <caption className="sr-only">Coeficiente de Manning por material (canales)</caption>
       <thead>
         <tr>
-          <Th style={{ width: '70%' }}>Material del canal</Th>
-          <Th style={{ width: '30%' }}>n</Th>
+          <Th w="70">Material del canal</Th>
+          <Th w="30">n</Th>
         </tr>
       </thead>
       <tbody>
         {MATERIALES_CANAL_LL.map((m, i) => (
           <Tr key={m.nombre} index={i}>
-            <Td style={{ textAlign: 'left' }}>{m.nombre}</Td>
+            <Td className="cat-td-left">{m.nombre}</Td>
             <Td mono>{m.n.toFixed(3)}</Td>
           </Tr>
         ))}
@@ -419,59 +233,57 @@ export function ManningCanalesLlTable() {
  *  usan las tablas de dimensionamiento por red. */
 export function CoefFriccionTable() {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--line)' }}>
-        <caption style={SR_ONLY_STYLE}>Coeficientes de fricción por tipo de tubería</caption>
+    <div className="cat-scroll">
+      <table className="cat-table">
+        <caption className="sr-only">Coeficientes de fricción por tipo de tubería</caption>
         <thead>
           <tr>
-            <th scope="colgroup" colSpan={9} style={CatalogTables_S6}>
+            <th scope="colgroup" colSpan={9} className="cat-th-group">
               Coeficiente fricción tuberías
             </th>
           </tr>
           <tr>
-            <th scope="col" style={{ ...coefTh, width: '14%' }}>
+            <th scope="col" className="cat-coef-th" data-w="14">
               Tipo
             </th>
-            <th scope="col" style={{ ...coefTh, width: '14%' }}>
+            <th scope="col" className="cat-coef-th" data-w="14">
               Descripción
             </th>
-            <th scope="col" style={{ ...coefTh, width: '10%' }}>
+            <th scope="col" className="cat-coef-th" data-w="10">
               Sistema
             </th>
-            <th scope="col" style={{ ...coefTh, width: '7%' }}>
+            <th scope="col" className="cat-coef-th" data-w="7">
               Material
             </th>
-            <th scope="col" style={coefTh}>
+            <th scope="col" className="cat-coef-th">
               Manning n
             </th>
-            <th scope="col" style={coefTh}>
+            <th scope="col" className="cat-coef-th">
               Hazen C
             </th>
-            <th scope="col" style={coefTh}>
+            <th scope="col" className="cat-coef-th">
               Hazen C Uso
             </th>
-            <th scope="col" style={coefTh}>
+            <th scope="col" className="cat-coef-th">
               Rugosidad ε (mm)
             </th>
-            <th scope="col" style={coefTh}>
+            <th scope="col" className="cat-coef-th">
               Presión Nominal
             </th>
           </tr>
         </thead>
         <tbody>
           {COEF_FRICCION.map((c, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? 'var(--bg3)' : 'var(--bg)' }}>
-              <td style={{ ...coefTd, textAlign: 'center' }}>{c.tipo}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>
-                {c.desc}
-              </td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.sis}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.mat}</td>
-              <td style={coefTd}>{c.n.toFixed(3)}</td>
-              <td style={coefTd}>{c.c}</td>
-              <td style={coefTd}>{c.cu}</td>
-              <td style={coefTd}>{c.e.toFixed(4)}</td>
-              <td style={{ ...coefTd, fontFamily: 'var(--body)', textAlign: 'center' }}>{c.pn}</td>
+            <tr key={i} className={i % 2 === 0 ? 'cat-tr-even' : 'cat-tr-odd'}>
+              <td className="cat-coef-td">{c.tipo}</td>
+              <td className="cat-coef-td cat-coef-td-body">{c.desc}</td>
+              <td className="cat-coef-td cat-coef-td-body">{c.sis}</td>
+              <td className="cat-coef-td cat-coef-td-body">{c.mat}</td>
+              <td className="cat-coef-td">{c.n.toFixed(3)}</td>
+              <td className="cat-coef-td">{c.c}</td>
+              <td className="cat-coef-td">{c.cu}</td>
+              <td className="cat-coef-td">{c.e.toFixed(4)}</td>
+              <td className="cat-coef-td cat-coef-td-body">{c.pn}</td>
             </tr>
           ))}
         </tbody>

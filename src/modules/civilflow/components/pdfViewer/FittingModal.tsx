@@ -179,14 +179,9 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
         onClose();
       }}
       onClose={onClose}
+      className="fitting-modal"
       style={AccesorioModal_S1}
     >
-      <style>{`
-        dialog::backdrop {
-          background: rgba(10, 11, 14, 0.75);
-          backdrop-filter: blur(8px);
-        }
-      `}</style>
       <div style={AccesorioModal_S2}>
         <span style={{ fontSize: 22 }}>{modalState.isTee ? '🔧' : '📐'}</span>{' '}
         {modalState.isTee

@@ -11,18 +11,6 @@ import { fmt } from '../utils/formatUtils.ts';
 import { LazyDecimalInput } from './shared/LazyDecimalInput.tsx';
 import EditButton from './shared/EditButton.tsx';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-const NUMERIC_INPUT_DISABLED_STYLE: React.CSSProperties = {
-  display: 'inline-block',
-  textAlign: 'center',
-  fontSize: 12,
-  color: '#3a494a',
-  fontFamily: "'Geist',monospace",
-  padding: '2px 4px',
-  border: '1px solid transparent',
-  cursor: 'not-allowed',
-};
-
 interface NumericInputProps {
   value: number;
   onCommit: (v: number) => void;
@@ -48,7 +36,9 @@ function NumericInput({
 }: NumericInputProps) {
   if (disabled) {
     return (
-      <span style={{ ...NUMERIC_INPUT_DISABLED_STYLE, width }}>{fmt(value || 0, decimals)}</span>
+      <span className="dp-disabled" style={{ width }}>
+        {fmt(value || 0, decimals)}
+      </span>
     );
   }
 
@@ -75,36 +65,6 @@ function NumericInput({
     />
   );
 }
-
-const DesignParameters_S2: React.CSSProperties = {
-  width: '100%',
-  padding: '8px 10px',
-  background: 'rgba(0,220,229,0.08)',
-  border: 'none',
-  borderTop: '1px solid rgba(0,220,229,0.25)',
-  color: '#00dce5',
-  cursor: 'pointer',
-  fontFamily: 'var(--mono)',
-  fontSize: 12,
-  fontWeight: 700,
-  letterSpacing: 0.5,
-  textTransform: 'uppercase',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  transition: 'all .15s',
-};
-const DesignParameters_S3: React.CSSProperties = {
-  width: '100%',
-  fontFamily: 'var(--mono)',
-  fontSize: 12,
-  fontWeight: 600,
-  color: 'var(--txt2)',
-  border: 'none',
-  padding: '2px 4px',
-  background: 'transparent',
-};
 
 interface RedMat {
   id: string;
@@ -230,88 +190,52 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
   const [isEditingAparatos, setIsEditingAparatos] = useState(false);
 
   return (
-    <div
-      className="fu bd-section"
-      data-tour="cf-tab-datos"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        flex: 1,
-        minHeight: 0,
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1.05fr 1fr',
-          gap: 10,
-          flex: 1,
-          minHeight: 0,
-          alignItems: 'start',
-        }}
-      >
-        <section
-          className="card"
-          data-tour="datos-materiales"
-          style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-        >
-          <div
-            className="card-h"
-            style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}
-          >
-            <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
+    <div className="dp-col-10 fu bd-section" data-tour="cf-tab-datos">
+      <div className="dp-grid-3">
+        <section className="card dp-col-cut" data-tour="datos-materiales">
+          <div className="dp-head-pad card-h">
+            <h3 className="dp-fs13-flex card-t">
               <img
                 src="/iconos_civilflow/parametros_de_diseno/materiales_por_red.webp"
                 alt="Materiales por red"
                 width={20}
                 height={20}
-                style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 2 }}
+                className="dp-icon-20"
                 loading="lazy"
               />
               Materiales por red
             </h3>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="card-s" style={{ fontSize: 12 }}>
-                {activeRedes.length} redes activas
-              </span>
+            <div className="dp-row-auto">
+              <span className="dp-fs12 card-s">{activeRedes.length} redes activas</span>
               <EditButton edit={isEditingMateriales} setEdit={setIsEditingMateriales} />
             </div>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
-            <table className="tbl" style={{ fontSize: 12 }}>
-              <caption style={SR_ONLY_STYLE}>
-                Materiales y profundidad de instalación por red
-              </caption>
+          <div className="dp-scroll-xy">
+            <table className="dp-fs12 tbl">
+              <caption className="sr-only">Materiales y profundidad de instalación por red</caption>
               <thead>
                 <tr>
-                  <th
-                    title="Consecutivo de la red."
-                    scope="col"
-                    style={{ width: 28, textAlign: 'center', padding: '4px 6px' }}
-                  >
+                  <th title="Consecutivo de la red." scope="col" className="dp-sel-28">
                     #
                   </th>
                   <th
                     title="Red a la que aplica la configuración."
                     scope="col"
-                    style={{ padding: '4px 8px' }}
+                    className="dp-pad-8"
                   >
                     Red
                   </th>
                   <th
                     title="Material de tubería por defecto de la red."
                     scope="col"
-                    style={{ padding: '4px 8px', minWidth: 90 }}
+                    className="dp-w-90"
                   >
                     Tubería
                   </th>
                   <th
                     title="Profundidad de instalación respecto al nivel de piso terminado (m)."
                     scope="col"
-                    className="c"
-                    style={{ width: 130, padding: '4px 6px' }}
+                    className="c dp-w-130"
                   >
                     Profundidad de instalación
                     <br />
@@ -325,81 +249,43 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   return (
                     <tr
                       key={r.id}
-                      style={{
-                        background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)',
-                        borderBottom: isLast ? '2px solid var(--line)' : undefined,
-                      }}
+                      className={
+                        ix % 2 === 0
+                          ? 'dp-row-alt' + (isLast ? ' dp-row-last' : '')
+                          : 'dp-row-alt2' + (isLast ? ' dp-row-last' : '')
+                      }
                     >
-                      <td
-                        style={{
-                          textAlign: 'center',
-                          fontFamily: 'var(--mono)',
-                          fontSize: 12,
-                          color: 'var(--txt3)',
-                          padding: '3px 6px',
-                        }}
-                      >
-                        {ix + 1}
+                      <td className="dp-cm-center">{ix + 1}</td>
+                      <td className="dp-pad-3x">
+                        <span className="dp-fs12-medium">{r.lbl}</span>
                       </td>
-                      <td style={{ padding: '3px 8px' }}>
-                        <span style={{ fontWeight: 500, fontSize: 12 }}>{r.lbl}</span>
-                      </td>
-                      <td style={{ padding: '3px 8px' }}>
+                      <td className="dp-pad-3x">
                         {r.fixed ? (
-                          <span
-                            style={{
-                              fontFamily: 'var(--mono)',
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: 'var(--txt)',
-                            }}
-                          >
-                            {r.mat}
-                          </span>
+                          <span className="dp-mono-600">{r.mat}</span>
                         ) : (
                           <select
                             aria-label="Seleccionar material"
                             disabled={!isEditingMateriales}
-                            style={{
-                              ...DesignParameters_S3,
-                              cursor: isEditingMateriales ? 'pointer' : 'default',
-                              opacity: isEditingMateriales ? 1 : 0.7,
-                            }}
+                            className="dp-ghost dp-fade"
                             value={r.matSel}
                             onChange={(e) => setMatSel(r.id, e.target.value)}
                           >
                             {getOpts(r).map((o: string, i: number) => (
-                              <option
-                                key={i}
-                                value={o}
-                                style={{
-                                  fontFamily: 'var(--body)',
-                                  fontWeight: 400,
-                                  color: '#000',
-                                  background: '#fff',
-                                }}
-                              >
+                              <option key={i} value={o} className="dp-light">
                                 {o}
                               </option>
                             ))}
                           </select>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                      <td className="dp-sel-center">
                         <input
                           type="text"
                           disabled={!isEditingMateriales}
                           inputMode="decimal"
-                          className="ni"
+                          className="ni dp-w65 dp-fade"
                           aria-label="Profundidad"
-                          style={{
-                            width: 65,
-                            padding: '2px 4px',
-                            fontSize: 12,
-                            textAlign: 'center',
-                            color: 'var(--txt)',
-                            opacity: isEditingMateriales ? 1 : 0.7,
-                          }}
+                          data-editing={isEditingMateriales ? 'true' : 'false'}
                           value={
                             profTexts[r.id] !== undefined
                               ? profTexts[r.id]
@@ -450,13 +336,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
           <button
             type="button"
             onClick={() => navigate('/catalogomaestro')}
-            style={DesignParameters_S2}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0,220,229,0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,220,229,0.08)';
-            }}
+            className="dp-cta"
             title="Ver catálogo completo de materiales, diámetros y coeficientes"
           >
             <img
@@ -464,101 +344,72 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               alt="Catálogo maestro"
               width={18}
               height={18}
-              style={{ width: 18, height: 18, verticalAlign: 'middle', marginRight: 4 }}
+              className="dp-icon-18"
               loading="lazy"
             />{' '}
             Catálogo maestro
           </button>
         </section>
 
-        <section
-          className="card"
-          data-tour="datos-aparatos"
-          style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
-        >
-          <div
-            className="card-h"
-            style={{ padding: '6px 10px', flexShrink: 0, display: 'flex', alignItems: 'center' }}
-          >
-            <h3 className="card-t" style={{ fontSize: 13, display: 'flex', alignItems: 'center' }}>
+        <section className="card dp-col-cut0" data-tour="datos-aparatos">
+          <div className="dp-head-pad card-h">
+            <h3 className="dp-fs13-flex card-t">
               <img
                 src="/iconos_civilflow/parametros_de_diseno/catalogo_aparatos_sanitarios.webp"
                 alt="Catálogo de aparatos sanitarios"
                 width={20}
                 height={20}
-                style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 2 }}
+                className="dp-icon-20"
                 loading="lazy"
               />
               Catálogo de aparatos sanitarios
             </h3>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="card-s" style={{ fontSize: 12 }}>
+            <div className="dp-row-auto">
+              <span className="dp-fs12 card-s">
                 Unidades de consumo/Unidades de descarga editables
               </span>
               <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>
           </div>
-          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
-            <table className="tbl" style={{ fontSize: 12 }}>
+          <div className="dp-scroll-xy">
+            <table className="dp-fs12 tbl">
               <thead>
                 <tr>
-                  <th
-                    title="Aparato sanitario del proyecto."
-                    scope="col"
-                    style={{ padding: '4px 8px' }}
-                  >
+                  <th title="Aparato sanitario del proyecto." scope="col" className="dp-pad-8">
                     Aparato
                   </th>
                   <th
                     title="Sigla con la que se identifica el aparato."
                     scope="col"
-                    style={{ width: 60, padding: '4px 6px' }}
+                    className="dp-w-60"
                   >
                     Sigla
                   </th>
                   <th
                     title="Tipo de control del aparato (llave, fluxómetro)."
                     scope="col"
-                    style={{ width: 80, padding: '4px 6px' }}
+                    className="dp-w-80"
                   >
                     Tipo de Control
                   </th>
                   <th
                     title="Unidades de consumo en agua fría."
                     scope="col"
-                    className="c"
-                    style={{
-                      width: 55,
-                      padding: '4px 4px',
-                      background: 'rgba(27,110,243,.07)',
-                      color: 'var(--acc2)',
-                    }}
+                    className="c dp-input-blue"
                   >
                     UC AF
                   </th>
                   <th
                     title="Unidades de consumo en agua caliente."
                     scope="col"
-                    className="c"
-                    style={{
-                      width: 55,
-                      padding: '4px 4px',
-                      background: 'rgba(240,69,69,.07)',
-                      color: '#F04545',
-                    }}
+                    className="c dp-input-red"
                   >
                     UC AC
                   </th>
                   <th
                     title="Unidades de descarga en la red sanitaria."
                     scope="col"
-                    className="c"
-                    style={{
-                      width: 55,
-                      padding: '4px 4px',
-                      background: 'rgba(245,166,35,.07)',
-                      color: 'var(--san)',
-                    }}
+                    className="c dp-input-amber"
                   >
                     UD RS
                   </th>
@@ -570,29 +421,18 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                   return (
                     <tr
                       key={a.id}
-                      style={{
-                        background: ix % 2 === 0 ? 'var(--bg3)' : 'var(--bg2)',
-                        borderBottom: isLavavajillas ? '2px solid var(--line)' : undefined,
-                      }}
+                      className={
+                        ix % 2 === 0
+                          ? 'dp-row-alt' + (isLavavajillas ? ' dp-row-last' : '')
+                          : 'dp-row-alt2' + (isLavavajillas ? ' dp-row-last' : '')
+                      }
                     >
-                      <td style={{ padding: '3px 8px', fontWeight: 500 }}>{a.n}</td>
-                      <td style={{ padding: '3px 6px' }}>
-                        <span
-                          style={{
-                            fontFamily: 'var(--mono)',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: 'var(--txt2)',
-                            padding: '0',
-                          }}
-                        >
-                          {a.s.toUpperCase()}
-                        </span>
+                      <td className="dp-pad-3x-500">{a.n}</td>
+                      <td className="dp-pad-6">
+                        <span className="dp-mono-pad0">{a.s.toUpperCase()}</span>
                       </td>
-                      <td style={{ padding: '3px 6px', fontSize: 12, color: 'var(--txt2)' }}>
-                        {a.ctrl}
-                      </td>
-                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                      <td className="dp-fs12-dim">{a.ctrl}</td>
+                      <td className="dp-sel-center">
                         <NumericInput
                           value={a.ucaf}
                           color="var(--acc2)"
@@ -602,7 +442,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           onCommit={(v) => setApsVal(a.id, 'ucaf', v)}
                         />
                       </td>
-                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                      <td className="dp-sel-center">
                         <NumericInput
                           value={a.ucac}
                           color="#F04545"
@@ -612,7 +452,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           onCommit={(v) => setApsVal(a.id, 'ucac', v)}
                         />
                       </td>
-                      <td style={{ textAlign: 'center', padding: '3px 4px' }}>
+                      <td className="dp-sel-center">
                         <NumericInput
                           value={a.ud ?? 0}
                           color="var(--san)"

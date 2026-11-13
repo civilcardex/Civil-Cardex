@@ -420,13 +420,7 @@ function elevScale(
     const fs = Math.min(12, slab * 0.55);
     if (y0 - y1 >= 10) {
       cuerpo.push(
-        <text
-          key={cuerpo.length}
-          x={x0 - 10}
-          y={(y0 + y1) / 2 + 4}
-          textAnchor="end"
-          style={{ fontSize: fs }}
-        >
+        <text key={cuerpo.length} x={x0 - 10} y={y0 - 3} textAnchor="end" style={{ fontSize: fs }}>
           {r.p.nombre}
         </text>,
       );

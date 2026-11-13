@@ -5,7 +5,7 @@
  * Ej: <PlanSvg roc={R.roc} opts={{ area: true, number: true, nodes: true }} />.
  */
 import type { Criterios } from '../../lib/rci/types';
-import { COL_TEMA, n2 } from './RCISvgSchemas';
+import { COL_TEMA } from './RCISvgSchemas';
 import type { CSSProperties } from 'react';
 import { CotaH, CotaV, SVG_CSS } from './RCISvgCotas';
 
@@ -54,9 +54,9 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
   const x0 = 84,
     yb = H - 74,
     xf = x0 + (cols - 1) * dx + 58;
-  /* W mínimo 680 (el HTML) pero CRECE si "Derivación del montante"/"fin del cálculo del piso"
-   * no caben a la derecha del vbox (xf+22 + ~140 px de texto): sin recorte con Nramal alto. */
-  const W = Math.max(680, xf + 190);
+  /* W mínimo 680 (el HTML): los textos de la derivación ahora van ENCIMA del símbolo C
+   * (ped. usuario 2026-11-13), así que el ancho no necesita margen para ellos. */
+  const W = Math.max(680, xf + 56);
   const Y = (j: number) => yb - j * dy,
     X = (i: number) => x0 + i * dx;
   const pipeSt: CSSProperties = { stroke: c.fire, strokeWidth: 2, strokeOpacity: 0.75 };
@@ -157,7 +157,7 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
                     textAnchor="middle"
                     style={{ fill: c.ink, fontWeight: 600 }}
                   >
-                    Lado largo 1,2·√A = {n2(ro.Llargo)} m
+                    Lado largo 1,2·√A
                   </text>
                 </>
               );
@@ -188,11 +188,18 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
             >
               {String.fromCharCode(65 + ny)}
             </text>
-            <text x={xf + 22} y={Y(rows - 1) - 40} style={{ fill: c.ink, fontWeight: 600 }}>
-              Derivación del montante
+            {/* Textos ENCIMA del símbolo C (ped. usuario 2026-11-13: a la derecha ocupaban
+             *  ancho innecesario y quedaban lejos). Centrados sobre el vbox, apilados. */}
+            <text
+              x={xf}
+              y={Y(rows - 1) - 68}
+              textAnchor="middle"
+              style={{ fill: c.ink, fontWeight: 600 }}
+            >
+              {opts.verCorte ? 'Derivación del montante · tee' : 'Derivación del montante'}
             </text>
-            <text x={xf + 22} y={Y(rows - 1) - 26} style={{ fill: c.muted }}>
-              {opts.verCorte ? 'tee en el montante · ver corte' : 'fin del cálculo del piso'}
+            <text x={xf} y={Y(rows - 1) - 54} textAnchor="middle" style={{ fill: c.muted }}>
+              {opts.verCorte ? 'ver corte' : 'fin del cálculo del piso'}
             </text>
           </g>
         ) : null}
@@ -202,6 +209,8 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
               const yd = yb + 16;
               return (
                 <>
+                  {/* SOLO S y L (ped. usuario 2026-11-13): las cotas ≤ de distancia a muro
+                   *  salieron de la guía — se explican en el texto del paso. */}
                   <CotaH x1={X(0)} x2={X(1)} y={yd} />
                   <text
                     x={(X(0) + X(1)) / 2}
@@ -209,28 +218,8 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
                     textAnchor="middle"
                     style={{ fill: c.ink, fontWeight: 600 }}
                   >
-                    S = {n2(ro.S)} m
+                    S
                   </text>
-                  <CotaH x1={X(0) - 46} x2={X(0)} y={yd} />
-                  <text
-                    x={X(0) - 23}
-                    y={yd + 15}
-                    textAnchor="middle"
-                    style={{ fill: c.ink, fontWeight: 600 }}
-                  >
-                    ≤ {n2(ro.hz.s / 2)}
-                  </text>
-                  {(() => {
-                    const xw = X(Math.min(cols - 1, 3)) + 14;
-                    return (
-                      <>
-                        <CotaV x={xw} y1={yb} y2={yb + 46} />
-                        <text x={xw + 6} y={yb + 30} style={{ fill: c.ink, fontWeight: 600 }}>
-                          ≤ {n2(ro.hz.s / 2)}
-                        </text>
-                      </>
-                    );
-                  })()}
                   {rows > 1 ? (
                     <>
                       <CotaV x={X(2) + 14} y1={Y(0)} y2={Y(1)} />
@@ -239,7 +228,7 @@ export function PlanSvg({ roc, opts = {} }: { roc: Criterios; opts?: PlanOpts })
                         y={(Y(0) + Y(1)) / 2 + 4}
                         style={{ fill: c.ink, fontWeight: 600 }}
                       >
-                        L = {n2(ro.L)} m
+                        L
                       </text>
                     </>
                   ) : null}

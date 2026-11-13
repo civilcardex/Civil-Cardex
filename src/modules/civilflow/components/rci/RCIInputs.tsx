@@ -57,7 +57,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
       <SubTabsRci subs={items} sub={sub} setSub={elegir}>
         {/* Contenido centrado en la sección (ped. usuario), EXCEPTO Tubería y mangueras:
          *  esa sub vuelve al alineado a la izquierda original (ped. usuario posterior). */}
-        <section style={{ padding: '2px 0 8px' }}>
+        <section style={{ padding: '2px 0 0' }}>
           {sub === 'tuberia' ? (
             /* Tubería y mangueras AL LADO del coeficiente C de Hazen-Williams; el catálogo de
              * accesorios especiales, debajo. Sin centrar: como estaba antes (ped. usuario). */
@@ -107,7 +107,15 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
           ) : sub === 'seleccion' ? null : (
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <GrupoTabla
-                minAncho={sub === 'clasificacion' ? 720 : sub === 'normativa' ? 1600 : undefined}
+                minAncho={
+                  sub === 'normativa' || sub === 'succion'
+                    ? 1800
+                    : sub === 'montantes'
+                      ? 1600
+                      : sub === 'clasificacion'
+                        ? 720
+                        : undefined
+                }
                 titulo={SUB_POR_ID.get(sub)?.l || sub}
                 nota={NOTA_SUB[sub]}
                 icono={ICONO_SUB[sub]}

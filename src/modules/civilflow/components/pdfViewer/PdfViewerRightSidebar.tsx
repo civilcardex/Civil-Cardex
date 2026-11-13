@@ -17,7 +17,6 @@ import PdfViewerDrawnElements from './PdfViewerDrawnElements.tsx';
 
 interface PdfViewerRightSidebarProps {
   style: CSSProperties;
-  srOnlyStyle: CSSProperties;
   selectStyle: CSSProperties;
   rightSidebarOpacity: CSSProperties;
   tool: string;
@@ -59,7 +58,6 @@ interface PdfViewerRightSidebarProps {
 /** Contenedor presentacional (todo por props): monta cada panel según la selección y el nivel (el 🟢 marca plano confirmado). */
 export function PdfViewerRightSidebar({
   style,
-  srOnlyStyle,
   selectStyle,
   rightSidebarOpacity,
   tool,
@@ -99,7 +97,7 @@ export function PdfViewerRightSidebar({
 }: PdfViewerRightSidebarProps) {
   return (
     <div className="visor-sidebar-right" role="region" aria-label="Panel de edición" style={style}>
-      <h2 style={srOnlyStyle}>Panel de edición</h2>
+      <h2 className="sr-only">Panel de edición</h2>
       <div
         data-tour="visor-nivel"
         style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}

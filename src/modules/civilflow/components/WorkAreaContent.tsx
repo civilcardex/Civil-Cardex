@@ -9,7 +9,6 @@ import { RedesTab } from './workareaContent/networksTab.tsx';
 import { InfTab } from './workareaContent/reportTab.tsx';
 import type { useWorkAreaState } from './useWorkAreaState.ts';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const PlanosTab = lazy(() => import('./workarea/PlansTab.tsx'));
 const BaseDatos = lazy(() => import('./DesignParameters.tsx'));
 const Normativa = lazy(() => import('./Regulations/Regulations.tsx'));
@@ -31,7 +30,7 @@ const SECCION_STYLE: CSSProperties = {
 function Seccion({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section aria-label={label} style={SECCION_STYLE}>
-      <h2 style={SR_ONLY_STYLE}>{label}</h2>
+      <h2 className="sr-only">{label}</h2>
       {children}
     </section>
   );

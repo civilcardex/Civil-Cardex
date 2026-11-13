@@ -25,12 +25,7 @@ export function AlzadoMuro({ res }: { res: RejResultado }) {
       viewBox={`0 0 ${W} ${Hs}`}
       role="img"
       aria-label="Alzado del muro con rejillas"
-      style={{
-        width: '100%',
-        maxWidth: 520,
-        display: 'block',
-        margin: '0 auto',
-      }}
+      className="alzado-svg"
     >
       <rect
         x={X(0)}

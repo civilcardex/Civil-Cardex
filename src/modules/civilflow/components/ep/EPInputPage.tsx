@@ -7,31 +7,7 @@ import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
 import { LazyInp, Param, Comment } from './EPShared';
-import { SI } from '../../styles/sharedTableStyles.ts';
 import { dec } from '../../utils/parseDecimal.ts';
-
-const EPInputPage_S1: React.CSSProperties = {
-  marginTop: 6,
-  padding: '6px 10px',
-  background: 'var(--bg3)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 'var(--r)',
-  border: '1px solid var(--line)',
-};
-const EPInputPage_modoBtn: React.CSSProperties = {
-  padding: '8px 14px',
-  borderRadius: 'var(--r)',
-  cursor: 'pointer',
-  fontFamily: 'var(--mono)',
-  fontWeight: 700,
-  fontSize: 12,
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  textTransform: 'uppercase',
-};
 
 interface EPInputPageProps {
   ep: EPData;
@@ -55,24 +31,21 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
   const [editBombas, setEditBombas] = useState(false);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}>
-      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-start' }}>
+    <div className="flex-col-6 flex-1 min-h-0">
+      <div className="flex-row-6 justify-start">
         <button
           type="button"
           onClick={() => updEP('modo', 'red')}
-          style={{
-            ...EPInputPage_modoBtn,
-            background: isRed ? 'rgba(0,220,229,0.1)' : 'transparent',
-            border: `1.5px solid ${isRed ? '#00dce5' : 'var(--line)'}`,
-            color: isRed ? '#00dce5' : 'var(--txt3)',
-          }}
+          className="ep-modo-btn"
+          data-on={isRed ? 'true' : 'false'}
+          data-modo="red"
         >
           <img
             src="/iconos_civilflow/diseno_redes/equipos/succion_red.webp"
             alt="Succión directa"
             width={22}
             height={22}
-            style={{ width: 22, height: 22 }}
+            className="card-icon-22"
             loading="lazy"
           />{' '}
           Succión directa (red)
@@ -80,19 +53,16 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
         <button
           type="button"
           onClick={() => updEP('modo', 'cisterna')}
-          style={{
-            ...EPInputPage_modoBtn,
-            background: !isRed ? 'rgba(255,152,0,0.1)' : 'transparent',
-            border: `1.5px solid ${!isRed ? '#ff9800' : 'var(--line)'}`,
-            color: !isRed ? '#ff9800' : 'var(--txt3)',
-          }}
+          className="ep-modo-btn"
+          data-on={!isRed ? 'true' : 'false'}
+          data-modo="cisterna"
         >
           <img
             src="/iconos_civilflow/diseno_redes/equipos/succion_cisterna.webp"
             alt="Succión cisterna"
             width={22}
             height={22}
-            style={{ width: 22, height: 22 }}
+            className="card-icon-22"
             loading="lazy"
           />{' '}
           Succión cisterna
@@ -100,21 +70,21 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
       </div>
 
       {/* Flujo de lectura: 1 arriba-izq, 2 debajo, 3 arriba-der, 4 debajo-der. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'start' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="ep-grid-2">
+        <div className="flex-col-8">
           <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
+            className="ep-card-col"
             iconImg="/iconos_civilflow/diseno_redes/equipos/caudales_diseno.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title="1. Caudales de diseño"
-            bodyStyle={{ padding: 0 }}
+            bodyClassName="card-b-p0"
             headerRight={<EditButton edit={editCaudales} setEdit={setEditCaudales} />}
           >
             <Tbl
               caption="Caudales de diseño"
-              thStyle={{ fontSize: 11 }}
-              tdStyle={{ fontSize: 12 }}
-              tdlStyle={{ fontSize: 13 }}
+              thClassName="tbl-th-11"
+              tdClassName="tbl-td-12"
+              tdlClassName="tbl-tdl-13"
               cols={['Parámetro', 'Valor', 'Ud.', 'Comentario / Referencia']}
               rows={[
                 [
@@ -128,8 +98,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'L/s',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Hunter / RAS 2000</span>{' '}
-                    · Caudal probable de la red de agua fría. Obtenido del diseño hidráulico.
+                    <span className="ep-note-600">Hunter / RAS 2000</span> · Caudal probable de la
+                    red de agua fría. Obtenido del diseño hidráulico.
                   </Comment>,
                 ],
                 [
@@ -143,26 +113,26 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'L/s',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Hunter / RAS 2000</span>{' '}
-                    · Típico 60–70% del Qac. Del diseño de red ACS.
+                    <span className="ep-note-600">Hunter / RAS 2000</span> · Típico 60–70% del Qac.
+                    Del diseño de red ACS.
                   </Comment>,
                 ],
               ]}
             />
           </Card>
           <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
+            className="ep-card-col"
             iconImg="/iconos_civilflow/diseno_redes/equipos/perdidas_de_carga.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title="2. Pérdidas de carga"
-            bodyStyle={{ padding: 0 }}
+            bodyClassName="card-b-p0"
             headerRight={<EditButton edit={editPerdidas} setEdit={setEditPerdidas} />}
           >
             <Tbl
               caption="Pérdidas de carga"
-              thStyle={{ fontSize: 11 }}
-              tdStyle={{ fontSize: 12 }}
-              tdlStyle={{ fontSize: 13 }}
+              thClassName="tbl-th-11"
+              tdClassName="tbl-td-12"
+              tdlClassName="tbl-tdl-13"
               cols={['Parámetro', 'Valor', 'Ud.', 'Comentario / Referencia']}
               rows={[
                 [
@@ -176,8 +146,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'm.c.a.',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
-                    Sumatoria pérdidas tramo más desfavorable de la red AC.
+                    <span className="ep-note-600">Darcy-Weisbach</span> · Sumatoria pérdidas tramo
+                    más desfavorable de la red AC.
                   </Comment>,
                 ],
                 [
@@ -191,8 +161,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'm.c.a.',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Darcy-Weisbach</span> ·
-                    El módulo usa MAX(Hf_ac, Hf_acs) como pérdida crítica de diseño.
+                    <span className="ep-note-600">Darcy-Weisbach</span> · El módulo usa MAX(Hf_ac,
+                    Hf_acs) como pérdida crítica de diseño.
                   </Comment>,
                 ],
                 [
@@ -206,29 +176,28 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'm.c.a.',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>Opcional</span> ·
-                    Calentador, filtros multimedia, válvulas de zona u otros no incluidos en el
-                    diseño de redes.
+                    <span className="ep-note-600">Opcional</span> · Calentador, filtros multimedia,
+                    válvulas de zona u otros no incluidos en el diseño de redes.
                   </Comment>,
                 ],
               ]}
             />
           </Card>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="flex-col-8">
           <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
+            className="ep-card-col"
             iconImg="/iconos_civilflow/diseno_redes/equipos/presiones_y_cotas.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title="3. Presiones y cotas"
-            bodyStyle={{ padding: 0 }}
+            bodyClassName="card-b-p0"
             headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}
           >
             <Tbl
               caption="Presiones y cotas"
-              thStyle={{ fontSize: 11 }}
-              tdStyle={{ fontSize: 12 }}
-              tdlStyle={{ fontSize: 13 }}
+              thClassName="tbl-th-11"
+              tdClassName="tbl-td-12"
+              tdlClassName="tbl-tdl-13"
               cols={['Parámetro', 'Valor', 'Ud.', 'Comentario / Referencia']}
               rows={[
                 ...(isRed
@@ -244,10 +213,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                         />,
                         'm.c.a.',
                         <Comment>
-                          <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>
-                            Medida en campo
-                          </span>{' '}
-                          · Usar convertidor 1. Ej: 200 kPa = 20.39 m.c.a.
+                          <span className="ep-note-600">Medida en campo</span> · Usar convertidor 1.
+                          Ej: 200 kPa = 20.39 m.c.a.
                         </Comment>,
                       ],
                     ] as React.ReactNode[][])
@@ -263,8 +230,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'm.c.a.',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>NTC 1500 Tab.3</span> ·
-                    Mín. 5.0 (49 kPa). Ducha confort: 7.13. Flujómetro: 10.70.
+                    <span className="ep-note-600">NTC 1500 Tab.3</span> · Mín. 5.0 (49 kPa). Ducha
+                    confort: 7.13. Flujómetro: 10.70.
                   </Comment>,
                 ],
                 [
@@ -278,8 +245,8 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                   />,
                   'm.c.a.',
                   <Comment>
-                    <span style={{ color: 'var(--txt3)', fontWeight: 600 }}>NSR-10 H.4.2</span> ·
-                    Instalar RRP si Pred supera este valor.
+                    <span className="ep-note-600">NSR-10 H.4.2</span> · Instalar RRP si Pred supera
+                    este valor.
                   </Comment>,
                 ],
                 [
@@ -313,78 +280,45 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
             />
           </Card>
           <Card
-            style={{ display: 'flex', flexDirection: 'column' }}
+            className="ep-card-col"
             iconImg="/iconos_civilflow/diseno_redes/equipos/config_bombas.webp"
-            iconImgStyle={{ width: 22, height: 22 }}
+            iconClassName="card-icon-22"
             title="4. Configuración de bombas"
-            bodyStyle={{ padding: 4, display: 'flex', flexDirection: 'column', gap: 0 }}
+            bodyClassName="card-b-p4"
             headerRight={<EditButton edit={editBombas} setEdit={setEditBombas} />}
           >
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              <div
-                style={{
-                  border: '1px solid var(--line)',
-                  borderRadius: 'var(--r)',
-                  background: 'var(--bg2)',
-                  padding: '6px 8px',
-                }}
-              >
-                <div
-                  style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 2, fontWeight: 600 }}
-                >
-                  Bombas en trabajo
-                </div>
-                <div style={{ padding: '1px 0' }}>
+            <div className="ep-grid-2-6">
+              <div className="ep-bordered">
+                <div className="ep-tiny-label">Bombas en trabajo</div>
+                <div className="ep-px-row">
                   <LazyInp
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
                     field="nt"
                     ariaLabel="Bombas en trabajo"
-                    style={{ ...SI, fontSize: 13, padding: '4px 6px', fontWeight: 700 }}
+                    className="ds-si-strong"
                   />
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--txt4)', marginTop: 2 }}>
-                  Operan simultáneamente en régimen normal
-                </div>
+                <div className="ep-dim">Operan simultáneamente en régimen normal</div>
               </div>
-              <div
-                style={{
-                  border: '1px solid var(--line)',
-                  borderRadius: 'var(--r)',
-                  background: 'var(--bg2)',
-                  padding: '6px 8px',
-                }}
-              >
-                <div
-                  style={{ fontSize: 11, color: 'var(--txt3)', marginBottom: 2, fontWeight: 600 }}
-                >
-                  Bombas en reserva
-                </div>
-                <div style={{ padding: '1px 0' }}>
+              <div className="ep-bordered">
+                <div className="ep-tiny-label">Bombas en reserva</div>
+                <div className="ep-px-row">
                   <LazyInp
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
                     field="nr"
                     ariaLabel="Bombas en reserva"
-                    style={{ ...SI, fontSize: 13, padding: '4px 6px', fontWeight: 700 }}
+                    className="ds-si-strong"
                   />
                 </div>
-                <div style={{ fontSize: 10, color: 'var(--txt4)', marginTop: 2 }}>
-                  Reserva · arranque automático por falla
-                </div>
+                <div className="ep-dim">Reserva · arranque automático por falla</div>
               </div>
             </div>
-            <div style={EPInputPage_S1}>
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: 'var(--acc2)',
-                  fontFamily: 'var(--mono)',
-                }}
-              >
+            <div className="ep-summary-bar">
+              <span className="ep-summary-main">
                 Total: {ntot} bombas · {nt} trabajo + {nr} reserva · Qb ={' '}
                 {Qb > 0 ? Qb.toFixed(2) : '—'} L/s c/u
               </span>

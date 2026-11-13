@@ -2,7 +2,7 @@
 // abajo). JSX 100% estático salvo los botones ＋/− de Gasodomésticos — moverlo fuera del
 // cuerpo del map de filas lo saca del re-render de cada sector.
 import React from 'react';
-import { TH, THG, THS } from './rejillasShared.ts';
+import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
 
 /** Props del encabezado: lo mínimo que tocan sus 3 celdas interactivas. */
 interface Props {
@@ -22,16 +22,16 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
   return (
     <thead>
       <tr>
-        <th scope="col" rowSpan={2} style={TH}>
+        <th scope="col" rowSpan={2} className="rt-th">
           #
         </th>
-        <th scope="col" rowSpan={2} style={{ ...TH, width: 56, minWidth: 56 }}>
+        <th scope="col" rowSpan={2} className="rt-th rt-w-56">
           Apto
         </th>
-        <th scope="col" style={THG} colSpan={5}>
+        <th scope="col" className="rt-thg" colSpan={5}>
           Recinto
         </th>
-        <th scope="col" style={{ ...THG }} colSpan={4}>
+        <th scope="col" className="rt-thg" colSpan={4}>
           Gasodomésticos
           <button
             type="button"
@@ -46,19 +46,7 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
               e.stopPropagation();
               onAdd();
             }}
-            style={{
-              display: 'inline-block',
-              marginLeft: 6,
-              width: 26,
-              textAlign: 'center',
-              border: '1px solid var(--line)',
-              borderRadius: 4,
-              background: 'var(--bg2)',
-              color: edit ? 'var(--txt2)' : 'var(--txt3)',
-              fontSize: 11,
-              padding: '2px 0',
-              cursor: edit ? 'pointer' : 'not-allowed',
-            }}
+            className="rt-add-btn"
           >
             ＋
           </button>
@@ -75,151 +63,148 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
               e.stopPropagation();
               onToggleBorrar();
             }}
-            style={{
-              display: 'inline-block',
-              marginLeft: 4,
-              border: '1px solid var(--line)',
-              borderRadius: 4,
-              background: borrandoSub ? '#E7786B' : 'var(--bg2)',
-              color: borrandoSub ? '#fff' : edit ? '#E7786B' : 'var(--txt3)',
-              fontSize: 11,
-              width: 26,
-              textAlign: 'center',
-              padding: '2px 0',
-              cursor: edit ? 'pointer' : 'not-allowed',
-            }}
+            data-armed={borrandoSub ? 'true' : 'false'}
+            className="rt-del-btn"
           >
             −
           </button>
         </th>
-        <th scope="col" style={THG} colSpan={3}>
+        <th scope="col" className="rt-thg" colSpan={3}>
           Verificación
         </th>
-        <th scope="col" style={THG} colSpan={2}>
+        <th scope="col" className="rt-thg" colSpan={2}>
           Solución
         </th>
-        <th scope="col" style={THG} colSpan={4}>
+        <th scope="col" className="rt-thg" colSpan={4}>
           Cálculo
         </th>
-        <th scope="col" style={THG} colSpan={3}>
+        <th scope="col" className="rt-thg" colSpan={3}>
           Rejillas sugeridas
         </th>
-        <th scope="col" rowSpan={2} style={TH}>
+        <th scope="col" rowSpan={2} className="rt-th">
           Estado
         </th>
       </tr>
       <tr>
-        <th scope="col" style={THS} title="Nombre del sector (etiqueta del área dibujada)">
+        <th scope="col" className="rt-ths" title="Nombre del sector (etiqueta del área dibujada)">
           Sector
-        </th>
-        <th scope="col" style={THS} title="Área en planta del sector (m²) — del polígono dibujado">
-          Área
         </th>
         <th
           scope="col"
-          style={{ ...THS, width: 74, minWidth: 74 }}
-          title="Altura libre del sector (m)"
+          className="rt-ths"
+          title="Área en planta del sector (m²) — del polígono dibujado"
         >
+          Área
+        </th>
+        <th scope="col" className="rt-ths rt-w-74" title="Altura libre del sector (m)">
           Alto
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Mono espacio: una sola planta, sin muros internos; ambientes divididos solo por muebles (Anexo B)"
         >
           Mono Espacio
         </th>
-        <th scope="col" style={THS} title="Volumen del recinto, en m³ = Área × Alto">
+        <th scope="col" className="rt-ths" title="Volumen del recinto, en m³ = Área × Alto">
           Volumen del recinto
         </th>
         <th
           scope="col"
-          style={{ ...THS, minWidth: 120 }}
+          className="rt-ths rt-min-120"
           title="Gasodomésticos asignados al sector — el ＋ añade otra subfila"
         >
           Aparato
         </th>
-        <th scope="col" style={THS} title="Cantidad de unidades de este aparato en el sector">
+        <th
+          scope="col"
+          className="rt-ths"
+          title="Cantidad de unidades de este aparato en el sector"
+        >
           UN
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Potencia nominal, en kW — la fija el catálogo NTC 3728 según el tipo de gas"
         >
           P
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Tipo de recinto A/B/C (NTC 3631): define el coeficiente cm²/kW de las aberturas"
         >
           Tipo
         </th>
-        <th scope="col" style={THS} title="Suma de UN × P sin artefactos Tipo C, en kW">
+        <th scope="col" className="rt-ths" title="Suma de UN × P sin artefactos Tipo C, en kW">
           Total P
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Volumen requerido (m³) = 3,4 m³ por kW, sin Tipo C (num. 4.1.1)"
         >
           Volumen Requerido
         </th>
-        <th scope="col" style={THS} title="Clasificación del recinto según su volumen (num. 4.1)">
+        <th
+          scope="col"
+          className="rt-ths"
+          title="Clasificación del recinto según su volumen (num. 4.1)"
+        >
           Chequeo Volumen / Clasificación del Recinto
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Estrategia de ventilación del sector (num. 4.1.2, 4.2, 4.3)"
         >
           Tipo de Ventilación
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Volumen Recinto Adjunto (m³): espacio comunicado por aberturas interiores (solo Interior/Combinación)"
         >
           VRA
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Potencia Recinto Adjunto (kW): gasodomésticos del espacio adjunto (sin Tipo C)"
         >
           PRA
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Área Conectores de Evacuación (cm²): suma de secciones π·D²/4 (solo Método 2)"
         >
           ACE
         </th>
-        <th scope="col" style={THS} title="Solución que resulta del cálculo">
+        <th scope="col" className="rt-ths" title="Solución que resulta del cálculo">
           Solución aplicada
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Área libre mínima por abertura en cm² (redondeo por arriba)"
         >
           Área Libre Requerida por Abertura
         </th>
-        <th scope="col" style={THS} title="Coeficiente en cm²/kW según la solución aplicada">
+        <th scope="col" className="rt-ths" title="Coeficiente en cm²/kW según la solución aplicada">
           Coeficiente de Área
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Rejillas del catálogo sugeridas por área efectiva del fabricante: superior/única (método 1 o 2) e inferior (método 1)"
         >
           Rejillas Sugeridas
         </th>
         <th
           scope="col"
-          style={THS}
+          className="rt-ths"
           title="Área efectiva instalada en cm²: la menor entre las aberturas"
         >
           Área Efectiva Instalada
@@ -232,6 +217,7 @@ export function TablaTipologiasHeader({ filas, edit, borrandoSub, onAdd, onToggl
 /**
  * Modal de confirmación de borrado de aparato (reemplaza al confirm nativo). El foco
  * inicial lo maneja el padre (cancelarRef vive allá — a11y: sin autofocus JSX).
+ * Ej: <TablaTipologiasConfirmDel sector="Apt 101" cancelarRef={ref} onCancelar={...} onConfirmar={...} />.
  */
 export function TablaTipologiasConfirmDel({
   sector,
@@ -245,77 +231,32 @@ export function TablaTipologiasConfirmDel({
   onConfirmar: () => void;
 }) {
   return (
-    <div
-      role="presentation"
-      onClick={onCancelar}
-      onKeyDown={(e) => e.key === 'Escape' && onCancelar()}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 90,
-        background: 'rgba(0,0,0,.55)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {/* stopPropagation del fondo: clic dentro no cierra (a11y: dialog no interactivo) */}
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
+    <ModalOverlay onClose={onCancelar} ariaLabel="Eliminar aparato">
       <div
         role="alertdialog"
         aria-modal="true"
         aria-label="Eliminar aparato"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--bg2, #171a1f)',
-          border: '1px solid var(--line)',
-          borderRadius: 10,
-          padding: '18px 20px',
-          maxWidth: 340,
-          width: '90%',
-          boxShadow: '0 12px 40px rgba(0,0,0,.5)',
-        }}
+        className="modal-shell-card"
       >
-        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Eliminar aparato</div>
-        <div style={{ fontSize: 12.5, color: 'var(--txt2)', marginBottom: 14 }}>
-          ¿Eliminar este aparato del sector <b style={{ color: 'var(--txt)' }}>{sector}</b>? Se
-          borra su subfila, la cantidad y deja de sumar potencia.
-        </div>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <h3 className="dialog-title">Eliminar aparato</h3>
+        <p className="dialog-lead">
+          ¿Eliminar este aparato del sector <b className="rt-txt-strong">{sector}</b>? Se borra su
+          subfila, la cantidad y deja de sumar potencia.
+        </p>
+        <div className="dialog-actions">
           <button
             type="button"
             ref={cancelarRef}
             onClick={onCancelar}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              background: 'transparent',
-              border: '1px solid var(--line)',
-              borderRadius: 6,
-              color: 'var(--txt)',
-              cursor: 'pointer',
-            }}
+            className="dialog-btn dialog-btn-ghost"
           >
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={onConfirmar}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              background: '#F04545',
-              border: 'none',
-              borderRadius: 6,
-              color: '#fff',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
+          <button type="button" onClick={onConfirmar} className="dialog-btn dialog-btn-danger">
             Eliminar
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
