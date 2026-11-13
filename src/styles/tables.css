@@ -117,6 +117,63 @@
 
 /* ── Typography Utilities ── */
 
+/* ── Tabla de memoria de cálculo (componente Tbl) ──
+   Densidad propia: antes estos valores viajaban como style={{...}} en cada celda.
+   Van al final del archivo para ganarle a .tbl th/td y a sus media queries. */
+
+.tbl-calc {
+  font-size: 11px;
+  border-collapse: collapse;
+}
+
+.tbl-calc-center {
+  width: 90%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.tbl-calc th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt3);
+  font-family: var(--mono);
+  text-align: center;
+  padding: 2px 6px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: var(--bg3);
+}
+
+.tbl-calc td {
+  font-size: 12px;
+  font-family: var(--mono);
+  padding: 1px 6px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--txt2);
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Primera columna: etiqueta legible (no monoespaciada) y un poco más grande. */
+.tbl-calc td.tbl-l {
+  text-align: left;
+  font-family: var(--body);
+  color: var(--txt);
+  min-width: 150px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Columna de valor: se encoge al contenido para dejar aire al comentario. */
+.tbl-calc td.tbl-v {
+  width: 1%;
+  white-space: nowrap;
+}
+
 .td-mono {
   font-family: var(--mono);
   font-size: 11px;
@@ -128,4 +185,1511 @@
   font-size: 11px;
   padding: 0 1px;
   font-weight: 700;
+}
+
+/* Widths percentuales como atributo data-w (antes style={{ width: 'X%' }}). */
+[data-w='1'] {
+  width: 1%;
+}
+[data-w='3'] {
+  width: 3%;
+}
+[data-w='3.2'] {
+  width: 3.2%;
+}
+[data-w='3.4'] {
+  width: 3.4%;
+}
+[data-w='3.6'] {
+  width: 3.6%;
+}
+[data-w='3.8'] {
+  width: 3.8%;
+}
+[data-w='4'] {
+  width: 4%;
+}
+[data-w='4.2'] {
+  width: 4.2%;
+}
+[data-w='4.4'] {
+  width: 4.4%;
+}
+[data-w='4.5'] {
+  width: 4.5%;
+}
+[data-w='5'] {
+  width: 5%;
+}
+[data-w='5.5'] {
+  width: 5.5%;
+}
+[data-w='6'] {
+  width: 6%;
+}
+[data-w='7'] {
+  width: 7%;
+}
+[data-w='7.5'] {
+  width: 7.5%;
+}
+[data-w='10'] {
+  width: 10%;
+}
+[data-w='13'] {
+  width: 13%;
+}
+[data-w='14'] {
+  width: 14%;
+}
+[data-w='15'] {
+  width: 15%;
+}
+[data-w='16'] {
+  width: 16%;
+}
+[data-w='20'] {
+  width: 20%;
+}
+[data-w='24'] {
+  width: 24%;
+}
+[data-w='25'] {
+  width: 25%;
+}
+[data-w='26'] {
+  width: 26%;
+}
+[data-w='28'] {
+  width: 28%;
+}
+[data-w='30'] {
+  width: 30%;
+}
+[data-w='34'] {
+  width: 34%;
+}
+[data-w='35'] {
+  width: 35%;
+}
+[data-w='40'] {
+  width: 40%;
+}
+[data-w='45'] {
+  width: 45%;
+}
+[data-w='50'] {
+  width: 50%;
+}
+[data-w='55'] {
+  width: 55%;
+}
+[data-w='70'] {
+  width: 70%;
+}
+[data-w='90'] {
+  width: 90%;
+}
+[data-w='100'] {
+  width: 100%;
+}
+
+/* ── Sanitaria: tabla de diseño de red (antes inline en SanitaryTables.tsx) ── */
+.tbl td.san-pad {
+  padding: 1px 2px;
+}
+.san-pad-16 {
+  padding: 16px;
+}
+.san-mono {
+  font-family: var(--mono);
+}
+.san-fs {
+  font-size: 10.5px;
+}
+.tbl th.san-th {
+  font-size: 10.5px;
+  text-align: center;
+  padding: 1px 7px;
+}
+.tbl th.san-th-sub {
+  font-size: 10.5px;
+  text-align: center;
+  padding: 1px 7px;
+}
+.tbl th.san-th-grupo {
+  font-size: 10.5px;
+  text-align: center;
+  padding: 1px 7px;
+  border-bottom: 2px solid var(--line);
+}
+.tbl td.san-td-minmax {
+  padding: 1px 2px;
+  min-width: 60px;
+  max-width: 120px;
+}
+.san-connected {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  align-items: center;
+}
+.san-badge {
+  font-size: 10.5px;
+  padding: 1px 2px;
+  border: 1px solid var(--san);
+  border-radius: 3px;
+  color: var(--san);
+  font-family: var(--mono);
+  line-height: 1.3;
+}
+.san-muted {
+  font-size: 10.5px;
+  color: var(--txt3);
+}
+.tbl td.san-mono-600 {
+  font-family: var(--mono);
+  font-weight: 600;
+  padding: 1px 2px;
+}
+.tbl td.san-mono-700 {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 1px 2px;
+}
+.san-input {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  padding: 1px 2px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg2);
+  color: var(--txt);
+  cursor: pointer;
+}
+.san-input-w52 {
+  width: 52px;
+  text-align: center;
+}
+.san-input-w50 {
+  width: 50px;
+  text-align: center;
+}
+
+/* PipeTable/GasTable: cabecera más chica que la de las tablas simples (cp del original). */
+.cat-table-fixed .cat-th {
+  padding: 4px 8px;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+}
+.cat-table-fixed.cat-table-compact .cat-th {
+  padding: 3px 8px;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+/* ── Rejillas de ventilación: tabla de tipologías y chrome del header
+   (antes TD/TH/INP/SEL/TXT en rejillasShared.ts y props inline) ── */
+
+.rt-td {
+  border: 1px solid var(--line);
+  padding: 2px 5px;
+  font-size: 12.5px;
+  font-family: var(--mono);
+  text-align: center;
+  white-space: nowrap;
+  color: var(--txt);
+}
+.rt-th {
+  border: 1px solid var(--line);
+  padding: 2px 5px;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  text-align: center;
+  color: var(--txt3);
+  background: var(--bg3);
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: normal;
+  line-height: 1.15;
+}
+.rt-ths {
+  border: 1px solid var(--line);
+  padding: 2px 5px;
+  font-size: 11px;
+  font-family: var(--mono);
+  text-align: center;
+  color: var(--txt3);
+  background: var(--bg3);
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: normal;
+  line-height: 1.15;
+}
+.rt-thg {
+  border: 1px solid var(--line);
+  padding: 2px 5px;
+  font-size: 12px;
+  font-family: var(--mono);
+  text-align: center;
+  color: var(--txt3);
+  background: var(--bg3);
+  font-weight: 600;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--line);
+}
+
+.rt-inp {
+  width: 100%;
+  min-width: 44px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 1px 2px;
+}
+.rt-inp-11 {
+  font-size: 11px;
+  min-width: 0;
+}
+.rt-inp-full {
+  width: 100%;
+}
+
+.rt-sel {
+  width: 100%;
+  min-width: 60px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  text-align: center;
+  padding: 1px 2px;
+}
+.rt-sel-34 {
+  width: 34px;
+  min-width: 0;
+  font-size: 11px;
+  padding: 1px 2px;
+}
+.rt-sel-full {
+  min-width: 0;
+  width: 100%;
+  background: var(--bg3);
+  border-radius: 3px;
+}
+.rt-sel-128 {
+  min-width: 128px;
+  background: var(--bg2);
+}
+
+.rt-txt {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--txt);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rt-scroll-x {
+  overflow-x: auto;
+  position: relative;
+}
+.rt-borrar-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: #e7786b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.rt-cancel-borrado {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  background: transparent;
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 1px 8px;
+}
+.rt-reset-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.rt-row-click {
+  cursor: pointer;
+}
+.rt-td-selected {
+  background: rgba(37, 99, 235, 0.08);
+}
+tr.rt-subrow-selected > td {
+  background: rgba(37, 99, 235, 0.08);
+}
+.rt-td.rt-borrando {
+  background: rgba(231, 120, 107, 0.1);
+}
+
+.rt-td-kw {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+.rt-td-11 {
+  font-size: 11px;
+}
+.rt-td-wrap {
+  white-space: normal;
+}
+.rt-borra-cell {
+  padding: 2px 4px;
+}
+.rt-td-left {
+  text-align: left;
+}
+.rt-td-clasif {
+  vertical-align: middle;
+}
+.rt-td-600 {
+  font-weight: 600;
+}
+.rt-td-bold {
+  font-weight: 700;
+}
+.rt-td-dim {
+  color: var(--txt3);
+}
+.rt-td-hidden {
+  overflow: hidden;
+}
+.rt-td-min-130 {
+  min-width: 130px;
+}
+.rt-td-max-130 {
+  max-width: 130px;
+}
+.rt-td-empty {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--txt2);
+  white-space: normal;
+}
+.rt-grid-1 {
+  display: grid;
+  gap: 1px;
+}
+.rt-piso-legend {
+  font-size: 9.5px;
+  font-family: var(--mono);
+  color: var(--txt3);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.rt-txt2 {
+  color: var(--txt2);
+}
+.rt-est-e {
+  color: #e7786b;
+}
+.rt-est-w {
+  color: #e3a24f;
+}
+.rt-est-ok {
+  color: #5dbb83;
+}
+
+/* Chrome del header (antes inline en typologiesChrome.tsx) */
+.rt-w-56 {
+  width: 56px;
+  min-width: 56px;
+}
+.rt-w-74 {
+  width: 74px;
+  min-width: 74px;
+}
+.rt-min-120 {
+  min-width: 120px;
+}
+
+/* Botón ＋/− del header de gasodomésticos (antes inline en typologiesChrome.tsx). */
+.rt-add-btn {
+  display: inline-block;
+  margin-left: 6px;
+  width: 26px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg2);
+  color: var(--txt2);
+  font-size: 11px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.rt-add-btn:disabled {
+  color: var(--txt3);
+  cursor: not-allowed;
+}
+.rt-del-btn {
+  display: inline-block;
+  margin-left: 4px;
+  width: 26px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg2);
+  color: #e7786b;
+  font-size: 11px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.rt-del-btn:disabled {
+  color: var(--txt3);
+  cursor: not-allowed;
+}
+.rt-del-btn[data-armed='true'] {
+  background: #e7786b;
+  color: #fff;
+}
+.rt-txt-strong {
+  color: var(--txt);
+}
+
+.alzado-svg {
+  width: 100%;
+  max-width: 520px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ── RCI: celdas editables y tabla de pisos (antes inline en RCIFloorsTable.tsx) ── */
+.tbl th.ds-th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt3);
+  font-family: var(--mono);
+  text-align: center;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  background: var(--bg3);
+  vertical-align: middle;
+}
+.tbl td.ds-td-13 {
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 1px 2px;
+  color: var(--txt2);
+}
+.tbl td.ds-td-bg3 {
+  background: var(--bg3);
+  color: var(--txt3);
+}
+.tbl td.ds-td-nowrap {
+  white-space: nowrap;
+}
+.tbl td.ds-td-txt3 {
+  color: var(--txt3);
+}
+
+/* Celda editable por teclado (patrón sanitario): base mono centrada, sin flecha nativa. */
+.ds-celda12 {
+  font-family: var(--mono);
+  padding: 0 2px;
+  border-radius: 2px;
+  color: var(--txt);
+  text-align: center;
+  text-align-last: center;
+  appearance: none;
+  box-sizing: border-box;
+  margin: 0;
+  font-size: 12px;
+}
+.ds-celda12.ds-err-border {
+  border-color: #e05252;
+}
+.ds-px-58 {
+  width: 58px;
+}
+.ds-px-60 {
+  width: 60px;
+}
+.ds-px-76 {
+  width: 76px;
+}
+.ds-px-84 {
+  width: 84px;
+}
+.ds-px-96 {
+  width: 96px;
+}
+.ds-px-116 {
+  width: 116px;
+}
+
+.ds-scroll-x {
+  overflow-x: auto;
+}
+.ds-tbl-12 {
+  font-size: 12px;
+}
+
+.rci-help-btn {
+  display: block;
+  margin: 1px auto 0;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--acc);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.rci-err-note {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: #e05252;
+}
+
+/* ── Estilos compartidos de tablas de diseño (antes SI/SD/TH/TD en sharedTableStyles.ts) ──
+   Las celdas llevan las clases del contenedor .tbl del archivo. */
+.ds-si {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg4);
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt);
+  width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  padding: 3px 5px;
+}
+.ds-sd {
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg4);
+  font-family: var(--body);
+  font-size: 12px;
+  color: var(--txt);
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  cursor: pointer;
+  padding: 3px 5px;
+}
+.tbl td.ds-td {
+  font-size: 12px;
+  font-family: var(--mono);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  color: var(--txt2);
+  text-align: center;
+  vertical-align: middle;
+}
+.tbl th.ds-th-r {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.tbl td.ds-td-r {
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+/* ── Gas: tabla Q del ramal (antes inline en GasCalcUC.tsx) ── */
+.gas-fs {
+  font-size: 12.5px;
+}
+.gas-bold {
+  font-weight: 700;
+}
+.gas-semibold {
+  font-weight: 600;
+}
+.gas-txt {
+  color: var(--txt);
+}
+.gas-zero {
+  color: var(--txt3);
+}
+.gas-icon-24 {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.gas-card-fill {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.gas-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 10px;
+}
+.gas-empty {
+  padding: 16px;
+}
+
+.tbl td.gas-empty-row {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--txt3);
+  font-size: 12.5px;
+}
+.tbl th.gas-th-11 {
+  font-size: 11px;
+}
+.tbl th.gas-th-min44 {
+  min-width: 44px;
+  font-size: 11px;
+}
+.tbl th.gas-th-min26 {
+  min-width: 26px;
+  font-size: 11px;
+}
+.tbl th.gas-th-min40 {
+  min-width: 40px;
+  font-size: 11px;
+}
+.tbl th.gas-th-min30 {
+  min-width: 30px;
+  font-size: 11px;
+  padding: 2px 2px;
+  line-height: 1.1;
+}
+.tbl th.gas-th-group {
+  font-size: 11px;
+  border-bottom: 2px solid var(--line);
+}
+
+.tbl td.gas-td-1 {
+  padding: 1px 1px;
+}
+.tbl td.gas-td-2 {
+  padding: 2px 2px;
+}
+.tbl td.gas-td-top-2 {
+  border-top: 2px solid var(--line);
+}
+.tbl td.gas-td-top-0 {
+  border-top: 2px solid var(--line);
+  padding: 0;
+}
+
+.gas-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  font-size: 12.5px;
+  font-family: var(--mono);
+}
+.gas-foot-600 {
+  font-weight: 600;
+  color: var(--txt);
+  font-size: 12.5px;
+}
+.gas-foot-700 {
+  font-weight: 700;
+  color: var(--txt);
+  font-size: 12.5px;
+}
+.gas-foot-mult {
+  color: var(--txt3);
+  font-size: 10.5px;
+}
+.gas-foot-gas {
+  font-weight: 700;
+  color: var(--gas);
+  font-size: 12.5px;
+}
+
+/* ── Gas: red de gas (antes inline en GasNetworkTable.tsx) ── */
+.gas-col {
+  display: flex;
+  flex-direction: column;
+}
+.gas-between {
+  justify-content: space-between;
+}
+.gas-row-auto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.gas-pad-6 {
+  padding: 6px;
+}
+.gas-net-table {
+  font-size: 10.5px;
+  table-layout: auto;
+}
+.gas-icon-20 {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.gas-sd-max104 {
+  max-width: 104px;
+  font-size: 10.5px;
+  text-align: center;
+}
+.gas-sd-center {
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.tbl th.gas-th-105 {
+  font-size: 10.5px;
+  padding: 2px 3px;
+}
+.tbl td.gas-td-105 {
+  font-size: 10.5px;
+  padding: 1px 2px;
+}
+.tbl th.gas-th-10 {
+  font-size: 10px;
+}
+.tbl th.gas-th-preline {
+  white-space: pre-line;
+}
+.tbl td.gas-td-min78 {
+  min-width: 78px;
+}
+.tbl td.gas-px-0 {
+  padding: 0 1px;
+}
+.tbl td.gas-pad-xs {
+  padding: 1px 2px;
+}
+.tbl td.gas-td-left-border {
+  border-left: 2px solid var(--line);
+  font-weight: 600;
+}
+.tbl td.gas-td-fs {
+  font-size: 10.5px;
+  padding: 1px 4px;
+}
+.gas-strong-600 {
+  font-weight: 600;
+}
+
+.gas-sigla {
+  font-size: 10.5px;
+  padding: 1px 4px;
+}
+.gas-td-err {
+  color: var(--err, #f04545);
+}
+.gas-td-ok {
+  color: var(--succ, #5dbb83);
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 1px 2px;
+}
+.gas-td-no {
+  color: var(--err, #f04545);
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 1px 2px;
+}
+.gas-td-dim {
+  font-weight: 700;
+  font-size: 10.5px;
+  padding: 1px 2px;
+  color: var(--txt3);
+}
+.gas-acc-600 {
+  font-size: 10.5px;
+  font-weight: 600;
+  font-family: var(--mono);
+}
+
+.gas-tbl-105 {
+  font-size: 10.5px;
+}
+.gas-sd-fs {
+  font-size: 10.5px;
+}
+
+/* ── Lluvias: chequeo de canal (antes inline en RainChannelsCheck.tsx) ── */
+.tbl th.rain-th10 {
+  font-size: 10px;
+  text-align: center;
+  padding: 1px 2px;
+  white-space: normal;
+}
+.tbl th.rain-thg10 {
+  font-size: 10px;
+  text-align: center;
+  padding: 1px 2px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  white-space: normal;
+}
+.tbl td.rain-empty-10 {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--txt3);
+  font-size: 10px;
+}
+.rain-empty-12 {
+  padding: 24px 0;
+  text-align: center;
+  color: var(--txt3);
+  font-size: 12px;
+}
+.rain-flex-8 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.rain-pad-12 {
+  padding: 12px;
+}
+.rain-table-fix {
+  font-size: 10px;
+  table-layout: fixed;
+}
+.ml-auto-x {
+  margin-left: auto;
+}
+
+/* ── Lluvias: diseño de red (antes consts TH_HDR/TD_MONO/TD_NUM/RainwaterDesign_S*) ── */
+.ll-fs {
+  font-size: 11.5px;
+}
+.ll-mono {
+  font-family: var(--mono);
+  font-size: 11.5px;
+}
+.ll-mono-dim {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--txt2);
+}
+.tbl td.ll-pad-2 {
+  padding: 2px 2px;
+}
+.tbl td.ll-pad-3 {
+  padding: 2px 3px;
+}
+.tbl td.ll-minmax {
+  padding: 2px 3px;
+  min-width: 60px;
+  max-width: 120px;
+}
+.tbl td.ll-td-mono {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 2px 3px;
+}
+.tbl td.ll-td-num {
+  font-size: 11.5px;
+  padding: 2px 3px;
+}
+.tbl th.ll-th {
+  font-size: 10px;
+  text-align: center;
+  padding: 2px 3px;
+}
+.tbl th.ll-th-group {
+  border-bottom: 2px solid var(--line);
+}
+.ll-input {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 2px 2px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--bg2);
+  color: var(--txt);
+  cursor: pointer;
+  max-width: 72px;
+}
+.ll-input-w50 {
+  cursor: text;
+  text-align: center;
+  width: 50px;
+}
+
+/* ── Parámetros de diseño por red (antes inline en DesignParameters.tsx) ── */
+.dp-disabled {
+  display: inline-block;
+  text-align: center;
+  font-size: 12px;
+  color: #3a494a;
+  font-family: 'Geist', monospace;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  cursor: not-allowed;
+}
+.dp-cta {
+  width: 100%;
+  padding: 8px 10px;
+  background: rgba(0, 220, 229, 0.08);
+  border: none;
+  border-top: 1px solid rgba(0, 220, 229, 0.25);
+  color: #00dce5;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s;
+}
+.dp-ghost {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt2);
+  border: none;
+  padding: 2px 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.dp-fade {
+  cursor: pointer;
+}
+.dp-fade[data-editing='false'] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.dp-icon-18 {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.dp-icon-20 {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-right: 2px;
+}
+.dp-sel-28 {
+  width: 28px;
+  text-align: center;
+  padding: 4px 6px;
+}
+
+.dp-head-pad {
+  padding: 6px 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.dp-fs12 {
+  font-size: 12px;
+}
+.dp-fs12-medium {
+  font-weight: 500;
+  font-size: 12px;
+}
+.dp-fs12-dim {
+  padding: 3px 6px;
+  font-size: 12px;
+  color: var(--txt2);
+}
+.dp-fs13-flex {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+}
+.dp-row-auto {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dp-scroll-xy {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+.dp-col {
+  display: flex;
+  flex-direction: column;
+}
+.dp-col-10 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.dp-col-cut {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.dp-col-cut0 {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.dp-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1.05fr 1fr;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  align-items: start;
+}
+
+.dp-pad-8 {
+  padding: 4px 8px;
+}
+.dp-pad-3x {
+  padding: 3px 8px;
+}
+.dp-pad-3x-500 {
+  padding: 3px 8px;
+  font-weight: 500;
+}
+.dp-pad-6 {
+  padding: 3px 6px;
+}
+
+.dp-w-90 {
+  padding: 4px 8px;
+  min-width: 90px;
+}
+.dp-w-60 {
+  width: 60px;
+  padding: 4px 6px;
+}
+.dp-w-65 {
+  width: 65px;
+  padding: 2px 4px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--txt);
+}
+.dp-w-80 {
+  width: 80px;
+  padding: 4px 6px;
+}
+.dp-w-130 {
+  width: 130px;
+  padding: 4px 6px;
+}
+
+.dp-sel-center {
+  text-align: center;
+  padding: 3px 4px;
+}
+.dp-cm-center {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--txt3);
+  padding: 3px 6px;
+}
+
+.dp-input-blue {
+  width: 55px;
+  padding: 4px 4px;
+  background: rgba(27, 110, 243, 0.07);
+  color: var(--acc2);
+}
+.dp-input-red {
+  width: 55px;
+  padding: 4px 4px;
+  background: rgba(240, 69, 69, 0.07);
+  color: #f04545;
+}
+.dp-input-amber {
+  width: 55px;
+  padding: 4px 4px;
+  background: rgba(245, 166, 35, 0.07);
+  color: var(--san);
+}
+
+.dp-mono-600 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+.dp-mono-600-2 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt2);
+}
+.dp-mono-pad0 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt2);
+  padding: 0;
+}
+.dp-light {
+  font-family: var(--body);
+  font-weight: 400;
+  color: #000;
+  background: #fff;
+}
+
+.dp-row-alt {
+  background: var(--bg3);
+}
+.dp-row-alt2 {
+  background: var(--bg2);
+}
+.dp-row-last {
+  border-bottom: 2px solid var(--line);
+}
+
+.dp-cta:hover {
+  background: rgba(0, 220, 229, 0.15);
+}
+
+/* ── Tabla de memoria de cálculo: densidad y columnas por clase (antes props thStyle/tdStyle/colStyles) ── */
+.tbl-calc-fixed {
+  table-layout: fixed;
+}
+
+.tbl th.tbl-th-11 {
+  font-size: 11px;
+}
+.tbl td.tbl-td-12 {
+  font-size: 12px;
+}
+.tbl td.tbl-tdl-13 {
+  font-size: 13px;
+}
+
+.tbl th.tbl-th-r {
+  font-size: 11px;
+  padding: 2px 4px;
+}
+.tbl td.tbl-td-r {
+  font-size: 11px;
+  padding: 3px 4px;
+}
+
+.tbl th.tbl-th-s {
+  font-size: 10px;
+  padding: 2px 4px;
+}
+.tbl td.tbl-td-s {
+  font-size: 10px;
+  padding: 2px 4px;
+}
+
+.tbl th.tbl-th-ar {
+  font-size: 12.5px;
+  padding: 3px 4px;
+}
+.tbl td.tbl-td-ar {
+  font-size: 12.5px;
+  padding: 2px 4px;
+}
+
+.tbl td.tbl-tdl-r {
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.tbl td.tbl-td-nowrap {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.tbl td.tbl-note-col {
+  white-space: normal;
+  min-width: 130px;
+  font-size: 12px;
+}
+.tbl td.tbl-edge-l {
+  border-left: 1px solid var(--line);
+}
+.tbl td.tbl-edge-r {
+  white-space: normal;
+  min-width: 130px;
+  font-size: 12px;
+  border-right: 1px solid var(--line);
+}
+
+/* ── EP (Equipo de Presión): valores del formulario (antes consts M/MB en EPShared.tsx) ── */
+.ep-m {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--txt);
+}
+.ep-mb {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--txt);
+}
+.ep-param-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--txt);
+}
+.ep-param-sub {
+  font-size: 12px;
+  color: var(--txt3);
+  margin-top: 1px;
+}
+.ep-comment {
+  font-size: 12px;
+  color: var(--txt3);
+  line-height: 1.2;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.ds-si-off {
+  opacity: 0.7;
+  cursor: default;
+}
+.ds-si-strong {
+  font-size: 13px;
+  padding: 4px 6px;
+  font-weight: 700;
+}
+.ds-si-46 {
+  width: 46px;
+  font-size: 10px;
+  padding: 2px 4px;
+}
+.ds-si-13 {
+  font-size: 13px;
+  padding: 4px 6px;
+}
+
+.ep-ok {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: #22c55e;
+}
+.ep-err {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: #ef5350;
+}
+.ep-npsh-na {
+  font-weight: 600;
+  color: #849495;
+}
+.ep-span-note {
+  color: var(--txt3);
+  font-weight: 600;
+}
+.ep-err-solid {
+  font-weight: 700;
+  color: #ef5350;
+}
+.ep-ok-solid {
+  font-weight: 700;
+  color: #22c55e;
+}
+.ep-tech-mono {
+  font-family: 'Geist', monospace;
+  font-size: 12px;
+  color: var(--txt3);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ep-dim {
+  font-size: 10px;
+  color: var(--txt4);
+  margin-top: 2px;
+}
+.ep-tiny-label {
+  font-size: 11px;
+  color: var(--txt3);
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+.ep-note-600 {
+  font-weight: 600;
+}
+
+.tbl-w-34 {
+  width: 34%;
+  white-space: normal;
+}
+.tbl-w-26 {
+  width: 26%;
+  white-space: normal;
+}
+
+/* ── EPInput: botones de modo, grids y barras (antes inline en EPInputPage.tsx) ── */
+.ep-modo-btn {
+  padding: 8px 14px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1.5px solid var(--line);
+  color: var(--txt3);
+}
+.ep-modo-btn[data-on='true'][data-modo='red'] {
+  background: rgba(0, 220, 229, 0.1);
+  border-color: #00dce5;
+  color: #00dce5;
+}
+.ep-modo-btn[data-on='true'][data-modo='cisterna'] {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: #ff9800;
+  color: #ff9800;
+}
+.ep-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+.ep-grid-2-6 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.ep-bordered {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg2);
+  padding: 6px 8px;
+}
+.ep-px-row {
+  padding: 1px 0;
+}
+.ep-summary-bar {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+}
+.ep-summary-main {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--acc2);
+  font-family: var(--mono);
+}
+
+.ep-tiny-caption {
+  font-size: 10px;
+  color: var(--txt3);
+}
+.ep-strong-txt {
+  color: var(--txt);
+}
+.ep-strong-txt-700 {
+  color: var(--txt);
+  font-weight: 700;
+}
+.ep-tiny-nowrap {
+  font-size: 10px;
+  color: var(--txt3);
+  white-space: nowrap;
+}
+.ep-hp-label {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.ep-sel {
+  flex: 1;
+  padding: 5px 8px;
+  border-radius: var(--r);
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--txt);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  box-sizing: border-box;
+  cursor: default;
+  opacity: 0.7;
+}
+.ep-sel[data-editing='true'] {
+  cursor: pointer;
+  opacity: 1;
+}
+.ep-sel-10 {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+.ep-bold {
+  font-weight: 700;
+}
+
+.ep-ver-mono {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--txt4);
+}
+
+.ep-warn-banner {
+  padding: 8px 12px;
+  border-radius: var(--r);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  background: rgba(255, 152, 0, 0.08);
+  color: #ffb74d;
+  font-size: 12px;
+  font-family: var(--mono);
 }

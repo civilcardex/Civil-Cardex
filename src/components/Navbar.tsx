@@ -3,20 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useAyudaContext } from './help/helpContext.ts';
 import AyudaPanel from './help/HelpPanel.tsx';
-const Navbar_S1: React.CSSProperties = {
-  width: 26,
-  height: 26,
-  borderRadius: '50%',
-  background: 'linear-gradient(135deg,var(--acc2),var(--acc3))',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-  color: '#fff',
-  fontSize: 12,
-  fontWeight: 700,
-  fontFamily: 'Geist, monospace',
-};
 const NAV_LINKS = [
   { to: '/', label: 'INICIO' },
   { to: '/pricing', label: 'PRECIOS' },
@@ -59,13 +45,8 @@ function Navbar() {
 
   return (
     <>
-      <style>{`.navbar-gold{--acc:#e8c84a;--acc2:#f5d668;--acc3:#c8a84e;--glow:rgba(245,214,104,0.3)}`}</style>
       <nav
-        className={`navbar-gold fixed top-0 w-full z-50 flex justify-between items-center px-4 lg:px-6 transition-all duration-500 ease-in-out ${isLandingTop ? 'h-20' : 'h-14 border-b border-outline-variant'}`}
-        style={{
-          background: isLandingTop ? 'transparent' : 'rgba(17,19,23,0.85)',
-          backdropFilter: isLandingTop ? 'none' : 'blur(12px)',
-        }}
+        className={`navbar-gold fixed top-0 w-full z-50 flex justify-between items-center px-4 lg:px-6 transition-all duration-500 ease-in-out ${isLandingTop ? 'navbar-top h-20' : 'navbar-scrolled h-14 border-b border-outline-variant'}`}
       >
         <div className="flex items-center gap-4 md:gap-6">
           <button
@@ -88,25 +69,18 @@ function Navbar() {
               height={40}
               loading="lazy"
             />
-            <span
-              className="font-bold text-xl md:text-2xl tracking-tighter uppercase"
-              style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-            >
-              <span style={{ color: '#dce3ea' }}>Civil </span>
-              <span style={{ color: 'var(--acc)' }}>Cardex</span>
+            <span className="navbar-brand font-bold text-xl md:text-2xl tracking-tighter uppercase">
+              <span className="navbar-brand-a">Civil </span>
+              <span className="navbar-brand-b">Cardex</span>
             </span>
           </Link>
-          <ul
-            className="hidden md:flex gap-4 items-center h-full"
-            style={{ listStyle: 'none', margin: 0, padding: 0 }}
-          >
+          <ul className="navbar-links hidden md:flex gap-4 items-center h-full">
             {NAV_LINKS.map((l) => (
               <li key={l.to}>
                 <Link
                   to={l.to}
-                  className={path === l.to ? active : inactive}
+                  className={`navbar-mono ${path === l.to ? active : inactive}`}
                   aria-current={path === l.to ? 'page' : undefined}
-                  style={{ fontFamily: 'Geist, monospace' }}
                 >
                   {l.label}
                 </Link>
@@ -121,20 +95,12 @@ function Navbar() {
               onClick={() => setAyudaOpen(true)}
               aria-haspopup="dialog"
               aria-label={`Ayuda: ${ayudaCtx.modulo} — ${ayudaCtx.seccion}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all hover:bg-white/5 cursor-pointer"
-              style={{ border: '1px solid var(--glow)', background: 'rgba(245,214,104,0.06)' }}
+              className="navbar-chip flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all hover:bg-white/5 cursor-pointer"
             >
-              <span
-                aria-hidden="true"
-                className="material-symbols-outlined"
-                style={{ fontSize: 16, color: 'var(--acc)' }}
-              >
+              <span aria-hidden="true" className="navbar-help-icon material-symbols-outlined">
                 help
               </span>
-              <span
-                className="hidden sm:inline text-xs font-semibold text-on-surface-variant"
-                style={{ fontFamily: 'Geist, monospace' }}
-              >
+              <span className="navbar-mono hidden sm:inline text-xs font-semibold text-on-surface-variant">
                 AYUDA
               </span>
             </button>
@@ -144,27 +110,19 @@ function Navbar() {
           ) : user ? (
             <Link
               to="/perfil"
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md transition-all hover:bg-white/5"
-              style={{
-                border: '1px solid var(--glow)',
-                background: 'rgba(245,214,104,0.06)',
-              }}
+              className="navbar-chip flex items-center gap-2 px-3 py-1.5 rounded-md transition-all hover:bg-white/5"
             >
-              <div style={Navbar_S1}>
+              <div className="navbar-avatar">
                 {(user.user_metadata?.name || user.email || '?')[0].toUpperCase()}
               </div>
-              <span
-                className="text-xs font-semibold text-on-surface-variant hidden sm:inline"
-                style={{ fontFamily: 'Geist, monospace' }}
-              >
+              <span className="navbar-mono text-xs font-semibold text-on-surface-variant hidden sm:inline">
                 {user.user_metadata?.name || (user.email?.split('@') || [''])[0] || user.email}
               </span>
             </Link>
           ) : (
             <Link
               to="/login"
-              className="bg-primary-container text-on-primary-container px-3 md:px-4 py-1.5 uppercase text-[10px] md:text-xs tracking-[0.08em] font-bold border border-primary hover:bg-primary hover:text-on-primary transition-all"
-              style={{ fontFamily: 'Geist, monospace', boxShadow: '0 0 10px var(--glow)' }}
+              className="navbar-login bg-primary-container text-on-primary-container px-3 md:px-4 py-1.5 uppercase text-[10px] md:text-xs tracking-[0.08em] font-bold border border-primary hover:bg-primary hover:text-on-primary transition-all"
             >
               INGRESAR
             </Link>
@@ -172,17 +130,13 @@ function Navbar() {
         </div>
 
         {menuOpen && (
-          <div
-            className="absolute top-14 left-0 right-0 border-b border-outline-variant md:hidden"
-            style={{ background: '#111317' }}
-          >
+          <div className="navbar-menu absolute top-14 left-0 right-0 border-b border-outline-variant md:hidden">
             {NAV_LINKS.map((l) => (
               <Link
                 key={l.to}
                 to={l.to}
                 aria-current={path === l.to ? 'page' : undefined}
-                className={`block px-6 py-3 text-xs tracking-[0.08em] font-bold uppercase border-b border-outline-variant ${path === l.to ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
-                style={{ fontFamily: 'Geist, monospace' }}
+                className={`navbar-mono block px-6 py-3 text-xs tracking-[0.08em] font-bold uppercase border-b border-outline-variant ${path === l.to ? 'text-primary' : 'text-on-surface-variant hover:text-primary'}`}
               >
                 {l.label}
               </Link>

@@ -1,0 +1,703 @@
+.landing-root {
+  --acc: #e8c84a;
+  --acc2: #f5d668;
+  --acc3: #c8a84e;
+  --glow: rgba(245, 214, 104, 0.3);
+  background: #0a0e14;
+  color: #e2e2e8;
+}
+/* Scrollbar clara de las páginas con .landing-root (home, docs, pricing).
+           Antes se inyectaba como <style> global; ahora se limita a esas páginas. */
+html:has(.landing-root)::-webkit-scrollbar-thumb {
+  background: #dce3ea;
+}
+html:has(.landing-root)::-webkit-scrollbar-thumb:hover {
+  background: #f0f4f8;
+}
+html:has(.landing-root)::-webkit-scrollbar-track {
+  background: #1a1c20;
+}
+.hero-mod-card {
+  transition:
+    border-color 0.35s,
+    box-shadow 0.35s;
+  cursor: pointer;
+}
+.hero-mod-card .mod-glow {
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.hero-mod-card:hover .mod-glow {
+  opacity: 1;
+}
+.hero-mod-card .mod-logo {
+  transition:
+    filter 0.4s ease,
+    transform 0.4s ease;
+  filter: brightness(1);
+}
+.hero-mod-card:hover .mod-logo {
+  filter: brightness(1.15) drop-shadow(0 0 12px var(--mod-color));
+  transform: scale(1.08);
+}
+
+/* Tooltip */
+@keyframes tooltipBounce {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 10px) scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+.mod-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  background: rgba(10, 14, 20, 0.95);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--mod-color);
+  border-radius: 8px;
+  padding: 16px;
+  z-index: 50;
+  text-align: left;
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    inset 0 0 20px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+.hero-mod-card:hover .mod-tooltip,
+.hero-mod-card:focus-within .mod-tooltip {
+  display: block;
+  animation: tooltipBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+.mod-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--mod-color) transparent transparent transparent;
+}
+
+.hero-logo-glow {
+  animation: logoPulse 4s ease-in-out infinite;
+}
+@keyframes logoPulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+.hero-bg-grid {
+  position: absolute;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
+  background-size: 60px 60px;
+  background-image:
+    linear-gradient(to right, rgba(245, 214, 104, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(245, 214, 104, 0.03) 1px, transparent 1px);
+  transform: perspective(1000px) rotateX(60deg) rotateZ(-45deg);
+  transform-origin: center;
+}
+.section-divider {
+  background: linear-gradient(90deg, transparent, rgba(245, 214, 104, 0.15), transparent);
+  height: 1px;
+  border: none;
+  margin: 0;
+}
+
+/* Scroll-snap del landing: solo cuando la landing está montada (antes el <style>
+           se inyectaba únicamente con la página, así que no debe afectar a otras rutas). */
+html:has(.landing-root) {
+  scroll-snap-type: y proximity;
+}
+.landing-root section {
+  scroll-snap-align: start;
+}
+.will-change-transform {
+  will-change: transform;
+}
+
+/* Shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+.core-shimmer {
+  background: linear-gradient(
+    90deg,
+    #c8a84e 0%,
+    #f5d668 25%,
+    #e8c84a 50%,
+    #f5d668 75%,
+    #c8a84e 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 6s linear infinite;
+}
+.civsilver {
+  background: linear-gradient(
+    90deg,
+    #b0b8c1 0%,
+    #dce3ea 30%,
+    #f0f4f8 50%,
+    #dce3ea 70%,
+    #b0b8c1 100%
+  );
+  background-size: 200% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 6s linear infinite;
+}
+
+/* Skeleton */
+@keyframes skeletonPulse {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+.skeleton-block {
+  background: linear-gradient(90deg, #111317, #1a1c20, #111317);
+  background-size: 200% 100%;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* Icon morphing */
+.pilar-card .material-symbols-outlined,
+.why-card .material-symbols-outlined {
+  transition: font-variation-settings 0.4s ease;
+}
+.pilar-card:hover .material-symbols-outlined,
+.why-card:hover .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1 !important;
+}
+
+/* Entrance and hover animations */
+@keyframes heroEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.hero-enter-logo {
+  opacity: 0;
+  animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.hero-enter-title {
+  opacity: 0;
+  animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+}
+.hero-enter-subtitle {
+  opacity: 0;
+  animation: heroEntrance 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+}
+@keyframes cardEntrance {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.hero-card-entrance {
+  opacity: 0;
+  animation: cardEntrance 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.pilar-card,
+.why-card {
+  transition:
+    transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1),
+    border-color 0.3s,
+    box-shadow 0.3s;
+}
+.pilar-card:hover,
+.why-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(245, 214, 104, 0.3) !important;
+  box-shadow:
+    0 10px 20px rgba(0, 0, 0, 0.3),
+    0 0 15px rgba(245, 214, 104, 0.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-snap-type: none !important;
+  }
+  .core-shimmer,
+  .civsilver {
+    animation: none !important;
+  }
+  .skeleton-block {
+    animation: none !important;
+  }
+  .pilar-card .material-symbols-outlined,
+  .why-card .material-symbols-outlined {
+    transition: none !important;
+  }
+
+  .hero-enter-logo,
+  .hero-enter-title,
+  .hero-enter-subtitle,
+  .hero-card-entrance {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .hero-mod-card:hover,
+  .pilar-card:hover,
+  .why-card:hover {
+    transform: none !important;
+  }
+}
+
+/* Hero aurora (antes <style> en HeroAurora.tsx) */
+@keyframes aurora1 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(10%, 15%) scale(1.1);
+  }
+  66% {
+    transform: translate(-5%, 5%) scale(0.9);
+  }
+}
+@keyframes aurora2 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-10%, -10%) scale(1.05);
+  }
+  66% {
+    transform: translate(15%, 5%) scale(1.1);
+  }
+}
+@keyframes aurora3 {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(5%, -15%) scale(0.95);
+  }
+  66% {
+    transform: translate(-15%, 10%) scale(1.05);
+  }
+}
+.animate-aurora-1 {
+  animation: aurora1 20s ease-in-out infinite alternate;
+}
+.animate-aurora-2 {
+  animation: aurora2 25s ease-in-out infinite alternate-reverse;
+}
+.animate-aurora-3 {
+  animation: aurora3 22s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-aurora-1,
+  .animate-aurora-2,
+  .animate-aurora-3 {
+    animation: none;
+  }
+}
+
+/* Topography background (antes <style> en TopographyBackground.tsx) */
+@keyframes topoBreath {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+.animate-topo {
+  animation: topoBreath 8s ease-in-out infinite;
+  transform-origin: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-topo {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+/* Landing: clases de secciones y tarjetas de modulo.
+   Antes estos valores viajaban como style inline en LandingPage.tsx; el color por
+   modulo ahora entra por data-mod y una variable CSS. */
+
+.hero-section {
+  background: #05070a;
+}
+
+.hero-branding {
+  padding-top: 10vh;
+  padding-bottom: 2vh;
+}
+
+.hero-logo-plate {
+  background: radial-gradient(circle at center, rgba(245, 214, 104, 0.06) 0%, transparent 70%);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(245, 214, 104, 0.1);
+}
+
+.hero-logo-img {
+  filter: drop-shadow(0 0 80px rgba(245, 214, 104, 0.3));
+}
+
+.hero-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.hero-tagline-a {
+  color: #c8a84e;
+  font-family: 'Geist', monospace;
+}
+
+.hero-tagline-b {
+  color: #dce3ea;
+  font-family: 'Geist', monospace;
+}
+
+.landing-section {
+  background: #0a0e14;
+}
+
+.landing-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.hero-modules {
+  margin: 0 auto;
+}
+
+.hero-mod-slot {
+  z-index: 1;
+}
+
+.hero-mod-slot:hover,
+.hero-mod-slot:focus-within {
+  z-index: 30;
+}
+
+.hero-mod-card {
+  --mod-color: #e8c84a;
+  background: rgba(10, 14, 20, 0.6);
+  backdrop-filter: blur(8px);
+  border-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.hero-mod-slot[data-mod='flow'] {
+  --mod-color: #00aaff;
+}
+.hero-mod-slot[data-mod='manage'] {
+  --mod-color: #e67e22;
+}
+.hero-mod-slot[data-mod='structure'] {
+  --mod-color: #7f8c8d;
+}
+.hero-mod-slot[data-mod='terrain'] {
+  --mod-color: #27ae60;
+}
+.hero-mod-slot[data-mod='roads'] {
+  --mod-color: #f1c40f;
+}
+
+.hero-mod-card:hover,
+.hero-mod-card:focus-within {
+  border-color: color-mix(in srgb, var(--mod-color) 33%, transparent);
+  box-shadow:
+    0 0 20px color-mix(in srgb, var(--mod-color) 13%, transparent),
+    0 0 40px color-mix(in srgb, var(--mod-color) 4%, transparent);
+}
+
+/* Entrada escalonada de las 5 tarjetas (antes animationDelay inline). */
+.hero-mod-slot:nth-child(1) .hero-mod-card {
+  animation-delay: 450ms;
+}
+.hero-mod-slot:nth-child(2) .hero-mod-card {
+  animation-delay: 530ms;
+}
+.hero-mod-slot:nth-child(3) .hero-mod-card {
+  animation-delay: 610ms;
+}
+.hero-mod-slot:nth-child(4) .hero-mod-card {
+  animation-delay: 690ms;
+}
+.hero-mod-slot:nth-child(5) .hero-mod-card {
+  animation-delay: 770ms;
+}
+
+.mod-tooltip-title {
+  color: var(--mod-color);
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.mod-civil {
+  color: #c0c0c0;
+}
+
+.mod-desc {
+  color: #8a9bb0;
+}
+
+.mod-glow {
+  background: radial-gradient(
+    circle at center,
+    color-mix(in srgb, var(--mod-color) 5%, transparent) 0%,
+    transparent 70%
+  );
+}
+
+.mod-logo-wrap {
+  background: radial-gradient(circle at center, rgba(245, 214, 104, 0.04) 0%, transparent 70%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.mod-logo-img {
+  width: 80%;
+  height: 80%;
+  object-fit: contain;
+}
+
+.mod-name {
+  color: #e8c84a;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.mod-sub {
+  color: #dce3ea;
+  font-family: 'Geist', monospace;
+  font-weight: 600;
+}
+
+.landing-heading {
+  color: #f0f4f8;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.pilar-card {
+  background: #111317;
+}
+
+.pillar-icon {
+  color: #e8c84a;
+  font-variation-settings: 'FILL' 0;
+}
+
+.pillar-title {
+  color: #f0f4f8;
+  font-family: 'Geist', monospace;
+}
+
+.pillar-sub {
+  color: #8a9bb0;
+  font-family: 'Geist', monospace;
+}
+
+.why-card {
+  background: #111317;
+}
+
+.why-icon {
+  color: #e8c84a;
+}
+
+.why-title {
+  color: #f0f4f8;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.why-desc {
+  color: #dce3ea;
+}
+
+.cta-accent {
+  color: #e8c84a;
+}
+
+.landing-cta {
+  font-family: 'Geist', monospace;
+}
+
+.landing-cta-ghost {
+  font-family: 'Geist', monospace;
+  color: #dce3ea;
+}
+
+.landing-mobile-note {
+  color: #f5a623;
+  font-family: 'Geist', monospace;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 4px;
+}
+
+/* Cursor del typewriter: apagado por defecto (SSR) y encendido por clase. */
+.typewriter-cursor {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.typewriter-cursor-on {
+  opacity: 1;
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* FadeIn: entrada al hacer scroll sin style inline (opacidad/transform por clase).
+   En prerender nace visible para que el HTML estatico muestre el contenido. */
+.fade-in {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 600ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fade-in-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.fade-in[data-delay='100'] {
+  transition-delay: 100ms;
+}
+.fade-in[data-delay='200'] {
+  transition-delay: 200ms;
+}
+.fade-in[data-delay='300'] {
+  transition-delay: 300ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
+
+/* Landing: piezas decorativas y footer (antes style inline en sus componentes). */
+.aurora-a {
+  background: #e8c84a;
+}
+.aurora-b {
+  background: #c04000;
+}
+.aurora-c {
+  background: #c8a84e;
+}
+
+.topo-line:nth-child(1) {
+  animation-delay: 0s;
+}
+.topo-line:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.topo-line:nth-child(3) {
+  animation-delay: 0.4s;
+}
+.topo-line:nth-child(4) {
+  animation-delay: 0.6s;
+}
+.topo-line:nth-child(5) {
+  animation-delay: 0.1s;
+}
+.topo-line:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.topo-line:nth-child(7) {
+  animation-delay: 0.5s;
+}
+.topo-line:nth-child(8) {
+  animation-delay: 0.7s;
+}
+
+.blueprint-canvas {
+  opacity: 0.6;
+}
+
+.scroll-indicator-icon {
+  color: #e8c84a;
+  animation: bounce 2s infinite;
+}
+
+.site-footer {
+  background: #0a0e14;
+}
+
+.site-footer-brand {
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.site-footer-link {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: #6a8e8e;
+}
+
+.site-footer-email {
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: #6a8e8e;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.site-footer-copy {
+  color: #6a8e8e;
+  font-size: 12px;
+}

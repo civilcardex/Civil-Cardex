@@ -82,3 +82,119 @@
     animation: none !important;
   }
 }
+
+/* Utilidades de tipografía del sitio público (evitan style={{ fontFamily }}). */
+.font-geist-mono {
+  font-family: 'Geist', monospace;
+}
+.font-hanken {
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+/* Reset de listas cuando se usan como rejilla de tarjetas. */
+.list-reset {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Contenedores en columna (antes style={{ display: 'flex', flexDirection: 'column', gap: N }}). */
+.flex-col-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.flex-col-6 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.flex-col-8 {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.flex-col-10 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.flex-col-12 {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.flex-col-14 {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.flex-col-0 {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.flex-col-min {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.flex-row-6 {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.flex-row-8 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.flex-row-10 {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.ar-half {
+  width: 50%;
+  margin: 0 auto;
+  align-self: center;
+}
+.ar-dim-13 {
+  color: var(--txt3);
+  font-size: 13px;
+}
+.ar-mono-14 {
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.ar-mono-700 {
+  font-family: var(--mono);
+  font-weight: 700;
+}
+.ar-note {
+  font-size: 12px;
+  color: var(--txt3);
+  padding: 6px 8px;
+}
+.flex-col-12-w {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.ar-ok-13 {
+  color: #22c55e;
+  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+.ar-err-13 {
+  color: #ef5350;
+  font-weight: 700;
+  font-family: var(--mono);
+  font-size: 13px;
+}

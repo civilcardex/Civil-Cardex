@@ -16,34 +16,17 @@ export default function PricingFaq({ modulosProx }: PricingFaqProps) {
     <>
       {/* Próximamente */}
       <section className="max-w-4xl mx-auto mt-12">
-        <h2
-          className="uppercase tracking-widest mb-4"
-          style={{
-            fontSize: 14,
-            fontWeight: 700,
-            fontFamily: 'Geist, monospace',
-            color: '#849495',
-          }}
-        >
-          Próximamente
-        </h2>
-        <ul className="flex flex-wrap gap-2" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        <h2 className="pr-faq-title uppercase tracking-widest mb-4">Próximamente</h2>
+        <ul className="list-reset flex flex-wrap gap-2">
           {modulosProx.map((m) => (
-            <li
-              key={m}
-              className="text-[12px] px-3 py-1.5 border"
-              style={{ borderColor: '#3a494a', color: '#849495', borderRadius: 8 }}
-            >
+            <li key={m} className="pr-faq-chip text-[12px] px-3 py-1.5 border">
               {m}
             </li>
           ))}
         </ul>
       </section>
 
-      <section
-        className="text-center mt-16 space-y-2"
-        style={{ borderTop: '1px solid #3a494a', paddingTop: 40 }}
-      >
+      <section className="pricing-footer text-center mt-16 space-y-2">
         <p className="text-[12px] text-outline">
           Precios en USD. Pago único por período elegido; la renovación es manual — la app le
           avisará al vencer.

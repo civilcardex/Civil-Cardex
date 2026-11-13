@@ -41,28 +41,6 @@ function mensajeDeError(error: { message: string }): string {
   return MSG_ERROR[error.message] ?? 'No se pudo completar la operación. Intenta de nuevo.';
 }
 
-const BTN_PRIMARIO: React.CSSProperties = {
-  padding: '8px 16px',
-  fontSize: 12,
-  fontWeight: 600,
-  background: 'var(--primary, #4D8FF7)',
-  border: 'none',
-  borderRadius: 4,
-  color: 'var(--on-primary, #fff)',
-  cursor: 'pointer',
-};
-
-const BTN_FANTASMA: React.CSSProperties = {
-  padding: '4px 10px',
-  fontSize: 11,
-  fontWeight: 600,
-  background: 'transparent',
-  border: '1px solid var(--outline-variant, #3a3a44)',
-  borderRadius: 4,
-  color: 'var(--on-surface, #e2e2e8)',
-  cursor: 'pointer',
-};
-
 /** Para el modo EJEMPLO de esta misma página: mientras el sistema de suscripciones
  * está apagado, CompanyPage pasa mock (miembros falsos, sin RPCs) + soloLectura para NO
  * disparar RPCs reales (asignar_puesto tocaría datos de verdad). */
@@ -148,25 +126,16 @@ function PanelSuscripcion({
   const libres = Math.max(0, total - usados);
 
   return (
-    <section
-      style={{
-        border: '1px solid var(--outline-variant, #3a3a44)',
-        borderRadius: 10,
-        padding: 20,
-        maxWidth: 640,
-      }}
-    >
+    <section className="company-panel">
       <header className="flex items-center justify-between flex-wrap gap-2 mb-4">
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{nombre}</h2>
-          <p
-            style={{ fontSize: 12, color: 'var(--on-surface-variant, #9ba8aa)', margin: '2px 0 0' }}
-          >
+          <h2 className="company-panel-title">{nombre}</h2>
+          <p className="company-panel-meta">
             {usados} de {total} puestos en uso · {libres} libres · Activo hasta{' '}
             {new Date(sus.fecha_fin).toLocaleDateString('es-CO')}
           </p>
         </div>
-        <Link to="/pricing" style={BTN_FANTASMA}>
+        <Link to="/pricing" className="company-btn company-btn-ghost company-btn-small">
           Ampliar puestos
         </Link>
       </header>
@@ -181,69 +150,45 @@ function PanelSuscripcion({
           }}
           placeholder="correo del miembro (cuenta registrada)"
           aria-label="Correo del miembro a asignar"
-          style={{
-            flex: 1,
-            minWidth: 220,
-            padding: '8px 10px',
-            fontSize: 13,
-            background: 'var(--surface-container-low, #141418)',
-            border: '1px solid var(--outline-variant, #3a3a44)',
-            borderRadius: 4,
-            color: 'var(--on-surface, #e2e2e8)',
-            outline: 'none',
-          }}
+          className="company-input"
         />
         <button
           type="button"
           onClick={() => void asignar()}
           disabled={ocupado || !email.trim() || soloLectura}
           title={soloLectura ? 'Solo lectura — preview' : undefined}
-          style={BTN_PRIMARIO}
+          className="company-btn"
         >
           {ocupado ? 'Asignando…' : 'Asignar puesto'}
         </button>
       </div>
       {aviso && (
-        <p
-          role="status"
-          style={{ fontSize: 12, marginTop: 8, color: avisoOk ? '#2ff801' : '#f28b82' }}
-        >
+        <p role="status" data-ok={avisoOk ? 'true' : 'false'} className="company-aviso">
           {aviso}
         </p>
       )}
 
       {miembros === null ? (
-        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginTop: 12 }}>
-          Cargando miembros…
-        </p>
+        <p className="company-muted mt-3">Cargando miembros…</p>
       ) : miembros.length === 0 ? (
-        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginTop: 12 }}>
-          Aún no hay miembros asignados.
-        </p>
+        <p className="company-muted mt-3">Aún no hay miembros asignados.</p>
       ) : (
-        <table style={{ width: '100%', marginTop: 12, borderCollapse: 'collapse', fontSize: 13 }}>
+        <table className="company-table">
           <thead>
-            <tr style={{ textAlign: 'left', color: 'var(--on-surface-variant, #9ba8aa)' }}>
-              <th scope="col" style={{ padding: '6px 8px', fontWeight: 600 }}>
-                Miembro
-              </th>
-              <th scope="col" style={{ padding: '6px 8px', fontWeight: 600 }}>
-                Puede editar
-              </th>
-              <th scope="col" style={{ padding: '6px 8px' }}>
+            <tr>
+              <th scope="col">Miembro</th>
+              <th scope="col">Puede editar</th>
+              <th scope="col">
                 <span className="sr-only">Acciones</span>
               </th>
             </tr>
           </thead>
           <tbody>
             {miembros.map((m) => (
-              <tr
-                key={m.user_id}
-                style={{ borderTop: '1px solid var(--outline-variant, #3a3a44)' }}
-              >
-                <td style={{ padding: '8px' }}>{m.email}</td>
-                <td style={{ padding: '8px' }}>
-                  <label className="inline-flex items-center gap-2" style={{ fontSize: 12 }}>
+              <tr key={m.user_id}>
+                <td>{m.email}</td>
+                <td>
+                  <label className="company-check-label inline-flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={m.puede_editar}
@@ -254,13 +199,13 @@ function PanelSuscripcion({
                     {m.puede_editar ? 'Editor' : 'Solo lectura'}
                   </label>
                 </td>
-                <td style={{ padding: '8px', textAlign: 'right' }}>
+                <td className="company-td-right">
                   <button
                     type="button"
                     onClick={() => void quitar(m.user_id)}
                     disabled={soloLectura}
                     title={soloLectura ? 'Solo lectura — preview' : undefined}
-                    style={BTN_FANTASMA}
+                    className="company-btn company-btn-ghost company-btn-small"
                   >
                     Quitar
                   </button>
@@ -324,28 +269,18 @@ export default function CompanyPage() {
   // Cuando se active el flag, este bloque desaparece solo y quedan los planes reales.
   if (!SUSCRIPCIONES_ACTIVAS) {
     return (
-      <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>
+      <div className="container mx-auto px-6 py-10 company-wrap">
         {/* h2: la rama real de esta misma ruta ya usa el único h1 de la vista. */}
-        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Equipo</h2>
-        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginBottom: 16 }}>
+        <h2 className="company-title">Equipo</h2>
+        <p className="company-lead">
           Asigna puestos de tus planes empresariales por correo (el miembro debe tener cuenta
           registrada) y define quién puede editar los proyectos de la empresa.
         </p>
-        <div
-          role="status"
-          style={{
-            border: '1px dashed var(--outline-variant, #3a3a44)',
-            borderRadius: 10,
-            padding: '10px 14px',
-            marginBottom: 20,
-            fontSize: 12,
-            color: 'var(--on-surface-variant, #9ba8aa)',
-          }}
-        >
+        <div role="status" className="company-aviso-box">
           Vista de ejemplo — el sistema de suscripciones todavía no está activo. Cuando lo esté,
           aquí verás tus planes y puestos reales.
         </div>
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="company-grid">
           {EJEMPLO.map(({ sus, miembros }) => (
             <PanelSuscripcion key={sus.id} sus={sus} soloLectura mock={{ miembros }} />
           ))}
@@ -355,43 +290,27 @@ export default function CompanyPage() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-10" style={{ maxWidth: 860 }}>
-      <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 4 }}>Equipo</h1>
-      <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', marginBottom: 24 }}>
+    <div className="container mx-auto px-6 py-10 company-wrap">
+      <h1 className="company-title">Equipo</h1>
+      <p className="company-lead company-lead-real">
         Asigna puestos de tus planes empresariales por correo (el miembro debe tener cuenta
         registrada) y define quién puede editar los proyectos de la empresa.
       </p>
 
       {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)' }}>
-          Cargando suscripciones…
-        </p>
+        <p className="company-muted">Cargando suscripciones…</p>
       ) : empresa.length === 0 ? (
-        <div
-          style={{
-            border: '1px dashed var(--outline-variant, #3a3a44)',
-            borderRadius: 10,
-            padding: 24,
-          }}
-        >
-          <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)' }}>
+        <div className="company-empty-box">
+          <p className="company-muted">
             Aquí administrarás los puestos de tus planes empresariales. Aún no tienes una compra con
             más de un puesto.
           </p>
-          <Link
-            to="/pricing"
-            style={{
-              ...BTN_PRIMARIO,
-              display: 'inline-block',
-              marginTop: 12,
-              textDecoration: 'none',
-            }}
-          >
+          <Link to="/pricing" className="company-btn company-cta">
             Ver planes
           </Link>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 16 }}>
+        <div className="company-grid">
           {empresa.map((sus) => (
             <PanelSuscripcion key={sus.id} sus={sus} />
           ))}

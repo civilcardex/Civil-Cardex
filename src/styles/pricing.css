@@ -1,0 +1,372 @@
+/* Pricing: transiciones de tarjeta/CTA (antes <style> en PricingPage.tsx). */
+.pr-card {
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.pr-cta {
+  transition:
+    filter 0.15s,
+    transform 0.15s;
+}
+.pr-cta:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.pr-cta:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* ── Página de precios: clases que reemplazan los style inline ──
+   Colores de plan por data-plan (--plan-color) y estado de selección por
+   data-selected, para que el JSX solo ponga clases y atributos. */
+
+.pricing-root {
+  background: #111317;
+  color: #e2e2e8;
+  min-height: 100vh;
+}
+
+.pricing-aviso {
+  font-size: 14px;
+  color: #b9caca;
+  border: 1px solid #3a494a;
+  border-radius: 10px;
+  background: #16191d;
+  padding: 12px 18px;
+}
+
+/* Encabezado (modo marketing y modo suscripciones). */
+.pricing-kicker {
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: #849495;
+}
+
+.pricing-title {
+  font-size: 40px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.pricing-hero-title {
+  font-size: 40px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: #e2e2e8;
+  line-height: 1.15;
+}
+
+/* Segmentos (tipo de plan y período): botones planos con estado aria-pressed. */
+.pricing-segment {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border: 1px solid #3a494a;
+  border-radius: 10px;
+  background: #16191d;
+}
+
+.pricing-segment-wrap {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.pricing-segment button {
+  cursor: pointer;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 18px;
+  background: transparent;
+  color: #b9caca;
+  font-family: 'Geist', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.pricing-segment-mode button[aria-pressed='true'] {
+  background: #4d8ff7;
+  color: #fff;
+}
+
+.pricing-segment-period button[aria-pressed='true'] {
+  background: #e8c84a;
+  color: #161a1e;
+}
+
+.pricing-segment-off {
+  color: #52f2a5;
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Cintas de norma del hero marketing. */
+.pricing-badge {
+  border: 1px solid #1d4ed8;
+  color: #3b82f6;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'Geist', monospace;
+}
+
+/* Tarjetas de plan marketing (colores por plan). */
+.pricing-plan {
+  --plan-color: #3b82f6;
+  background: #111317;
+  border: 1px solid #3a494a;
+}
+
+.pricing-plan[data-plan='basico'] {
+  --plan-color: #3b82f6;
+}
+.pricing-plan[data-plan='profesional'] {
+  --plan-color: #00f5ff;
+}
+.pricing-plan[data-plan='empresarial'] {
+  --plan-color: #a855f7;
+}
+
+.pricing-plan[data-destacado='true'] {
+  background: #1a1c20;
+  border: 2px solid var(--plan-color);
+}
+
+.pricing-plan-ribbon {
+  background: var(--plan-color);
+  color: #003739;
+  font-family: 'Geist', monospace;
+}
+
+.pricing-plan-name {
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: var(--plan-color);
+}
+
+.pricing-plan-price {
+  font-size: 40px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: var(--plan-color);
+}
+
+.pricing-plan-period {
+  font-size: 14px;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.pricing-plan-desc {
+  min-height: 40px;
+}
+
+.pricing-plan-check {
+  color: #2ff801;
+  font-size: 16px;
+}
+
+.pricing-plan-minus {
+  color: #849495;
+  font-size: 16px;
+}
+
+.pricing-plan-cta {
+  font-size: 12px;
+  font-family: 'Geist', monospace;
+  color: var(--plan-color);
+  border: 1px solid var(--plan-color);
+}
+
+.pricing-plan-cta[data-destacado='true'] {
+  background: var(--plan-color);
+  color: #003739;
+  border: none;
+}
+
+.pricing-footer {
+  border-top: 1px solid #3a494a;
+  padding-top: 40px;
+}
+
+/* ── Modo suscripciones: tarjetas de módulo ── */
+
+.pr-card-logo {
+  object-fit: contain;
+  object-position: left center;
+  max-height: 76px;
+  margin-left: -8px;
+}
+
+.pr-card[data-selected='true'] {
+  background: #181c21;
+  border-color: #e8c84a;
+  border-width: 2px;
+  margin: -1px;
+}
+
+.pr-card[data-selected='false'] {
+  background: #111317;
+  border-color: #3a494a;
+  border-width: 1px;
+}
+
+.pr-card-check {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+
+.pr-card-check[data-selected='true'] {
+  border: none;
+  background: #e8c84a;
+  color: #161a1e;
+}
+
+.pr-card-check[data-selected='false'] {
+  border: 1px solid #3a494a;
+  background: transparent;
+  color: transparent;
+}
+
+.pr-card-title {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.pr-card-divider {
+  border-top: 1px solid #2a3234;
+  margin: 16px 0 14px;
+}
+
+.pr-card-price {
+  font-size: 34px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: #e2e2e8;
+}
+
+.pr-card-period {
+  font-size: 13px;
+}
+
+.pr-card-stepper-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid #3a494a;
+  background: #1e2126;
+  color: #e2e2e8;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.pr-card-stepper-value {
+  min-width: 78px;
+  text-align: center;
+}
+
+.pr-card-benefit-icon {
+  color: #2ff801;
+  font-size: 15px;
+  margin-top: 2px;
+}
+
+.pr-card-active {
+  color: #2ff801;
+}
+
+.pr-card-active-icon {
+  font-size: 14px;
+}
+
+/* Resumen de compra. */
+.pr-summary {
+  border: 1px solid #3a494a;
+  border-radius: 14px;
+  background: #16191d;
+  padding: 20px 24px;
+}
+
+.pr-summary-label {
+  font-size: 14px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: #849495;
+}
+
+.pr-summary-logo {
+  object-fit: contain;
+}
+
+.pr-discount {
+  color: #52f2a5;
+  font-size: 14px;
+}
+
+.pr-total {
+  font-size: 32px;
+  font-weight: 700;
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: #e2e2e8;
+}
+
+.pr-cta-btn {
+  font-size: 14px;
+  font-family: 'Geist', monospace;
+  padding: 15px 34px;
+  border-radius: 10px;
+  text-decoration: none;
+}
+
+.pr-cta-buy {
+  border: none;
+  background: #e8c84a;
+  color: #161a1e;
+  box-shadow: 0 0 22px rgba(232, 200, 74, 0.22);
+  cursor: pointer;
+}
+
+.pr-cta-buy:disabled {
+  background: #1e2126;
+  color: #5a6a6b;
+  box-shadow: none;
+  cursor: default;
+}
+
+.pr-cta-icon {
+  font-size: 17px;
+}
+
+.pr-secure {
+  color: #849495;
+}
+
+.pr-secure-icon {
+  font-size: 14px;
+}
+
+/* Cierre: próximos módulos y nota de renovación. */
+.pr-faq-title {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+  color: #849495;
+}
+
+.pr-faq-chip {
+  border: 1px solid #3a494a;
+  color: #849495;
+  border-radius: 8px;
+}

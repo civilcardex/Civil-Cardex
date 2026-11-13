@@ -128,17 +128,6 @@ export const PRODUCT_JSONLD = Object.freeze({
   },
 });
 
-/** Estilo de las cintas de descuento de las tarjetas de plan. */
-export const BADGE_STYLE = {
-  borderColor: '#1D4ED8',
-  color: '#3B82F6',
-  padding: '3px 10px',
-  borderRadius: 20,
-  fontSize: 12,
-  fontFamily: 'Geist, monospace',
-  border: '1px solid #1D4ED8',
-} as const;
-
 // ---------------------------------------------------------------------------
 // Página de compra por módulo (SUSCRIPCIONES_ACTIVAS = true).
 // ---------------------------------------------------------------------------

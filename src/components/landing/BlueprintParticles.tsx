@@ -190,10 +190,6 @@ export default function BlueprintParticles() {
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="absolute inset-0 pointer-events-none z-0"
-      style={{ opacity: 0.6 }} // Adjust overall opacity if needed
-    />
+    <canvas ref={canvasRef} className="blueprint-canvas absolute inset-0 pointer-events-none z-0" />
   );
 }

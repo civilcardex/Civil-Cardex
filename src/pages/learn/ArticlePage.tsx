@@ -39,22 +39,6 @@ export default function ArticlePage({ data }: { data: ArticleData }) {
       <Navbar />
       {/* Prosa del artículo: mismo des-aviejecido que .docs-body en /docs, pero sin heredar
           sus selectores (los data files de /docs son de otro módulo). */}
-      <style>{`
-        .article-body p { font-size: 14px; line-height: 1.75; margin: 0.65rem 0; color: rgb(255 255 255 / 0.86); }
-        .article-body ul, .article-body ol { font-size: 14px; line-height: 1.75; margin: 0.65rem 0; padding-left: 1.4rem; color: rgb(255 255 255 / 0.86); }
-        .article-body ul { list-style: disc; }
-        .article-body ol { list-style: decimal; }
-        .article-body li { margin: 0.3rem 0; }
-        .article-body strong { color: var(--on-surface, #fff); font-weight: 700; }
-        .article-body code { font-family: var(--font-mono, monospace); font-size: 12.5px; background: rgb(255 255 255 / 0.06); border: 1px solid var(--outline-variant, #3a3a44); border-radius: 4px; padding: 1px 5px; }
-        .article-body table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--outline-variant, #3a3a44); border-radius: 8px; overflow: hidden; font-size: 13px; margin: 0.8rem 0; }
-        .article-body table th { background: rgb(255 255 255 / 0.05); padding: 6px 10px; text-align: left; font-weight: 700; }
-        .article-body table td { padding: 6px 10px; border-top: 1px solid var(--outline-variant, #3a3a44); }
-        .article-body table tbody tr:nth-child(even) { background: rgb(255 255 255 / 0.025); }
-        .article-body .formula { font-family: var(--font-mono, monospace); font-size: 14px; text-align: center; border: 1px solid var(--outline-variant, #3a3a44); border-left: 3px solid #4D8FF7; background: rgb(255 255 255 / 0.03); border-radius: 8px; padding: 10px 12px; margin: 0.9rem 0; line-height: 2; }
-        .article-body .nota { position: relative; font-size: 13px; line-height: 1.6; color: rgb(255 255 255 / 0.78); background: rgb(77 143 247 / 0.09); border-radius: 0 8px 8px 0; padding: 8px 12px 8px 34px; margin: 0.8rem 0; }
-        .article-body .nota::before { content: '\\24D8'; position: absolute; left: 11px; top: 8px; font-size: 14px; color: #4D8FF7; }
-      `}</style>
       <main className="flex-1 pt-16">
         <article className="max-w-3xl mx-auto w-full min-w-0 px-4 py-10">
           <header>

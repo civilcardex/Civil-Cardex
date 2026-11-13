@@ -6,11 +6,10 @@ interface Props {
   text: string;
   delay?: number;
   className?: string;
-  style?: React.CSSProperties;
 }
 
 /** Texto del hero que se teclea letra a letra (50 ms/letra tras delay). SEO: el HTML prerenderizado trae el texto COMPLETO — el vaciado corre pre-paint en cliente. */
-export default function TypewriterText({ text, delay = 800, className, style }: Props) {
+export default function TypewriterText({ text, delay = 800, className }: Props) {
   const prefersReducedMotion = usePrefersReducedMotion();
   // usePrefersReducedMotion is already accurate on the first render (its own lazy useState
   // init), so the reduced-motion case can be seeded here instead of set in an effect.
@@ -52,14 +51,10 @@ export default function TypewriterText({ text, delay = 800, className, style }: 
   }, [text, delay, prefersReducedMotion]);
 
   return (
-    <p className={className} style={style}>
+    <p className={className}>
       {displayedText}
       <span
-        style={{
-          opacity: showCursor && !prefersReducedMotion ? 1 : 0,
-          transition: 'opacity 0.2s',
-          animation: showCursor ? 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
-        }}
+        className={`typewriter-cursor${showCursor && !prefersReducedMotion ? ' typewriter-cursor-on' : ''}`}
       >
         |
       </span>

@@ -8,7 +8,6 @@ import { marcarNavInterna } from '../utils/internalNavigation.ts';
 import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService.ts';
 import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
 
-import { SR_ONLY_STYLE } from '../components/shared/sharedStyles.ts';
 // Reutilizada por <CargandoProyecto> (el loader compartido de la app).
 
 /** Ruta /civilmanagerareatrabajo/:proyectoId? — deep-link por proyecto (espejo de la ruta de flow). Sin id → redirect al activo. */
@@ -72,7 +71,7 @@ function WorkAreaCivilManagerPage() {
   }
   return (
     <div className="h-full">
-      <h1 style={SR_ONLY_STYLE}>Área de trabajo CivilManager</h1>
+      <h1 className="sr-only">Área de trabajo CivilManager</h1>
       <WorkAreaCivilManager />
     </div>
   );

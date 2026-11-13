@@ -8,18 +8,20 @@ export default defineConfig(({ isSsrBuild }) => ({
     },
   },
   // La CSP de PRODUCCIÓN (index.html + vercel.json) va sin 'unsafe-inline' ni 'unsafe-eval'.
-  // El server de DEV necesita 'unsafe-inline' (React Refresh / HMR inyectan scripts inline)
-  // y 'unsafe-eval': se relaja SOLO en desarrollo, sin tocar el HTML de producción.
+  // El server de DEV necesita 'unsafe-inline' (React Refresh / HMR inyectan scripts y <style>
+  // inline) y 'unsafe-eval': se relaja SOLO en desarrollo, sin tocar el HTML de producción.
   plugins: [
     react(),
     {
       name: 'csp-relajada-en-dev',
       apply: 'serve',
       transformIndexHtml(html) {
-        return html.replace(
-          /script-src 'self' 'wasm-unsafe-eval'/,
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
-        );
+        return html
+          .replace(
+            /script-src 'self' 'wasm-unsafe-eval'/,
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
+          )
+          .replace(/style-src 'self'/, "style-src 'self' 'unsafe-inline'");
       },
     },
   ],

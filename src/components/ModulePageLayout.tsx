@@ -14,6 +14,8 @@ interface ModulePageLayoutProps {
   title: string;
   children: React.ReactNode;
   mainClassName?: string;
+  /** Id del módulo (flow/manage/...) para fijar el color de acento por CSS. */
+  moduleId?: string;
   /** Ajusta el main al hueco EXACTO entre navbar y footer (sin scroll de página). Para
    *  pantallas de una vista (p. ej. «En construcción»); el footer mide ~5.5rem fijos. */
   fitViewport?: boolean;
@@ -24,6 +26,7 @@ export default function ModulePageLayout({
   title: _title,
   children,
   mainClassName = '',
+  moduleId,
   fitViewport = false,
 }: ModulePageLayoutProps) {
   const loc = useLocation();
@@ -53,8 +56,7 @@ export default function ModulePageLayout({
     <>
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded"
-        style={{ fontFamily: 'Geist, monospace' }}
+        className="font-geist-mono sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-on-primary focus:rounded"
       >
         Saltar al contenido principal
       </a>
@@ -62,28 +64,18 @@ export default function ModulePageLayout({
       <Navbar />
       <main
         id="main-content"
-        className={`flex-grow pt-16 ${mainClassName}`}
-        style={{
-          background: '#111317',
-          minHeight: fitViewport ? 'calc(100dvh - 5.5rem)' : '100vh',
-          ...(fitViewport ? { overflow: 'hidden' as const } : {}),
-        }}
+        data-module={moduleId}
+        className={`module-main flex-grow pt-16 ${fitViewport ? 'module-main-fit' : ''} ${mainClassName}`}
       >
         {children}
       </main>
-      <footer className="border-t border-outline-variant" style={{ background: '#0c0e12' }}>
+      <footer className="module-footer border-t border-outline-variant">
         <div className="flex flex-col md:flex-row justify-between items-center px-6 lg:px-8 py-8 w-full gap-4">
-          <span
-            className="text-[11px] tracking-[0.08em] font-bold uppercase"
-            style={{ fontFamily: 'Geist, monospace' }}
-          >
+          <span className="font-geist-mono text-[11px] tracking-[0.08em] font-bold uppercase">
             <span className="ccx-silver">Civil</span>
             <span className="ccx-gold"> Cardex</span>
           </span>
-          <span
-            className="text-[13px] text-on-surface-variant uppercase"
-            style={{ fontFamily: 'Geist, monospace' }}
-          >
+          <span className="font-geist-mono text-[13px] text-on-surface-variant uppercase">
             © 2026 Civil Cardex. Todos los derechos reservados.
           </span>
         </div>

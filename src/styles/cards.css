@@ -62,3 +62,67 @@
   padding: 20px;
   overflow: auto;
 }
+
+/* Variantes del componente Card: cabecera en columna y cuerpo casi sin padding. */
+.card-h-col {
+  flex-direction: column;
+}
+
+.card-h-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.card-h-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.card-b-tight {
+  padding: 1px;
+}
+
+/* ── Card: variante de icono/cuerpo por clase ── */
+.card-icon-20 {
+  width: 20px;
+  height: 20px;
+}
+.card-icon-22 {
+  width: 22px;
+  height: 22px;
+}
+.card-b-p0 {
+  padding: 0;
+}
+.card-b-p5x8 {
+  padding: 5px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.card-b-p4 {
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* EP: tarjetas en columna que llenan su celda. */
+.ep-card-col {
+  display: flex;
+  flex-direction: column;
+}
+.ep-card-col-fill {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}

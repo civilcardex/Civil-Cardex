@@ -45,16 +45,19 @@
   - script-src NO lleva 'unsafe-inline': los scripts de arranque (fixer de canonical/og:url y
     texto de la pantalla de carga) viven en /scripts/*.js (un archivo propio: 'self' los cubre).
     Con 'unsafe-inline' la directiva no restringe NADA.
+  - style-src tampoco lleva 'unsafe-inline': el CSS crítico vive en /styles/critical.css y el
+    HTML prerenderizado no trae style="..." (lo vigila scripts/checkPrerenderStyles.mjs).
+    React aplica los style={{...}} de runtime por CSSOM, que la CSP no bloquea.
   - 'wasm-unsafe-eval' (no 'unsafe-eval'): pdfjs-dist compila WebAssembly para algunos
     decodificadores de imagen. pdf.js solo usa `new Function` como TEST de disponibilidad
     (isEvalSupported) y degrada solo si eval no existe -> no necesita 'unsafe-eval'.
-  - En DESARROLLO el server de Vite inyecta scripts inline (HMR / React Refresh): la CSP la
-    relaja vite.config.js (transformIndexHtml), no el index.html de producción.
+  - En DESARROLLO el server de Vite inyecta scripts y etiquetas style inline (HMR / React
+    Refresh): la CSP la relaja vite.config.js (transformIndexHtml), no el index.html de producción.
   - va.vercel-scripts.com: scripts de Vercel Analytics/Speed Insights (cargan desde ahí también en producción)
   - frame-ancestors NO va aquí: los navegadores lo ignoran en <meta>; lo aplica el header HTTP de vercel.json
   - SRI (integrity) on Google Fonts not feasible — URLs are dynamically generated. crossorigin="anonymous" is set instead.
 -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://va.vercel-scripts.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://va.vercel-scripts.com; style-src 'self'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />
@@ -155,30 +158,18 @@
     <link rel="preconnect" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
     <link rel="dns-prefetch" href="https://klkwpjdzargmeovwcgxe.supabase.co" />
     <link rel="preload" as="image" href="/logos/civilCardexlogo-v2.webp" fetchpriority="high" />
-    <style>
-      /* Critical inline CSS for instant FCP */
-      html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; background: #111317; color: #e2e2e8; }
-      ._preload {
-        display: flex; align-items: center; justify-content: center; height: 100vh;
-        font-family: system-ui, sans-serif; flex-direction: column; gap: 12px;
-      }
-      ._preload img { width: 48px; height: 48px; }
-      ._preload p { font-size: 14px; color: #8AB4D6; margin: 0; }
-      .sr-only {
-        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
-        overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-      }
-    </style>
+    <!-- CSS crítico del primer paint: archivo externo para que style-src 'self' lo permita. -->
+    <link rel="stylesheet" href="/styles/critical.css" />
   </head>
   <body>
     <div id="root"><h1 class="sr-only">Civil Cardex — Plataforma de ingeniería civil</h1><div class="_preload"><img src="/logos/civilCardexlogo-v2.webp" alt="Civil Cardex" width="48" height="48" /><p id="_preloadMsg">Cargando proyecto…</p></div></div>
     <script src="/scripts/preload.js"></script>
     <noscript>
-      <div style="padding: 2rem; font-family: system-ui, sans-serif; text-align: center; background: #111317; color: #e2e2e8; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+      <div class="noscript-wrap">
         <div>
-          <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem;">Civil Cardex</h1>
-          <p style="margin-bottom: 1rem;">Esta aplicación requiere JavaScript para funcionar. Por favor, habilite JavaScript en su navegador.</p>
-          <p style="font-size: 0.85rem; color: #8AB4D6;">Plataforma de ingeniería civil — Diseño hidrosanitario, estructural y gestión de proyectos.</p>
+          <h1 class="noscript-title">Civil Cardex</h1>
+          <p class="noscript-lead">Esta aplicación requiere JavaScript para funcionar. Por favor, habilite JavaScript en su navegador.</p>
+          <p class="noscript-note">Plataforma de ingeniería civil — Diseño hidrosanitario, estructural y gestión de proyectos.</p>
         </div>
       </div>
     </noscript>

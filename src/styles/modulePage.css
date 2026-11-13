@@ -1,0 +1,338 @@
+/* Animaciones de las fichas de módulo (antes <style> en ManageHero.tsx). */
+@keyframes mhCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mh-card {
+  animation: mhCardIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mh-card:hover {
+  transform: translateY(-4px);
+}
+
+.mh-card:hover .mh-card-icon {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+/* Páginas publicas de modulo: color de acento por ruta y clases que reemplazan
+   los style inline de ModulePage, ModulePageLayout, ManageHero y FlowHero. */
+main[data-module='flow'] {
+  --module-accent: #00dce5;
+}
+main[data-module='structure'] {
+  --module-accent: #00f5ff;
+}
+main[data-module='terrain'] {
+  --module-accent: #79ff5b;
+}
+main[data-module='manage'] {
+  --module-accent: #f59e0b;
+}
+main[data-module='roads'] {
+  --module-accent: #ffc107;
+}
+
+.module-main {
+  background: #111317;
+  min-height: 100vh;
+}
+.module-main-fit {
+  min-height: calc(100dvh - 5.5rem);
+  overflow: hidden;
+}
+.module-footer {
+  background: #0c0e12;
+}
+
+.module-badge {
+  background: #1a1d23;
+  border: 1px solid var(--module-accent);
+}
+.module-accent-text {
+  color: var(--module-accent);
+}
+.module-accent-icon {
+  font-variation-settings: 'FILL' 1;
+  color: var(--module-accent);
+}
+
+.module-features-manage {
+  background: #1a1c20;
+}
+.module-features-default {
+  background: #111317;
+}
+.module-feature {
+  background: #1a1c20;
+  border-color: #3a494a;
+}
+.module-feature-manage {
+  background: linear-gradient(
+    155deg,
+    #1e2128 0%,
+    #1a1c20 55%,
+    color-mix(in srgb, var(--module-accent) 8%, transparent) 100%
+  );
+}
+.module-feature-icon {
+  background: #111317;
+  border-color: #3a494a;
+  color: var(--module-accent);
+}
+.module-fill-icon {
+  font-variation-settings: 'FILL' 1;
+}
+
+.module-bars {
+  background: #111317;
+}
+.module-bar-a {
+  background: #3a494a;
+}
+.module-bar-b {
+  background: var(--module-accent);
+}
+.module-bar-c {
+  background: #37393e;
+}
+
+.module-structure-block {
+  background: #1a1c20;
+}
+.module-structure-head {
+  background: #1e2024;
+}
+.module-console {
+  font-family: 'Geist', monospace;
+  color: var(--txt3);
+}
+.module-console-accent {
+  color: var(--acc);
+}
+
+.module-specs {
+  background: #1e2024;
+}
+.module-specs-head {
+  background: #282a2e;
+}
+.module-cta {
+  background: #0c0e12;
+}
+
+/* ManageHero */
+.manage-hero {
+  min-height: 92vh;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.manage-hero-overlay {
+  background:
+    radial-gradient(
+      ellipse 70% 55% at 18% 15%,
+      color-mix(in srgb, var(--module-accent) 13%, transparent) 0%,
+      transparent 60%
+    ),
+    radial-gradient(ellipse 70% 55% at 85% 20%, rgba(121, 255, 91, 0.08) 0%, transparent 60%),
+    linear-gradient(to bottom, color-mix(in srgb, var(--module-accent) 5%, transparent), #111317);
+}
+.manage-bg-icon {
+  color: var(--module-accent);
+  opacity: 0.07;
+}
+.manage-bg-icon-1 {
+  top: 8%;
+  left: 6%;
+  font-size: 130px;
+  transform: rotate(-12deg);
+}
+.manage-bg-icon-2 {
+  top: 58%;
+  left: 4%;
+  font-size: 100px;
+  transform: rotate(8deg);
+}
+.manage-bg-icon-3 {
+  top: 14%;
+  left: 86%;
+  font-size: 110px;
+  transform: rotate(10deg);
+}
+.manage-bg-icon-4 {
+  top: 62%;
+  left: 88%;
+  font-size: 120px;
+  transform: rotate(-8deg);
+}
+.manage-hero-logo {
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--module-accent) 40%, transparent));
+}
+.mh-card {
+  background: linear-gradient(
+    155deg,
+    rgba(30, 33, 40, 0.8) 0%,
+    rgba(17, 19, 23, 0.75) 55%,
+    color-mix(in srgb, var(--module-accent) 11%, transparent) 100%
+  );
+  border-color: #3a494a;
+  color: var(--module-accent);
+}
+.mh-card:nth-child(1) {
+  animation-delay: 0ms;
+}
+.mh-card:nth-child(2) {
+  animation-delay: 140ms;
+}
+.mh-card:nth-child(3) {
+  animation-delay: 280ms;
+}
+.mh-card:nth-child(4) {
+  animation-delay: 420ms;
+}
+.mh-cta-row {
+  animation-delay: 560ms;
+}
+.mh-cta {
+  font-family: 'Geist', monospace;
+  background: var(--module-accent);
+  color: #111317;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--module-accent) 33%, transparent);
+}
+.mh-cta-button {
+  cursor: pointer;
+  border: none;
+}
+.mh-desc {
+  font-family: 'Geist', monospace;
+  color: #8a9bb0;
+}
+
+/* FlowHero */
+.flow-hero {
+  min-height: 560px;
+  background: #1a1c20;
+}
+.flow-hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(900px) rotateX(58deg) translateZ(-140px) scale(2.2);
+  transform-origin: center top;
+}
+.flow-hero-logo {
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--module-accent) 40%, transparent));
+}
+.flow-accent {
+  color: var(--module-accent);
+}
+.flow-hero-desc {
+  color: #dce3ea;
+}
+.flow-net-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(40, 42, 46, 0.5) 0%,
+    rgba(17, 19, 23, 0.7) 50%,
+    rgba(28, 30, 34, 0.5) 100%
+  );
+  border: 1px solid rgba(245, 214, 104, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 32px rgba(0, 0, 0, 0.3);
+}
+.flow-cta {
+  font-family: 'Geist', monospace;
+  background: var(--module-accent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--module-accent) 30%, transparent);
+  cursor: pointer;
+  border: none;
+  color: #0b1014;
+}
+.flow-docs-link {
+  font-family: 'Geist', monospace;
+  background: rgba(17, 19, 23, 0.5);
+}
+
+.net-card {
+  background: #14161a;
+  border-color: #3a494a;
+  min-height: 130px;
+}
+.net-card[data-net='0'] {
+  --net-color: #4d8ff7;
+}
+.net-card[data-net='1'] {
+  --net-color: #f04545;
+}
+.net-card[data-net='2'] {
+  --net-color: #f5a623;
+}
+.net-card[data-net='3'] {
+  --net-color: #38bdf8;
+}
+.net-card[data-net='4'] {
+  --net-color: #8b5cf6;
+}
+.net-card[data-net='5'] {
+  --net-color: #a855f7;
+}
+.net-card[data-net='6'] {
+  --net-color: #f87171;
+}
+.net-card-glow {
+  background: radial-gradient(
+    circle at 0% 0%,
+    color-mix(in srgb, var(--net-color) 15%, transparent) 0%,
+    transparent 65%
+  );
+}
+.net-icon {
+  background: color-mix(in srgb, var(--net-color) 13%, transparent);
+  color: var(--net-color);
+}
+.net-icon-symbol {
+  font-variation-settings: 'FILL' 1;
+  font-size: 20px;
+}
+.net-kicker {
+  font-family: 'Geist', monospace;
+  color: var(--net-color);
+}
+.net-name {
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: #f0f4f8;
+  min-height: 40px;
+}
+.net-feature {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+.net-feature-active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+.net-feature-text {
+  font-family: 'Geist', monospace;
+  color: #dce3ea;
+}
+.net-dot {
+  background: #3a494a;
+  opacity: 0.4;
+}
+.net-dot-active {
+  background: var(--net-color);
+  opacity: 1;
+}

@@ -1,0 +1,124 @@
+/* Estilos de diálogos que antes vivían como <style> dentro del componente.
+   Se scopean por clase para no pisar el backdrop global de dialog.civ-modal. */
+
+.global-alert-dialog::backdrop {
+  background: rgba(10, 11, 14, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.confirm-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.fitting-modal::backdrop {
+  background: rgba(10, 11, 14, 0.75);
+  backdrop-filter: blur(8px);
+}
+
+.text-input-overlay-input:focus-visible {
+  outline: 2px solid #4d8ff7;
+  outline-offset: 2px;
+}
+
+.project-create-dialog-input:focus-visible {
+  outline: 2px solid var(--color-accent, #4d8ff7);
+  outline-offset: 2px;
+}
+
+/* ── Piezas compartidas de los modales de la app (antes inline en ModalShell / ConfirmModal /
+   ProjectCreateDialog / ProjectCreateDialogCM) ── */
+
+/* ModalShell: contenedor del <dialog> y la card. */
+.modal-overlay-focus:focus {
+  outline: none;
+}
+
+.modal-shell-card {
+  background: var(--surface-container, #1e1e24);
+  border: 1px solid var(--outline-variant, #3a3a44);
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 420px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  min-width: 360px;
+}
+
+/* Diálogos de título/lead/actions/botones compartidos. */
+.dialog-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--on-surface, #e2e2e8);
+  margin: 0 0 4px;
+}
+
+.dialog-title-compact {
+  margin: 0 0 6px;
+}
+
+.dialog-lead {
+  font-size: 12px;
+  color: var(--on-surface-variant, #9ba8aa);
+  margin: 0 0 16px;
+}
+
+.dialog-lead-compact {
+  font-size: 13px;
+  margin: 0;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dialog-actions-compact {
+  margin-top: 18px;
+}
+
+.dialog-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.dialog-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--outline-variant, #3a3a44);
+  color: var(--on-surface, #e2e2e8);
+}
+
+.dialog-btn-primary {
+  background: var(--primary, #4d8ff7);
+  border: none;
+  color: var(--on-primary, #fff);
+}
+
+.dialog-btn-primary:disabled {
+  background: var(--surface-container-low, #141418);
+  color: var(--on-surface-variant, #9ba8aa);
+  cursor: default;
+}
+
+.dialog-btn-danger {
+  background: var(--error, #ff4444);
+  border: none;
+  color: #fff;
+}
+
+/* Input de los diálogos "Nuevo proyecto" (flow y CM). */
+.project-create-dialog-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--surface-container-low, #141418);
+  border: 1px solid var(--outline-variant, #3a3a44);
+  border-radius: 4px;
+  color: var(--on-surface, #e2e2e8);
+  outline: none;
+  box-sizing: border-box;
+  font-family: 'Geist', monospace;
+}

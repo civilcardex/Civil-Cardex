@@ -1,0 +1,73 @@
+/* Critical CSS del primer paint. Antes vivia en un bloque <style> inline en index.html,
+   que la CSP estricta (style-src 'self') bloquea. Se sirve como archivo propio desde /public. */
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #111317;
+  color: #e2e2e8;
+}
+
+._preload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  font-family: system-ui, sans-serif;
+  flex-direction: column;
+  gap: 12px;
+}
+
+._preload img {
+  width: 48px;
+  height: 48px;
+}
+
+._preload p {
+  font-size: 14px;
+  color: #8ab4d6;
+  margin: 0;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Aviso para navegadores sin JavaScript (el <noscript> vive en index.html). */
+.noscript-wrap {
+  padding: 2rem;
+  font-family: system-ui, sans-serif;
+  text-align: center;
+  background: #111317;
+  color: #e2e2e8;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.noscript-title {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.noscript-lead {
+  margin-bottom: 1rem;
+}
+
+.noscript-note {
+  font-size: 0.85rem;
+  color: #8ab4d6;
+}

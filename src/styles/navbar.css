@@ -1,0 +1,77 @@
+/* Navbar pública: antes todos estos valores viajaban como style={{...}} en el JSX.
+   Se scopean por clase para que la CSP pueda prohibir estilos inline. */
+
+.navbar-gold {
+  --acc: #e8c84a;
+  --acc2: #f5d668;
+  --acc3: #c8a84e;
+  --glow: rgba(245, 214, 104, 0.3);
+}
+
+/* Estado según scroll: transparente arriba del landing, vidrio al desplazar. */
+.navbar-top {
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.navbar-scrolled {
+  background: rgba(17, 19, 23, 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.navbar-brand {
+  font-family: 'Hanken Grotesk', sans-serif;
+}
+
+.navbar-brand-a {
+  color: #dce3ea;
+}
+
+.navbar-brand-b {
+  color: var(--acc);
+}
+
+.navbar-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-mono {
+  font-family: 'Geist', monospace;
+}
+
+/* Botón de ayuda y chip de perfil comparten borde/fondo dorado tenue. */
+.navbar-chip {
+  border: 1px solid var(--glow);
+  background: rgba(245, 214, 104, 0.06);
+}
+
+.navbar-help-icon {
+  font-size: 16px;
+  color: var(--acc);
+}
+
+.navbar-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--acc2), var(--acc3));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Geist', monospace;
+}
+
+.navbar-login {
+  font-family: 'Geist', monospace;
+  box-shadow: 0 0 10px var(--glow);
+}
+
+.navbar-menu {
+  background: #111317;
+}

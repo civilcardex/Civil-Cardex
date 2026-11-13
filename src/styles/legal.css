@@ -1,0 +1,63 @@
+/* Páginas legales (Términos, Privacidad, Cookies): tipografía de lectura compartida.
+   Antes eran objetos CSSProperties exportados y aplicados con style={{...}} en cada nodo. */
+
+.legal-title {
+  font-family: 'Hanken Grotesk', sans-serif;
+  color: #dce3ea;
+}
+
+.legal-subtitle {
+  color: #6b8cae;
+  font-family: 'Geist', monospace;
+  font-weight: 600;
+}
+
+.legal-h2 {
+  font-size: 15px;
+  font-weight: 700;
+  color: #dce3ea;
+  font-family: 'Geist', monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin: 28px 0 8px;
+}
+
+.legal-p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #b9caca;
+  margin: 0 0 10px;
+}
+
+.legal-p-spaced {
+  margin-top: 24px;
+}
+
+.legal-li {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #b9caca;
+  margin: 0 0 6px 18px;
+}
+
+.legal-list {
+  list-style: disc;
+  padding: 0;
+}
+
+.legal-link {
+  color: #00dce5;
+}
+
+.legal-link-strong {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.legal-footer {
+  border-color: #3a494a;
+}
+
+.legal-muted {
+  color: #6b8cae;
+}

@@ -98,19 +98,10 @@ const NETWORKS: NetCard[] = [
 
 const ROTATE_MS = 3400;
 
-function FlowHeroBackground({ accent }: { accent: string }) {
+function FlowHeroBackground() {
   return (
     <>
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, rgba(255,255,255,0.022) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.022) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-          transform: 'perspective(900px) rotateX(58deg) translateZ(-140px) scale(2.2)',
-          transformOrigin: 'center top',
-        }}
-      />
+      <div className="flow-hero-grid absolute inset-0 pointer-events-none" />
 
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
@@ -154,9 +145,9 @@ function FlowHeroBackground({ accent }: { accent: string }) {
             <stop offset="100%" stopColor="#f0f4f8" stopOpacity="0" />
           </linearGradient>
           <radialGradient id="hotspot1" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
-            <stop offset="60%" stopColor={accent} stopOpacity="0.08" />
-            <stop offset="100%" stopColor={accent} stopOpacity="0" />
+            <stop offset="0%" stopColor="#00dce5" stopOpacity="0.35" />
+            <stop offset="60%" stopColor="#00dce5" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#00dce5" stopOpacity="0" />
           </radialGradient>
         </defs>
 
@@ -469,51 +460,33 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
     return () => obs.disconnect();
   }, []);
 
-  const accent = cfg.accent;
-
   return (
     <section
       ref={heroRef}
-      className="relative w-full overflow-hidden border-b border-outline-variant flex flex-col items-center justify-center text-center"
-      style={{
-        minHeight: 560,
-        background: '#1a1c20',
-      }}
+      className="flow-hero relative w-full overflow-hidden border-b border-outline-variant flex flex-col items-center justify-center text-center"
     >
-      <FlowHeroBackground accent={accent} />
+      <FlowHeroBackground />
 
       <div className="relative z-10 px-6 lg:px-8 py-20 max-w-5xl mx-auto flex flex-col items-center gap-6">
         <div className="flex items-center justify-center gap-5">
           <img
             src={cfg.logo}
             alt={cfg.title}
-            className="h-20 md:h-24 lg:h-28 w-auto object-contain"
-            style={{ filter: `drop-shadow(0 0 24px ${accent}66)` }}
+            className="flow-hero-logo h-20 md:h-24 lg:h-28 w-auto object-contain"
             loading="lazy"
           />
-          <h1
-            className="text-3xl md:text-5xl lg:text-6xl leading-tight font-bold tracking-tight"
-            style={{ fontFamily: 'Hanken Grotesk, sans-serif' }}
-          >
-            <span className="ccx-silver">Civil</span> <span style={{ color: accent }}>Flow</span>
+          <h1 className="font-hanken text-3xl md:text-5xl lg:text-6xl leading-tight font-bold tracking-tight">
+            <span className="ccx-silver">Civil</span> <span className="flow-accent">Flow</span>
           </h1>
         </div>
 
-        <p className="text-base md:text-lg max-w-2xl leading-relaxed" style={{ color: '#dce3ea' }}>
+        <p className="flow-hero-desc text-base md:text-lg max-w-2xl leading-relaxed">
           {cfg.description}
         </p>
 
-        <div
-          className="flex flex-wrap justify-center gap-5 w-full mt-2 p-6 rounded-2xl"
-          style={{
-            background:
-              'linear-gradient(135deg, rgba(40,42,46,0.5) 0%, rgba(17,19,23,0.7) 50%, rgba(28,30,34,0.5) 100%)',
-            border: '1px solid rgba(245,214,104,0.08)',
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.3)',
-          }}
-        >
+        <div className="flow-net-panel flex flex-wrap justify-center gap-5 w-full mt-2 p-6 rounded-2xl">
           {NETWORKS.map((n, i) => (
-            <NetworkCard key={n.name} net={n} start={visible} delayMs={i * 1700} />
+            <NetworkCard key={n.name} net={n} index={i} start={visible} delayMs={i * 1700} />
           ))}
         </div>
 
@@ -521,23 +494,14 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
           <button
             type="button"
             onClick={onCtaClick}
-            className="inline-flex items-center gap-2 px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold transition-all"
-            style={{
-              fontFamily: 'Geist, monospace',
-              background: accent,
-              boxShadow: `0 0 18px ${accent}4d`,
-              cursor: 'pointer',
-              border: 'none',
-              color: '#0b1014',
-            }}
+            className="flow-cta inline-flex items-center gap-2 px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold transition-all"
           >
             <span className="material-symbols-outlined text-sm!">rocket_launch</span>
             {cfg.ctaText}
           </button>
           <Link
             to="/docs"
-            className="inline-flex items-center gap-2 border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-colors"
-            style={{ fontFamily: 'Geist, monospace', background: 'rgba(17,19,23,0.5)' }}
+            className="flow-docs-link inline-flex items-center gap-2 border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary transition-colors"
           >
             <span className="material-symbols-outlined text-sm!">menu_book</span>
             Documentación
@@ -548,7 +512,17 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
   );
 }
 
-function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; delayMs: number }) {
+function NetworkCard({
+  net,
+  index,
+  start,
+  delayMs,
+}: {
+  net: NetCard;
+  index: number;
+  start: boolean;
+  delayMs: number;
+}) {
   const [idx, setIdx] = useState(0);
   const total = net.features.length;
 
@@ -566,51 +540,20 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
 
   return (
     <div
-      className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-6 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
-      style={{
-        // OPACO (ped. usuario): translúcido dejaba ver las líneas decorativas del hero
-        // (punto y línea amarilla) a través de las tarjetas.
-        background: '#14161a',
-        borderColor: '#3a494a',
-        minHeight: 130,
-      }}
+      data-net={index}
+      className="net-card w-full sm:w-[calc(50%-10px)] lg:w-[calc(25%-15px)] relative border px-6 py-4 flex flex-col items-start gap-2 text-left overflow-hidden h-full"
     >
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at 0% 0%, ${net.color}26 0%, transparent 65%)`,
-        }}
-      />
+      <div className="net-card-glow absolute inset-0 pointer-events-none" />
       <div className="flex flex-col gap-1.5 relative z-10 w-full">
         <div className="flex items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center"
-            style={{ background: `${net.color}22`, color: net.color }}
-          >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontVariationSettings: "'FILL' 1", fontSize: 20 }}
-            >
-              {net.icon}
-            </span>
+          <div className="net-icon w-10 h-10 rounded-full flex items-center justify-center">
+            <span className="net-icon-symbol material-symbols-outlined">{net.icon}</span>
           </div>
           <div className="flex flex-col">
-            <span
-              className="text-[10px] tracking-[0.12em] uppercase font-bold leading-none"
-              style={{ fontFamily: 'Geist, monospace', color: net.color }}
-            >
+            <span className="net-kicker text-[10px] tracking-[0.12em] uppercase font-bold leading-none">
               RED
             </span>
-            <span
-              className="text-base font-bold leading-tight inline-block"
-              style={{
-                fontFamily: 'Hanken Grotesk, sans-serif',
-                color: '#f0f4f8',
-                // Reserva 2 líneas: títulos de 1 palabra no desalinean la descripción de
-                // los que ocupan 2 («Aguas lluvias», «Contra incendio»).
-                minHeight: 40,
-              }}
-            >
+            <span className="net-name text-base font-bold leading-tight inline-block">
               {net.name}
             </span>
           </div>
@@ -621,19 +564,9 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
         {net.features.map((f, i) => (
           <div
             key={f}
-            className="absolute inset-0 transition-all duration-500"
-            style={{
-              opacity: i === idx ? 1 : 0,
-              transform: i === idx ? 'translateY(0)' : 'translateY(8px)',
-              pointerEvents: i === idx ? 'auto' : 'none',
-            }}
+            className={`net-feature absolute inset-0 transition-all duration-500${i === idx ? ' net-feature-active' : ''}`}
           >
-            <span
-              className="text-[13px] leading-snug"
-              style={{ fontFamily: 'Geist, monospace', color: '#dce3ea' }}
-            >
-              {f}
-            </span>
+            <span className="net-feature-text text-[13px] leading-snug">{f}</span>
           </div>
         ))}
       </div>
@@ -642,11 +575,7 @@ function NetworkCard({ net, start, delayMs }: { net: NetCard; start: boolean; de
         {net.features.map((_, i) => (
           <span
             key={i}
-            className="h-1 flex-1 transition-all duration-500"
-            style={{
-              background: i === idx ? net.color : '#3a494a',
-              opacity: i === idx ? 1 : 0.4,
-            }}
+            className={`net-dot h-1 flex-1 transition-all duration-500${i === idx ? ' net-dot-active' : ''}`}
           />
         ))}
       </div>

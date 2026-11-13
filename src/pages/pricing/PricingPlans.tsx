@@ -24,23 +24,7 @@ const StepperBtn = ({
   onClick: (e: React.MouseEvent) => void;
   children: string;
 }) => (
-  <button
-    type="button"
-    aria-label={aria}
-    onClick={onClick}
-    className="pr-cta"
-    style={{
-      width: 26,
-      height: 26,
-      borderRadius: 7,
-      border: '1px solid #3a494a',
-      background: '#1e2126',
-      color: '#e2e2e8',
-      cursor: 'pointer',
-      fontSize: 15,
-      lineHeight: 1,
-    }}
-  >
+  <button type="button" aria-label={aria} onClick={onClick} className="pr-card-stepper-btn pr-cta">
     {children}
   </button>
 );
@@ -81,14 +65,8 @@ function ModuleCard({
           onToggle();
         }
       }}
+      data-selected={seleccionado ? 'true' : 'false'}
       className="pr-card border p-7 flex flex-col cursor-pointer select-none"
-      style={{
-        background: seleccionado ? '#181c21' : '#111317',
-        borderColor: seleccionado ? '#e8c84a' : '#3a494a',
-        borderWidth: seleccionado ? 2 : 1,
-        borderRadius: 14,
-        margin: seleccionado ? -1 : 0,
-      }}
     >
       <div className="flex items-start justify-between mb-4">
         <img
@@ -96,51 +74,24 @@ function ModuleCard({
           alt={`Logo ${modulo.nombre}`}
           width={230}
           height={76}
-          style={{
-            objectFit: 'contain',
-            objectPosition: 'left center',
-            maxHeight: 76,
-            marginLeft: -8,
-          }}
+          className="pr-card-logo"
         />
         {/* Check circular (visual — la tarjeta entera es el control) */}
         <span
           aria-hidden="true"
-          className="material-symbols-outlined"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 18,
-            border: seleccionado ? 'none' : '1px solid #3a494a',
-            background: seleccionado ? '#e8c84a' : 'transparent',
-            color: seleccionado ? '#161a1e' : 'transparent',
-          }}
+          data-selected={seleccionado ? 'true' : 'false'}
+          className="pr-card-check material-symbols-outlined"
         >
           check
         </span>
       </div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Hanken Grotesk, sans-serif' }}>
-        {modulo.nombre}
-      </h2>
+      <h2 className="pr-card-title">{modulo.nombre}</h2>
       <p className="text-sm text-on-surface-variant mt-1">{modulo.descripcion}</p>
 
-      <div style={{ borderTop: '1px solid #2a3234', margin: '16px 0 14px' }} aria-hidden="true" />
+      <div className="pr-card-divider" aria-hidden="true" />
       <div className="flex items-baseline gap-2">
-        <span
-          style={{
-            fontSize: 34,
-            fontWeight: 700,
-            fontFamily: 'Hanken Grotesk, sans-serif',
-            color: '#e2e2e8',
-          }}
-        >
-          {formatUSD(precio)}
-        </span>
-        <span className="text-on-surface-variant" style={{ fontSize: 13 }}>
+        <span className="pr-card-price">{formatUSD(precio)}</span>
+        <span className="pr-card-period text-on-surface-variant">
           {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
         </span>
       </div>
@@ -158,10 +109,7 @@ function ModuleCard({
           >
             −
           </StepperBtn>
-          <span
-            className="text-[13px] text-on-surface-variant"
-            style={{ minWidth: 78, textAlign: 'center' }}
-          >
+          <span className="pr-card-stepper-value text-[13px] text-on-surface-variant">
             {puesto} {puesto === 1 ? 'puesto' : 'puestos'}
           </span>
           <StepperBtn
@@ -177,17 +125,10 @@ function ModuleCard({
         </div>
       )}
 
-      <ul
-        className="mt-4 space-y-2"
-        style={{ listStyle: 'none', margin: 0, padding: 0, marginTop: 16 }}
-      >
+      <ul className="list-reset mt-4 space-y-2">
         {BENEFICIOS[modulo.id].map((f) => (
           <li key={f} className="flex items-start gap-2">
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined"
-              style={{ color: '#2ff801', fontSize: 15, marginTop: 2 }}
-            >
+            <span aria-hidden="true" className="pr-card-benefit-icon material-symbols-outlined">
               check_circle
             </span>
             <span className="text-[13px] text-on-surface-variant">{f}</span>
@@ -196,8 +137,8 @@ function ModuleCard({
       </ul>
 
       {!loading && vigencia && (
-        <p className="text-[12px] mt-4 flex items-center gap-1" style={{ color: '#2ff801' }}>
-          <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: 14 }}>
+        <p className="pr-card-active text-[12px] mt-4 flex items-center gap-1">
+          <span aria-hidden="true" className="pr-card-active-icon material-symbols-outlined">
             event_available
           </span>
           Activo hasta {new Date(vigencia.fecha_fin).toLocaleDateString('es-CO')}
@@ -293,42 +234,17 @@ export function PricingResumen({
 }: PricingResumenProps) {
   const conDescuento = descPct > 0;
   return (
-    <section
-      className="max-w-4xl mx-auto mt-8"
-      style={{
-        border: '1px solid #3a494a',
-        borderRadius: 14,
-        background: '#16191d',
-        padding: '20px 24px',
-      }}
-    >
+    <section className="pr-summary max-w-4xl mx-auto mt-8">
       <div className="flex items-center justify-between flex-wrap gap-5">
         <div className="min-w-[220px]">
-          <p
-            className="uppercase"
-            style={{
-              fontSize: 14,
-              letterSpacing: 2,
-              fontWeight: 700,
-              fontFamily: 'Geist, monospace',
-              color: '#849495',
-            }}
-          >
-            Tu compra
-          </p>
+          <p className="pr-summary-label uppercase">Tu compra</p>
           <div className="mt-2 space-y-1">
             {seleccion.size === 0 ? (
               <p className="text-[14px] text-on-surface-variant">Seleccione uno o ambos módulos.</p>
             ) : (
               [...seleccion].map((id) => (
                 <div key={id} className="flex items-center gap-2">
-                  <img
-                    src={LOGO[id]}
-                    alt=""
-                    width={18}
-                    height={18}
-                    style={{ objectFit: 'contain' }}
-                  />
+                  <img src={LOGO[id]} alt="" width={18} height={18} className="pr-summary-logo" />
                   <span className="text-[14px]">
                     {CATALOGO.find((c) => c.id === id)?.nombre}
                     {empresarial && (
@@ -341,18 +257,16 @@ export function PricingResumen({
                 </div>
               ))
             )}
-            {conDescuento && (
-              <p style={{ color: '#52f2a5', fontSize: 14 }}>Descuento (−{descPct}%) aplicado.</p>
-            )}
+            {conDescuento && <p className="pr-discount">Descuento (−{descPct}%) aplicado.</p>}
             {dtoVolumen ? (
-              <p style={{ color: '#52f2a5', fontSize: 14 }}>
+              <p className="pr-discount">
                 Volumen: −{Math.round(dtoVolumen * 100)}% por {totalPuestos} puestos.
               </p>
             ) : null}
             {(['flow', 'manage'] as const)
               .filter((id) => vigente(id))
               .map((id) => (
-                <p key={id} className="text-[14px]" style={{ color: '#2ff801' }}>
+                <p key={id} className="pr-card-active text-[14px]">
                   {CATALOGO.find((c) => c.id === id)?.nombre} activo hasta{' '}
                   {new Date(vigente(id)!.fecha_fin).toLocaleDateString('es-CO')}
                 </p>
@@ -361,16 +275,7 @@ export function PricingResumen({
         </div>
         <div className="text-right">
           <div className="flex items-baseline gap-2 justify-end">
-            <span
-              style={{
-                fontSize: 32,
-                fontWeight: 700,
-                fontFamily: 'Hanken Grotesk, sans-serif',
-                color: '#e2e2e8',
-              }}
-            >
-              {formatUSD(total)}
-            </span>
+            <span className="pr-total">{formatUSD(total)}</span>
             <span className="text-[13px] text-on-surface-variant">
               {periodo === 'mensual' ? '/mes' : periodo === 'semestral' ? '/6 meses' : '/año'}
             </span>
@@ -379,23 +284,10 @@ export function PricingResumen({
           {negociado ? (
             <a
               href="mailto:contacto@civilcardex.com?subject=Plan%20empresarial%2025%2B%20puestos"
-              className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
-              style={{
-                fontSize: 14,
-                fontFamily: 'Geist, monospace',
-                padding: '15px 34px',
-                borderRadius: 10,
-                background: '#e8c84a',
-                color: '#161a1e',
-                textDecoration: 'none',
-              }}
+              className="pr-cta pr-cta-btn pr-cta-buy inline-flex items-center gap-2 uppercase tracking-widest font-bold"
             >
               25+ puestos: contáctenos
-              <span
-                aria-hidden="true"
-                className="material-symbols-outlined"
-                style={{ fontSize: 17 }}
-              >
+              <span aria-hidden="true" className="pr-cta-icon material-symbols-outlined">
                 mail
               </span>
             </a>
@@ -405,34 +297,16 @@ export function PricingResumen({
               onClick={pagar}
               disabled={!hayPago}
               aria-label={user || !hayPago ? 'Pagar ahora' : 'Inicia sesión para pagar'}
-              className="pr-cta inline-flex items-center gap-2 uppercase tracking-widest font-bold"
-              style={{
-                fontSize: 14,
-                fontFamily: 'Geist, monospace',
-                padding: '15px 34px',
-                borderRadius: 10,
-                background: hayPago ? '#e8c84a' : '#1e2126',
-                color: hayPago ? '#161a1e' : '#5a6a6b',
-                border: 'none',
-                boxShadow: hayPago ? '0 0 22px rgba(232,200,74,.22)' : 'none',
-                cursor: hayPago ? 'pointer' : 'default',
-              }}
+              className="pr-cta pr-cta-btn pr-cta-buy inline-flex items-center gap-2 uppercase tracking-widest font-bold"
             >
               {user || !hayPago ? 'Pagar ahora' : 'Inicia sesión y paga'}
-              <span
-                aria-hidden="true"
-                className="material-symbols-outlined"
-                style={{ fontSize: 17 }}
-              >
+              <span aria-hidden="true" className="pr-cta-icon material-symbols-outlined">
                 arrow_forward
               </span>
             </button>
           )}
-          <p
-            className="flex items-center justify-end gap-1 mt-2 text-[13px]"
-            style={{ color: '#849495' }}
-          >
-            <span aria-hidden="true" className="material-symbols-outlined" style={{ fontSize: 14 }}>
+          <p className="pr-secure flex items-center justify-end gap-1 mt-2 text-[13px]">
+            <span aria-hidden="true" className="pr-secure-icon material-symbols-outlined">
               verified_user
             </span>
             Pago seguro con tarjeta · Lemon Squeezy

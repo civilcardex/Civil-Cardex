@@ -1,0 +1,153 @@
+/* /empresa — gestión de puestos de los planes empresariales (antes estilos inline en CompanyPage.tsx). */
+
+.company-wrap {
+  max-width: 860px;
+}
+
+.company-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.company-lead {
+  font-size: 13px;
+  color: var(--on-surface-variant, #9ba8aa);
+  margin-bottom: 16px;
+}
+
+.company-lead-real {
+  margin-bottom: 24px;
+}
+
+.company-aviso-box {
+  border: 1px dashed var(--outline-variant, #3a3a44);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  color: var(--on-surface-variant, #9ba8aa);
+}
+
+.company-empty-box {
+  border: 1px dashed var(--outline-variant, #3a3a44);
+  border-radius: 10px;
+  padding: 24px;
+}
+
+.company-grid {
+  display: grid;
+  gap: 16px;
+}
+
+/* Panel de una suscripción con puestos. */
+.company-panel {
+  border: 1px solid var(--outline-variant, #3a3a44);
+  border-radius: 10px;
+  padding: 20px;
+  max-width: 640px;
+}
+
+.company-panel-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.company-panel-meta {
+  font-size: 12px;
+  color: var(--on-surface-variant, #9ba8aa);
+  margin: 2px 0 0;
+}
+
+/* Botones (antes BTN_PRIMARIO / BTN_FANTASMA). */
+.company-btn {
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--primary, #4d8ff7);
+  border: none;
+  border-radius: 4px;
+  color: var(--on-primary, #fff);
+  cursor: pointer;
+}
+
+.company-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--outline-variant, #3a3a44);
+  color: var(--on-surface, #e2e2e8);
+}
+
+.company-btn-small {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+.company-cta {
+  display: inline-block;
+  margin-top: 12px;
+  text-decoration: none;
+}
+
+.company-input {
+  flex: 1;
+  min-width: 220px;
+  padding: 8px 10px;
+  font-size: 13px;
+  background: var(--surface-container-low, #141418);
+  border: 1px solid var(--outline-variant, #3a3a44);
+  border-radius: 4px;
+  color: var(--on-surface, #e2e2e8);
+  outline: none;
+}
+
+.company-aviso {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.company-aviso[data-ok='true'] {
+  color: #2ff801;
+}
+
+.company-aviso[data-ok='false'] {
+  color: #f28b82;
+}
+
+.company-muted {
+  font-size: 13px;
+  color: var(--on-surface-variant, #9ba8aa);
+}
+
+.company-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.company-table thead tr {
+  text-align: left;
+  color: var(--on-surface-variant, #9ba8aa);
+}
+
+.company-table th {
+  padding: 6px 8px;
+  font-weight: 600;
+}
+
+.company-table tbody tr {
+  border-top: 1px solid var(--outline-variant, #3a3a44);
+}
+
+.company-table td {
+  padding: 8px;
+}
+
+.company-table td.company-td-right {
+  text-align: right;
+}
+
+.company-check-label {
+  font-size: 12px;
+}

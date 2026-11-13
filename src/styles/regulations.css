@@ -57,3 +57,181 @@
   height: 5px;
   border-radius: 50%;
 }
+
+/* Pesta�as de normativa: el acorde�n crece y el scroll queda en el contenedor.
+   Antes viv�a como <style>{localCSS}</style> en Regulations.tsx. */
+.norm-tab {
+  overflow-y: auto !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  gap: 0 !important;
+}
+.norm-tab > .card {
+  flex: none !important;
+  overflow: visible !important;
+  min-height: auto !important;
+}
+.norm-tab > .card.sec-open > .card-body-wrap {
+  overflow: visible !important;
+}
+
+/* ── Normativa: bloques interiores (antes inline en Regulations.tsx) ── */
+.norm-pad-12-16 {
+  padding: 12px 16px;
+}
+.norm-pad-10 {
+  padding: 10px 14px;
+}
+.norm-fs-14 {
+  font-size: 14px;
+}
+.norm-fs-12 {
+  font-size: 12px;
+}
+.norm-fs-15 {
+  font-size: 15px;
+  color: var(--txt);
+}
+.norm-fs-11-block {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.norm-block-12 {
+  display: block;
+  font-size: 12px;
+  margin-top: 2px;
+}
+.norm-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding-bottom: 10px;
+}
+.norm-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+.norm-btn-sm {
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.norm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.norm-col-0 {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+}
+.norm-scroll-col {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.norm-grid-4col {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 8px;
+  padding: 10px 14px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.norm-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px 14px;
+}
+.norm-input-pad {
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.norm-input-left {
+  width: 100%;
+  text-align: left;
+}
+.norm-input-left-600 {
+  width: 100%;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+}
+.norm-input-left-sm {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+}
+.norm-input-italic {
+  width: 100%;
+  text-align: left;
+  font-size: 12px;
+  font-style: italic;
+}
+.norm-flex-1-left {
+  flex: 1;
+  text-align: left;
+  font-size: 12px;
+}
+.norm-w75 {
+  width: 75px;
+  font-weight: 700;
+  font-size: 12px;
+}
+.norm-w75-center {
+  width: 75px;
+  text-align: center;
+  font-size: 12px;
+}
+.norm-w56 {
+  width: 56px;
+  font-size: 12px;
+}
+.norm-gap5 {
+  display: flex;
+  gap: 5px;
+}
+.norm-mb0 {
+  margin-bottom: 0;
+}
+.norm-mb0-span {
+  margin-bottom: 0;
+  grid-column: 1 / -1;
+}
+.norm-top-border {
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+}
+
+.norm-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+.norm-clickable {
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
