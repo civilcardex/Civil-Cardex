@@ -125,10 +125,7 @@ export function ApuCatalog() {
                 {filtered.map((a, i) => (
                   <tr
                     key={a.id}
-                    style={{
-                      background: selId === a.id ? 'rgba(37,99,235,.1)' : undefined,
-                      cursor: 'pointer',
-                    }}
+                    className={`cm-click-row${selId === a.id ? ' cm-row-activo' : ''}`}
                     tabIndex={0}
                     onClick={() => setSelId(a.id)}
                     onKeyDown={(e) => {
@@ -163,7 +160,7 @@ export function ApuCatalog() {
       {sel && (
         <DimEnLectura>
           <div>
-            <div style={{ display: 'flex', gap: 8, margin: '10px 0' }}>
+            <div className="cm-export-row">
               <button
                 type="button"
                 className="cm-btn cm-btn-warn"
@@ -179,10 +176,7 @@ export function ApuCatalog() {
                 <ActionIcon name="picture_as_pdf" label="" /> Exportar PDF
               </button>
             </div>
-            <fieldset
-              disabled={!editable}
-              style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}
-            >
+            <fieldset disabled={!editable} className="cm-fieldset-flush">
               <ApuEditor apu={sel} onUpdate={(p) => updateApu(sel.id, p)} />
             </fieldset>
           </div>

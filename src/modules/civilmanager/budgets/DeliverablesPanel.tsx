@@ -99,10 +99,7 @@ export function EntregablesPanel({ pres }: Props) {
   }
 
   return (
-    <div
-      className="cm-xl-wrap"
-      style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}
-    >
+    <div className="cm-xl-wrap cm-panel-stack">
       <button type="button" className="cm-btn cm-btn-warn" onClick={exportExcelPresupuesto}>
         <ActionIcon name="download" label="" /> Excel — Presupuesto detallado
       </button>

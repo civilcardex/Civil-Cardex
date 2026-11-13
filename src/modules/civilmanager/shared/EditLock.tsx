@@ -13,7 +13,9 @@ export function EditableSection({ children, dim = true }: { children: ReactNode;
   return (
     <EditLockCtx.Provider value={{ editing, setEditing }}>
       {dim ? (
-        <div style={{ opacity: editing ? 1 : 0.7, transition: 'opacity .2s' }}>{children}</div>
+        <div className="cm-dim" data-on={editing ? 'true' : 'false'}>
+          {children}
+        </div>
       ) : (
         children
       )}
@@ -44,32 +46,25 @@ function EditToggleBtn(): React.JSX.Element {
 /** Envoltorio que opaca su contenido en solo lectura (para sub-paneles). */
 export function DimEnLectura({ children }: { children: ReactNode }) {
   const editable = useEditable();
-  return <div style={{ opacity: editable ? 1 : 0.7, transition: 'opacity .2s' }}>{children}</div>;
+  return (
+    <div className="cm-dim" data-on={editable ? 'true' : 'false'}>
+      {children}
+    </div>
+  );
 }
 
 /** Header de tabla con icono (patrón civilflow) + EDITAR/LISTO a la derecha — un botón por tabla. */
 export function TableHeader({ title, icon }: { title: string; icon?: string }) {
   return (
-    <div className="cm-modal-head" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 15,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: 0.4,
-        }}
-      >
+    <div className="cm-modal-head cm-head-row">
+      <span className="cm-head-title">
         {icon && (
           <img
             src={'/iconos_civilmanager/' + icon + '.webp'}
             alt=""
             width={30}
             height={30}
-            style={{ width: 30, height: 30, objectFit: 'contain', flexShrink: 0 }}
+            className="cm-head-icon"
             loading="lazy"
           />
         )}

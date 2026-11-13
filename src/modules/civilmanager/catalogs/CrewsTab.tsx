@@ -93,12 +93,12 @@ function CuadrillasCuerpo() {
     : null;
 
   return (
-    <div style={{ display: 'flex', gap: 12, height: '100%', alignItems: 'flex-start' }}>
+    <div className="cm-split">
       {/* Sidebar izquierda: altura = contenido (sin scroll propio — orig. usuario). */}
-      <XlWrap style={{ alignSelf: 'flex-start' }}>
+      <XlWrap className="cm-xl-self-start">
         <TableHeader title="Cuadrillas" icon="cuadrillas_tabla" />
         <DimEnLectura>
-          <XlScroll style={{ maxHeight: 'none' }}>
+          <XlScroll className="cm-xl-scroll-none">
             <table>
               <thead>
                 <tr>
@@ -137,10 +137,7 @@ function CuadrillasCuerpo() {
                         setSelIdx(i);
                       }
                     }}
-                    style={{
-                      cursor: 'pointer',
-                      background: selIdx === i ? 'rgba(37,99,235,.12)' : undefined,
-                    }}
+                    className={`cm-click-row${selIdx === i ? ' cm-row-selected' : ''}`}
                   >
                     <XlRowNum n={i + 1} />
                     <td>{c.codigo}</td>
@@ -174,28 +171,19 @@ function CuadrillasCuerpo() {
       </XlWrap>
 
       {sel && (
-        <XlWrap style={{ flex: 1 }}>
+        <XlWrap className="cm-xl-flex1">
           <TableHeader title="Integrantes de la cuadrilla" icon="integrantes_cuadrilla" />
-          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+          <fieldset disabled={!editable} className="cm-fieldset-flush">
             <DimEnLectura>
-              <div
-                style={{
-                  padding: '6px 10px',
-                  display: 'flex',
-                  gap: 8,
-                  alignItems: 'center',
-                  borderBottom: '1px solid var(--line)',
-                }}
-              >
+              <div className="cm-toolbar-row">
                 <input
-                  className="cm-ni"
-                  style={{ maxWidth: 240 }}
+                  className="cm-ni cm-ni-w240"
                   value={sel.descripcion}
                   onChange={(e) => updSel({ descripcion: e.target.value })}
                   aria-label="Nombre de la cuadrilla"
                 />
                 <span className="cm-flex-1" />
-                <span style={{ fontSize: 11, color: 'var(--txt2)' }}>
+                <span className="cm-muted-11">
                   Costo/día: <b>{fmtMoneda(cost?.costoDia ?? 0)}</b> · Costo/hora:{' '}
                   <b>{fmtMoneda(cost?.costoHora ?? 0)}</b>
                 </span>

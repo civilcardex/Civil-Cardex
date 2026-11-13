@@ -58,7 +58,7 @@ export function CrudFooter({
         />
       )}
       <span className="cm-flex-1" />
-      <span style={{ fontSize: 11 }}>
+      <span className="cm-label-11">
         {countLabel} <b>{count}</b>
       </span>
     </div>

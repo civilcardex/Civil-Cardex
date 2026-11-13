@@ -335,3 +335,344 @@
   color: var(--txt2);
   text-align: center;
 }
+
+/* ── Restos migrados de inline (2026-11-13) ──
+   Utilidades compartidas por los paneles de presupuesto. */
+.cm-fieldset {
+  padding: 14px;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.cm-fieldset-bare {
+  padding: 14px;
+}
+.cm-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.cm-check-label {
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cm-aiu-grid {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cm-aiu-label {
+  font-size: 10px;
+  color: var(--txt2);
+}
+.cm-td-num {
+  text-align: right;
+}
+.cm-total-row {
+  font-weight: 700;
+  font-size: 13px;
+}
+.cm-total-val {
+  text-align: right;
+  color: var(--acc);
+}
+
+/* Importar formulario (antes FIELDSET_STYLE y restos inline). */
+.cm-hint {
+  font-size: 11px;
+  color: var(--txt2);
+  margin-bottom: 10px;
+}
+.cm-hidden {
+  display: none;
+}
+.cm-mt-14 {
+  margin-top: 14px;
+}
+.cm-flex-wrap {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.cm-label {
+  font-size: 11px;
+}
+.cm-ni-w60 {
+  width: 60px;
+}
+.cm-ni-w50 {
+  width: 50px;
+}
+.cm-scroll-box {
+  max-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+}
+.cm-row-cap {
+  font-weight: 700;
+  background: var(--bg3);
+}
+.cm-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+/* APU (Análisis de Precios Unitarios) editor: cabecera, totales y grilla (antes inline en ApuEditor.tsx). */
+.cm-apu-head {
+  padding: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cm-apu-code {
+  font-size: 11px;
+  color: var(--txt3);
+}
+.cm-ni-w260 {
+  max-width: 260px;
+}
+.cm-apu-check {
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.cm-apu-total-line {
+  font-size: 13px;
+  font-weight: 700;
+}
+.cm-acc {
+  color: var(--acc);
+}
+.cm-apu-summary {
+  padding: 10px;
+  font-size: 11px;
+}
+.cm-apu-grid {
+  display: grid;
+  /* Desktop: 4 columnas fijas (el "Total directo" con span 2 queda estable); en móvil no caben. */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+@media (max-width: 767px) {
+  .cm-apu-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+.cm-apu-total-cell {
+  grid-column: span 2;
+  font-weight: 700;
+}
+
+/* Layout partidos y restos migrados (antes inline en CrewsTab / XlTable). */
+.cm-split {
+  display: flex;
+  gap: 12px;
+  height: 100%;
+  align-items: flex-start;
+}
+.cm-xl-self-start {
+  align-self: flex-start;
+}
+.cm-xl-flex1 {
+  flex: 1;
+}
+.cm-xl-scroll-none {
+  max-height: none;
+}
+.cm-fieldset-flush {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.cm-toolbar-row {
+  padding: 6px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+.cm-ni-w240 {
+  max-width: 240px;
+}
+.cm-muted-11 {
+  font-size: 11px;
+  color: var(--txt2);
+}
+.cm-click-row {
+  cursor: pointer;
+}
+.cm-row-selected {
+  background: rgba(37, 99, 235, 0.12);
+}
+
+/* EditLock (antes inline en EditLock.tsx). */
+.cm-dim {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+.cm-dim[data-on='true'] {
+  opacity: 1;
+}
+.cm-head-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cm-head-title {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cm-head-icon {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* ItemsPanel y vistas con semáforo de alerta (antes inline). */
+.cm-sel.cm-sel-alert {
+  border-color: var(--err);
+}
+.cm-mini-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 9px;
+}
+.cm-label-11 {
+  font-size: 11px;
+}
+
+.cm-row-activo {
+  background: rgba(37, 99, 235, 0.1);
+}
+.cm-td-center {
+  text-align: center;
+}
+.cm-sel-center {
+  width: auto;
+  margin: 0 auto;
+  text-align: center;
+  text-align-last: center;
+}
+
+.cm-split-top {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.cm-side-nav {
+  width: 230px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cm-subnav-btn {
+  justify-content: flex-start;
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cm-flex-1-min {
+  flex: 1;
+  min-width: 0;
+}
+
+.cm-field-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+.cm-field-label {
+  font-size: 10px;
+  color: var(--txt2);
+  font-weight: 700;
+}
+.cm-field-help {
+  font-size: 9px;
+  color: var(--txt3);
+}
+.cm-fieldset-grid {
+  padding: 16px;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+/* Batch 2026-11-13 (2): restos menores migrados de inline. */
+.cm-txt2 {
+  color: var(--txt2);
+}
+.cm-warn-text {
+  color: var(--warn);
+}
+.cm-num-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+.cm-nav-icon {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.cm-act-icon {
+  font-size: 16px;
+}
+.cm-toast[data-kind='err'] {
+  border-color: var(--err);
+}
+.cm-toast[data-kind='ok'] {
+  border-color: var(--ok);
+}
+.cm-panel-stack {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cm-factor-total {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 4px;
+}
+.cm-export-row {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+}
+.cm-td-indent {
+  padding-left: 24px;
+}
+[data-align='left'] {
+  text-align: left;
+  text-align-last: left;
+}
+[data-align='center'] {
+  text-align: center;
+  text-align-last: center;
+}
+[data-align='right'] {
+  text-align: right;
+  text-align-last: right;
+}

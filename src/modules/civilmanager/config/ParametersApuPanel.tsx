@@ -18,12 +18,12 @@ function Field({
     ? cloneElement(children as React.ReactElement<{ id?: string }>, { id })
     : children;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 180 }}>
-      <label htmlFor={id} style={{ fontSize: 10, color: 'var(--txt2)', fontWeight: 700 }}>
+    <div className="cm-field-col">
+      <label htmlFor={id} className="cm-field-label">
         {label}
       </label>
       {control}
-      {help && <span style={{ fontSize: 9, color: 'var(--txt3)' }}>{help}</span>}
+      {help && <span className="cm-field-help">{help}</span>}
     </div>
   );
 }
@@ -43,19 +43,7 @@ export function ParametrosApuPanel() {
     <div>
       <TableHeader title="Parámetros APU" icon="parametros_apu" />
       <DimEnLectura>
-        <fieldset
-          className="cm-xl-wrap"
-          disabled={!editable}
-          style={{
-            padding: 16,
-            margin: 0,
-            border: 0,
-            minWidth: 0,
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
+        <fieldset className="cm-xl-wrap cm-fieldset-grid" disabled={!editable}>
           <Field label="Salario base" help={c.tipo_salario}>
             <NumInput
               value={config.salario_base}

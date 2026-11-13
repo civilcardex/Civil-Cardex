@@ -26,7 +26,7 @@ export function PerfilPaisPanel() {
       <TableHeader title="Perfiles de país" icon="perfiles_de_pais" />
       <DimEnLectura>
         <XlScroll>
-          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+          <fieldset disabled={!editable} className="cm-fieldset-flush">
             <table>
               <thead>
                 <tr>
@@ -67,10 +67,7 @@ export function PerfilPaisPanel() {
                 {vista.map(({ p, i }, d) => {
                   const activo = p.codigo === state.config.pais;
                   return (
-                    <tr
-                      key={p.codigo}
-                      style={{ background: activo ? 'rgba(37,99,235,.1)' : undefined }}
-                    >
+                    <tr key={p.codigo} className={activo ? 'cm-row-activo' : undefined}>
                       {/* # consecutivo en la VISTA (alfabética); el índice real (i) es solo
                           para upd() sobre el estado sin ordenar. */}
                       <XlRowNum n={d + 1} />
@@ -107,24 +104,18 @@ export function PerfilPaisPanel() {
                           onChange={(v) => upd(i, 'horas_mes', v)}
                         />
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="cm-td-center">
                         <select
-                          className="cm-sel"
+                          className="cm-sel cm-sel-center"
                           aria-label="Unidad"
                           value={p.unidad}
                           onChange={(e) => upd(i, 'unidad', e.target.value)}
-                          style={{
-                            width: 'auto',
-                            margin: '0 auto',
-                            textAlign: 'center',
-                            textAlignLast: 'center',
-                          }}
                         >
                           <option value="mes">Mes</option>
                           <option value="hora">Hora</option>
                         </select>
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td className="cm-td-center">
                         <button
                           type="button"
                           className={`cm-btn ${activo ? 'cm-btn-primary' : ''}`}

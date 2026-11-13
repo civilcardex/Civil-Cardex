@@ -26,7 +26,7 @@ export function NavIcon({ name, size = 18, alt }: NavIconProps) {
       src={`/iconos_civilmanager/${name}.svg`}
       width={size}
       height={size}
-      style={{ objectFit: 'contain', flexShrink: 0 }}
+      className="cm-nav-icon"
       loading="lazy"
       alt={alt}
     />
@@ -43,8 +43,8 @@ interface ActionIconProps {
 export function ActionIcon({ name, label, color }: ActionIconProps) {
   return (
     <span
-      className="material-symbols-outlined"
-      style={{ fontSize: 16, color }}
+      className="material-symbols-outlined cm-act-icon"
+      style={{ color }}
       role="img"
       aria-label={label}
     >

@@ -102,7 +102,7 @@ export function ListaItemPanel({
       title: 'Detalle del ítem; la columna anterior es su nombre.',
       // El color tenue lo lleva el span exterior porque el input no hereda color.
       render: (it, edit, ctx) => (
-        <span style={{ color: 'var(--txt2)' }}>
+        <span className="cm-txt2">
           <EditableCell
             editing={edit}
             value={it.desc}

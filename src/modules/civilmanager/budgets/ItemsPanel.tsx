@@ -58,7 +58,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
       <TableHeader title="Ítems del presupuesto" icon="items" />
       <DimEnLectura>
         <XlScroll>
-          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+          <fieldset disabled={!editable} className="cm-fieldset-flush">
             <table>
               <thead>
                 <tr>
@@ -110,10 +110,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                     state.config,
                   );
                   return (
-                    <tr
-                      key={it.id}
-                      style={esCap ? { fontWeight: 700, background: 'var(--bg3)' } : undefined}
-                    >
+                    <tr key={it.id} className={esCap ? 'cm-row-cap' : undefined}>
                       <XlRowNum n={i + 1} />
                       <td>
                         <input
@@ -159,11 +156,10 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                       <td>
                         {!esCap && (
                           <select
-                            className="cm-sel"
+                            className={`cm-sel${it.alerta_sin_apu ? ' cm-sel-alert' : ''}`}
                             aria-label="APU"
                             value={it.apu_id}
                             onChange={(e) => upd(i, 'apu_id', e.target.value)}
-                            style={{ borderColor: it.alerta_sin_apu ? 'var(--err)' : undefined }}
                           >
                             <option value="">— sin APU —</option>
                             {state.apus.map((a) => (
@@ -177,14 +173,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                       <td>{!esCap && fmtMoneda(calc.vrUnitario)}</td>
                       <td>{fmtMoneda(calc.valorTotal)}</td>
                       <td className="cm-col-act">
-                        <label
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 2,
-                            fontSize: 9,
-                          }}
-                        >
+                        <label className="cm-mini-label">
                           <input
                             type="checkbox"
                             checked={esCap}
@@ -217,7 +206,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
           </button>
         )}
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
+        <span className="cm-label-11">
           Total ítems: <b>{pres.items.length}</b>
         </span>
       </div>

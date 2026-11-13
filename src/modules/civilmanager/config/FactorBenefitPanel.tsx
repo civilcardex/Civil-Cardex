@@ -140,7 +140,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
           </button>
         )}
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
+        <span className="cm-label-11">
           Subtotal: <b>{subtotal.toFixed(2)}%</b>
         </span>
       </div>
@@ -196,9 +196,8 @@ export function FactorPrestacionalPanel() {
           />
         );
       })}
-      <div style={{ fontSize: 13, fontWeight: 700, padding: '8px 4px' }}>
-        Factor prestacional total:{' '}
-        <span style={{ color: 'var(--acc)' }}>{factorPrest.toFixed(2)}%</span>
+      <div className="cm-factor-total">
+        Factor prestacional total: <span className="cm-acc">{factorPrest.toFixed(2)}%</span>
       </div>
     </div>
   );

@@ -129,7 +129,7 @@ export function ApuSeccionMO({ apu, onChange }: Props) {
           Agregar Recurso
         </button>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
+        <span className="cm-label-11">
           Subtotal MO: <b>{fmtMoneda(subtotal)}</b>
         </span>
       </div>

@@ -322,7 +322,7 @@ export function useExcelImportExport<T extends { codigo?: string }>(
       ref={fileRef}
       type="file"
       accept=".xlsx,.xls"
-      style={{ display: 'none' }}
+      className="cm-hidden"
       onChange={doImportSelect}
       aria-hidden="true"
     />

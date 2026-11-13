@@ -120,7 +120,7 @@ export function ApuSeccionTransporte({ apu, onChange }: Props) {
           Agregar Transporte
         </button>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
+        <span className="cm-label-11">
           Subtotal Transporte: <b>{fmtMoneda(subtotal)}</b>
         </span>
       </div>

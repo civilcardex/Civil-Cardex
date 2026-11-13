@@ -59,19 +59,9 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
   }
 
   return (
-    <ModalShell>
-      {' '}
-      <h3
-        style={{
-          fontSize: 15,
-          fontWeight: 700,
-          color: 'var(--on-surface, #e2e2e8)',
-          margin: '0 0 4px',
-        }}
-      >
-        Nuevo proyecto — Civil Manager
-      </h3>
-      <p style={{ fontSize: 12, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}>
+    <ModalShell ariaLabel="Nuevo proyecto — Civil Manager">
+      <h3 className="dialog-title">Nuevo proyecto — Civil Manager</h3>
+      <p className="dialog-lead">
         Ingresa el nombre del proyecto. Se generará un código automático.
       </p>
       <input
@@ -89,37 +79,15 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
         placeholder="Nombre del proyecto"
         aria-label="Nombre del proyecto"
         className="project-create-dialog-input"
-        style={{
-          width: '100%',
-          padding: '8px 10px',
-          fontSize: 13,
-          background: 'var(--surface-container-low, #141418)',
-          border: '1px solid var(--outline-variant, #3a3a44)',
-          borderRadius: 4,
-          color: 'var(--on-surface, #e2e2e8)',
-          outline: 'none',
-          boxSizing: 'border-box',
-          fontFamily: 'Geist, monospace',
-        }}
       />
-      <style>{`.project-create-dialog-input:focus-visible { outline: 2px solid var(--color-accent, #4D8FF7); outline-offset: 2px; }`}</style>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+      <div className="dialog-actions">
         <button
           type="button"
           onClick={() => {
             onClose();
             setName('');
           }}
-          style={{
-            padding: '6px 14px',
-            fontSize: 12,
-            fontWeight: 600,
-            background: 'transparent',
-            border: '1px solid var(--outline-variant, #3a3a44)',
-            borderRadius: 4,
-            color: 'var(--on-surface, #e2e2e8)',
-            cursor: 'pointer',
-          }}
+          className="dialog-btn dialog-btn-ghost"
         >
           Cancelar
         </button>
@@ -127,22 +95,7 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
           type="button"
           onClick={handleCreate}
           disabled={!name.trim() || creating}
-          style={{
-            padding: '6px 14px',
-            fontSize: 12,
-            fontWeight: 600,
-            background:
-              !name.trim() || creating
-                ? 'var(--surface-container-low, #141418)'
-                : 'var(--primary, #4D8FF7)',
-            border: 'none',
-            borderRadius: 4,
-            color:
-              !name.trim() || creating
-                ? 'var(--on-surface-variant, #9ba8aa)'
-                : 'var(--on-primary, #fff)',
-            cursor: !name.trim() || creating ? 'default' : 'pointer',
-          }}
+          className="dialog-btn dialog-btn-primary"
         >
           {creating ? 'Creando...' : 'Crear Proyecto'}
         </button>

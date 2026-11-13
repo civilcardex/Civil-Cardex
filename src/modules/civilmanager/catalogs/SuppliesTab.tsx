@@ -189,7 +189,7 @@ export function InsumosTab() {
       // Solo lectura (la fecha no se edita aquí); el color de alerta lo lleva el span exterior
       // porque el input no hereda color.
       render: (x, edit, ctx) => (
-        <span style={{ color: isCotOld(x.fecha_cotizacion) ? 'var(--warn)' : undefined }}>
+        <span className={isCotOld(x.fecha_cotizacion) ? 'cm-warn-text' : undefined}>
           <EditableCell
             editing={edit}
             value={fmtDate(x.fecha_cotizacion)}

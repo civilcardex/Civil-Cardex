@@ -90,7 +90,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       <TableHeader title="Proyectos" icon="proyectos" />
       <DimEnLectura>
         <XlScroll>
-          <fieldset disabled={!editable} style={{ margin: 0, padding: 0, border: 0, minWidth: 0 }}>
+          <fieldset disabled={!editable} className="cm-fieldset-flush">
             <table>
               <thead>
                 <tr>
@@ -127,10 +127,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
                 {flat.map(({ pres, level }, i) => (
                   <tr
                     key={pres.id}
-                    style={{
-                      background: selId === pres.id ? 'rgba(37,99,235,.1)' : undefined,
-                      cursor: 'pointer',
-                    }}
+                    className={`cm-click-row${selId === pres.id ? ' cm-row-activo' : ''}`}
                     tabIndex={0}
                     onClick={() => onSelect(pres.id)}
                     onKeyDown={(e) => {
@@ -142,7 +139,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
                   >
                     <XlRowNum n={i + 1} />
                     <td>{pres.codigo}</td>
-                    <td style={{ paddingLeft: level ? 24 : undefined }}>
+                    <td className={level ? 'cm-td-indent' : undefined}>
                       {level > 0 ? '↳ ' : ''}
                       {pres.nombre}
                     </td>

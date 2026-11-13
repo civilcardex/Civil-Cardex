@@ -16,7 +16,8 @@ export async function fetchCmProyectos(): Promise<CmProyectoRow[]> {
     const { data, error } = await supabase
       .from('cm_proyectos')
       .select('id, user_id, codigo, nombre, created_at')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
     if (error) {
       devError('fetchCmProyectos:', error.message);
       return [];

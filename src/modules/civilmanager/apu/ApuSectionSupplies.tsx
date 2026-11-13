@@ -139,7 +139,7 @@ export function ApuSeccionInsumos({ apu, onChange }: Props) {
           Agregar Insumo
         </button>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 11 }}>
+        <span className="cm-label-11">
           Subtotal Insumos: <b>{fmtMoneda(subtotal)}</b>
         </span>
       </div>

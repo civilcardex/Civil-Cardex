@@ -73,7 +73,7 @@ export function NumInput({
 
   if (placeholder) {
     return (
-      <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+      <div className="cm-num-wrap">
         <input
           className="cm-ni"
           value={isEmpty ? '' : displayVal}

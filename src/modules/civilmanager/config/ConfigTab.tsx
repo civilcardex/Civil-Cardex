@@ -43,24 +43,13 @@ export function ConfigTab() {
 
   return (
     <EditableSection dim={false}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <nav
-          aria-label="Configuración"
-          style={{ width: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
-        >
+      <div className="cm-split-top">
+        <nav aria-label="Configuración" className="cm-side-nav">
           {SUBS.map((s) => (
             <button
               key={s.id}
               type="button"
-              className={`cm-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
-              style={{
-                justifyContent: 'flex-start',
-                textAlign: 'left',
-                padding: '9px 12px',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: 0.3,
-              }}
+              className={`cm-btn cm-subnav-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
               onClick={() => setSub(s.id)}
               aria-current={sub === s.id ? 'true' : undefined}
             >
@@ -68,7 +57,7 @@ export function ConfigTab() {
             </button>
           ))}
         </nav>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="cm-flex-1-min">
           {sub === 'parametros' && <ParametrosApuPanel />}
           {sub === 'factor_prestacional' && <FactorPrestacionalPanel />}
           {sub === 'perfil_pais' && <PerfilPaisPanel />}

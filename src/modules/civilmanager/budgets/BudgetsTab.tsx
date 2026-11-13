@@ -38,24 +38,13 @@ export function PresupuestosTab() {
 
   return (
     <EditableSection dim={false}>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        <nav
-          aria-label="Presupuestos"
-          style={{ width: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6 }}
-        >
+      <div className="cm-split-top">
+        <nav aria-label="Presupuestos" className="cm-side-nav">
           {SUBS.map((s) => (
             <button
               key={s.id}
               type="button"
-              className={`cm-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
-              style={{
-                justifyContent: 'flex-start',
-                textAlign: 'left',
-                padding: '9px 12px',
-                fontSize: 13,
-                textTransform: 'uppercase',
-                letterSpacing: 0.3,
-              }}
+              className={`cm-btn cm-subnav-btn ${sub === s.id ? 'cm-btn-primary' : ''}`}
               onClick={() => setSub(s.id)}
               disabled={s.id !== 'proyectos' && !pres}
               aria-current={sub === s.id ? 'true' : undefined}
@@ -64,7 +53,7 @@ export function PresupuestosTab() {
             </button>
           ))}
         </nav>
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="cm-flex-1-min">
           {sub === 'proyectos' && (
             <ProyectosPanel
               selId={selId}

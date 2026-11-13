@@ -1,23 +1,21 @@
-import { memo, type CSSProperties, type ReactNode } from 'react';
+import { memo, type ReactNode } from 'react';
 import { ActionIcon } from './icons.tsx';
 import { useEditable } from './EditLock.tsx';
 
 /** Contenedor de tabla estilo hoja de Excel (borde y header sticky). Ej: envuelve toda la grilla de insumos. */
-export function XlWrap({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return (
-    <div className="cm-xl-wrap" style={style}>
-      {children}
-    </div>
-  );
+export function XlWrap({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`cm-xl-wrap ${className}`.trim()}>{children}</div>;
 }
 
 /** Zona con scroll horizontal/vertical dentro de un XlWrap (la tabla no rompe el layout). */
-export function XlScroll({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return (
-    <div className="cm-xl-scroll" style={style}>
-      {children}
-    </div>
-  );
+export function XlScroll({
+  children,
+  className = '',
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={`cm-xl-scroll ${className}`.trim()}>{children}</div>;
 }
 
 /** Celda de número de fila (columna #, como el gutter de Excel). */

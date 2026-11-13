@@ -24,13 +24,9 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
     <div>
       <TableHeader title="Resumen AIU" icon="resumen_aiu" />
       <DimEnLectura>
-        <fieldset
-          className="cm-xl-wrap"
-          disabled={!editable}
-          style={{ padding: 14, margin: 0, border: 0, minWidth: 0 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <label style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <fieldset className="cm-xl-wrap cm-fieldset" disabled={!editable}>
+          <div className="cm-check-row">
+            <label className="cm-check-label">
               <input
                 type="checkbox"
                 checked={aiu.activo}
@@ -40,9 +36,9 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
             </label>
           </div>
           {aiu.activo && (
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <div className="cm-aiu-grid">
               <div>
-                <label htmlFor="aiu-pct-a" style={{ fontSize: 10, color: 'var(--txt2)' }}>
+                <label htmlFor="aiu-pct-a" className="cm-aiu-label">
                   Administración %
                 </label>
                 <NumInput
@@ -53,7 +49,7 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
                 />
               </div>
               <div>
-                <label htmlFor="aiu-pct-i" style={{ fontSize: 10, color: 'var(--txt2)' }}>
+                <label htmlFor="aiu-pct-i" className="cm-aiu-label">
                   Imprevistos %
                 </label>
                 <NumInput
@@ -64,7 +60,7 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
                 />
               </div>
               <div>
-                <label htmlFor="aiu-pct-u" style={{ fontSize: 10, color: 'var(--txt2)' }}>
+                <label htmlFor="aiu-pct-u" className="cm-aiu-label">
                   Utilidad %
                 </label>
                 <NumInput
@@ -75,7 +71,7 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
                 />
               </div>
               <div>
-                <label htmlFor="aiu-iva-pct" style={{ fontSize: 10, color: 'var(--txt2)' }}>
+                <label htmlFor="aiu-iva-pct" className="cm-aiu-label">
                   IVA sobre utilidad %
                 </label>
                 <NumInput
@@ -89,34 +85,32 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
           )}
         </fieldset>
 
-        <div className="cm-xl-wrap" style={{ padding: 14 }}>
+        <div className="cm-xl-wrap cm-fieldset-bare">
           <table className="cm-tbl">
             <tbody>
               <tr>
                 <td>Costo Directo</td>
-                <td style={{ textAlign: 'right' }}>{fmtMoneda(resumen.costoDirecto)}</td>
+                <td className="cm-td-num">{fmtMoneda(resumen.costoDirecto)}</td>
               </tr>
               <tr>
                 <td>Administración</td>
-                <td style={{ textAlign: 'right' }}>{fmtMoneda(resumen.administracion)}</td>
+                <td className="cm-td-num">{fmtMoneda(resumen.administracion)}</td>
               </tr>
               <tr>
                 <td>Imprevistos</td>
-                <td style={{ textAlign: 'right' }}>{fmtMoneda(resumen.imprevistos)}</td>
+                <td className="cm-td-num">{fmtMoneda(resumen.imprevistos)}</td>
               </tr>
               <tr>
                 <td>Utilidad</td>
-                <td style={{ textAlign: 'right' }}>{fmtMoneda(resumen.utilidad)}</td>
+                <td className="cm-td-num">{fmtMoneda(resumen.utilidad)}</td>
               </tr>
               <tr>
                 <td>IVA sobre utilidad</td>
-                <td style={{ textAlign: 'right' }}>{fmtMoneda(resumen.ivaUtilidad)}</td>
+                <td className="cm-td-num">{fmtMoneda(resumen.ivaUtilidad)}</td>
               </tr>
-              <tr style={{ fontWeight: 700, fontSize: 13 }}>
+              <tr className="cm-total-row">
                 <td>VALOR TOTAL</td>
-                <td style={{ textAlign: 'right', color: 'var(--acc)' }}>
-                  {fmtMoneda(resumen.valorTotal)}
-                </td>
+                <td className="cm-total-val">{fmtMoneda(resumen.valorTotal)}</td>
               </tr>
             </tbody>
           </table>

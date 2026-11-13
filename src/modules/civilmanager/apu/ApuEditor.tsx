@@ -1,6 +1,5 @@
 import { useCivilManager } from '../context.tsx';
 import { fmtMoneda } from '../calc.ts';
-import { useIsMobile } from '../../../hooks/useMediaQuery.ts';
 import { ApuSeccionMO } from './ApuSectionLabor.tsx';
 import { ApuSeccionEquipo } from './ApuSectionEquipment.tsx';
 import { ApuSeccionInsumos } from './ApuSectionSupplies.tsx';
@@ -16,18 +15,13 @@ interface Props {
 export function ApuEditor({ apu, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const calc = apuCalcMap.get(apu.id);
-  const isMobile = useIsMobile();
 
   return (
     <div>
-      <div
-        className="cm-xl-wrap"
-        style={{ padding: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}
-      >
-        <span style={{ fontSize: 11, color: 'var(--txt3)' }}>{apu.codigo}</span>
+      <div className="cm-xl-wrap cm-apu-head">
+        <span className="cm-apu-code">{apu.codigo}</span>
         <input
-          className="cm-ni"
-          style={{ maxWidth: 260 }}
+          className="cm-ni cm-ni-w260"
           value={apu.nombre}
           onChange={(e) => onUpdate({ nombre: e.target.value })}
           aria-label="Nombre del APU"
@@ -56,7 +50,7 @@ export function ApuEditor({ apu, onUpdate }: Props) {
             </option>
           ))}
         </select>
-        <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}>
+        <label className="cm-apu-check">
           <input
             type="checkbox"
             checked={apu.es_basico}
@@ -65,9 +59,8 @@ export function ApuEditor({ apu, onUpdate }: Props) {
           APU básico (preparado en obra)
         </label>
         <span className="cm-flex-1" />
-        <span style={{ fontSize: 13, fontWeight: 700 }}>
-          Costo unitario:{' '}
-          <span style={{ color: 'var(--acc)' }}>{fmtMoneda(calc?.totalDirecto ?? 0)}</span>
+        <span className="cm-apu-total-line">
+          Costo unitario: <span className="cm-acc">{fmtMoneda(calc?.totalDirecto ?? 0)}</span>
         </span>
       </div>
 
@@ -80,18 +73,8 @@ export function ApuEditor({ apu, onUpdate }: Props) {
       />
 
       {calc && (
-        <div className="cm-xl-wrap" style={{ padding: 10, fontSize: 11 }}>
-          <div
-            style={{
-              display: 'grid',
-              // Desktop: 4 columnas fijas (el "Total directo" con span 2 queda estable);
-              // auto-fit solo en móvil, donde 4 columnas no caben.
-              gridTemplateColumns: isMobile
-                ? 'repeat(auto-fit, minmax(180px, 1fr))'
-                : 'repeat(4, 1fr)',
-              gap: 8,
-            }}
-          >
+        <div className="cm-xl-wrap cm-apu-summary">
+          <div className="cm-apu-grid">
             <div>
               Mano de obra: <b>{fmtMoneda(calc.subMO)}</b>
             </div>
@@ -110,9 +93,8 @@ export function ApuEditor({ apu, onUpdate }: Props) {
             <div>
               Transporte: <b>{fmtMoneda(calc.subTrans)}</b>
             </div>
-            <div style={{ gridColumn: 'span 2', fontWeight: 700 }}>
-              Total directo:{' '}
-              <span style={{ color: 'var(--acc)' }}>{fmtMoneda(calc.totalDirecto)}</span>
+            <div className="cm-apu-total-cell">
+              Total directo: <span className="cm-acc">{fmtMoneda(calc.totalDirecto)}</span>
             </div>
           </div>
         </div>

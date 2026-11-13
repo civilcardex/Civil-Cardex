@@ -17,7 +17,7 @@ export interface CrudCellCtx<T extends { id: string }> {
 export interface CrudColumn<T extends { id: string }> {
   /** Texto del encabezado. */
   label: string;
-  /** Tooltip del encabezado (el mismo que hoy llevan los <th title>). */
+  /** Tooltip del encabezado (el mismo que hoy llevan los <th scope="col" title>). */
   title?: string;
   width?: number | string;
   /** Alineación del encabezado y del td (los spans de EditableCell la heredan). */
@@ -106,7 +106,8 @@ export function CrudTable<T extends { id: string }>({
                     key={c.label}
                     scope="col"
                     title={c.title}
-                    style={{ width: c.width, textAlign: c.align }}
+                    data-align={c.align}
+                    style={c.width !== undefined ? { width: c.width } : undefined}
                   >
                     {c.label}
                   </th>
@@ -133,7 +134,7 @@ export function CrudTable<T extends { id: string }>({
                   <tr key={fila.id}>
                     <XlRowNum n={i + 1} />
                     {columns.map((c) => (
-                      <td key={c.label} style={{ textAlign: c.align }}>
+                      <td key={c.label} data-align={c.align}>
                         {c.render(fila, editing, ctx)}
                       </td>
                     ))}

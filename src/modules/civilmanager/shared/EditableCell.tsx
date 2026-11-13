@@ -66,7 +66,8 @@ export function EditableCell({
     onKeyDown?.(e);
   }
 
-  const alignStyle = align ? { textAlign: align, textAlignLast: align } : undefined;
+  // Alineación via data-align (la leen las clases [data-align] del CSS del módulo).
+  const alignData = align ? { 'data-align': align } : undefined;
   const a11y = { title, 'aria-label': title };
 
   if (!editing) {
@@ -88,7 +89,7 @@ export function EditableCell({
         }}
         onKeyDown={handleKeyDown}
         disabled={readOnly}
-        style={alignStyle}
+        {...alignData}
         {...a11y}
       >
         {(opciones ?? []).map((o) => (
@@ -112,7 +113,7 @@ export function EditableCell({
           moneda={tipo === 'moneda'}
           placeholder={placeholder}
           readOnly={readOnly}
-          style={alignStyle}
+          {...alignData}
           onKeyDown={handleKeyDown}
           {...a11y}
         />
@@ -126,7 +127,7 @@ export function EditableCell({
       value={draft}
       placeholder={placeholder}
       readOnly={readOnly}
-      style={alignStyle}
+      {...alignData}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commitDraft}
       onKeyDown={handleKeyDown}

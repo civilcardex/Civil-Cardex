@@ -33,12 +33,7 @@ export function Toast() {
   if (!msg) return null;
 
   return (
-    <div
-      role="status"
-      aria-live="polite"
-      className="cm-toast"
-      style={{ borderColor: cls === 'err' ? 'var(--err)' : cls === 'ok' ? 'var(--ok)' : undefined }}
-    >
+    <div role="status" aria-live="polite" className="cm-toast" data-kind={cls}>
       {msg}
     </div>
   );

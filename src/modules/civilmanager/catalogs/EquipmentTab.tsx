@@ -126,7 +126,7 @@ export function EquiposTab() {
       title: 'Fecha de la última cotización; se resalta cuando está desactualizada.',
       // Columna informativa (el color de alerta no lo puede llevar el td de CrudTable).
       render: (e) => (
-        <span style={{ color: isCotOld(e.fecha_cotizacion) ? 'var(--warn)' : undefined }}>
+        <span className={isCotOld(e.fecha_cotizacion) ? 'cm-warn-text' : undefined}>
           {fmtDate(e.fecha_cotizacion)}
         </span>
       ),

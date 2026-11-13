@@ -11,8 +11,6 @@ interface Props {
   onUpdate: (patch: Partial<Presupuesto>) => void;
 }
 
-const FIELDSET_STYLE = { padding: 14, margin: 0, border: 0, minWidth: 0 } as const;
-
 const DEFAULT_MAPPING: ColumnMapping = {
   col_item: 0,
   col_descripcion: 1,
@@ -97,8 +95,8 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
     <div>
       <TableHeader title="Importar formulario" icon="importar_formulario" />
       <DimEnLectura>
-        <fieldset className="cm-xl-wrap" disabled={!editable} style={FIELDSET_STYLE}>
-          <p style={{ fontSize: 11, color: 'var(--txt2)', marginBottom: 10 }}>
+        <fieldset className="cm-xl-wrap cm-fieldset" disabled={!editable}>
+          <p className="cm-hint">
             Importa un formulario de presupuesto existente en Excel. Detecta automáticamente la fila
             de inicio de datos y las filas de capítulo.
           </p>
@@ -106,7 +104,7 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
             ref={fileRef}
             type="file"
             accept=".xlsx,.xls"
-            style={{ display: 'none' }}
+            className="cm-hidden"
             onChange={onFileSelect}
             aria-hidden="true"
           />
@@ -119,24 +117,22 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
           </button>
 
           {rawRows && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
-                <label style={{ fontSize: 11 }}>
+            <div className="cm-mt-14">
+              <div className="cm-flex-wrap">
+                <label className="cm-label">
                   Fila de inicio:{' '}
                   <input
-                    className="cm-ni"
-                    style={{ width: 60 }}
+                    className="cm-ni cm-ni-w60"
                     type="number"
                     min={0}
                     value={startRow}
                     onChange={(e) => setStartRow(Number(e.target.value) || 0)}
                   />
                 </label>
-                <label style={{ fontSize: 11 }}>
+                <label className="cm-label">
                   Col. Ítem:{' '}
                   <input
-                    className="cm-ni"
-                    style={{ width: 50 }}
+                    className="cm-ni cm-ni-w50"
                     type="number"
                     min={0}
                     value={mapping.col_item}
@@ -145,11 +141,10 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                     }
                   />
                 </label>
-                <label style={{ fontSize: 11 }}>
+                <label className="cm-label">
                   Col. Descripción:{' '}
                   <input
-                    className="cm-ni"
-                    style={{ width: 50 }}
+                    className="cm-ni cm-ni-w50"
                     type="number"
                     min={0}
                     value={mapping.col_descripcion}
@@ -158,11 +153,10 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                     }
                   />
                 </label>
-                <label style={{ fontSize: 11 }}>
+                <label className="cm-label">
                   Col. Unidad:{' '}
                   <input
-                    className="cm-ni"
-                    style={{ width: 50 }}
+                    className="cm-ni cm-ni-w50"
                     type="number"
                     min={0}
                     value={mapping.col_unidad}
@@ -171,11 +165,10 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                     }
                   />
                 </label>
-                <label style={{ fontSize: 11 }}>
+                <label className="cm-label">
                   Col. Cantidad:{' '}
                   <input
-                    className="cm-ni"
-                    style={{ width: 50 }}
+                    className="cm-ni cm-ni-w50"
                     type="number"
                     min={0}
                     value={mapping.col_cantidad}
@@ -186,14 +179,7 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                 </label>
               </div>
 
-              <div
-                className="cm-modal-scroll"
-                style={{
-                  maxHeight: 320,
-                  border: '1px solid var(--line)',
-                  borderRadius: 'var(--r)',
-                }}
-              >
+              <div className="cm-modal-scroll cm-scroll-box">
                 <table className="cm-tbl">
                   <thead>
                     <tr>
@@ -207,10 +193,7 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                   </thead>
                   <tbody>
                     {preview.map(({ item, esCap }, i) => (
-                      <tr
-                        key={item.id}
-                        style={esCap ? { fontWeight: 700, background: 'var(--bg3)' } : undefined}
-                      >
+                      <tr key={item.id} className={esCap ? 'cm-row-cap' : undefined}>
                         <td>{i + 1}</td>
                         <td>{item.num_item}</td>
                         <td>{item.descripcion}</td>
@@ -223,7 +206,7 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
                 </table>
               </div>
 
-              <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
+              <div className="cm-actions">
                 <button type="button" className="cm-btn cm-btn-ok" onClick={confirmarImport}>
                   Importar {preview.length} filas
                 </button>
