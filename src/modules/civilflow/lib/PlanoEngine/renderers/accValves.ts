@@ -6,17 +6,19 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py, outX, outY } = a;
   // Válvulas un POCO más grandes que el resto (orig. usuario 2026-10-29).
   const rad = a.rad * 1.25;
-  // rociador ('rociador') o numerado ('rociador#7' → etiqueta ROC-7 del renumeraRociadores).
-  const mRoc = /^rociador(?:#(\d+))?$/.exec(accType);
+  // rociador ('rociador'), numerado ('rociador#7' → etiqueta ROC-7 del renumeraRociadores) o
+  // NO FLUYE ('rociadorNF#3' → glifo azul-gris; se excluye del conteo de rociadores).
+  const mRoc = /^(rociador(?:NF)?)(?:#(\d+))?$/.exec(accType);
+  const noFluye = accType.startsWith('rociadorNF');
   if (mRoc) {
     // Rociador colgante rci (Red Contra Incendio): círculo blanco del tamaño de las válvulas
     // centrado sobre el trazo (como valvCheque) con una X DIAGONAL en ejes absolutos (45°
     // respecto de la pantalla, no del ramal — así se ve en la simbología de referencia) y un
     // cuadradito blanco central (el deflector). Es el glifo SPR que la extracción cuenta por
     // ramal (accMed/extremo con id 'rociador').
-    const circR = rad * 0.9;
+    const circR = rad * 1.2; // (ped. usuario 2026-11-13: símbolo de rociador más grande)
     const arm = circR * 0.98;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = noFluye ? '#8ab4d6' : '#ffffff';
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'butt';
@@ -42,19 +44,21 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     // Etiqueta ROC-N (numeración consecutiva del piso, ped. usuario): SIEMPRE a la derecha del
     // glifo con espacio extra cuando el ramal es VERTICAL; encima del glifo cuando es
     // HORIZONTAL — la orientación la da la dirección del trazo (dx,dy en pantalla).
-    if (mRoc[1]) {
+    // La etiqueta usa el grupo 2 (el N del '#'); sin número no dibuja — igual que los demás
+    // tipos en accRCI. El grupo 1 es el TIPO ('rociador'): usarlo pintaba «ROC-rociador».
+    if (mRoc[2]) {
       /* Proporcional al glifo (que escala con el zoom): SIN piso en px — antes el piso 11
        * mantenía el texto grande al alejar y "crecía" respecto del dibujo (ped. usuario). */
       const fs = circR * 1.35;
-      ctx.fillStyle = '#000000';
+      ctx.fillStyle = noFluye ? '#8ab4d6' : '#000000';
       ctx.font = `bold ${fs}px sans-serif`;
       const vertical = Math.abs(dx) < Math.abs(dy);
       if (vertical) {
         ctx.textAlign = 'left';
-        ctx.fillText(`ROC-${mRoc[1]}`, c.x + circR + fs * 0.6, c.y + fs * 0.35);
+        ctx.fillText(`ROC-${mRoc[2]}`, c.x + circR + fs * 0.6, c.y + fs * 0.35);
       } else {
         ctx.textAlign = 'center';
-        ctx.fillText(`ROC-${mRoc[1]}`, c.x, c.y - circR - fs * 0.9);
+        ctx.fillText(`ROC-${mRoc[2]}`, c.x, c.y - circR - fs * 0.9);
       }
       ctx.textAlign = 'left';
     }

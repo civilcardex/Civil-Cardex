@@ -7,11 +7,13 @@ interface CardProps {
   subtitle?: string;
   icon?: React.ReactNode;
   iconImg?: string;
-  iconImgStyle?: React.CSSProperties;
+  /** Clase extra para el <img> del icono (antes iconImgStyle). */
+  iconClassName?: string;
   className?: string;
-  style?: React.CSSProperties;
-  headerStyle?: React.CSSProperties;
-  bodyStyle?: React.CSSProperties;
+  /** Clase extra para el header. */
+  headerClassName?: string;
+  /** Clase extra para el cuerpo (p. ej. `card-b-p0` para tablas con padding 0). */
+  bodyClassName?: string;
   children: React.ReactNode;
   headerRight?: React.ReactNode;
 }
@@ -21,37 +23,26 @@ const Card = React.memo(function Card({
   subtitle,
   icon,
   iconImg,
-  iconImgStyle,
+  iconClassName,
   className = '',
-  style,
-  headerStyle,
-  bodyStyle,
+  headerClassName,
+  bodyClassName,
   headerRight,
   children,
 }: CardProps) {
   return (
-    <div className={`card ${className}`} style={style}>
+    <div className={`card ${className}`}>
       {(title || icon || iconImg || headerRight) && (
-        <div
-          className="card-h"
-          style={{ display: 'flex', flexDirection: 'column', ...headerStyle }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div className={`card-h card-h-col${headerClassName ? ` ${headerClassName}` : ''}`}>
+          <div className="card-h-row">
+            <div className="card-h-left">
               {iconImg ? (
                 <img
                   src={iconImg}
                   alt=""
                   width={18}
                   height={18}
-                  style={{ width: 18, height: 18, ...iconImgStyle }}
+                  className={`card-icon${iconClassName ? ` ${iconClassName}` : ''}`}
                   loading="lazy"
                 />
               ) : null}
@@ -63,7 +54,7 @@ const Card = React.memo(function Card({
           {subtitle && <span className="card-s">{subtitle}</span>}
         </div>
       )}
-      <div className="card-b" style={{ padding: 1, ...bodyStyle }}>
+      <div className={`card-b card-b-tight${bodyClassName ? ` ${bodyClassName}` : ''}`}>
         {children}
       </div>
     </div>

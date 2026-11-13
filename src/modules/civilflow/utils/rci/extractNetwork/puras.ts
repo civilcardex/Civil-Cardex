@@ -40,12 +40,16 @@ export const RE_CODO45 = /codo45|codos_45/i;
  *   sección de gabinetes en RciState; la fase de diseño de gabinetes lo leerá de aquí.
  * ========================================================================== */
 
-/** Rociadores dibujados en el ramal: accesorios cuyo tipo dice "rociador". */
+/** Rociadores dibujados en el ramal: accesorios cuyo tipo dice "rociador" — los
+ *  marcados NO FLUYE (flag NF justo antes del '#': 'rociadorNF#3', 'rociadorMontanteNF#5')
+ *  se EXCLUYEN del conteo (ped. usuario: fluye/no fluye decide el cálculo). */
 export function contarRociadores(el: RawElement): number {
+  const fluye = (v: unknown): boolean =>
+    !!v && RE_ROCIADOR.test(String(v)) && !/NF(?:#|$)/.test(String(v));
   let n = 0;
-  if (RE_ROCIADOR.test(String(el.accesorioInicio || ''))) n++;
-  if (RE_ROCIADOR.test(String(el.accesorioFin || ''))) n++;
-  for (const v of Object.values(el.accMed || {})) if (v && RE_ROCIADOR.test(v)) n++;
+  if (fluye(el.accesorioInicio)) n++;
+  if (fluye(el.accesorioFin)) n++;
+  for (const v of Object.values(el.accMed || {})) if (fluye(v)) n++;
   return n;
 }
 

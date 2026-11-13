@@ -70,10 +70,6 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
   if (!r || !r.pts || r.pts.length < 2) return 0;
   const pasoPx = cmToPlanePx(engine.scaleM, sM * 100);
   if (!(pasoPx > 0)) return 0;
-  const totalPx = r.pts.reduce(
-    (acc, p, i) => (i === 0 ? 0 : acc + Math.hypot(p[0] - r.pts[i - 1][0], p[1] - r.pts[i - 1][1])),
-    0,
-  );
   /** ¿Ya hay un rociador en ese punto (vértice marcado accMed 'rociador')? Evita duplicar
    *  rociadores superpuestos al repetir la acción. Ej: 2.ª pasada con el mismo S → todas las
    *  posiciones ocupadas → 0 inserciones. (La cabeza no aplica: las inserciones empiezan en
@@ -85,11 +81,49 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
       const q = m ? r.pts[+m[1]] : null;
       return !!q && Math.hypot(q[0] - x, q[1] - y) < 1;
     });
-  /* Puntos a insertar (dist, x, y) cada pasoPx desde el inicio, sin llegar al último vértice
-   * (el rociador final queda donde caiga; no se fuerza sobre el extremo). Posiciones ya
-   * sembradas se saltan (idempotencia). */
+  /* TRAMO RECTO MÁS LARGO (ped. usuario 2026-11-13): la siembra ocurre SOLO dentro de la
+   * corrida colineal más larga del ramal — tras una curva o ángulo recto no continúa. Cada
+   * cambio de dirección (dot < 0.98) cierra una corrida; corridas de un solo segmento también
+   * compiten. */
+  let mejorIni = 0;
+  let mejorLen = -1;
+  let runIni = 0;
+  let runLen = 0;
+  let dirAnt: { x: number; y: number } | null = null;
+  for (let i = 0; i < r.pts.length - 1; i++) {
+    const segLen = Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
+    const d = {
+      x: (r.pts[i + 1][0] - r.pts[i][0]) / (segLen || 1),
+      y: (r.pts[i + 1][1] - r.pts[i][1]) / (segLen || 1),
+    };
+    const colineal = !!dirAnt && Math.abs(d.x * dirAnt.x + d.y * dirAnt.y) >= 0.98;
+    if (!colineal) {
+      if (runLen > mejorLen) {
+        mejorLen = runLen;
+        mejorIni = runIni;
+      }
+      runIni = i;
+      runLen = 0;
+    }
+    runLen += segLen;
+    dirAnt = d;
+  }
+  if (runLen > mejorLen) {
+    mejorLen = runLen;
+    mejorIni = runIni;
+  }
+  // Distancia acumulada al inicio del tramo ganador:
+  let rectoInicio = 0;
+  let acc = 0;
+  for (let i = 0; i < r.pts.length - 1; i++) {
+    const segLen = Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
+    if (i === mejorIni) rectoInicio = acc;
+    acc += segLen;
+  }
+  /* Puntos a insertar (dist, x, y) cada pasoPx DENTRO del tramo recto ganador, sin llegar a
+   * su fin. Posiciones ya sembradas se saltan (idempotencia). */
   const inserciones: Array<{ x: number; y: number; idx: number; dist: number }> = [];
-  for (let d = pasoPx; d < totalPx - 1e-6; d += pasoPx) {
+  for (let d = rectoInicio + pasoPx; d < rectoInicio + mejorLen - 1e-6; d += pasoPx) {
     const p = puntoADistancia(r.pts, d);
     if (p && !yaSembrado(p.x, p.y)) inserciones.push(p);
   }
@@ -129,8 +163,15 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
  *  glifo dibuja como «ROC-N». Ej: base RRCI1 con 3 + paralelos con 3 → ROC-1…ROC-6. */
 export function renumeraRociadores(engine: IPlanoEngineCore): void {
   let n = 0;
-  const estampa = (v: string | undefined): string | undefined =>
-    v && /^rociador(#\d+)?$/.test(v) ? `rociador#${++n}` : v;
+  // rci: 'rociador' base, 'rociadorNF' (NO fluye) y los 4 tipos (montante/seco/oculto/área).
+  // El flag NF y el tipo SOBREVIVEN el renumerado — solo el # cambia.
+  const estampa = (v: string | undefined): string | undefined => {
+    if (!v) return undefined;
+    // El flag NF puede ir en CUALQUIER rociador (colgante o montante/seco/oculto/área) —
+    // siempre justo antes del '#' ('rociadorMontanteNF#5').
+    const m = /^(rociador(?:NF)?|rociador(?:Montante|Seco|Oculto|Area)(?:NF)?)(?:#(\d+))?$/.exec(v);
+    return m ? `${m[1]}#${++n}` : undefined;
+  };
   for (const r of engine.ramales) {
     if (r.net !== 'rci') continue;
     const inicio = estampa(r.accesorioInicio);
@@ -146,6 +187,93 @@ export function renumeraRociadores(engine: IPlanoEngineCore): void {
       if (v) r.accMed[k] = v;
     }
   }
+}
+
+/** ¿El valor del accesorio es un ROCIADOR que fluye? (NF = no fluye, se excluye del conteo).
+ *  El marcador NF va justo antes del '#' en cualquier tipo ('rociadorNF#3',
+ *  'rociadorMontanteNF#5'). */
+export function rociadorFluye(v: string | undefined): boolean {
+  return !!v && /rociador/i.test(v) && !/NF(?:#|$)/.test(v);
+}
+
+/** Distancia en px entre rociadores VECINOS a lo largo de un ramal (orden vértice): devuelve
+ *  el hueco MÁS GRANDE y la pareja de etiquetas que lo causa — null si hay < 2 rociadores. */
+function huecoMaxS(
+  r: PlanoRamal,
+  esRoc: (v: string | undefined) => boolean,
+): { hueco: number; de: string; a: string } | null {
+  const posiciones: Array<{ d: number; lbl: string }> = [];
+  if (esRoc(r.accesorioInicio)) posiciones.push({ d: 0, lbl: 'cabeza' });
+  const dists: number[] = [0];
+  for (let i = 1; i < r.pts.length; i++)
+    dists.push(
+      dists[i - 1] + Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]),
+    );
+  for (const [k, v] of Object.entries(r.accMed || {})) {
+    const m = k.match(/^accMed(\d+)$/);
+    if (!m || !esRoc(v)) continue;
+    posiciones.push({ d: dists[+m[1]] ?? 0, lbl: `ROC-${v.split('#')[1] || '?'}` });
+  }
+  if (esRoc(r.accesorioFin)) posiciones.push({ d: dists[dists.length - 1] ?? 0, lbl: 'cola' });
+  if (posiciones.length < 2) return null;
+  posiciones.sort((a, b) => a.d - b.d);
+  let peor: { hueco: number; de: string; a: string } | null = null;
+  for (let i = 1; i < posiciones.length; i++) {
+    const hueco = posiciones[i].d - posiciones[i - 1].d;
+    if (!peor || hueco > peor.hueco)
+      peor = { hueco, de: posiciones[i - 1].lbl, a: posiciones[i].lbl };
+  }
+  return peor;
+}
+
+/** VERIFICA la separación S del piso entre rociadores vecinos del ramal (ped. usuario: los
+ *  MANUALES también la respetan). La S sale del espejo RCI (fila del piso activo; vacío = la
+ *  global) o del override. Devuelve null si todo ok o sin S definida; string = mensaje. */
+export function verificaSRociadores(
+  engine: IPlanoEngineCore,
+  ramalId: string,
+  sMOverride?: number,
+): string | null {
+  const r = engine.ramales.find((x) => x.id === ramalId);
+  if (!r || !r.pts || r.pts.length < 2) return null;
+  // S del espejo del estado vivo (fresca, post-debounce de la pestaña):
+  let sM: number | null = null;
+  try {
+    const raw = (globalThis as unknown as { localStorage?: Storage }).localStorage?.getItem(
+      'civilflow_rci_estado_vivo',
+    );
+    if (raw) {
+      const est = JSON.parse(raw) as {
+        pisos?: { rows?: Array<{ planId?: string; S?: unknown }> };
+        roc?: { S?: unknown };
+      };
+      const planId = String((engine as unknown as { _loadedPlanId?: unknown })._loadedPlanId ?? '');
+      const fila = est.pisos?.rows?.find((f) => String(f.planId) === planId);
+      const v = fila && fila.S !== '' && fila.S !== undefined ? fila.S : est.roc?.S;
+      const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(',', '.'));
+      if (n > 0) sM = n;
+    }
+  } catch {
+    return null; // sin espejo legible: sin S conocida, no se valida
+  }
+  if (sMOverride && sMOverride > 0) sM = sMOverride;
+  if (!sM || sM <= 0) return null;
+  const peor = huecoMaxS(r, rociadorFluye);
+  if (!peor) return null;
+  const huecoM = engine.pxToM(peor.hueco);
+  const sPx = cmToPlanePx(engine.scaleM, sM * 100);
+  /* S EXACTA (ped. usuario 2026-11-13): la separación rociador-rociador debe coincidir con S;
+   * NO valen ni menores ni mayores. Solo se tolera el error numérico mínimo del cálculo
+   * geométrico (1e-6 px) — la tolerancia NO es un rango de aceptación. Ej: hueco 2,40 con
+   * S 2,50 → alerta "2,40 ≠ 2,50". */
+  const TOL_PX = 1e-6;
+  if (Math.abs(peor.hueco - sPx) <= TOL_PX) return null;
+  return `La separación entre rociadores ${peor.de} y ${peor.a} es de ${huecoM
+    .toFixed(2)
+    .replace(
+      '.',
+      ',',
+    )} m y debe ser exactamente la S del piso (${String(sM).replace('.', ',')} m). Mueve un rociador o siémbrelos con «Dibujar rociadores» para respetar S.`;
 }
 
 /** Dirección ABSOLUTA de pantalla hacia donde salen los paralelos (ped. usuario): con trazo
@@ -328,72 +456,36 @@ export function chequeoMurosTrazo(
     }
   }
   if (!(dm && dm > 0)) return null;
-  /* MÁXIMO (doctrina del usuario) a nivel SEGMENTO: cada tramo recto de muro se juzga por
-   * separado — una L dibujada como UNA polilínea con doblez (o dos muros que comparten
-   * vértice) exige cumplir Dmuro en AMBOS sentidos (pata vertical y horizontal). El grupo
-   * conectado (BFS por vértices compartidos, ≤ 2 px) entra completo: una caja juzga sus 4
-   * patas. Cada segmento del grupo debe quedar a ≤ Dmuro del ramal rci más cercano (el
-   * nuevo incluido). distSegSeg: la orientación da igual. */
-  const polis = engine.ramales
-    .filter((r) => r.net === 'rci' && r.tipo === 'ramal' && r.pts.length >= 2)
-    .map((r) => r.pts);
-  type Seg = { a: number[]; b: number[] };
-  const segs: Seg[] = [];
-  for (const muro of muros)
-    for (let i = 0; i < muro.pts.length - 1; i++) segs.push({ a: muro.pts[i], b: muro.pts[i + 1] });
-  if (!segs.length) return null;
-  const dSeg = (s: Seg, pts: number[][]): number => distPoli([s.a, s.b], pts);
-  let cercano = segs[0];
-  let dCercano = Infinity;
-  for (const s of segs) {
-    const d = dSeg(s, ptsNuevos);
-    if (d < dCercano) {
-      dCercano = d;
-      cercano = s;
-    }
-  }
-  /* Grupo conectado del segmento más cercano: BFS por vértices compartidos (≤ 2 px — el
-   * esquinado a mano no cae exacto). Los segmentos de la MISMA polilínea siempre se tocan
-   * entre sí (comparten el vértice interior). */
-  const tocan = (p1: number[], p2: number[]): boolean =>
-    Math.hypot(p1[0] - p2[0], p1[1] - p2[1]) < 2;
-  const grupo: Seg[] = [cercano];
-  const pendientes: Seg[] = [cercano];
-  while (pendientes.length) {
-    const cur = pendientes.pop()!;
-    for (const s of segs) {
-      if (grupo.includes(s)) continue;
-      const toca = tocan(cur.a, s.a) || tocan(cur.a, s.b) || tocan(cur.b, s.a) || tocan(cur.b, s.b);
-      if (toca) {
-        grupo.push(s);
-        pendientes.push(s);
-      }
-    }
-  }
-  /* COBERTURA real del muro (ped. usuario: el muro inferior quedaba "validado" por su punto
-   * más cercano aunque sus extremos estaban descubiertos): se muestrea cada segmento del
-   * grupo cada ~0,50 m y se toma el PEOR punto — la mayor distancia de un punto del muro al
-   * ramal rci más cercano (el trazo nuevo incluido). Ese peor punto debe quedar a ≤ Dmuro. */
-  const puntoAPoli = (p: number[], pts: number[][]): number => {
-    let m = Infinity;
-    for (let i = 0; i < pts.length - 1; i++) m = Math.min(m, distSegSeg(pts[i], pts[i + 1], p, p));
-    return m;
-  };
-  const pasoPx = cmToPlanePx(engine.scaleM, 50);
+  /* MÁXIMO (doctrina del usuario, 2026-11-13): PROXIMIDAD del trazado a los muros que tiene
+   * cerca. Por cada TRAMO del trazado nuevo se mira su segmento de muro más cercano y ese
+   * muro debe quedar a ≤ Dmuro del trazo. Sin cobertura de muestreo ni grupo BFS: en el
+   * salón grande, el trazado pegado al muro superior pasa (su cercano está a ≤ Dmuro) y NO
+   * bloquean las verticales/inferior lejanos ni las partes bajas descubiertas de un muro
+   * cercano — esas las cubrirá el ramal que las trace. El MÍNIMO de 0,10 m sigue contra
+   * TODOS los muros. Ej: trazo a 2,65 m del único muro con Dmuro 1,70 → bloquea. */
   let peor = 0;
-  for (const s of grupo) {
-    const len = Math.hypot(s.b[0] - s.a[0], s.b[1] - s.a[1]);
-    const n = Math.max(1, Math.ceil(len / pasoPx));
-    for (let k = 0; k <= n; k++) {
-      const f = k / n;
-      const p = [s.a[0] + (s.b[0] - s.a[0]) * f, s.a[1] + (s.b[1] - s.a[1]) * f];
-      const dM = engine.pxToM(
-        Math.min(puntoAPoli(p, ptsNuevos), ...polis.map((pl) => puntoAPoli(p, pl))),
-      );
-      if (dM > dm + 1e-9 && dM > peor) peor = dM;
+  const tramos = ptsNuevos.length - 1;
+  /* La red rci ya dibujada TAMBIÉN sirve de referencia (ped. usuario 2026-11-13: ramales que
+   * conectan con la red existente no deben bloquear aunque estén lejos de los muros). El
+   * trazado evaluado SE EXCLUYE: al mover (dragUp) el ramal ya vive en engine.ramales y sin
+   * esto se cubriría a sí mismo a distancia 0 — el chequeo del máximo jamás aplicaría. */
+  const redPx = engine.ramales
+    .filter((r) => r.net === 'rci' && r.pts && r.pts.length >= 2 && r.pts !== ptsNuevos)
+    .map((r) => r.pts);
+  for (let ti = 0; ti < tramos; ti++) {
+    const tramo = [ptsNuevos[ti], ptsNuevos[ti + 1]];
+    let dc = Infinity;
+    for (const muro of muros) {
+      const d = distPoli(muro.pts, tramo);
+      if (d < dc) dc = d;
     }
+    for (const r of redPx) {
+      const d = distPoli(r, tramo);
+      if (d < dc) dc = d;
+    }
+    const dM = engine.pxToM(dc);
+    if (dM > dm + 1e-9 && dM > peor) peor = dM;
   }
   if (peor === 0) return null;
-  const nGrupo = grupo.length > 1 ? ` (grupo de ${grupo.length} tramos de muro conectados)` : '';
-  return `El trazo no se puede crear: una parte del muro más cercano${nGrupo} queda a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje el ramal más cerca del muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
+  return `El trazo no se puede crear: queda a ${peor.toFixed(2).replace('.', ',')} m del muro más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Traza el ramal a ≤ ${String(dm).replace('.', ',')} m de los muros o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
 }

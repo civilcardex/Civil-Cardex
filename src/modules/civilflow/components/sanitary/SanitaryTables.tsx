@@ -18,30 +18,6 @@ import type { SanRow } from '../../utils/sanitaryRows.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import type { UpdTramoSan } from './useSanitaryRows.ts';
 
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
-const SanitaryDesign_S1: React.CSSProperties = {
-  fontFamily: 'var(--mono)',
-  fontSize: 10.5,
-  padding: '1px 2px',
-  border: '1px solid var(--line)',
-  borderRadius: 2,
-  background: 'var(--bg2)',
-  color: 'var(--txt)',
-  cursor: 'pointer',
-};
-
-const TH_HDR = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
-const TH_SUB = { fontSize: 10.5, textAlign: 'center', padding: '1px 7px' } as const;
-// Agrupadores colSpan: sin border-bottom propio — el 1px de .tbl th se leía como hueco
-// contra las subcolumnas (mismo fondo --bg4 a ambos lados).
-const TH_GRUPO = {
-  textAlign: 'center',
-  fontSize: 10.5,
-  padding: '1px 7px',
-  // Línea propia bajo el grupo: separa el título de sus subcolumnas (ped. usuario).
-  borderBottom: '2px solid var(--line)',
-} as const;
-
 /** Props de la tabla: el modelo ya calculado (useSanitaryRows) + el estado de edición. */
 export interface SanitaryTablesProps {
   tablaRef: React.RefObject<HTMLTableElement | null>;
@@ -86,36 +62,35 @@ export default function SanitaryTables({
   plans,
 }: SanitaryTablesProps) {
   return (
-    <div className="scroll-top" style={{ padding: '16px' }}>
+    <div className="scroll-top san-pad-16">
       <div className="scroll-inner">
-        <table ref={tablaRef} className="tbl" style={{ fontSize: 10.5 }}>
-          <caption style={SR_ONLY_STYLE}>Diseño de red sanitaria</caption>
+        <table ref={tablaRef} className="tbl san-fs">
+          <caption className="sr-only">Diseño de red sanitaria</caption>
           <thead>
             <tr>
               <th
                 title="Tramo de la red sanitaria según el dibujo (ramal o bajante)."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '6%' }}
+                data-w="6"
               >
                 Tramo
               </th>
               <th
                 title="Unidades de descarga (Hunter) que acumula el tramo."
                 scope="col"
-                className="col-h san"
+                className="san-th-grupo col-h san"
                 colSpan={3}
-                style={TH_GRUPO}
               >
                 Unidades de descarga
               </th>
               <th
                 title="Descargas simultáneas esperadas en el tramo."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '6%' }}
+                data-w="6"
               >
                 descargas
                 <br />
@@ -124,36 +99,33 @@ export default function SanitaryTables({
               <th
                 title="Coeficiente de simultaneidad K aplicado al cálculo del caudal."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '3%' }}
+                data-w="3"
               >
                 K
               </th>
               <th
                 title="Caudal de diseño del tramo (L/s). Unidad: L/s."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Caudal
               </th>
               <th
                 title="Rugosidad n del material de la tubería."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Manning
               </th>
               <th
                 title="Pendiente de diseño del tramo (%) — manda el dibujo. Unidad: porcentaje (%)."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Pendiente
               </th>
@@ -162,117 +134,112 @@ export default function SanitaryTables({
                   'Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
                 }
                 scope="col"
-                className="col-h ok"
+                className="san-th-grupo col-h ok"
                 colSpan={4}
-                style={TH_GRUPO}
               >
                 Diámetro
               </th>
               <th
                 title="Capacidad máxima del diámetro propuesto (L/s). Unidad: L/s."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '4.5%' }}
+                data-w="4.5"
               >
                 Q<sub>o</sub>
               </th>
               <th
                 title="Velocidad de salida/capacidad asociada al diámetro (m/s). Unidad: m/s."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '4.5%' }}
+                data-w="4.5"
               >
                 V<sub>o</sub>
               </th>
               <th
                 title="Uso de la capacidad: debe ser ≤ 100%."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '4.5%' }}
+                data-w="4.5"
               >
                 Q/Q<sub>o</sub>
               </th>
               <th
                 title="Velocidad real del flujo con el diámetro propuesto (m/s). Unidad: m/s."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Velocidad real
               </th>
               <th
                 title={`O.K. si la velocidad está dentro del rango permitido: ${rangoSanTxt(pais)}.`}
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Chequeo velocidad
               </th>
               <th
                 title="Tirante crítico del flujo (mm). Unidad: mm."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '5%' }}
+                data-w="5"
               >
                 Y<sub>c</sub>
               </th>
               <th
                 title="Tirante normal del flujo (mm). Unidad: mm."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '5%' }}
+                data-w="5"
               >
                 Y<sub>n</sub>
               </th>
               <th
                 title="Número de Froude del flujo (subcrítico si es menor a 1)."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '5%' }}
+                data-w="5"
               >
                 Froude
               </th>
               <th
                 title="Régimen del flujo según el número de Froude."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '6%' }}
+                data-w="6"
               >
                 Flujo
               </th>
               <th
                 title="Altura máxima admisible del tirante (mm). Unidad: mm."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={{ ...TH_HDR, width: '5%' }}
+                data-w="5"
               >
                 Y<sub>max</sub>
               </th>
               <th
                 title="Comparación del tirante normal contra el crítico."
                 scope="col"
-                className="col-h"
+                className="san-th col-h"
                 rowSpan={2}
-                style={TH_HDR}
               >
                 Y<sub>n</sub> vs Y<sub>c</sub>
               </th>
               <th
                 title="Esfuerzo de arrastre sobre el tubo; debe superar el mínimo de autolimpieza."
                 scope="col"
-                className="col-h ven"
+                className="san-th-grupo col-h ven"
                 colSpan={2}
-                style={TH_GRUPO}
               >
                 Fuerza Tractiva
               </th>
@@ -281,72 +248,63 @@ export default function SanitaryTables({
               <th
                 title="Unidades de descarga generadas en el propio tramo."
                 scope="col"
-                className="col-h san"
-                style={TH_SUB}
+                className="col-h san san-th-sub"
               >
                 Propia
               </th>
               <th
                 title="Unidades de descarga que llegan de tramos conectados aguas arriba."
                 scope="col"
-                className="col-h san"
-                style={TH_SUB}
+                className="col-h san san-th-sub"
               >
                 Otros
               </th>
               <th
                 title="Unidades de descarga acumuladas del tramo."
                 scope="col"
-                className="col-h san"
-                style={TH_SUB}
+                className="col-h san san-th-sub"
               >
                 Total
               </th>
               <th
                 title='Diámetro calculado con el caudal y la pendiente (pulg). Unidad: pulgadas (").'
                 scope="col"
-                className="col-h ok"
-                style={TH_SUB}
+                className="col-h ok san-th-sub"
               >
                 Calculado
               </th>
               <th
                 title='Diámetro comercial propuesto (pulg) — editable. Unidad: pulgadas (").'
                 scope="col"
-                className="col-h ok"
-                style={TH_SUB}
+                className="col-h ok san-th-sub"
               >
                 Diseño
               </th>
               <th
                 title="Diámetro interior del tubo propuesto (mm). Unidad: mm."
                 scope="col"
-                className="col-h ok"
-                style={TH_SUB}
+                className="col-h ok san-th-sub"
               >
                 Interior
               </th>
               <th
                 title="O.K. si el diámetro propuesto cubre el calculado."
                 scope="col"
-                className="col-h ok"
-                style={TH_SUB}
+                className="col-h ok san-th-sub"
               >
                 Chequeo
               </th>
               <th
                 title="Fuerza tractiva real del flujo (kg/m²). Unidad: kg/m²."
                 scope="col"
-                className="col-h ven"
-                style={TH_SUB}
+                className="col-h ven san-th-sub"
               >
                 Real
               </th>
               <th
                 title={`La fuerza tractiva debe superar ${ftTxt(pais)} (autolimpieza).`}
                 scope="col"
-                className="col-h ven"
-                style={TH_SUB}
+                className="col-h ven san-th-sub"
               >
                 &gt;0.15
               </th>
@@ -387,30 +345,20 @@ export default function SanitaryTables({
                   } = row;
                   return (
                     <tr key={tKey}>
-                      <td className="c" style={{ padding: '1px 2px' }}>
-                        <span className="sigla" style={{ fontSize: 10.5 }}>
+                      <td className="c san-pad">
+                        <span className="sigla san-fs">
                           {/* Tramo + piso (orig. usuario): etiqueta tipo row-P1. */}
                           {row.id}
                           {row.piso != null ? `-${pisoCorto(row.piso)}` : ''}
                         </span>
                       </td>
 
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
-                        {udPropias}
-                      </td>
-                      <td className="c" style={{ padding: '1px 2px', minWidth: 60, maxWidth: 120 }}>
+                      <td className="c san-pad san-mono">{udPropias}</td>
+                      <td className="c san-td-minmax">
                         {connectedKeys.length === 0 ? (
-                          <span style={{ fontSize: 10.5, color: 'var(--txt3)' }}>—</span>
+                          <span className="san-muted">—</span>
                         ) : (
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: 2,
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                            }}
-                          >
+                          <div className="san-connected">
                             {connectedKeys.map((childKey) => {
                               const rId = keyToLabel.get(childKey) || sectorDe(childKey);
                               const childTotalUd = componentTotalMap[childKey] ?? 0;
@@ -418,15 +366,7 @@ export default function SanitaryTables({
                                 <span
                                   key={childKey}
                                   title={`${rId} (${childTotalUd} UD)`}
-                                  style={{
-                                    fontSize: 10.5,
-                                    padding: '1px 2px',
-                                    border: '1px solid var(--san)',
-                                    borderRadius: 3,
-                                    color: 'var(--san)',
-                                    fontFamily: 'var(--mono)',
-                                    lineHeight: 1.3,
-                                  }}
+                                  className="san-badge"
                                 >
                                   {rId}
                                 </span>
@@ -435,18 +375,8 @@ export default function SanitaryTables({
                           </div>
                         )}
                       </td>
-                      <td
-                        className="c"
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontWeight: 700,
-                          fontSize: 10.5,
-                          padding: '1px 2px',
-                        }}
-                      >
-                        {udAcum}
-                      </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="san-mono-700 c">{udAcum}</td>
+                      <td className="c san-pad">
                         {edit ? (
                           <input
                             type="text"
@@ -489,42 +419,18 @@ export default function SanitaryTables({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                             }}
-                            style={{
-                              ...SanitaryDesign_S1,
-                              width: 52,
-                              textAlign: 'center',
-                            }}
+                            className="san-input san-input-w52"
                           />
                         ) : nSalidas > 0 ? (
-                          <span style={{ fontFamily: 'var(--mono)' }}>{nSalidas}</span>
+                          <span className="san-mono">{nSalidas}</span>
                         ) : (
                           '—'
                         )}
                       </td>
-                      <td
-                        className="c"
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontWeight: 600,
-                          padding: '1px 2px',
-                        }}
-                      >
-                        {K != null ? K.toFixed(2) : '—'}
-                      </td>
-                      <td
-                        className="c"
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontWeight: 600,
-                          padding: '1px 2px',
-                        }}
-                      >
-                        {Q != null && Q > 0 ? Q.toFixed(2) : '—'}
-                      </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
-                        {n > 0 ? n.toFixed(3) : '—'}
-                      </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="san-mono-600 c">{K != null ? K.toFixed(2) : '—'}</td>
+                      <td className="san-mono-600 c">{Q != null && Q > 0 ? Q.toFixed(2) : '—'}</td>
+                      <td className="c san-pad san-mono">{n > 0 ? n.toFixed(3) : '—'}</td>
+                      <td className="c san-pad">
                         {edit ? (
                           <input
                             type="text"
@@ -568,11 +474,7 @@ export default function SanitaryTables({
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                             }}
-                            style={{
-                              ...SanitaryDesign_S1,
-                              width: 50,
-                              textAlign: 'center',
-                            }}
+                            className="san-input san-input-w50"
                           />
                         ) : sVal > 0 ? (
                           fmt(sVal, 2)
@@ -580,23 +482,16 @@ export default function SanitaryTables({
                           '—'
                         )}
                       </td>
-                      <td
-                        className="c"
-                        style={{
-                          fontFamily: 'var(--mono)',
-                          fontSize: 10.5,
-                          padding: '1px 2px',
-                        }}
-                      >
+                      <td className="san-pad san-mono san-fs c">
                         {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '--'}
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         <select
                           aria-label="Diámetro diseño"
                           value={DdisPulg || ''}
                           disabled={!edit}
                           onChange={(e) => handleDiamChange(tKey, parseFloat(e.target.value) || 0)}
-                          style={SanitaryDesign_S1}
+                          className="san-input"
                         >
                           <option value="">—</option>
                           {DIAM_OPTIONS_SAN.map((o) => (
@@ -606,53 +501,51 @@ export default function SanitaryTables({
                           ))}
                         </select>
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         {DdisPulg > 0 && DintMm > 0 ? fmt(DintMm, 2) : '--'}
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         {DdisPulg > 0
                           ? DcalcPulg > 0
                             ? renderStatus(DcalcPulg <= DdisPulg ? 'Ok' : 'No cumple')
                             : renderStatus('No cumple')
                           : renderStatus('No cumple')}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Qo > 0 ? Qo.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Vo > 0 ? Vo.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && qqo > 0 ? qqo.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Vreal > 0 ? Vreal.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         {DdisPulg > 0 ? renderStatus(chequeoV) : 'No cumple'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Yc > 0 ? Yc.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Yn > 0 ? Yn.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Froude > 0 ? Froude.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ fontSize: 10.5, padding: '1px 2px' }}>
-                        {DdisPulg > 0 ? tipoFlujo : '--'}
-                      </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-fs">{DdisPulg > 0 ? tipoFlujo : '--'}</td>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && Ymax > 0 ? Ymax.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         {DdisPulg > 0 ? renderStatus(chequeoYn) : 'No cumple'}
                       </td>
-                      <td className="c" style={{ fontFamily: 'var(--mono)', padding: '1px 2px' }}>
+                      <td className="c san-pad san-mono">
                         {DdisPulg > 0 && fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '--'}
                       </td>
-                      <td className="c" style={{ padding: '1px 2px' }}>
+                      <td className="c san-pad">
                         {DdisPulg > 0 ? renderStatus(chequeoFT) : 'No cumple'}
                       </td>
                     </tr>

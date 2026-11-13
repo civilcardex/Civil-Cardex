@@ -28,7 +28,8 @@ export async function fetchProyectosOrThrow(): Promise<ProyectoRow[]> {
   const { data, error } = await supabase
     .from(CF_TABLES.proyectos)
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(200);
   if (error) throw new Error(error.message);
   return ((data as unknown as Record<string, unknown>[]) || []).map(rowToProyecto);
 }
@@ -48,7 +49,8 @@ export async function fetchProyectos(): Promise<ProyectoRow[]> {
     const { data, error } = await supabase
       .from(CF_TABLES.proyectos)
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (error) {
       if (

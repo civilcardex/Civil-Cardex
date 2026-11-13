@@ -15,7 +15,6 @@ interface CalculoUCProps {
 import { useState, useEffect } from 'react';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const monof = 'var(--mono)';
 const txt2 = '#94a3b8';
 const txt = '#e2e8f0';
@@ -142,7 +141,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
               className="tbl"
               style={{ minWidth: 'min(800px, calc(100vw - 260px))' }}
             >
-              <caption style={SR_ONLY_STYLE}>{`Cálculo de unidades de consumo ${title}`}</caption>
+              <caption className="sr-only">{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
                   <th

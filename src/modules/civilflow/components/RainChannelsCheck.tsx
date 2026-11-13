@@ -17,14 +17,7 @@ import type { DrawingData } from '../utils/drawingSync.ts';
 import { EV_SAN_SYNC, EV_HIDRO_SYNC, EV_STORAGE } from '../utils/fixtureEvents.ts';
 
 // Encabezados compactos (orig. usuario: sin scroll horizontal): wrap a 2-3 líneas.
-const thL: React.CSSProperties = {
-  fontSize: 10,
-  textAlign: 'center',
-  padding: '1px 2px',
-  whiteSpace: 'normal',
-};
-const thG: React.CSSProperties = { ...thL, fontWeight: 700, letterSpacing: 0.3 };
-const thOk: React.CSSProperties = { ...thL };
+// (.tbl th.rain-th10/.rain-thg10 del tables.css llevan white-space: normal).
 
 export default function ChequeoCanalesLluvias() {
   const [edit, setEdit] = React.useState(false);
@@ -138,86 +131,70 @@ export default function ChequeoCanalesLluvias() {
 
   return (
     <section className="card">
-      <div
-        className="card-h"
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-      >
+      <div className="card-h rain-flex-8">
         <h3 className="card-t">
           <img
             src="/iconos_civilflow/diseno_redes/aguas_lluvias/RALL_Chequeo_canal_cubierta.webp"
             alt="Chequeo canal cubierta"
             width={24}
             height={24}
-            style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+            className="gas-icon-24"
             loading="lazy"
           />{' '}
           Chequeo capacidad canal recolectora cubierta aguas lluvias
         </h3>
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="ml-auto-x">
           <EditButton edit={edit} setEdit={setEdit} />
         </div>
       </div>
       {!conRecolectora ? (
-        <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--txt3)', fontSize: 12 }}>
-          Activa el canal recolectora para ver este chequeo.
-        </div>
+        <div className="rain-empty-12">Activa el canal recolectora para ver este chequeo.</div>
       ) : (
-        <div style={{ padding: '12px' }}>
-          <table
-            ref={tablaRef}
-            className="tbl"
-            style={{
-              fontSize: 10,
-              tableLayout: 'fixed',
-              width: '100%',
-              borderCollapse: 'collapse',
-            }}
-          >
+        <div className="rain-pad-12">
+          <table ref={tablaRef} className="tbl rain-table-fix">
             <colgroup>
-              <col style={{ width: '4.5%' }} />
-              <col style={{ width: '5.5%' }} />
-              <col style={{ width: '3.8%' }} />
-              <col style={{ width: '3.4%' }} />
-              <col style={{ width: '3.8%' }} />
-              <col style={{ width: '3.8%' }} />
-              <col style={{ width: '3.8%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '3.2%' }} />
-              <col style={{ width: '4.5%' }} />
-              <col style={{ width: '4%' }} />
-              <col style={{ width: '7.5%' }} />
-              <col style={{ width: '3.6%' }} />
-              <col style={{ width: '3.4%' }} />
-              <col style={{ width: '3.2%' }} />
-              <col style={{ width: '3.2%' }} />
-              <col style={{ width: '3.6%' }} />
-              <col style={{ width: '3.4%' }} />
-              <col style={{ width: '3.6%' }} />
-              <col style={{ width: '4%' }} />
-              <col style={{ width: '3.8%' }} />
-              <col style={{ width: '4.2%' }} />
-              <col style={{ width: '4.2%' }} />
-              <col style={{ width: '4.4%' }} />
-              <col style={{ width: '4.2%' }} />
-              <col style={{ width: '4.2%' }} />
+              <col data-w="4.5" />
+              <col data-w="5.5" />
+              <col data-w="3.8" />
+              <col data-w="3.4" />
+              <col data-w="3.8" />
+              <col data-w="3.8" />
+              <col data-w="3.8" />
+              <col data-w="7" />
+              <col data-w="3.2" />
+              <col data-w="4.5" />
+              <col data-w="4" />
+              <col data-w="7.5" />
+              <col data-w="3.6" />
+              <col data-w="3.4" />
+              <col data-w="3.2" />
+              <col data-w="3.2" />
+              <col data-w="3.6" />
+              <col data-w="3.4" />
+              <col data-w="3.6" />
+              <col data-w="4" />
+              <col data-w="3.8" />
+              <col data-w="4.2" />
+              <col data-w="4.2" />
+              <col data-w="4.4" />
+              <col data-w="4.2" />
+              <col data-w="4.2" />
             </colgroup>
             <thead>
               <tr>
                 <th
                   title="Canal recolector de cubierta (CNL) según el dibujo."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-th10"
                   rowSpan={2}
-                  style={thL}
                 >
                   Canal
                 </th>
                 <th
                   title="Bajantes que descargan al canal: definen el N° de bocas y el reparto del caudal."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-th10"
                   rowSpan={2}
-                  style={thL}
                 >
                   Bajantes
                   <br />
@@ -226,72 +203,64 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Áreas que drenan al canal (m²)."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={5}
-                  style={thG}
                 >
                   ÁREA (m²)
                 </th>
                 <th
                   title="Método racional aplicado al área efectiva."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={4}
-                  style={thG}
                 >
                   CAUDAL DE DISEÑO
                 </th>
                 <th
                   title="Material, rugosidad y pendiente del canal."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={3}
-                  style={thG}
                 >
                   CANAL
                 </th>
                 <th
                   title="Dimensiones de la sección del canal (cm) — manda el dibujo."
                   scope="col"
-                  className="col-h ok"
+                  className="col-h ok rain-thg10"
                   colSpan={4}
-                  style={thG}
                 >
                   SECCIÓN PROPUESTA
                 </th>
                 <th
                   title="Capacidad de la sección y uso del canal."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={2}
-                  style={thG}
                 >
                   CAPACIDAD (Manning)
                 </th>
                 <th
                   title="Tirante normal y velocidad del agua en el canal."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={2}
-                  style={thG}
                 >
                   FLUJO REAL
                 </th>
                 <th
                   title="Entrega del canal al bajante: embocadura y su altura de agua."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={2}
-                  style={thG}
                 >
                   DESCARGA AL BAJANTE
                 </th>
                 <th
                   title="Chequeos de capacidad del canal y de la embocadura."
                   scope="col"
-                  className="col-h ll"
+                  className="col-h ll rain-thg10"
                   colSpan={2}
-                  style={thG}
                 >
                   CHEQUEOS
                 </th>
@@ -300,48 +269,42 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Área de los bajantes que descargan al canal (m²)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Parcial
                 </th>
                 <th
                   title="Área adicional no dibujada, editable (m²)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Otras
                 </th>
                 <th
                   title="Área total = Parcial + Otras (m²)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Total
                 </th>
                 <th
                   title="Área de muros que descargan sobre el canal (m²)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Muro
                 </th>
                 <th
                   title="Área efectiva = Total más la mitad del muro vertical."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Efectiva
                 </th>
                 <th
                   title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Material
                   <br />
@@ -350,8 +313,7 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Coef.
                   <br />
@@ -360,24 +322,21 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Intensidad
                 </th>
                 <th
                   title="Caudal real que llega al canal (L/s). Unidad: L/s."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Q real
                 </th>
                 <th
                   title="Material del canal: define la rugosidad n. Visite el catálogo maestro para más información."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Material
                   <br />
@@ -386,64 +345,56 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Rugosidad del material del canal."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Manning
                 </th>
                 <th
                   title="Pendiente longitudinal del canal (%) — manda el dibujo. Unidad: porcentaje (%)."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Pend.
                 </th>
                 <th
                   title="Ancho de la base del canal (cm) — editable, escribe al dibujo. Unidad: cm."
                   scope="col"
-                  className="col-h ok"
-                  style={thOk}
+                  className="col-h ok rain-th10"
                 >
                   Base
                 </th>
                 <th
                   title="Altura útil del canal (cm) — editable, escribe al dibujo. Unidad: cm."
                   scope="col"
-                  className="col-h ok"
-                  style={thOk}
+                  className="col-h ok rain-th10"
                 >
                   Altura
                 </th>
                 <th
                   title="Borde libre sobre el tirante (cm) — editable, default 10. Unidad: cm."
                   scope="col"
-                  className="col-h ok"
-                  style={thOk}
+                  className="col-h ok rain-th10"
                 >
                   Borde
                 </th>
                 <th
                   title="Sección total = base más altura más borde libre. Unidad: cm."
                   scope="col"
-                  className="col-h ok"
-                  style={thOk}
+                  className="col-h ok rain-th10"
                 >
                   Total
                 </th>
                 <th
                   title="Capacidad máxima de la sección (L/s). Unidad: L/s."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Q máx
                 </th>
                 <th
                   title="Uso de la capacidad del canal: debe ser ≤ 100%."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Q real/
                   <br />Q máx
@@ -451,24 +402,21 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Profundidad del agua en el canal (m). Unidad: m."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Tirante
                 </th>
                 <th
                   title="Velocidad del agua en el canal (m/s). Unidad: m/s."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Vel.
                 </th>
                 <th
                   title="Menor diámetro propuesto de los bajantes asociados (pulg). Unidad: pulg."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Diámetro
                   <br />
@@ -477,16 +425,14 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="Altura de lámina de agua requerida en la embocadura (m). Unidad: m."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Lámina
                 </th>
                 <th
                   title="O.K. si el canal tiene capacidad para el caudal real."
                   scope="col"
-                  className="col-h ll"
-                  style={thL}
+                  className="col-h ll rain-th10"
                 >
                   Qreal ≤<br />
                   Qmáx
@@ -494,8 +440,7 @@ export default function ChequeoCanalesLluvias() {
                 <th
                   title="O.K. si la lámina requerida cabe en la altura útil; sin bajantes: Revisar."
                   scope="col"
-                  className="col-h ok"
-                  style={thOk}
+                  className="col-h ok rain-th10"
                 >
                   H ≤ h<br />
                   útil
@@ -505,15 +450,7 @@ export default function ChequeoCanalesLluvias() {
             <tbody>
               {canalesLl.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={26}
-                    style={{
-                      padding: '24px 0',
-                      textAlign: 'center',
-                      color: 'var(--txt3)',
-                      fontSize: 10,
-                    }}
-                  >
+                  <td colSpan={26} className="rain-empty-10">
                     No hay canales. Dibuja canales recolectores en el visor para que aparezcan aquí.
                   </td>
                 </tr>

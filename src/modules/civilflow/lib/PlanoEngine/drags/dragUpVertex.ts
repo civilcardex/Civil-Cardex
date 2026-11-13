@@ -15,6 +15,7 @@ import {
 import { asociarRamalABajantes } from '../drawingUtils.ts';
 import { dragFlowCheck, draggedOntoWrongPadre, tryRotateToValidAngle } from './dragValidation.ts';
 import { checkAccesorioTrigger } from './dragUpRamalBody.ts';
+import { verificaSRociadores, renumeraRociadores } from '../RCIAutoDraw.ts';
 
 /** Vértice soltado: cadena de validaciones en orden — ángulos (primaryOk/linkedOk, con
  *  excepción de llegada a caja) → padre → flujo → autoSplit → asociación a bajantes. */
@@ -26,6 +27,54 @@ export function dragUpVertex(engine: IPlanoEngineCore): void {
   engine.ptDrag = null;
   engine._markDirty();
   const ram = engine.ramales.find((r) => r.id === rId);
+  /* ROCIADOR ARRastrado (ped. usuario 2026-11-13): un vértice interior con rociador rci se
+   * PROYECTA al eje del ramal (queda sobre su polilínea) y se verifica la separación S —
+   * hueco > S revierte el arrastre con los backups del move. */
+  const idxV = ptIdx;
+  const accV = ram?.accMed?.[`accMed${idxV}`];
+  if (
+    ram &&
+    ram.net === 'rci' &&
+    accV &&
+    /rociador/i.test(accV) &&
+    idxV > 0 &&
+    idxV < ram.pts.length - 1 &&
+    engine._dragBackupPts
+  ) {
+    // Proyectar al punto más cercano del propio ramal SIN el vértice (clamp al segmento).
+    let mejor: number[] | null = null;
+    let mejorD = Infinity;
+    for (let i = 0; i < ram.pts.length - 1; i++) {
+      if (i !== idxV - 1 && i !== idxV) continue;
+      const ax = ram.pts[i][0];
+      const ay = ram.pts[i][1];
+      const bx = ram.pts[i + 1][0];
+      const by = ram.pts[i + 1][1];
+      const px = ram.pts[idxV][0];
+      const py = ram.pts[idxV][1];
+      const dx = bx - ax;
+      const dy = by - ay;
+      const len2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+      const q = [ax + dx * t, ay + dy * t];
+      const d = Math.hypot(px - q[0], py - q[1]);
+      if (d < mejorD) {
+        mejorD = d;
+        mejor = q;
+      }
+    }
+    if (mejor) ram.pts[idxV] = mejor;
+    // S EXACTA (ped. usuario 2026-11-13): el hueco debe coincidir con S. Al mover a mano la
+    // coincidencia exacta es improbable — SE ALERTA la desviación pero la posición (ya
+    // proyectada al eje del ramal) se conserva: revertir haría imposible mover a mano.
+    const errS = verificaSRociadores(engine, ram.id);
+    if (errS) engine.triggerAlert('Separación de rociadores', errS);
+    renumeraRociadores(engine);
+    engine._dragBackupPts = null;
+    engine._markDirty();
+    engine.render();
+    return;
+  }
   const linkedRamales = (linkedPts || [])
     .map((l) => engine.ramales.find((r) => r.id === l.id))
     .filter((r): r is PlanoRamal => !!r);

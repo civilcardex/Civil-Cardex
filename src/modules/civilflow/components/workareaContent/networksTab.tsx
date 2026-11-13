@@ -5,7 +5,6 @@ import { DIAMETROS_AF, DIAMETROS_AC } from '../../constants/hydraulicsData.ts';
 import { lookupInterno, lookupInternoAC } from '../../utils/fittingsUtils.ts';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 
-import { SR_ONLY_STYLE } from '../../../../components/shared/sharedStyles.ts';
 const AccesoriosTable = lazy(() => import('../AccessoriesTable.tsx'));
 const HeaterSelection = lazy(() => import('../HeaterSelection.tsx'));
 const CalculoUD = lazy(() => import('../FixtureUnitCalc.tsx'));
@@ -134,7 +133,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
         data-tour="redes-chips"
         style={{ display: 'flex', gap: 6, flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}
       >
-        <legend style={SR_ONLY_STYLE}>Redes</legend>
+        <legend className="sr-only">Redes</legend>
         {redesActivas.map((r) => (
           <button
             type="button"

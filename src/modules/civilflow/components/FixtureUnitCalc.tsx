@@ -10,7 +10,6 @@ import { usePlans } from '../context/PlansContext.tsx';
 import { APARATOS_DEF, SAN_UC_IDS, pisoCorto } from '../constants';
 import { buildSanConnectivity } from '../utils/sanitaryRows.ts';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 import { tramoKeyPisoOf } from '../utils/keys.ts';
 /** Todos los tramos que cuelgan de una clave (hijos, nietos…), recorridos uno por uno con
  *  una pila; la lista de visitados corta los ciclos cuando dos tramos comparten destino. */
@@ -152,7 +151,7 @@ function CalculoUD() {
               className="tbl"
               style={{ minWidth: 'min(900px, calc(100vw - 260px))' }}
             >
-              <caption style={SR_ONLY_STYLE}>Cálculo de unidades de descarga</caption>
+              <caption className="sr-only">Cálculo de unidades de descarga</caption>
               <thead>
                 <tr>
                   <th

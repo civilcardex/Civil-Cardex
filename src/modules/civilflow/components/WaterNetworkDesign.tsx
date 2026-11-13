@@ -34,8 +34,6 @@ import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import { CHEQUEOS_PRESION_KEY } from '../constants/storage-keys.ts';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
-
 // ponytail: las 4 lecturas try/catch del libro de aparatos (la firma que decide si re-corre la
 // propagación) comparten una sola lectura. null = localStorage lanzó (modo privado/cuota) —
 // cada llamada decide con null qué hacer, igual que sus catch: 2 abortan la corrida y 2
@@ -604,7 +602,7 @@ function WaterNetworkDesign({
                 className="tbl"
                 style={{ fontSize: 10.5, tableLayout: 'auto', width: '100%' }}
               >
-                <caption style={SR_ONLY_STYLE}>{`Diseño de red ${title}`}</caption>
+                <caption className="sr-only">{`Diseño de red ${title}`}</caption>
 
                 <DesignTableHeader cssClass={cssClass} pais={proy.pais} />
                 <tbody>

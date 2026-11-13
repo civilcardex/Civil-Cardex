@@ -8,11 +8,9 @@ import { loadFromStorage } from '../services/storageService.ts';
 import { TRAZOS_PREFIX, APARATOS_BY_TRAMO_KEY } from '../constants/storage-keys.ts';
 import { GAS_APPARATUS, renouardByType } from '../utils/gasUtils.ts';
 import { pisoCorto } from '../constants';
-import { TH, TD } from '../styles/sharedTableStyles.ts';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import type { DrawingData } from '../utils/drawingSync.ts';
 
-import { SR_ONLY_STYLE } from '../../../components/shared/sharedStyles.ts';
 const ABREV = {
   est4: 'EST-4Q',
   est2: 'EST-2Q',
@@ -123,7 +121,7 @@ function GasCalcUC() {
         {/* Nivel integrado en la etiqueta del tramo (RG1-P1) — columna Nivel retirada. */}
         <th
           scope="col"
-          style={{ ...TH, minWidth: 44, fontSize: 11 }}
+          className="ds-th gas-th-min44"
           rowSpan={2}
           title="Identificador del tramo con su nivel (ej. RG1-P1 · S1 = sótano · C = cubierta)"
         >
@@ -131,7 +129,7 @@ function GasCalcUC() {
         </th>
         <th
           scope="col"
-          style={{ ...TH, fontSize: 11 }}
+          className="ds-th gas-th-11"
           rowSpan={2}
           title="Punto de inicio del tramo (nodo o bajante de origen)."
         >
@@ -139,7 +137,7 @@ function GasCalcUC() {
         </th>
         <th
           scope="col"
-          style={{ ...TH, fontSize: 11 }}
+          className="ds-th gas-th-11"
           rowSpan={2}
           title="Punto donde termina el tramo (nodo o bajante de destino)."
         >
@@ -147,12 +145,7 @@ function GasCalcUC() {
         </th>
         <th
           scope="col"
-          style={{
-            ...TH,
-            textAlign: 'center',
-            fontSize: 11,
-            borderBottom: '2px solid var(--line)',
-          }}
+          className="ds-th gas-th-group"
           colSpan={GAS_APPARATUS.length}
           title="Conteo de aparatos por tipo en el tramo (con su factor qg de gas debajo)."
         >
@@ -160,7 +153,7 @@ function GasCalcUC() {
         </th>
         <th
           scope="col"
-          style={{ ...TH, minWidth: 26, fontSize: 11 }}
+          className="ds-th gas-th-min26"
           rowSpan={2}
           title="Número total de aparatos del tramo."
         >
@@ -168,7 +161,7 @@ function GasCalcUC() {
         </th>
         <th
           scope="col"
-          style={{ ...TH, minWidth: 40, fontSize: 11 }}
+          className="ds-th gas-th-min40"
           rowSpan={2}
           title="Caudal de gas del tramo por Renouard (m³/h), con factores de corrección."
         >
@@ -181,9 +174,9 @@ function GasCalcUC() {
             scope="col"
             key={a.id}
             title={`${a.nombre}: qg = ${a.qgas} m³/h por aparato.`}
-            style={{ ...TH, minWidth: 30, fontSize: 11, padding: '2px 2px', lineHeight: 1.1 }}
+            className="ds-th gas-th-min30"
           >
-            <div style={{ fontWeight: 700 }}>{(ABREV as Record<string, string>)[a.id]}</div>
+            <div className="gas-bold">{(ABREV as Record<string, string>)[a.id]}</div>
           </th>
         ))}
       </tr>
@@ -200,28 +193,20 @@ function GasCalcUC() {
               alt="Cálculo UC gas"
               width={24}
               height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+              className="gas-icon-24"
               loading="lazy"
             />
             Cálculo de unidades de consumo gas
           </h3>
           <span className="card-s">0 tramos</span>
         </div>
-        <div style={{ padding: 16 }}>
-          <table className="tbl" style={{ width: '100%' }}>
-            <caption style={SR_ONLY_STYLE}>Cálculo de unidades de consumo gas</caption>
+        <div className="gas-empty">
+          <table className="tbl">
+            <caption className="sr-only">Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>
               <tr>
-                <td
-                  colSpan={3 + GAS_APPARATUS.length + 2}
-                  style={{
-                    padding: '24px 0',
-                    textAlign: 'center',
-                    color: 'var(--txt3)',
-                    fontSize: 12.5,
-                  }}
-                >
+                <td colSpan={3 + GAS_APPARATUS.length + 2} className="gas-empty-row">
                   No hay tramos con aparatos de gas.
                 </td>
               </tr>
@@ -234,10 +219,7 @@ function GasCalcUC() {
 
   return (
     <>
-      <section
-        className="card"
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-      >
+      <section className="gas-card-fill card">
         <div className="card-h">
           <h3 className="card-t">
             <img
@@ -245,70 +227,46 @@ function GasCalcUC() {
               alt="Cálculo UC gas"
               width={24}
               height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+              className="gas-icon-24"
               loading="lazy"
             />
             Cálculo de unidades de consumo gas
           </h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
-        <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
-          <table ref={tablaRef} className="tbl" style={{ width: '100%' }}>
-            <caption style={SR_ONLY_STYLE}>Cálculo de unidades de consumo gas</caption>
+        <div className="gas-scroll">
+          <table ref={tablaRef} className="tbl">
+            <caption className="sr-only">Cálculo de unidades de consumo gas</caption>
             {tableHeader}
             <tbody>
               {tramos.map((t, i) => (
                 <tr key={t.id}>
-                  <td className="c" style={{ ...TD, padding: '1px 1px' }}>
+                  <td className="c ds-td gas-td-1">
                     <span
-                      className="sigla"
-                      style={{ fontSize: 12.5, fontWeight: 600 }}
+                      className="gas-fs gas-semibold sigla"
                       title={`Tramo ${t.id}${t.piso != null && t.piso !== '' ? ` — nivel ${pisoCorto(Number(t.piso))}` : ''}`}
                     >
                       {t.id}
                       {t.piso != null && t.piso !== '' ? `-${pisoCorto(Number(t.piso))}` : ''}
                     </span>
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 1px' }}>
-                    <span style={{ fontSize: 12.5 }}>{t.ini || '\u2014'}</span>
+                  <td className="c ds-td gas-td-1">
+                    <span className="gas-fs">{t.ini || '\u2014'}</span>
                   </td>
-                  <td className="c" style={{ ...TD, padding: '1px 1px' }}>
-                    <span style={{ fontSize: 12.5 }}>{t.fin || '\u2014'}</span>
+                  <td className="c ds-td gas-td-1">
+                    <span className="gas-fs">{t.fin || '\u2014'}</span>
                   </td>
                   {GAS_APPARATUS.map((a) => (
-                    <td key={a.id} className="c" style={{ ...TD, padding: '2px 2px' }}>
-                      <span
-                        style={{
-                          fontSize: 12.5,
-                          color: (t.counts[a.id] || 0) === 0 ? 'var(--txt3)' : 'var(--txt)',
-                        }}
-                      >
+                    <td key={a.id} className="c ds-td gas-td-2">
+                      <span className={`gas-fs${(t.counts[a.id] || 0) === 0 ? ' gas-zero' : ''}`}>
                         {t.counts[a.id] || 0}
                       </span>
                     </td>
                   ))}
-                  <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      padding: '1px 1px',
-                      fontWeight: 600,
-                      fontSize: 12.5,
-                      color: 'var(--txt)',
-                    }}
-                  >
+                  <td className="c ds-td gas-td-1 gas-semibold gas-fs gas-txt">
                     {tramoAppCounts[i]}
                   </td>
-                  <td
-                    className="c"
-                    style={{
-                      ...TD,
-                      padding: '1px 1px',
-                      fontWeight: 700,
-                      fontSize: 12.5,
-                      color: 'var(--txt)',
-                    }}
-                  >
+                  <td className="c ds-td gas-td-1 gas-bold gas-fs gas-txt">
                     {tramoTotals[i].toFixed(2)}
                   </td>
                 </tr>
@@ -316,79 +274,27 @@ function GasCalcUC() {
             </tbody>
             <tfoot>
               <tr>
-                <td
-                  className="c"
-                  style={{
-                    ...TD,
-                    padding: '1px 1px',
-                    fontWeight: 600,
-                    fontSize: 12.5,
-                    color: 'var(--txt3)',
-                    textAlign: 'center',
-                    borderTop: '2px solid var(--line)',
-                  }}
-                >
+                <td className="c ds-td gas-td-1 gas-semibold gas-fs gas-zero gas-td-top-2">
                   &Sigma;
                 </td>
-                <td style={{ borderTop: '2px solid var(--line)', padding: 0 }}></td>
-                <td style={{ borderTop: '2px solid var(--line)', padding: 0 }}></td>
+                <td className="gas-td-top-0"></td>
+                <td className="gas-td-top-0"></td>
                 {GAS_APPARATUS.map((a) => {
                   const total = (totalByAp as Record<string, number>)[a.id] || 0;
                   return (
-                    <td
-                      key={a.id}
-                      className="c"
-                      style={{ ...TD, padding: '2px 2px', borderTop: '2px solid var(--line)' }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 0,
-                          fontSize: 12.5,
-                          fontFamily: 'var(--mono)',
-                        }}
-                      >
-                        <span style={{ fontWeight: 600, color: 'var(--txt)', fontSize: 12.5 }}>
-                          {total}
-                        </span>
-                        <span style={{ color: 'var(--txt3)', fontSize: 10.5 }}>
-                          &times; {a.qgas}
-                        </span>
-                        <span style={{ fontWeight: 700, color: 'var(--gas)', fontSize: 12.5 }}>
-                          {(total * a.qgas).toFixed(2)}
-                        </span>
+                    <td key={a.id} className="c ds-td gas-td-2 gas-td-top-2">
+                      <div className="gas-stack">
+                        <span className="gas-foot-600">{total}</span>
+                        <span className="gas-foot-mult">&times; {a.qgas}</span>
+                        <span className="gas-foot-gas">{(total * a.qgas).toFixed(2)}</span>
                       </div>
                     </td>
                   );
                 })}
-                <td
-                  className="c"
-                  style={{
-                    ...TD,
-                    padding: '1px 1px',
-                    fontWeight: 600,
-                    fontSize: 12.5,
-                    color: 'var(--txt)',
-                    textAlign: 'center',
-                    borderTop: '2px solid var(--line)',
-                  }}
-                >
+                <td className="c ds-td gas-td-1 gas-semibold gas-fs gas-txt gas-td-top-2">
                   {totalAppCount}
                 </td>
-                <td
-                  className="c"
-                  style={{
-                    ...TD,
-                    padding: '1px 1px',
-                    fontWeight: 700,
-                    fontSize: 12.5,
-                    color: 'var(--txt)',
-                    textAlign: 'center',
-                    borderTop: '2px solid var(--line)',
-                  }}
-                >
+                <td className="c ds-td gas-td-1 gas-bold gas-fs gas-txt gas-td-top-2">
                   {globalTotal.toFixed(2)}
                 </td>
               </tr>

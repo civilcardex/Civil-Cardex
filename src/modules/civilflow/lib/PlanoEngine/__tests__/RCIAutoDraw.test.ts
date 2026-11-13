@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { sembrarRociadores, crearRamalesParalelos } from '../RCIAutoDraw.ts';
+import {
+  sembrarRociadores,
+  crearRamalesParalelos,
+  verificaSRociadores,
+  renumeraRociadores,
+} from '../RCIAutoDraw.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
 /** Engine mínimo para las funciones de dibujo automático: escala 0.5 m/px estándar
@@ -248,14 +253,10 @@ import { chequeoMurosTrazo } from '../RCIAutoDraw.ts';
 
 describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
   it('muro sin ramal cerca → mensaje con la distancia y el Dmuro', () => {
-    // Escala 0.5: 1 m = 75,59 px. Muro en y=0; trazo nuevo en y=200 px (2,65 m).
+    // Escala 0.5: 1 m = 75,59 px. Muro en y=0; trazo nuevo en y=200 px (2,65 m). El trazado
+    // NO está en engine.ramales: finishRamal corre ANTES del push (como en producción).
     const eng = motorDe(
-      [
-        ramalDe('RRCI1', [
-          [0, 200],
-          [400, 200],
-        ]),
-      ],
+      [],
       [
         {
           id: 'GL1',
@@ -277,27 +278,20 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       1.7,
     );
     expect(err).toBeTruthy();
-    expect(err).toContain('una parte del muro más cercano queda a 2,65 m');
+    expect(err).toContain('queda a 2,65 m del muro más cercano');
     expect(err).toContain('(DMR) es de 1,7 m');
   });
 
-  it('MUROS EN L: el trazo cubre la pata cercana pero NO la conectada → bloquea por ambas', () => {
-    // L en la esquina (0,0): pata horizontal y=[0,400]×0 y pata vertical x=0×[0,400] (comparten
-    // el vértice (0,0)). El trazo nuevo en y=80 px (1,06 m) cubre la horizontal (≤ Dmuro 1,7)
-    // pero la vertical también queda a ≤ Dmuro de ÉL... para forzar la falla la vertical está
-    // lejos de todo ramal: trazo solo llega hasta x=100, el resto de la vertical (y>100) queda
-    // a 106 px ≈ 1,4 m... usamos Dmuro 1,0: horizontal a 1,06 NO cubre → bloquea igualmente.
-    // Caso claro: trazo a 80 px de la horizontal (1,06 m) y la vertical a > Dmuro de ambos.
-    // Trazo en x=60..460, y=120: dist a horizontal=120 px (1,59 m ≤ 1,7 ✓ si cubre él mismo),
-    // dist a vertical=60 px (0,79 m) — la vertical está MÁS cerca del trazo; para que bloquee,
-    // el trazo debe quedar lejos de la vertical: trazo en x=300..700 → dist vertical=300 px
-    // (3,97 m > 1,7) y dist horizontal=120 px (1,59 ≤ 1,7). Conector: el trazo cubre la
-    // horizontal pero la vertical (del mismo grupo) queda a 3,97 m sin ramal cerca → alerta.
+  it('SALÓN GRANDE (captura): trazo PEGADO al muro superior → null (proximidad ok)', () => {
+    // Caja trazada como UNA guía: (0,0)→(1000,0)→(1000,600)→(0,600). Trazo pegado al muro
+    // superior (y=100): cada tramo del trazado tiene su muro más cercano a ≤ Dmuro → el
+    // trazado pasa. NO bloquean la vertical derecha ni el inferior (proximidad, ped.
+    // usuario 2026-11-13: solo los muros que el trazado tiene cerca).
     const eng = motorDe(
       [
         ramalDe('RRCI1', [
-          [300, 120],
-          [700, 120],
+          [130, 100],
+          [880, 100],
         ]),
       ],
       [
@@ -307,98 +301,9 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
           esMuro: true,
           pts: [
             [0, 0],
-            [400, 0],
-          ],
-        },
-        {
-          id: 'GL2',
-          net: 'rci',
-          esMuro: true,
-          pts: [
-            [0, 0],
-            [0, 400],
-          ],
-        },
-      ],
-    );
-    const err = chequeoMurosTrazo(
-      eng,
-      [
-        [300, 120],
-        [700, 120],
-      ],
-      1.7,
-    );
-    expect(err).toBeTruthy();
-    expect(err).toContain('grupo de 2 tramos de muro conectados');
-    expect(err).toContain('(DMR) es de 1,7 m');
-  });
-
-  it('L dibujada como UNA polilínea con doblez: la pata lejana también bloquea', () => {
-    // Mismo escenario del test anterior pero la L es UN solo muro: [(0,400),(0,0),(400,0)] —
-    // dos segmentos compartiendo el vértice (0,0). distPoli de la polilínea entera devolvería
-    // el mínimo (la pata cercana) y la lejana escaparía; a nivel segmento se juzgan ambas.
-    const eng = motorDe(
-      [
-        ramalDe('RRCI1', [
-          [300, 120],
-          [700, 120],
-        ]),
-      ],
-      [
-        {
-          id: 'GL1',
-          net: 'rci',
-          esMuro: true,
-          pts: [
-            [0, 400],
-            [0, 0],
-            [400, 0],
-          ],
-        },
-      ],
-    );
-    const err = chequeoMurosTrazo(
-      eng,
-      [
-        [300, 120],
-        [700, 120],
-      ],
-      1.7,
-    );
-    expect(err).toBeTruthy();
-    expect(err).toContain('grupo de 2 tramos de muro conectados');
-  });
-
-  it('MUROS EN L: si el trazo + ramales CUBREN ambas patas (peor punto ≤ Dmuro) → null (se crea)', () => {
-    // Grupo de 2. Cobertura: el trazo horizontal a 80 px (1,06 m) cubre la pata horizontal
-    // COMPLETA y el arranque de la vertical; un ramal vertical existente cubre el resto.
-    // El PEOR punto de cada pata queda ≤ Dmuro → null. (La diagonal del test anterior dejaba
-    // la esquina (0,0) a 3,74 m: con la cobertura por muestreo ya NO basta la distancia mínima.)
-    const eng = motorDe(
-      [
-        ramalDe('RRCI1', [
-          [0, 140],
-          [0, 400],
-        ]),
-      ],
-      [
-        {
-          id: 'GL1',
-          net: 'rci',
-          esMuro: true,
-          pts: [
-            [0, 0],
-            [400, 0],
-          ],
-        },
-        {
-          id: 'GL2',
-          net: 'rci',
-          esMuro: true,
-          pts: [
-            [0, 0],
-            [0, 400],
+            [1000, 0],
+            [1000, 600],
+            [0, 600],
           ],
         },
       ],
@@ -407,15 +312,18 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       chequeoMurosTrazo(
         eng,
         [
-          [30, 80],
-          [400, 80],
+          [130, 100],
+          [880, 100],
         ],
-        1.7,
+        2,
       ),
     ).toBeNull();
   });
 
-  it('trazo que cubre el muro (≤ Dmuro) → null (se crea)', () => {
+  it('SALÓN GRANDE: trazo CENTRAL lejos de todos los muros → bloquea por proximidad', () => {
+    // El trazo está a ~2,17 m de TODOS los muros con Dmuro 2: el muro más cercano a cada
+    // tramo supera la DMR → alerta (doctrina original: el trazado no debe alejarse de los
+    // muros más de S máx/2).
     const eng = motorDe(
       [],
       [
@@ -425,21 +333,24 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
           esMuro: true,
           pts: [
             [0, 0],
-            [400, 0],
+            [1000, 0],
+            [1000, 600],
+            [0, 600],
           ],
         },
       ],
     );
-    // Trazo a 80 px ≈ 1,06 m del muro (≤ 1,7) y cubre TODA su longitud.
     const err = chequeoMurosTrazo(
       eng,
       [
-        [0, 80],
-        [400, 80],
+        [400, 300],
+        [600, 300],
       ],
-      1.7,
+      2,
     );
-    expect(err).toBeNull();
+    expect(err).toBeTruthy();
+    expect(err).toContain('queda a');
+    expect(err).toContain('(DMR) es de 2 m');
   });
 
   it('MURO MÁS LARGO que la cobertura: el extremo descubierto bloquea aunque el punto más cercano cumpla', () => {
@@ -460,17 +371,16 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         },
       ],
     );
-    const err = chequeoMurosTrazo(
-      eng,
-      [
-        [0, 80],
-        [200, 80],
-      ],
-      1.7,
-    );
-    expect(err).toBeTruthy();
-    expect(err).toContain('una parte del muro');
-    expect(err).toContain('2,85');
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [0, 80],
+          [200, 80],
+        ],
+        1.7,
+      ),
+    ).toBeNull();
   });
 
   it('BANDA: solo los muros a ≤ 2·Dmuro del trazo se juzgan (los lejanos esperan su ramal)', () => {
@@ -546,14 +456,17 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
     ).toBeNull();
   });
 
-  it('muro de la banda YA CUBIERTO por un ramal existente → null (el nuevo no importa)', () => {
+  it('RED EXISTENTE como referencia: el trazo pegado al ramal ya dibujado pasa aunque esté lejos del muro', () => {
+    // Muro en y=0 y ramal rci existente en y=300 (a 3,97 m del muro). El trazo nuevo pegado
+    // AL RAMAL (y=310) queda a 4,10 m del muro pero a 0,13 m de la red: pasa (ped. usuario:
+    // los ramales que conectan con la red existente no bloquean por lejanía de muros).
     const eng = motorDe(
       [
         ramalDe('RRCI1', [
-          [0, 0],
-          [400, 0],
+          [0, 300],
+          [400, 300],
         ]),
-      ], // pegado al muro (0 px): lo cubre
+      ],
       [
         {
           id: 'GL1',
@@ -566,12 +479,11 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         },
       ],
     );
-    // El trazo nuevo a 2,65 m deja el muro a 0 m del ramal existente → banda cubierta → pasa.
     const err = chequeoMurosTrazo(
       eng,
       [
-        [0, 200],
-        [400, 200],
+        [0, 310],
+        [400, 310],
       ],
       1.7,
     );
@@ -673,5 +585,64 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         1.7,
       ),
     ).toBeNull();
+  });
+});
+
+describe('S EXACTA entre rociadores (tolerancia solo numérica)', () => {
+  it('siembra automática: huecos exactamente S → verificaSRociadores = null', () => {
+    const r = ramalDe('RRCI1', [
+      [0, 0],
+      [755.9, 0],
+    ]);
+    const eng = motorDe([r]);
+    sembrarRociadores(eng, 'RRCI1', 2.5);
+    expect(verificaSRociadores(eng, 'RRCI1', 2.5)).toBeNull();
+  });
+
+  it('hueco MENOR que S (rociador manual a mitad): alerta con la desviación', () => {
+    // 2 rociadores a ~1.25 m (la mitad de S): hueco 47.25 px < pasoPx 94.5 px.
+    const r = ramalDe('RRCI2', [
+      [0, 0],
+      [400, 0],
+    ]);
+    r.accesorioInicio = 'rociador#1';
+    r.accMed = { accMed1: 'rociador#2' };
+    const eng = motorDe([r]);
+    const err = verificaSRociadores(eng, 'RRCI2', 2.5);
+    expect(err).toBeTruthy();
+    expect(err).toContain('debe ser exactamente');
+  });
+
+  it('hueco MAYOR que S: también alerta', () => {
+    const r = ramalDe('RRCI3', [
+      [0, 0],
+      [755.9, 0],
+    ]);
+    r.accesorioInicio = 'rociador#1';
+    r.accMed = { accMed3: 'rociador#2' }; // 3 pasos ≈ 7.5 m con S 2.5
+    const eng = motorDe([r]);
+    expect(verificaSRociadores(eng, 'RRCI3', 2.5)).toBeTruthy();
+  });
+});
+
+describe('tipo de rociador sincronizado con el símbolo', () => {
+  it('cambiar el tipo (rociador→rociadorMontante) conserva ROC-N y NO toca la geometría', () => {
+    const r = ramalDe('RRCI4', [
+      [0, 0],
+      [755.9, 0],
+    ]);
+    const eng = motorDe([r]);
+    sembrarRociadores(eng, 'RRCI4', 2.5);
+    const ptsAntes = JSON.stringify(r.pts);
+    // El usuario cambia el tipo desde el desplegable (mismo gesto que midRamalAccessorySelector):
+    const accMed = { ...(r.accMed || {}) };
+    accMed['accMed1'] = 'rociadorMontante';
+    eng.updateElementById('RRCI4', { accMed });
+    renumeraRociadores(eng);
+    // Geometría intacta (solo cambió el tipo del accesorio):
+    expect(JSON.stringify(r.pts)).toBe(ptsAntes);
+    // El ROC-N se conserva (renumera reasigna 1..4 en orden):
+    expect(r.accMed?.['accMed1']).toBe('rociadorMontante#2');
+    expect(r.accesorioInicio).toBe('rociador#1');
   });
 });

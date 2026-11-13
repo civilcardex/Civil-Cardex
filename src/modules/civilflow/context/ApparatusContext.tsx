@@ -125,8 +125,9 @@ async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null> {
         // Del OWNER del proyecto activo (propios sin proyecto activo): evita mezclar
         // filas de dueño y miembro en un mismo snapshot de catálogo.
         .eq('user_id', ownerId ?? session.user.id)
-        .order('id'),
-      supabase.from(CF_TABLES.aparatosUdBase).select('id, nombre, ud'),
+        .order('id')
+        .limit(500),
+      supabase.from(CF_TABLES.aparatosUdBase).select('id, nombre, ud').limit(500),
     ]);
     if (userRes.error) throw userRes.error;
     if (udBaseRes.error) throw udBaseRes.error;
@@ -135,7 +136,8 @@ async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null> {
     if (rows.length === 0) {
       const { data: base, error: baseError } = await supabase
         .from(CF_TABLES.aparatosCatalogo)
-        .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud');
+        .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud')
+        .limit(500);
       if (baseError) throw baseError;
       if (base && base.length > 0) {
         rows = (base as CatalogoGlobalRow[]).map((r) => ({
@@ -162,7 +164,8 @@ async function loadAparatosUsuario(): Promise<AparatosUsuarioData | null> {
       // persiste el snapshot completo y la BD queda sana.
       const { data: base, error: baseError } = await supabase
         .from(CF_TABLES.aparatosCatalogo)
-        .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud');
+        .select('id, s, n, g, ucaf, ucac, ud, pmin, pmax, qg, ctrl, blk_ud')
+        .limit(500);
       if (baseError) throw baseError;
       if (base && base.length > 0) {
         const ownIds = new Set(rows.map((r) => r.client_id));

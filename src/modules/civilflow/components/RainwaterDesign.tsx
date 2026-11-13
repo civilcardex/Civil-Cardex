@@ -2,7 +2,7 @@
  * Diseño de la red de ll (Lluvias): tablas de bajantes y canales con diámetro/pendiente escritos al dibujo y chequeo hidráulico por fila (velocidad, régimen por Froude, fuerza tractiva).
  * Ej: bajar la pendiente de un canal puede marcar la fila en rojo si el régimen o la fuerza tractiva salen del rango permitido.
  */
-import React, { useMemo, useCallback, useEffect, useState } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import ChipList from './shared/ChipList.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
@@ -29,33 +29,6 @@ import {
   computeLlRows,
   getTributarioIds,
 } from '../utils/rainwaterRows.ts';
-
-const RainwaterDesign_S2: React.CSSProperties = {
-  fontFamily: 'var(--mono)',
-  fontSize: 11.5,
-  padding: '2px 2px',
-  border: '1px solid var(--line)',
-  borderRadius: 2,
-  background: 'var(--bg2)',
-  color: 'var(--txt)',
-  cursor: 'pointer',
-  maxWidth: 72,
-};
-// Input de pendiente editable (mismo ancho/mono que el select de diámetro).
-const RainwaterDesign_S3: React.CSSProperties = {
-  ...RainwaterDesign_S2,
-  cursor: 'text',
-  textAlign: 'center',
-  width: 50,
-};
-const TH_HDR = { fontSize: 10, textAlign: 'center', padding: '2px 3px' } as const;
-// Estilo repetido de las celdas de datos: TD_MONO para códigos/id (fuente mono) y TD_NUM para números.
-const TD_MONO: React.CSSProperties = {
-  fontFamily: 'var(--mono)',
-  fontSize: 11.5,
-  padding: '2px 3px',
-};
-const TD_NUM: React.CSSProperties = { fontSize: 11.5, padding: '2px 3px' };
 
 export default function DisenoLluvias() {
   const { proy } = useProyecto();
@@ -165,54 +138,50 @@ export default function DisenoLluvias() {
               alt="Diseño red aguas lluvias"
               width={24}
               height={24}
-              style={{ width: 24, height: 24, verticalAlign: 'middle', marginRight: 4 }}
+              className="gas-icon-24"
               loading="lazy"
             />{' '}
             Diseño de red aguas lluvias
           </h3>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          <div className="gas-row-auto">
             <span className="card-s">{displayTramos.length} tramos</span>
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
         </div>
-        <div className="scroll-top" style={{ padding: '16px' }}>
+        <div className="san-pad-16 scroll-top">
           <div className="scroll-inner">
-            <table ref={tablaRef} className="tbl" style={{ fontSize: 11.5 }}>
+            <table ref={tablaRef} className="ll-fs tbl">
               <thead>
                 <tr>
                   <th
                     title="Tramo de la red de aguas lluvias según el dibujo."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Tramo
                   </th>
                   <th
                     title="Punto de inicio del tramo."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Inicio
                   </th>
                   <th
                     title="Punto donde termina el tramo."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Fin
                   </th>
                   <th
                     title="Bajantes que descargan en este tramo."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Bajantes
                     <br />
@@ -221,27 +190,24 @@ export default function DisenoLluvias() {
                   <th
                     title="Caudal de diseño acumulado del tramo (L/s). Unidad: L/s."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Caudal
                   </th>
                   <th
                     title="Rugosidad n del material de la tubería."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Manning
                   </th>
                   <th
                     title="Pendiente del tramo (%) — manda el dibujo. Unidad: porcentaje (%)."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Pendiente
                   </th>
@@ -250,50 +216,40 @@ export default function DisenoLluvias() {
                       'Diámetro del tramo: calculado, propuesto y su interior. Unidad: pulgadas (").'
                     }
                     scope="col"
-                    className="col-h ok"
+                    className="ll-th ll-th-group col-h ok"
                     colSpan={4}
-                    style={{
-                      textAlign: 'center',
-                      fontSize: 10,
-                      padding: '2px 3px',
-                      borderBottom: '2px solid var(--line)',
-                    }}
                   >
                     Diámetro
                   </th>
                   <th
                     title="Capacidad máxima del diámetro propuesto (L/s). Unidad: L/s."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Q<sub>o</sub>
                   </th>
                   <th
                     title="Velocidad de salida/capacidad asociada al diámetro (m/s). Unidad: m/s."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     V<sub>o</sub>
                   </th>
                   <th
                     title="Uso de la capacidad: debe ser ≤ 100%."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Q/Q<sub>o</sub>
                   </th>
                   <th
                     title="Velocidad real del flujo con el diámetro propuesto (m/s). Unidad: m/s."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Velocidad
                     <br />
@@ -302,9 +258,8 @@ export default function DisenoLluvias() {
                   <th
                     title="O.K. si la velocidad está dentro del rango permitido."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Chequeo
                     <br />
@@ -313,68 +268,56 @@ export default function DisenoLluvias() {
                   <th
                     title="Tirante crítico del flujo (mm). Unidad: mm."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Y<sub>c</sub>
                   </th>
                   <th
                     title="Tirante normal del flujo (mm). Unidad: mm."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Y<sub>n</sub>
                   </th>
                   <th
                     title="Número de Froude del flujo (subcrítico si es menor a 1)."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Froude
                   </th>
                   <th
                     title="Régimen del flujo según el número de Froude."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Flujo
                   </th>
                   <th
                     title="Altura máxima admisible del tirante (mm). Unidad: mm."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Y<sub>max</sub>
                   </th>
                   <th
                     title="Comparación del tirante normal contra el crítico."
                     scope="col"
-                    className="col-h ll"
+                    className="ll-th col-h ll"
                     rowSpan={2}
-                    style={TH_HDR}
                   >
                     Y<sub>n</sub> vs Y<sub>c</sub>
                   </th>
                   <th
                     title="Esfuerzo de arrastre sobre el tubo; debe superar el mínimo de autolimpieza."
                     scope="col"
-                    className="col-h ven"
+                    className="ll-th ll-th-group col-h ven"
                     colSpan={2}
-                    style={{
-                      textAlign: 'center',
-                      fontSize: 10,
-                      padding: '2px 3px',
-                      borderBottom: '2px solid var(--line)',
-                    }}
                   >
                     Fuerza Tractiva
                   </th>
@@ -383,48 +326,42 @@ export default function DisenoLluvias() {
                   <th
                     title='Diámetro calculado con el caudal y la pendiente (pulg). Unidad: pulgadas (").'
                     scope="col"
-                    className="col-h ok"
-                    style={TH_HDR}
+                    className="ll-th col-h ok"
                   >
                     Calculado
                   </th>
                   <th
                     title='Diámetro comercial propuesto (pulg) — editable. Unidad: pulgadas (").'
                     scope="col"
-                    className="col-h ok"
-                    style={TH_HDR}
+                    className="ll-th col-h ok"
                   >
                     Diseño
                   </th>
                   <th
                     title="Diámetro interior del tubo propuesto (mm). Unidad: mm."
                     scope="col"
-                    className="col-h ok"
-                    style={TH_HDR}
+                    className="ll-th col-h ok"
                   >
                     Interior
                   </th>
                   <th
                     title="O.K. si el diámetro propuesto cubre el calculado."
                     scope="col"
-                    className="col-h ok"
-                    style={TH_HDR}
+                    className="ll-th col-h ok"
                   >
                     Chequeo
                   </th>
                   <th
                     title="Fuerza tractiva real del flujo (kg/m²). Unidad: kg/m²."
                     scope="col"
-                    className="col-h ven"
-                    style={TH_HDR}
+                    className="ll-th col-h ven"
                   >
                     Real
                   </th>
                   <th
                     title="La fuerza tractiva debe superar 0,15 kg/m² (autolimpieza)."
                     scope="col"
-                    className="col-h ven"
-                    style={TH_HDR}
+                    className="ll-th col-h ven"
                   >
                     &gt;0.15
                   </th>
@@ -465,39 +402,20 @@ export default function DisenoLluvias() {
                     } = row;
                     return (
                       <tr key={tKey}>
-                        <td className="c" style={{ padding: '2px 3px' }}>
-                          <span className="sigla" style={{ fontSize: 11.5 }}>
+                        <td className="ll-pad-3 c">
+                          <span className="sigla ll-fs">
                             {id || tKey}
                             {piso != null ? `-${pisoCorto(piso)}` : ''}
                           </span>
                         </td>
 
-                        <td className="c" style={{ padding: '2px 3px' }}>
-                          <span
-                            style={{
-                              fontSize: 11.5,
-                              fontFamily: 'var(--mono)',
-                              color: 'var(--txt2)',
-                            }}
-                          >
-                            {desde || '—'}
-                          </span>
+                        <td className="ll-pad-3 c">
+                          <span className="ll-mono-dim">{desde || '—'}</span>
                         </td>
-                        <td className="c" style={{ padding: '2px 3px' }}>
-                          <span
-                            style={{
-                              fontSize: 11.5,
-                              fontFamily: 'var(--mono)',
-                              color: 'var(--txt2)',
-                            }}
-                          >
-                            {hasta || '—'}
-                          </span>
+                        <td className="ll-pad-3 c">
+                          <span className="ll-mono-dim">{hasta || '—'}</span>
                         </td>
-                        <td
-                          className="c"
-                          style={{ padding: '2px 3px', minWidth: 60, maxWidth: 120 }}
-                        >
+                        <td className="ll-minmax c">
                           {(() => {
                             const associatedBajantes = bajantesAsociadas.map((c) =>
                               pisoByBajCode[c] != null ? `${c}-${pisoCorto(pisoByBajCode[c])}` : c,
@@ -505,13 +423,9 @@ export default function DisenoLluvias() {
                             return <ChipList items={associatedBajantes} />;
                           })()}
                         </td>
-                        <td className="c" style={TD_MONO}>
-                          {Q > 0 ? Q.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {n > 0 ? n.toFixed(3) : '—'}
-                        </td>
-                        <td className="c" style={{ padding: '2px 2px' }}>
+                        <td className="ll-td-mono c">{Q > 0 ? Q.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{n > 0 ? n.toFixed(3) : '—'}</td>
+                        <td className="ll-pad-2 c">
                           {edit ? (
                             <input
                               type="text"
@@ -560,18 +474,16 @@ export default function DisenoLluvias() {
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                               }}
-                              style={RainwaterDesign_S3}
+                              className="ll-input ll-input-w50"
                             />
                           ) : (
-                            <span style={{ fontFamily: 'var(--mono)', fontSize: 11.5 }}>
-                              {sVal > 0 ? fmt(sVal, 2) : '—'}
-                            </span>
+                            <span className="ll-mono">{sVal > 0 ? fmt(sVal, 2) : '—'}</span>
                           )}
                         </td>
-                        <td className="c" style={TD_MONO}>
+                        <td className="ll-td-mono c">
                           {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}
                         </td>
-                        <td className="c" style={{ padding: '2px 2px' }}>
+                        <td className="ll-pad-2 c">
                           <select
                             aria-label="Seleccionar diámetro"
                             value={DdisPulg || ''}
@@ -579,7 +491,7 @@ export default function DisenoLluvias() {
                             onChange={(e) =>
                               handleDiamChange(tKey, id, parseFloat(e.target.value) || 0)
                             }
-                            style={RainwaterDesign_S2}
+                            className="ll-input"
                           >
                             <option value="">—</option>
                             {DIAM_OPTIONS_LL.map((o) => (
@@ -589,51 +501,23 @@ export default function DisenoLluvias() {
                             ))}
                           </select>
                         </td>
-                        <td className="c" style={TD_NUM}>
-                          {DintMm > 0 ? fmt(DintMm, 2) : '—'}
-                        </td>
-                        <td className="c" style={TD_NUM}>
-                          {renderStatus(chequeoD)}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Qo > 0 ? Qo.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Vo > 0 ? Vo.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {qqo > 0 ? qqo.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Vreal > 0 ? Vreal.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_NUM}>
-                          {renderStatus(chequeoV)}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Yc > 0 ? Yc.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Yn > 0 ? Yn.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_MONO}>
-                          {Froude > 0 ? Froude.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_NUM}>
-                          {tipoFlujo}
-                        </td>
-                        <td className="c" style={TD_NUM}>
-                          {Ymax > 0 ? Ymax.toFixed(2) : '—'}
-                        </td>
-                        <td className="c" style={TD_NUM}>
-                          {renderStatus(chequeoYn)}
-                        </td>
-                        <td className="c" style={TD_NUM}>
+                        <td className="ll-td-num c">{DintMm > 0 ? fmt(DintMm, 2) : '—'}</td>
+                        <td className="ll-td-num c">{renderStatus(chequeoD)}</td>
+                        <td className="ll-td-mono c">{Qo > 0 ? Qo.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{Vo > 0 ? Vo.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{qqo > 0 ? qqo.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{Vreal > 0 ? Vreal.toFixed(2) : '—'}</td>
+                        <td className="ll-td-num c">{renderStatus(chequeoV)}</td>
+                        <td className="ll-td-mono c">{Yc > 0 ? Yc.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{Yn > 0 ? Yn.toFixed(2) : '—'}</td>
+                        <td className="ll-td-mono c">{Froude > 0 ? Froude.toFixed(2) : '—'}</td>
+                        <td className="ll-td-num c">{tipoFlujo}</td>
+                        <td className="ll-td-num c">{Ymax > 0 ? Ymax.toFixed(2) : '—'}</td>
+                        <td className="ll-td-num c">{renderStatus(chequeoYn)}</td>
+                        <td className="ll-td-num c">
                           {fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '—'}
                         </td>
-                        <td className="c" style={TD_NUM}>
-                          {renderStatus(chequeoFT)}
-                        </td>
+                        <td className="ll-td-num c">{renderStatus(chequeoFT)}</td>
                       </tr>
                     );
                   })

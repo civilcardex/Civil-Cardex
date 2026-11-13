@@ -10,10 +10,13 @@ const DIAG = Math.SQRT1_2;
  *  Ej: un rociador oculto se lee como anillo discontinuo con X sobre el ramal rci. true = dibujó. */
 export function drawRciSymbols(a: AccSimboloArgs): boolean {
   const { ctx, engine, accType, c, dx, dy, px, py } = a;
+  // Tipo base sin consecutivo ni flag NF ('rociadorMontanteNF#7' → 'rociadorMontante'):
+  // el glifo es el mismo si fluye o no — el estado NF lo muestra la etiqueta en azul-gris.
+  const tipo = accType.split('#')[0].replace(/NF$/, '');
   // Mismo tamaño que las válvulas (rad × 1.25): la familia se lee pareja sobre el trazo.
   const r = a.rad * 1.25;
 
-  if (accType === 'rociadorMontante') {
+  if (tipo === 'rociadorMontante') {
     estilo(ctx, engine);
     anillo(ctx, c.x, c.y, r * 0.9);
     cruzDiagonal(ctx, c.x, c.y, r * 0.9);
@@ -21,20 +24,22 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
     ctx.beginPath();
     ctx.arc(c.x, c.y, r * 0.34, 0, Math.PI * 2);
     ctx.fill();
+    drawEtiquetaRoc(a);
     return true;
   }
 
-  if (accType === 'rociadorSeco') {
+  if (tipo === 'rociadorSeco') {
     estilo(ctx, engine);
     anillo(ctx, c.x, c.y, r * 1.15);
     anillo(ctx, c.x, c.y, r * 0.9);
     anillo(ctx, c.x, c.y, r * 0.32);
     // La X va AL FINAL: cruza por encima del circulito central, como en el PDF.
     cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    drawEtiquetaRoc(a);
     return true;
   }
 
-  if (accType === 'rociadorOculto') {
+  if (tipo === 'rociadorOculto') {
     estilo(ctx, engine);
     // Anillo discontinuo: el rociador queda escondido bajo el cielorraso.
     ctx.save();
@@ -45,16 +50,18 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
     anillo(ctx, c.x, c.y, r * 0.34);
     // La X cruza por encima del circulito central (PDF).
     cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    drawEtiquetaRoc(a);
     return true;
   }
 
-  if (accType === 'rociadorArea') {
+  if (tipo === 'rociadorArea') {
     estilo(ctx, engine);
     anillo(ctx, c.x, c.y, r * 0.9);
     anillo(ctx, c.x, c.y, r * 0.32);
     // La X va AL FINAL y cruza por encima del circulito central, como en el PDF de
     // simbología (sin cuadradito ni hatch en los cuartos).
     cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    drawEtiquetaRoc(a);
     return true;
   }
 
@@ -165,4 +172,43 @@ function nudo(ctx: CanvasRenderingContext2D, cx: number, cy: number, mitad: numb
   ctx.rect(cx - mitad, cy - mitad, mitad * 2, mitad * 2);
   ctx.fill();
   ctx.stroke();
+}
+
+/** Etiqueta ROC-N del rociador (numeración consecutiva global por piso, ped. usuario
+ *  2026-11-13): INDEPENDIENTE del tipo — todos los rociadores la llevan. N = el consecutivo
+ *  del `#` en el valor del accesorio ('rociadorMontante#7' → «ROC-7»); sin `#` no dibuja.
+ *  Orientación: a la derecha del glifo si el ramal es vertical, arriba si es horizontal.
+ *  Ej: drawEtiquetaRoc(a) tras el símbolo del montante. true = dibujó etiqueta. */
+export function drawEtiquetaRoc(a: {
+  ctx: CanvasRenderingContext2D;
+  engine: { zoom: number };
+  accType: string;
+  c: { x: number; y: number };
+  dx: number;
+  dy: number;
+  rad: number;
+}): boolean {
+  const m = /^(rociador(?:NF)?|rociador(?:Montante|Seco|Oculto|Area)(?:NF)?)#(\d+)$/.exec(
+    a.accType,
+  );
+  if (!m) return false;
+  const num = m[2];
+  if (!num) return false;
+  const { ctx, engine, accType, c, dx, dy } = a;
+  const circR = a.rad * 1.25 * 0.9;
+  const fs = Math.max(8, circR * 1.35);
+  // NO fluye → etiqueta azul-gris (mismo código que el glifo del colgante en accValves).
+  ctx.fillStyle = /NF(?:#|$)/.test(accType) ? '#8ab4d6' : '#000000';
+  ctx.font = `bold ${fs}px sans-serif`;
+  const vertical = Math.abs(dx) < Math.abs(dy);
+  if (vertical) {
+    ctx.textAlign = 'left';
+    ctx.fillText(`ROC-${num}`, c.x + circR + fs * 0.6, c.y + fs * 0.35);
+  } else {
+    ctx.textAlign = 'center';
+    ctx.fillText(`ROC-${num}`, c.x, c.y - circR - fs * 0.9);
+  }
+  ctx.textAlign = 'left';
+  void engine;
+  return true;
 }

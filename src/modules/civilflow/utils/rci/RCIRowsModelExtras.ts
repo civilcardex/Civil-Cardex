@@ -530,6 +530,8 @@ export const SUBS_POR_TAB: Record<string, SubTab[]> = {
   tipologias: [
     { id: 'pisos', l: 'Pisos del edificio' },
     { id: 'tipos', l: 'Tipologías y avisos' },
+    { id: 'criterios', l: 'Criterios de diseño' },
+    { id: 'rectangulo', l: 'Rectángulo de fuego' },
     { id: 'corte', l: 'Corte esquemático' },
   ],
   hidraulica: [

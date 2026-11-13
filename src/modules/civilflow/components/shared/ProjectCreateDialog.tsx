@@ -10,6 +10,7 @@ import { clearLocalWorkspace } from '../../services/workspaceReset.ts';
 import { saveToStorage, setActiveProyectoId } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
+import { ModalShell } from '../../../../components/shared/ModalShell.tsx';
 import SuscripcionInactivaModal, {
   codigoProyecto,
 } from '../../../../components/shared/SubscriptionInactiveModal';
@@ -99,117 +100,47 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
-      }}
-    >
-      <div
-        style={{
-          background: 'var(--surface-container, #1e1e24)',
-          border: '1px solid var(--outline-variant, #3a3a44)',
-          borderRadius: 8,
-          padding: 24,
-          minWidth: 360,
-          maxWidth: 420,
-          boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+    <ModalShell ariaLabel="Nuevo proyecto">
+      <h3 className="dialog-title">Nuevo proyecto</h3>
+      <p className="dialog-lead">
+        Ingresa el nombre del proyecto. Se generará un código automático.
+      </p>
+      <input
+        ref={inputRef}
+        type="text"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleCreate();
+          if (e.key === 'Escape') {
+            onClose();
+            setName('');
+          }
         }}
-      >
-        <h3
-          style={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: 'var(--on-surface, #e2e2e8)',
-            margin: '0 0 4px',
+        placeholder="Nombre del proyecto"
+        aria-label="Nombre del proyecto"
+        className="project-create-dialog-input"
+      />
+      <div className="dialog-actions">
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            setName('');
           }}
+          className="dialog-btn dialog-btn-ghost"
         >
-          Nuevo proyecto
-        </h3>
-        <p
-          style={{ fontSize: 12, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={handleCreate}
+          disabled={!name.trim() || creating}
+          className="dialog-btn dialog-btn-primary"
         >
-          Ingresa el nombre del proyecto. Se generará un código automático.
-        </p>
-        <input
-          ref={inputRef}
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleCreate();
-            if (e.key === 'Escape') {
-              onClose();
-              setName('');
-            }
-          }}
-          placeholder="Nombre del proyecto"
-          aria-label="Nombre del proyecto"
-          className="project-create-dialog-input"
-          style={{
-            width: '100%',
-            padding: '8px 10px',
-            fontSize: 13,
-            background: 'var(--surface-container-low, #141418)',
-            border: '1px solid var(--outline-variant, #3a3a44)',
-            borderRadius: 4,
-            color: 'var(--on-surface, #e2e2e8)',
-            outline: 'none',
-            boxSizing: 'border-box',
-            fontFamily: 'Geist, monospace',
-          }}
-        />
-        <style>{`.project-create-dialog-input:focus-visible { outline: 2px solid var(--color-accent, #4D8FF7); outline-offset: 2px; }`}</style>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              setName('');
-            }}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              background: 'transparent',
-              border: '1px solid var(--outline-variant, #3a3a44)',
-              borderRadius: 4,
-              color: 'var(--on-surface, #e2e2e8)',
-              cursor: 'pointer',
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={!name.trim() || creating}
-            style={{
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 600,
-              background:
-                !name.trim() || creating
-                  ? 'var(--surface-container-low, #141418)'
-                  : 'var(--primary, #4D8FF7)',
-              border: 'none',
-              borderRadius: 4,
-              color:
-                !name.trim() || creating
-                  ? 'var(--on-surface-variant, #9ba8aa)'
-                  : 'var(--on-primary, #fff)',
-              cursor: !name.trim() || creating ? 'default' : 'pointer',
-            }}
-          >
-            {creating ? 'Creando...' : 'Crear Proyecto'}
-          </button>
-        </div>
+          {creating ? 'Creando...' : 'Crear Proyecto'}
+        </button>
       </div>
-    </div>
+    </ModalShell>
   );
 }

@@ -363,7 +363,12 @@ export function _trySelRamalDrag(
   );
   const accIdx = accIdxRaw;
   if (accIdx !== null) {
-    if (sel.bloqueado) return false;
+    // ROCIADOR rci (ped. usuario 2026-11-13): el deslizamiento SOBRE el eje del ramal no
+    // altera el largo ni la geometría — se permite aunque el ramal esté bloqueado (el candado
+    // congela los demás vértices y extremos, no el rociador que se desliza colineal).
+    const esRociadorRci =
+      sel.net === 'rci' && /rociador/i.test(String(sel.accMed?.[`accMed${accIdx}`] || ''));
+    if (sel.bloqueado && !esRociadorRci) return false;
     const a = sel.pts[accIdx - 1],
       b = sel.pts[accIdx + 1];
     engine._dragBackupPts = structuredClone(sel.pts);

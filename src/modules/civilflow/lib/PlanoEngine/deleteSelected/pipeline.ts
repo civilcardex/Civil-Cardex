@@ -11,6 +11,7 @@ import { purgarEstadoRamalesBorrados } from '../deleteCascade.ts';
 import { mergeTouchingRemnant } from '../deleteRemerge.ts';
 import { renumberCanales } from '../deleteHelpers.ts';
 import { distToPolyline } from '../../shared/geometry';
+import { renumeraRociadores } from '../RCIAutoDraw.ts';
 import { indiceBajanteDePiso, borrarFantasmaEnlaceEnConjunto } from './crossFloorLinks.ts';
 import { borrarRamalEnConjunto, borrarRamalIndividual } from './deleteRamales.ts';
 import { borrarBajanteEnConjunto, borrarBajanteIndividual } from './deleteBajantes.ts';
@@ -25,7 +26,7 @@ import type { CtxBorradoConjunto } from './ctx.ts';
 /** Borra la selección con cascada (limpia fantasmas y renumera las redes tocadas). Con `ids`
  *  borra ese lote; sin ellos, la selección viva. Ej: deleteSelected(engine) tras Supr borra el
  *  ramal, sus tributarios se reasignan al hermano y los junction markers quedan limpios. */
-export function deleteSelected(
+function deleteSelectedInterno(
   engine: IPlanoEngineCore,
   ids?: string[],
   opts?: { noMerge?: boolean },
@@ -159,7 +160,7 @@ export function deleteSelected(
   if (idxR >= 0) {
     // Ítem 9/v2 incluido: si el ramal es mitad de una división, borrarRamalIndividual
     // re-dispara deleteSelected con el lote expandido (mismo single-camino que antes).
-    borrarRamalIndividual(engine, engine.ramales[idxR], opts, deleteSelected);
+    borrarRamalIndividual(engine, engine.ramales[idxR], opts, deleteSelectedInterno);
     return;
   }
   // Se borra el bajante del PISO ABIERTO (mismo criterio que la ruta multi-selección arriba).
@@ -172,4 +173,17 @@ export function deleteSelected(
   if (borrarAreaIndividual(engine)) return;
   if (borrarDimIndividual(engine)) return;
   if (borrarGuiaIndividual(engine)) return;
+}
+
+/** Wrapper público del borrado: tras la cascada, los rociadores rci sobrevivientes quedan
+ *  numerados ROC-1..N CONSECUTIVO (H-06: borrar el del medio dejaba huecos ROC-1, ROC-3).
+ *  La recursión interna usa deleteSelectedInterno para renumerar UNA sola vez al final.
+ *  Ej: borrar ROC-2 de 3 → los otros dos se re-estampan ROC-1 y ROC-2. */
+export function deleteSelected(
+  engine: IPlanoEngineCore,
+  ids?: string[],
+  opts?: { noMerge?: boolean },
+): void {
+  deleteSelectedInterno(engine, ids, opts);
+  if (engine.ramales.some((r) => r.net === 'rci')) renumeraRociadores(engine);
 }

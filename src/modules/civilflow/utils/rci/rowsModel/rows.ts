@@ -12,6 +12,7 @@ import type {
   RedResult,
   Tips,
   TuberiaRow,
+  NumIn,
 } from '../../../lib/rci/types.ts';
 
 /* ============================ Sección 2: tipologías ============================ */
@@ -32,6 +33,8 @@ export interface FilaTipologia {
   techoIncl: string;
   ocultoComb: string;
   K: string;
+  /** Presión mínima del piso (psi); vacío = la global del proyecto. */
+  Pmin: string;
   S: string;
   L: string;
   /** Distancia máxima de rociador a muro (m); vacío = la global del proyecto. */
@@ -73,6 +76,7 @@ export function filasTipologias(est: RciState, tips: Tips | null): FilaTipologia
       techoIncl: txtDe(r.techoIncl),
       ocultoComb: txtDe(r.ocultoComb),
       K: txtDe(r.K),
+      Pmin: txtDe((r as PisoRow & { Pmin?: NumIn }).Pmin),
       S: txtDe(r.S),
       L: txtDe(r.L),
       Dmuro: txtDe(r.Dmuro),
