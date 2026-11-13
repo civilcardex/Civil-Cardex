@@ -10,14 +10,7 @@ import {
   MATERIALES_CANAL_LL,
   MATERIALES_CUBIERTA_LL,
 } from '../../../constants/engineeringDataMaterials.ts';
-import {
-  MENU_CHECK_LABEL_STYLE,
-  MENU_CHECK_ROW_STYLE,
-  MENU_GRID_2COL_STYLE,
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-} from './context.ts';
+import { MENU_CHECK_ROW_STYLE, type ContextMenuState } from './context.ts';
 
 /** Secciones de asociación del menú contextual y del panel derecho — estilos COMPARTIDOS (orig. usuario:
  * bajantes/cajas/canales/montantes/ramales deben verse idénticos) y lógica de toggle bidireccional. */
@@ -37,35 +30,11 @@ export const ASSOC_ROW_STYLE: React.CSSProperties = {
   borderRadius: 3,
 };
 
-/** Bloque de una sección del menú (etiqueta + filas) separado por línea superior. */
-const ASSOC_SECTION_STYLE: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  padding: '4px 8px',
-  borderTop: '1px solid #3a494a',
-  marginTop: 4,
-};
-
-/** Mensaje "sin canales asociados" a lo ancho de las 2 columnas de la grilla. */
-const ASSOC_EMPTY_STYLE: React.CSSProperties = {
-  fontSize: 12,
-  color: '#6b8cae',
-  fontFamily: "'Geist',monospace",
-  gridColumn: 'span 2',
-};
-
 /** Checkbox de asociación en ámbar (el color de "asociado" en todo el visor). */
 export const ASSOC_CHECKBOX_STYLE: React.CSSProperties = {
   accentColor: '#F5A623',
   margin: 0,
   flexShrink: 0,
-};
-
-const CELL_SPAN_STYLE: React.CSSProperties = {
-  flex: 1,
-  whiteSpace: 'normal',
-  wordBreak: 'break-word',
 };
 
 /** Refresca el menú sin cerrarlo: clona el estado para re-render y lectura fresca del motor. */
@@ -99,15 +68,15 @@ export function CanalesAsociadosBajSection({
   const vivo = eng?.bajantes.find((x) => x.id === bajEl.id);
   const actual = vivo?.canalId || '';
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Canales asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
-        {canales.length === 0 && <div style={ASSOC_EMPTY_STYLE}>Sin canales dibujados.</div>}
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Canales asociados</div>
+      <div className="dcm-grid-2col">
+        {canales.length === 0 && <div className="dcm-assoc-empty">Sin canales dibujados.</div>}
         {canales.map((c) => (
-          <label key={c.id} style={MENU_CHECK_LABEL_STYLE}>
+          <label key={c.id} className="dcm-check-label">
             <input
               type="checkbox"
-              style={ASSOC_CHECKBOX_STYLE}
+              className="dcm-assoc-checkbox"
               checked={actual === c.id}
               onChange={() => {
                 const e2 = ctx.engineRef.current;
@@ -124,7 +93,7 @@ export function CanalesAsociadosBajSection({
                 refrescarMenu(ctx.setContextMenuState);
               }}
             />
-            <span style={CELL_SPAN_STYLE}>{c.code || c.id}</span>
+            <span className="dcm-cell-span">{c.code || c.id}</span>
           </label>
         ))}
       </div>
@@ -145,15 +114,15 @@ export function CanalesAsociadosRamalSection({
   const vivo = eng?.ramales.find((x) => x.id === ramal.id);
   const actual = vivo?.esCanalId || '';
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Canales asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
-        {canales.length === 0 && <div style={ASSOC_EMPTY_STYLE}>Sin canales dibujados.</div>}
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Canales asociados</div>
+      <div className="dcm-grid-2col">
+        {canales.length === 0 && <div className="dcm-assoc-empty">Sin canales dibujados.</div>}
         {canales.map((c) => (
-          <label key={c.id} style={MENU_CHECK_LABEL_STYLE}>
+          <label key={c.id} className="dcm-check-label">
             <input
               type="checkbox"
-              style={ASSOC_CHECKBOX_STYLE}
+              className="dcm-assoc-checkbox"
               checked={actual === c.id}
               onChange={() => {
                 const e2 = ctx.engineRef.current;
@@ -170,7 +139,7 @@ export function CanalesAsociadosRamalSection({
                 refrescarMenu(ctx.setContextMenuState);
               }}
             />
-            <span style={CELL_SPAN_STYLE}>{c.code || c.id}</span>
+            <span className="dcm-cell-span">{c.code || c.id}</span>
           </label>
         ))}
       </div>
@@ -192,8 +161,8 @@ export function MaterialCubiertaBajSection({
   if (!mat || planNivel == null) return null;
   const chip = mat.chipDeBajante(bajEl.code || bajEl.id, planNivel);
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Material de cubierta</div>
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Material de cubierta</div>
       <select
         aria-label="Material de cubierta del bajante"
         value={mat.materialDeBajante(chip)}
@@ -201,7 +170,7 @@ export function MaterialCubiertaBajSection({
           mat.setMaterialBajante(chip, e.target.value);
           refrescarMenu(ctx.setContextMenuState);
         }}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">—</option>
         <OpcionesMaterial opts={MATERIALES_CUBIERTA_LL} />
@@ -223,8 +192,8 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
     opts: { nombre: string; abrev: string }[],
     val: string,
   ) => (
-    <div key={field} style={{ paddingTop: 4 }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>{label}</div>
+    <div key={field} className="dcm-pad-top">
+      <div className="dcm-section-label-row">{label}</div>
       <select
         aria-label={label}
         value={val}
@@ -232,7 +201,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
           mat.setMaterialCanal(canalId, field, e.target.value);
           refrescarMenu(ctx.setContextMenuState);
         }}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">—</option>
         <OpcionesMaterial opts={opts} />
@@ -240,7 +209,7 @@ export function MaterialesCanalSection({ ctx, canalId }: { ctx: CtxMin; canalId:
     </div>
   );
   return (
-    <div style={ASSOC_SECTION_STYLE}>
+    <div className="dcm-section">
       {sel(
         'Material de cubierta',
         'materialCubierta',
@@ -264,17 +233,17 @@ export function MontantesAsociadosSection({
   const montantes = eng?.bajantes.filter((b) => b.net === ramal.net && b.tipo === 'montante') || [];
   if (montantes.length === 0) return null;
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Montantes asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Montantes asociados</div>
+      <div className="dcm-grid-2col">
         {montantes.map((m) => {
           const activo =
             (m.recibeDeIds || []).includes(ramal.id) || (m.alimentaIds || []).includes(ramal.id);
           return (
-            <label key={m.id} style={MENU_CHECK_LABEL_STYLE}>
+            <label key={m.id} className="dcm-check-label">
               <input
                 type="checkbox"
-                style={ASSOC_CHECKBOX_STYLE}
+                className="dcm-assoc-checkbox"
                 checked={activo}
                 onChange={() => {
                   const e2 = ctx.engineRef.current;
@@ -287,7 +256,7 @@ export function MontantesAsociadosSection({
                   refrescarMenu(ctx.setContextMenuState);
                 }}
               />
-              <span style={CELL_SPAN_STYLE}>{m.code || m.id}</span>
+              <span className="dcm-cell-span">{m.code || m.id}</span>
             </label>
           );
         })}
@@ -314,18 +283,18 @@ export function RamalesAsociadosGabSection({
   if (ramales.length === 0) return null;
   const ramalPorId = new Map(eng.ramales.map((r) => [r.id, r]));
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Ramales asociados</div>
+      <div className="dcm-grid-2col">
         {ramales.map((r) => {
           const rec = new Set(vivo.recibeDeIds || []);
           const ali = new Set(vivo.alimentaIds || []);
           const activo = rec.has(r.id) || ali.has(r.id);
           return (
-            <label key={r.id} style={MENU_CHECK_LABEL_STYLE}>
+            <label key={r.id} className="dcm-check-label">
               <input
                 type="checkbox"
-                style={ASSOC_CHECKBOX_STYLE}
+                className="dcm-assoc-checkbox"
                 checked={activo}
                 onChange={() => {
                   const e2 = ctx.engineRef.current;
@@ -337,7 +306,7 @@ export function RamalesAsociadosGabSection({
                   refrescarMenu(ctx.setContextMenuState);
                 }}
               />
-              <span style={CELL_SPAN_STYLE}>{ramalPorId.get(r.id)?.label || r.id}</span>
+              <span className="dcm-cell-span">{ramalPorId.get(r.id)?.label || r.id}</span>
             </label>
           );
         })}
@@ -361,17 +330,17 @@ export function RamalesAsociadosMontSection({
     eng?.ramales.filter((r) => r.net === montante.net && r.tipo !== 'tributario') || [];
   if (ramales.length === 0) return null;
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Ramales asociados</div>
+      <div className="dcm-grid-2col">
         {ramales.map((r) => {
           const activo =
             (vivo.recibeDeIds || []).includes(r.id) || (vivo.alimentaIds || []).includes(r.id);
           return (
-            <label key={r.id} style={MENU_CHECK_LABEL_STYLE}>
+            <label key={r.id} className="dcm-check-label">
               <input
                 type="checkbox"
-                style={ASSOC_CHECKBOX_STYLE}
+                className="dcm-assoc-checkbox"
                 checked={activo}
                 onChange={() => {
                   const e2 = ctx.engineRef.current;
@@ -383,7 +352,7 @@ export function RamalesAsociadosMontSection({
                   refrescarMenu(ctx.setContextMenuState);
                 }}
               />
-              <span style={CELL_SPAN_STYLE}>{r.label || r.id}</span>
+              <span className="dcm-cell-span">{r.label || r.id}</span>
             </label>
           );
         })}
@@ -409,19 +378,19 @@ export function GabinetesAsociadosSection({
   /* Índice id→gabinete (Map, no find en bucle: G8). */
   const gabPorId = new Map(eng.bajantes.map((b) => [b.id, b]));
   return (
-    <div style={ASSOC_SECTION_STYLE}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Gabinetes asociados</div>
-      <div style={MENU_GRID_2COL_STYLE}>
+    <div className="dcm-section">
+      <div className="dcm-section-label-row">Gabinetes asociados</div>
+      <div className="dcm-grid-2col">
         {gabinetes.map((m) => {
           /* Sets (no .includes en bucle): G8 no cuenta búsquedas Set.has. */
           const rec = new Set(m.recibeDeIds || []);
           const ali = new Set(m.alimentaIds || []);
           const activo = rec.has(ramal.id) || ali.has(ramal.id);
           return (
-            <label key={m.id} style={MENU_CHECK_LABEL_STYLE}>
+            <label key={m.id} className="dcm-check-label">
               <input
                 type="checkbox"
-                style={ASSOC_CHECKBOX_STYLE}
+                className="dcm-assoc-checkbox"
                 checked={activo}
                 onChange={() => {
                   const e2 = ctx.engineRef.current;
@@ -434,7 +403,7 @@ export function GabinetesAsociadosSection({
                   refrescarMenu(ctx.setContextMenuState);
                 }}
               />
-              <span style={CELL_SPAN_STYLE}>{m.code || m.id}</span>
+              <span className="dcm-cell-span">{m.code || m.id}</span>
             </label>
           );
         })}

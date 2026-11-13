@@ -22,7 +22,7 @@ import {
   type PlanoRamal,
 } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
-import { MENU_SELECT_STYLE, MENU_ACTION_BTN_STYLE, type ContextMenuState } from './context.ts';
+import { type ContextMenuState } from './context.ts';
 import { RamalesAsociadosGrid } from './bajanteConnectionSections.tsx';
 import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers.ts';
 
@@ -184,7 +184,7 @@ export function BajanteConnectionPanel({
                           eng._markDirty();
                           setContextMenuState(null);
                         }}
-                        style={MENU_ACTION_BTN_STYLE}
+                        className="dcm-action-btn"
                       >
                         + Crear {bmLabel}
                       </button>
@@ -438,7 +438,7 @@ export function BajanteConnectionPanel({
                               engineRef.current._markDirty();
                             }
                           }}
-                          style={MENU_SELECT_STYLE}
+                          className="dcm-select"
                         >
                           <option value="">Ninguno</option>
                           {accOptions.map((o) => (
@@ -518,7 +518,7 @@ export function BajanteConnectionPanel({
                                     setSelElement({ ...selElement, ...u });
                                   }
                                 }}
-                                style={MENU_SELECT_STYLE}
+                                className="dcm-select"
                               >
                                 <option value="">— Sin diámetro —</option>
                                 {diamList.map((d) => {

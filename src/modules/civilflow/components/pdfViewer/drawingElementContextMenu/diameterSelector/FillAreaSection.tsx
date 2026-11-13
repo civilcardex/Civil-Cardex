@@ -6,11 +6,7 @@
 import type { MutableRefObject, Dispatch, SetStateAction } from 'react';
 import type PlanoEngine from '../../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../../lib/PlanoEngine/PlanoState.ts';
-import {
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-} from '../context.ts';
+import { type ContextMenuState } from '../context.ts';
 
 /** Fila de selects "Llenado (R)" y "Área" del bajante. */
 export function FillAreaSection({
@@ -29,7 +25,7 @@ export function FillAreaSection({
   return (
     <div style={{ display: 'flex', gap: 6, padding: '0 8px 4px' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Llenado (R)</div>
+        <div className="dcm-section-label-row">Llenado (R)</div>
         <select
           value={
             element.bajR != null
@@ -50,14 +46,14 @@ export function FillAreaSection({
               setSelElement({ ...selElement, bajR: valNum });
             }
           }}
-          style={MENU_SELECT_STYLE}
+          className="dcm-select"
         >
           <option value="7/24">7/24</option>
           <option value="1/4">1/4</option>
         </select>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Área</div>
+        <div className="dcm-section-label-row">Área</div>
         <select
           value={element.area_m2 || ''}
           aria-label="Área"
@@ -71,7 +67,7 @@ export function FillAreaSection({
               setSelElement({ ...selElement, area_m2: val });
             }
           }}
-          style={MENU_SELECT_STYLE}
+          className="dcm-select"
         >
           <option value="">Sin área</option>
           {(engineRef.current?.areas || [])

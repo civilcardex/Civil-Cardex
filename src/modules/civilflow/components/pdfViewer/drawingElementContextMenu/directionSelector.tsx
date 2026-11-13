@@ -10,12 +10,7 @@ import { hasTeeAtPoint } from '../../../lib/PlanoEngine/ventElbowTeeFix';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../../../lib/shared/projectTypes.ts';
-import {
-  MENU_DIR_BTN_STYLE,
-  MENU_FANTASMA_BTN_STYLE,
-  MENU_SECTION_LABEL_STYLE,
-  type ContextMenuState,
-} from './context.ts';
+import { type ContextMenuState } from './context.ts';
 
 /** Selector de dirección de flujo del bajante/montante (Sube/Baja/Continua) con validaciones de coherencia contra los ramales conectados,
  * y botón para activar o quitar el desplazamiento fantasma. */
@@ -70,18 +65,8 @@ export function BajanteDirectionSelector({
 
   return (
     <>
-      <div style={MENU_SECTION_LABEL_STYLE}>Dirección de flujo</div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-          gap: 3,
-          padding: '0 6px 4px',
-          boxSizing: 'border-box',
-          overflow: 'hidden',
-          width: '100%',
-        }}
-      >
+      <div className="dcm-section-label">Dirección de flujo</div>
+      <div className="dcm-dir-grid">
         {['Sube', 'Baja', 'Continua'].map((opt) => {
           const isActive = ghostDir === opt.toLowerCase();
           return (
@@ -257,30 +242,17 @@ export function BajanteDirectionSelector({
                   }
                 }
               }}
-              style={{
-                ...MENU_DIR_BTN_STYLE,
-                background: isActive ? 'rgba(37,99,235,0.15)' : '#1e2024',
-                border: `1px solid ${isActive ? '#2563eb' : '#3a494a'}`,
-                color: isActive ? '#3b82f6' : '#e2e2e8',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) e.currentTarget.style.background = '#2563eb33';
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) e.currentTarget.style.background = '#1e2024';
-              }}
+              className="dcm-dir-btn"
+              data-on={isActive ? 'true' : 'false'}
             >
               <div
-                style={{
-                  color: opt === 'Sube' ? '#00dce5' : opt === 'Baja' ? '#F04545' : '#FFEB3B',
-                  flexShrink: 0,
-                }}
+                className={
+                  opt === 'Sube' ? 'dcm-dir-up' : opt === 'Baja' ? 'dcm-dir-down' : 'dcm-dir-flat'
+                }
               >
                 {opt === 'Sube' ? '\u2B06' : opt === 'Baja' ? '\u2B07' : '\u279C'}
               </div>
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
-                {opt}
-              </span>
+              <span className="dcm-ellipsis">{opt}</span>
             </button>
           );
         })}
@@ -322,20 +294,8 @@ export function BajanteDirectionSelector({
             }, 50);
             engineRef.current?.render();
           }}
-          style={{
-            ...MENU_FANTASMA_BTN_STYLE,
-            background: element.isFantasma ? 'rgba(245,166,35,0.12)' : 'transparent',
-            color: element.isFantasma ? '#F5A623' : '#e2e2e8',
-          }}
-          onMouseEnter={(e) => {
-            if (!element.isFantasma) e.currentTarget.style.background = '#2563eb33';
-          }}
-          onMouseLeave={(e) => {
-            if (!element.isFantasma)
-              e.currentTarget.style.background = element.isFantasma
-                ? 'rgba(245,166,35,0.12)'
-                : 'transparent';
-          }}
+          className="dcm-fantasma-btn"
+          data-on={element.isFantasma ? 'true' : 'false'}
         >
           {element.isFantasma
             ? 'Desactivar desplazamiento del bajante'

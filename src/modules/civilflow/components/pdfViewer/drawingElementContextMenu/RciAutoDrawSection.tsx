@@ -16,11 +16,7 @@ import { loadRciDatos } from '../../../services/projectDataService.ts';
 import { loadFromStorage, getActiveProyectoId } from '../../../services/storageService.ts';
 import { RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
 import type { NumIn } from '../../../lib/rci/types.ts';
-import {
-  MENU_ACTION_BTN_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-} from './context.ts';
+import { type ContextMenuState } from './context.ts';
 import { RciAutoDrawModal } from './RCIAutoDrawModal.tsx';
 
 /** S y L del piso ACTIVO: manda su fila en Tipologías → Pisos del edificio; un valor vacío
@@ -136,14 +132,14 @@ export function RciAutoDrawSection({
           (disponible en todos, no solo el primero). S/L NO se preguntan: salen de la fila del
           piso en Tipologías → Pisos del edificio. */}
       <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Dibujo automático</div>
-        <button type="button" onClick={dibujarRociadores} style={MENU_ACTION_BTN_STYLE}>
+        <div className="dcm-section-label-row">Dibujo automático</div>
+        <button type="button" onClick={dibujarRociadores} className="dcm-action-btn">
           Dibujar rociadores (S = {rciSL.s || '—'} m)
         </button>
         <button
           type="button"
           onClick={() => setAutoDraw(true)}
-          style={{ ...MENU_ACTION_BTN_STYLE, marginTop: 4 }}
+          className="dcm-action-btn dcm-action-mt"
         >
           Dibujar ramales paralelos (L = {rciSL.l || '—'} m)
         </button>

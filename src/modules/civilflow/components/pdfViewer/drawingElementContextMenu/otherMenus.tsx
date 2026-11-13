@@ -1,16 +1,8 @@
 ﻿/** Menús contextuales "chicos" del visor: área, contador, calentador (delegan en el editor genérico) y canal ll (Lluvias) con dimensiones, materiales y bajantes asociados. Ej: clic derecho en un canal → editar base/altura en cm. */
 import { useState } from 'react';
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
-import {
-  useDrawingElementContextMenu,
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-} from './context.ts';
-import {
-  ASSOC_CHECKBOX_STYLE,
-  ASSOC_ROW_STYLE,
-  MaterialesCanalSection,
-} from './associatedChannels';
+import { useDrawingElementContextMenu } from './context.ts';
+import { MaterialesCanalSection } from './associatedChannels';
 import { ElementCodeEditor } from './elementEditor.tsx';
 import {
   ramalesDelCanal,
@@ -28,38 +20,24 @@ import { EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 export function MuroMenu() {
   const ctx = useDrawingElementContextMenu();
   const guiaEl = ctx.element as { id: string; esMuro?: boolean };
-  const eng = ctx.engineRef.current;
-  const quitar = (): void => {
-    if (!eng) return;
-    const vivo = (
-      eng as unknown as { guideLines?: Array<Record<string, unknown>> }
-    ).guideLines?.find((g) => g.id === guiaEl.id);
-    if (vivo) vivo.esMuro = false;
-    eng.render();
-    eng._markDirty();
-    ctx.setSelElement?.(null);
-    ctx.setContextMenuState(null);
-  };
   return (
     <div style={{ padding: '6px 10px 10px' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Muro</div>
-      <button
-        type="button"
-        onClick={quitar}
+      <div className="dcm-section-label-row">Muro</div>
+      {/* Informativo (ped. usuario 2026-11-13): SIN «Quitar muro» — un muro se elimina borrando
+       *  la línea guía como cualquier trazo. */}
+      <p
         style={{
-          border: '1.5px solid var(--rci, #f87171)',
-          background: 'transparent',
-          color: 'var(--rci, #f87171)',
-          borderRadius: 6,
-          padding: '5px 10px',
-          fontSize: 12,
-          fontWeight: 600,
-          cursor: 'pointer',
-          width: '100%',
+          margin: 0,
+          fontSize: 11.5,
+          lineHeight: 1.4,
+          color: 'var(--txt2)',
+          whiteSpace: 'normal',
         }}
       >
-        Quitar muro
-      </button>
+        Muro marcado {guiaEl.esMuro ? '' : '(definición perdida)'}: participa en la verificación de
+        distancia de ramales a muros (DMR) y en el mínimo de 0,10 m. Bórralo como cualquier línea
+        guía si no lo necesitas.
+      </p>
     </div>
   );
 }
@@ -92,7 +70,7 @@ export function RectFuegoMenu() {
   };
   return (
     <div style={{ padding: '4px 8px 8px' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Rectángulo de fuego</div>
+      <div className="dcm-section-label-row">Rectángulo de fuego</div>
       <div
         style={{
           fontSize: 11,
@@ -244,7 +222,7 @@ function CanalDimInput({
         const v = dec(text);
         onCommit(text === '' ? 0 : v);
       }}
-      style={MENU_SELECT_STYLE}
+      className="dcm-select"
     />
   );
 }
@@ -297,7 +275,7 @@ export function CanalMenu() {
     <>
       {(['base', 'longitud', 'altura', 'pendiente'] as const).map((field) => (
         <div key={field} style={{ padding: '0 8px 8px' }}>
-          <div style={MENU_SECTION_LABEL_ROW_STYLE}>{CANAL_FIELD_LABELS[field]}</div>
+          <div className="dcm-section-label-row">{CANAL_FIELD_LABELS[field]}</div>
           <CanalDimInput
             field={field}
             value={canal[field] || 0}
@@ -312,22 +290,20 @@ export function CanalMenu() {
       {/* BIDIRECCIONAL (orig. usuario): la asociación canal↔bajante vive en b.canalId —
           desde el canal se ven y marcan los mismos bajantes que desde el lado del bajante. */}
       <div style={{ padding: '0 8px 8px' }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bajantes asociados</div>
+        <div className="dcm-section-label-row">Bajantes asociados</div>
         {(() => {
           const bajantesLlDir = (engine?.bajantes || []).filter(
             (b) => b.net === 'll' && b.tipo === 'bajante',
           );
           if (bajantesLlDir.length === 0)
             return (
-              <div style={{ ...MENU_SELECT_STYLE, border: 'none', color: 'var(--txt3)' }}>
-                Sin bajantes de lluvias dibujados.
-              </div>
+              <div className="dcm-select dcm-select-plain">Sin bajantes de lluvias dibujados.</div>
             );
           return bajantesLlDir.map((b) => (
-            <label key={b.id} style={ASSOC_ROW_STYLE}>
+            <label key={b.id} className="dcm-check-row dcm-check-row-assoc">
               <input
                 type="checkbox"
-                style={ASSOC_CHECKBOX_STYLE}
+                className="dcm-assoc-checkbox"
                 checked={b.canalId === canal.id}
                 onChange={() => {
                   const eng = engineRef.current;
@@ -350,9 +326,9 @@ export function CanalMenu() {
         })()}
       </div>
       <div style={{ padding: '0 8px 8px' }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales del canal</div>
+        <div className="dcm-section-label-row">Ramales del canal</div>
         {canalRamales.length === 0 && (
-          <div style={{ ...MENU_SELECT_STYLE, border: 'none', color: 'var(--txt3)' }}>
+          <div className="dcm-select dcm-select-plain">
             Dibuja un ramal desde dentro del canal hacia un bajante.
           </div>
         )}
@@ -373,7 +349,7 @@ export function CanalMenu() {
                   setContextMenuState((prev) => (prev ? { ...prev } : null));
                   engineRef.current?.render();
                 }}
-                style={MENU_SELECT_STYLE}
+                className="dcm-select"
               >
                 <option value="">— Sin bajante —</option>
                 {bajantesLl.map((b) => (

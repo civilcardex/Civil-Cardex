@@ -11,12 +11,7 @@ import {
   bombsImmediateLowerFloor,
 } from '../../../utils/pumpAssociation';
 import { TRAZOS_PREFIX } from '../../../constants/storage-keys.ts';
-import {
-  useDrawingElementContextMenu,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  MENU_ACTION_BTN_STYLE,
-  MENU_CHECK_ROW_STYLE,
-} from './context.ts';
+import { useDrawingElementContextMenu } from './context.ts';
 
 /** Sección BOMBA para cajas AN/LL (Lluvias): "Crear bomba" (una por caja) o, si ya existe, "Bomba asociada" con nomenclatura, nivel, caja
  * de origen, UDs (Unidades de Desague) y bajante asociado. */
@@ -32,7 +27,7 @@ export function CajaBombaSection({
   if (!bomba) {
     return (
       <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-        <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bomba</div>
+        <div className="dcm-section-label-row">Bomba</div>
         <BotonCrearBomba ctx={ctx} caja={caja} />
       </div>
     );
@@ -59,7 +54,7 @@ export function CajaBombaSection({
   }
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Bomba asociada</div>
+      <div className="dcm-section-label-row">Bomba asociada</div>
       <div
         style={{ fontSize: 12, color: '#b9caca', fontFamily: "'Geist',monospace", lineHeight: 1.5 }}
       >
@@ -71,7 +66,7 @@ export function CajaBombaSection({
         <div>Unidades de descarga: {uds}</div>
         <div>Bajante asociado: {bajInfo}</div>
       </div>
-      <label style={MENU_CHECK_ROW_STYLE}>
+      <label className="dcm-check-row">
         <input
           type="checkbox"
           checked
@@ -115,7 +110,7 @@ export function AsociarBombaSection({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Asociar bomba del piso inferior</div>
+      <div className="dcm-section-label-row">Asociar bomba del piso inferior</div>
       {bombas.length === 0 && (
         <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace" }}>
           Sin bombas en el piso inmediatamente inferior
@@ -124,7 +119,7 @@ export function AsociarBombaSection({
       {bombas.map((row) => {
         const checked = bajEl.bombaEnId === `${row.planId}|${row.id}`;
         return (
-          <label key={row.planId + '|' + row.id} style={MENU_CHECK_ROW_STYLE}>
+          <label key={row.planId + '|' + row.id} className="dcm-check-row">
             <input
               type="checkbox"
               checked={checked}
@@ -187,7 +182,7 @@ export function BotonCrearBomba({
   return (
     <button
       type="button"
-      style={MENU_ACTION_BTN_STYLE}
+      className="dcm-action-btn"
       onClick={() => {
         if (!eng) return;
         handleCreateBomba(eng, caja);

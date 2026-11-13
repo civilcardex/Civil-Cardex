@@ -22,8 +22,6 @@ import type { MaterialItem } from '../../../context/ProjectContext.tsx';
 import {
   DrawingElementContextMenuCtx,
   useDrawingElementContextMenu,
-  MENU_PANEL_STYLE,
-  MENU_PANEL_BAJANTE_STYLE,
   type ContextMenuState,
   type LowerFloorRamales,
   type ProbedElement,
@@ -466,10 +464,10 @@ function DrawingElementContextMenuInner() {
           }
         }}
         style={{
-          ...(isBajanteTipo && !hasPts ? MENU_PANEL_BAJANTE_STYLE : MENU_PANEL_STYLE),
           left: adjustedPos.x,
           top: adjustedPos.y,
         }}
+        className={isBajanteTipo && !hasPts ? 'dcm-panel dcm-panel-bajante' : 'dcm-panel'}
         onContextMenu={(e) => e.preventDefault()}
       >
         {isBombaMenu ? (

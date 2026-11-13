@@ -46,13 +46,7 @@ import type {
 } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
 import type { MaterialItem } from '../../../context/ProjectContext.tsx';
-import {
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-  type ProbedElement,
-} from './context.ts';
+import { type ContextMenuState, type ProbedElement } from './context.ts';
 
 /** Cada tipo muestra solo SUS campos; escribe vía engine.updateElementById y refresca menú/panel. */
 export function ElementCodeEditor({
@@ -85,7 +79,7 @@ export function ElementCodeEditor({
     const areaEl = element as PlanoArea;
     return (
       <>
-        <div style={MENU_SECTION_LABEL_STYLE}>Asociar Bajante</div>
+        <div className="dcm-section-label">Asociar Bajante</div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={
@@ -105,7 +99,7 @@ export function ElementCodeEditor({
               engineRef.current?.render();
               setContextMenuState(null);
             }}
-            style={MENU_SELECT_STYLE}
+            className="dcm-select"
           >
             <option value="">— Sin bajante —</option>
             {(engineRef.current?.bajantes || [])
@@ -144,7 +138,7 @@ export function ElementCodeEditor({
       <>
         {NETS_WITH_MULTIPLE_MATERIALS.has(ramalEl.net) && (
           <>
-            <div style={MENU_SECTION_LABEL_STYLE}>Material de ramal</div>
+            <div className="dcm-section-label">Material de ramal</div>
             <div style={{ padding: '0 8px 8px' }}>
               <select
                 value={matRciNormalizado(ramalEl.material || '')}
@@ -241,7 +235,7 @@ export function ElementCodeEditor({
                   }
                   eng.render();
                 }}
-                style={MENU_SELECT_STYLE}
+                className="dcm-select"
               >
                 <option value="">— Sin material —</option>
                 {matList.map((m) => (
@@ -255,11 +249,9 @@ export function ElementCodeEditor({
         )}
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, padding: '0 8px 8px' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ ...MENU_SECTION_LABEL_STYLE, padding: 0 }}>
-              Diámetro de ramal/tributario
-            </div>
+            <div className="dcm-section-label dcm-label-p0">Diámetro de ramal/tributario</div>
             <select
-              style={{ ...MENU_SELECT_STYLE, width: '100%' }}
+              className="dcm-select"
               value={
                 engineRef.current?.ramales.find((r) => r.id === ramalEl.id)?.diametro ??
                 ramalEl.diametro ??
@@ -364,7 +356,7 @@ export function ElementCodeEditor({
           {/* Pendiente (orig. usuario): al lado del diámetro 50-50 — solo redes por gravedad. */}
           {['san', 'll', 'vent'].includes(ramalEl.net) && (
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ ...MENU_SECTION_LABEL_STYLE, padding: 0 }}>Pendiente %</div>
+              <div className="dcm-section-label dcm-label-p0">Pendiente %</div>
               <PendienteRamalInput
                 ramalEl={ramalEl}
                 engineRef={engineRef}
@@ -383,7 +375,7 @@ export function ElementCodeEditor({
     const bajEl = element as PlanoBajante;
     return (
       <>
-        <div style={MENU_SECTION_LABEL_STYLE}>Contador: {bajEl.code || bajEl.id}</div>
+        <div className="dcm-section-label">Contador: {bajEl.code || bajEl.id}</div>
         <div
           style={{
             fontSize: 12,
@@ -417,7 +409,7 @@ export function ElementCodeEditor({
                 writeContadorDiamToDrawing(dNom, planosCtx.plans, bajEl.net || 'af');
               }
             }}
-            style={MENU_SELECT_STYLE}
+            className="dcm-select"
           >
             <option value="">— Sin diámetro —</option>
             {CONTADORES_CAT.map((c) => (
@@ -442,7 +434,7 @@ export function ElementCodeEditor({
               {bajEl.net === 'gas' ? 'Conexión (Red → Contador)' : 'AC-01 (Red Pública → Contador)'}
             </div>
             <div style={{ padding: '0 8px 8px' }}>
-              <div style={MENU_SECTION_LABEL_ROW_STYLE}>Diámetro</div>
+              <div className="dcm-section-label-row">Diámetro</div>
               <select
                 value={bajEl.acoDiam || ''}
                 aria-label="Diámetro"
@@ -460,7 +452,7 @@ export function ElementCodeEditor({
                     writeAcoDiamToDrawing(val, planosCtx.plans, bajEl.net || 'af');
                   }
                 }}
-                style={MENU_SELECT_STYLE}
+                className="dcm-select"
               >
                 <option value="">— Sin diámetro —</option>
                 {(bajEl.net === 'gas'
@@ -490,8 +482,8 @@ export function ElementCodeEditor({
     const bajEl = element as PlanoBajante;
     return (
       <>
-        <div style={MENU_SECTION_LABEL_STYLE}>Calentador: {bajEl.code || bajEl.id}</div>
-        <div style={MENU_SECTION_LABEL_STYLE}>Equipo (Capacidad)</div>
+        <div className="dcm-section-label">Calentador: {bajEl.code || bajEl.id}</div>
+        <div className="dcm-section-label">Equipo (Capacidad)</div>
         <div style={{ padding: '0 8px 8px' }}>
           <select
             value={bajEl.capacidad || ''}
@@ -511,7 +503,7 @@ export function ElementCodeEditor({
                 engineRef.current?.render();
               }
             }}
-            style={MENU_SELECT_STYLE}
+            className="dcm-select"
           >
             <option value="">— Seleccionar —</option>
             {CAT_GAS.filter((g) => g.id.startsWith('cal')).map((g) => (
@@ -594,7 +586,7 @@ function PendienteRamalInput({
           (e.target as HTMLInputElement).blur();
         }
       }}
-      style={{ ...MENU_SELECT_STYLE, textAlign: 'center', padding: '3px 4px' }}
+      className="dcm-select dcm-select-center-tight"
       placeholder="—"
     />
   );

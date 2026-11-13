@@ -15,7 +15,6 @@ import {
   setSingleAparatoCount,
 } from '../../../utils/syncExtremeAccessory.ts';
 import { devError } from '../../../../../utils/devError.ts';
-import { MENU_SELECT_STYLE, MENU_SECTION_LABEL_ROW_STYLE } from './context.ts';
 import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers.ts';
 import { emitAparatosClear } from '../../../utils/fixtureEvents.ts';
 import { indicePorId } from '../../../utils/indices.ts';
@@ -430,7 +429,7 @@ export function MidRamalAparatos({
 
   return (
     <div style={{ marginTop: 6 }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Seleccionar Aparato</div>
+      <div className="dcm-section-label-row">Seleccionar Aparato</div>
       <select
         value={currentApp}
         aria-label="Seleccionar Aparato"
@@ -438,7 +437,7 @@ export function MidRamalAparatos({
           e.target.blur();
           applyAparato(e.target.value);
         }}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">Ninguno</option>
         {aparatoOptions.map((a) => (

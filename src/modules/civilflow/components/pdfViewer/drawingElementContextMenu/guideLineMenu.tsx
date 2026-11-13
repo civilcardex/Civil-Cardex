@@ -10,11 +10,7 @@ import {
   findGuideTCrossing,
   ramalFlowDirectionCheck,
 } from '../../../lib/PlanoEngine/PlanoEngineDrawing.ts';
-import {
-  useDrawingElementContextMenu,
-  MENU_SECTION_LABEL_STYLE,
-  MENU_ACTION_BTN_STYLE,
-} from './context.ts';
+import { useDrawingElementContextMenu } from './context.ts';
 import {
   findGuideCrossing,
   resolveGuideNet,
@@ -61,7 +57,7 @@ export function GuideLineMenu() {
 
   return (
     <div style={{ padding: '4px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div style={MENU_SECTION_LABEL_STYLE}>Línea guía</div>
+      <div className="dcm-section-label">Línea guía</div>
       {/* Ajuste único auto-orientado: la red determina el paso (45° san/ll/vent, 90° resto) y
           el sistema calcula solo la orientación — sin Superior/Inferior ni izquierda/derecha. */}
       <button
@@ -71,7 +67,7 @@ export function GuideLineMenu() {
           if (!eng) return;
           autoAdjustGuide(eng, guide, ctx.setSelElement, ctx.selElement);
         }}
-        style={{ ...MENU_ACTION_BTN_STYLE, textAlign: 'center' }}
+        className="dcm-action-btn"
       >
         {`Ajustar a ${allowedSteps[0]}°`}
       </button>
@@ -261,7 +257,7 @@ export function GuideLineMenu() {
           eng._markDirty();
           ctx.setContextMenuState(null);
         }}
-        style={MENU_ACTION_BTN_STYLE}
+        className="dcm-action-btn"
       >
         + Crear ramal a partir de línea guía
       </button>
@@ -322,7 +318,7 @@ export function GuideLineMenu() {
             eng._markDirty();
             ctx.setContextMenuState(null);
           }}
-          style={MENU_ACTION_BTN_STYLE}
+          className="dcm-action-btn"
         >
           + Crear tributarios a partir de línea guía
         </button>
@@ -371,7 +367,7 @@ export function GuideLineMenu() {
             eng._markDirty();
             ctx.setContextMenuState(null);
           }}
-          style={MENU_ACTION_BTN_STYLE}
+          className="dcm-action-btn"
         >
           + Crear tributario a partir de línea guía
         </button>
@@ -392,7 +388,7 @@ export function GuideLineMenu() {
             ctx.setSelElement?.({ ...ctx.selElement } as never);
             ctx.setContextMenuState(null);
           }}
-          style={MENU_ACTION_BTN_STYLE}
+          className="dcm-action-btn"
         >
           {guide.esMuro ? 'Quitar muro' : 'Definir como muro'}
         </button>

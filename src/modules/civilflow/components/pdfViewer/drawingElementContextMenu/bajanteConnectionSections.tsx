@@ -2,12 +2,7 @@
 import { ramalLabel } from '../../../utils/accessoryAbbreviations.ts';
 import { puedeConectarRamalABajante } from '../../../lib/PlanoEngine/bajanteRules.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
-import {
-  MENU_GRID_2COL_STYLE,
-  MENU_CHECK_LABEL_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-} from './context.ts';
+import { type ContextMenuState } from './context.ts';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type {
   PlanoBajante,
@@ -58,8 +53,8 @@ export function RamalesAsociadosGrid({
             marginTop: 4,
           }}
         >
-          <div style={MENU_SECTION_LABEL_ROW_STYLE}>Ramales asociados</div>
-          <div style={MENU_GRID_2COL_STYLE}>
+          <div className="dcm-section-label-row">Ramales asociados</div>
+          <div className="dcm-grid-2col">
             {(() => {
               const bajRamales = (engineRef.current?.ramales || []).filter(
                 (r) => r.net === activeNet && r.tipo !== 'tributario',
@@ -101,7 +96,7 @@ export function RamalesAsociadosGrid({
                 const distEnd = rEnd ? Math.hypot(rEnd[0] - bajEl.x, rEnd[1] - bajEl.y) : Infinity;
                 const isAtStart = distStart <= distEnd;
                 return (
-                  <label key={r.id} style={MENU_CHECK_LABEL_STYLE}>
+                  <label key={r.id} className="dcm-check-label">
                     <input
                       type="checkbox"
                       checked={isAssociated}

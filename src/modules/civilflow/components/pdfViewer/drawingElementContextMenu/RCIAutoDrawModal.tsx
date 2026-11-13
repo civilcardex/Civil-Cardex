@@ -82,8 +82,6 @@ export function RciAutoDrawModal({
      * overlay propio — cierre por fondo y Escape nativo del <dialog> como todo modal. */
     <ModalOverlay zIndex={100000} onClose={onClose}>
       <div
-        role="dialog"
-        aria-modal="true"
         aria-label="Dibujar ramales paralelos"
         style={{
           background: 'var(--bg2)',

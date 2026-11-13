@@ -9,7 +9,6 @@ import { buildBajanteVisualLabel, pisoLbl } from '../../../constants';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
-import { MENU_CHECK_ROW_STYLE, MENU_SECTION_LABEL_ROW_STYLE } from './context.ts';
 
 /** Lista de checkboxes "Asociar bajantes del piso superior" DESDE LA BOMBA (orig. usuario): bajantes de la red de la bomba en el piso
  * inmediatamente superior; marcado = ese bajante tiene bombaEnId apuntando aquí. */
@@ -99,7 +98,7 @@ export function BombaAsociarBajantesSection({
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Asociar bajantes del piso superior</div>
+      <div className="dcm-section-label-row">Asociar bajantes del piso superior</div>
       {bajantes.length === 0 && (
         <div style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace" }}>
           Sin bajantes en el piso inmediatamente superior
@@ -108,7 +107,7 @@ export function BombaAsociarBajantesSection({
       {bajantes.map((row) => {
         const checked = row.bombaEnId === `${currentPlanId}|${bomba.id}`;
         return (
-          <label key={row.planId + '|' + row.id} style={MENU_CHECK_ROW_STYLE}>
+          <label key={row.planId + '|' + row.id} className="dcm-check-row">
             <input
               type="checkbox"
               checked={checked}

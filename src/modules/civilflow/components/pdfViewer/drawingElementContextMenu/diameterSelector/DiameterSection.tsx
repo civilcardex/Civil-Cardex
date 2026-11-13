@@ -15,11 +15,7 @@ import type { MutableRefObject, Dispatch, SetStateAction } from 'react';
 import type PlanoEngine from '../../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../../context/PlansContext.tsx';
-import {
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-} from '../context.ts';
+import { type ContextMenuState } from '../context.ts';
 
 /** Bloquea el gesto si viola la regla entre pisos (alerta modal + revierte el select). plano del bajante. bajante vivo del motor (punteros más frescos que el
  * storage). evento del select (para revertir el valor visible). fuerza re-render del menú. */
@@ -65,7 +61,7 @@ export function DiameterSelect({
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Diámetro</div>
+      <div className="dcm-section-label-row">Diámetro</div>
       <select
         value={(() => {
           const gd = element.ghostData?.[currentGhostLabel];
@@ -149,7 +145,7 @@ export function DiameterSelect({
             }
           }
         }}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">—</option>
         {opcionesDiametroElemento(element).map((d) => (
@@ -187,7 +183,7 @@ export function GhostDiameterSection({
   const currentGhostLabel = selectedNivel !== null ? pisoLbl(selectedNivel) : '';
   return (
     <div style={{ marginTop: 4, padding: '4px 8px', borderTop: '1px solid #3a494a' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Diámetro</div>
+      <div className="dcm-section-label-row">Diámetro</div>
       <select
         value={(() => {
           const gd = element.ghostData?.[currentGhostLabel];
@@ -266,7 +262,7 @@ export function GhostDiameterSection({
             }
           }
         }}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">—</option>
         {opcionesDiametroElemento(element).map((d) => (

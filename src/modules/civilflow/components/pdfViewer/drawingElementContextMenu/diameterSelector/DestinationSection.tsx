@@ -3,7 +3,12 @@
  * este (asociación entrepisos); si origen y destino no están alineados ofrece crear el fantasma.
  * Ej: BAN1 (piso 2) con destino BAN1 (piso 1) — la misma bajante continúa en el piso de abajo.
  */
-import { pisoLbl, pisoCorto, buildBajanteVisualLabel, compararPorCodigo } from '../../../../constants';
+import {
+  pisoLbl,
+  pisoCorto,
+  buildBajanteVisualLabel,
+  compararPorCodigo,
+} from '../../../../constants';
 import { writeBajantePropToDrawing } from '../../../../utils/writeDiameterToDrawing.ts';
 import {
   applyBajanteAssociation,
@@ -16,12 +21,7 @@ import type { MutableRefObject, Dispatch, SetStateAction } from 'react';
 import type PlanoEngine from '../../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../../context/PlansContext.tsx';
-import {
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-  type LowerFloorRamales,
-} from '../context.ts';
+import { type ContextMenuState, type LowerFloorRamales } from '../context.ts';
 
 /** Selector "Destino" (piso inferior): asociar/desasociar la descarga del bajante con otro piso. */
 export function DestinationSection({
@@ -52,7 +52,7 @@ export function DestinationSection({
 }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Destino</div>
+      <div className="dcm-section-label-row">Destino</div>
       <select
         value={element.descargaEnId || ''}
         aria-label="Destino"
@@ -80,8 +80,7 @@ export function DestinationSection({
               );
             eng.updateElementById(element.id, { descargaEnId: null });
             syncLocal();
-            if (selElement?.id === element.id)
-              setSelElement({ ...selElement, descargaEnId: null });
+            if (selElement?.id === element.id) setSelElement({ ...selElement, descargaEnId: null });
             writeBajantePropToDrawing(
               `${element.id}-${currentPlanId}`,
               element.net || 'san',
@@ -163,13 +162,11 @@ export function DestinationSection({
             'Aceptar',
           );
         }}
-        style={{ ...MENU_SELECT_STYLE, width: '100%' }}
+        className="dcm-select"
       >
         <option value="">Sin destino</option>
         {lowerFloorsRamales.map((group) => {
-          const plano = planosCtx.plans.find(
-            (pl) => (pl.id as unknown as string) === group.planId,
-          );
+          const plano = planosCtx.plans.find((pl) => (pl.id as unknown as string) === group.planId);
           const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : group.planName;
           // Ascendente por código (orig. usuario) y sin piso tras el guion — el piso
           // ya se ve en el optgroup.

@@ -14,6 +14,11 @@ import {
   type ContextMenuState,
 } from './context.ts';
 import { ramalVivoDelPlanoCargado } from './ramalMenuHelpers.ts';
+import {
+  renumeraRociadores,
+  verificaSRociadores,
+  rociadorFluye,
+} from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 import { emitAparatosClear, EV_APARATOS_CLEAR, EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 import { MidRamalAparatos } from './MidRamalAparatos.tsx';
 
@@ -47,6 +52,17 @@ export function MidRamalAccessorySelector({
       window.removeEventListener(EV_STORAGE, bump);
     };
   }, []);
+
+  /* rci: al abrir el menú estampa el consecutivo ROC-N de los rociadores del piso (un
+   *  'rociador' pelado de un guardado viejo se normaliza a 'rociador#N' al instante —
+   *  ped. usuario: el desplegable muestra el tipo y el glifo su número). Idempotente. */
+  useEffect(() => {
+    if (element.net !== 'rci') return;
+    const eng = engineRef.current;
+    if (!eng || !(eng.ramales || []).some((r) => r.net === 'rci')) return;
+    renumeraRociadores(eng);
+    eng.render();
+  }, [element.net, engineRef]);
   // La 'llaveTerminal' simple solo tiene sentido en un extremo real del ramal (termina la
   // tubería allí) — en el cuerpo debe ir mediante 'teeLlaveTerminal' (un tee con la pierna
   // libre tapada), por eso se excluye la válvula pelada de este selector de cuerpo aunque
@@ -67,19 +83,26 @@ export function MidRamalAccessorySelector({
     false;
 
   // Si ya existe un vértice accMed (casi) exactamente en el punto clicado, se edita ese
-  // en lugar de insertar un vértice nuevo.
+  // en lugar de insertar un vértice nuevo. Umbral 12 px = radio del glifo del rociador
+  // (ped. usuario 2026-11-13: clic sobre el símbolo debe EDITARLO y mostrar «Rociador
+  // colgante», no "Ninguno" + duplicado).
   const accMed = element.accMed || {};
   let existingKey: string | null = null;
   for (const k of Object.keys(accMed)) {
     const m = k.match(/^accMed(\d+)$/);
     if (!m) continue;
     const pt = element.pts?.[parseInt(m[1], 10)];
-    if (pt && Math.hypot(pt[0] - midRamalHit.x, pt[1] - midRamalHit.y) < 2) {
+    if (pt && Math.hypot(pt[0] - midRamalHit.x, pt[1] - midRamalHit.y) < 12) {
       existingKey = k;
       break;
     }
   }
-  const currentVal = existingKey ? accMed[existingKey] : '';
+  // El valor guardado lleva el consecutivo ('rociador#3') y el flag NF ('rociadorMontanteNF#5')
+  // que NO están en las opciones — el desplegable muestra el TIPO base sin NF (ped. usuario
+  // 2026-11-13: desmarcar «Fluye en el cálculo» NO borra la opción elegida del desplegable).
+  const currentVal = existingKey
+    ? (accMed[existingKey].split('#')[0].replace(/NF$/, '') ?? '')
+    : '';
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
@@ -154,6 +177,13 @@ export function MidRamalAccessorySelector({
                   delete newAccMed[existingKey];
                 }
                 eng.updateElementById(element.id, { accMed: newAccMed });
+                // rci: el rociador MANUAL entra al consecutivo ROC-N y verifica la separación S
+                // del piso (hueco > S → alerta; el rociador queda colocado).
+                if (element.net === 'rci' && accId && /rociador/i.test(accId)) {
+                  renumeraRociadores(eng);
+                  const errS = verificaSRociadores(eng, element.id);
+                  if (errS) eng.triggerAlert('Separación de rociadores', errS);
+                }
                 if (selElement?.id === element.id)
                   setSelElement({ ...selElement, accMed: newAccMed });
                 // Sin esto, `element` (la copia congelada de contextMenuState del momento en que se
@@ -238,6 +268,40 @@ export function MidRamalAccessorySelector({
               </option>
             ))}
           </select>
+          {/* FLUYE / NO FLUYE (ped. usuario 2026-11-13): el rociador del vértice participa o no
+           * en el cálculo — el flag NF se añade/quita ANTES del '#' en cualquier tipo
+           * ('rociador#N' ↔ 'rociadorNF#N', 'rociadorMontante#N' ↔ 'rociadorMontanteNF#N').
+           * El tipo elegido JAMÁS se pierde: el desplegable muestra el base sin NF. */}
+          {element.net === 'rci' && existingKey && /rociador/i.test(accMed[existingKey]) && (
+            <label className="dcm-fluye">
+              <input
+                type="checkbox"
+                checked={rociadorFluye(accMed[existingKey])}
+                onChange={(e) => {
+                  const eng = engineRef.current;
+                  if (!eng) return;
+                  const fresh = ramalVivoDelPlanoCargado(eng, element.id);
+                  if (!fresh) return;
+                  const am = { ...(fresh.accMed || {}) };
+                  const v = am[existingKey] || '';
+                  const num = v.split('#')[1] || '';
+                  // El tipo base SIEMPRE se conserva (colgante, montante…): el flag NF solo se
+                  // añade/quita antes del '#' — nunca se pierde la selección del desplegable.
+                  const base = v.split('#')[0].replace(/NF$/, '');
+                  am[existingKey] =
+                    (e.target.checked ? base : `${base}NF`) + (num ? `#${num}` : '');
+                  eng.updateElementById(element.id, { accMed: am });
+                  renumeraRociadores(eng);
+                  eng.render();
+                  eng._markDirty();
+                  setContextMenuState((prev) =>
+                    prev ? { ...prev, element: { ...prev.element, accMed: am } } : null,
+                  );
+                }}
+              />
+              Fluye en el cálculo
+            </label>
+          )}
         </>
       )}
 

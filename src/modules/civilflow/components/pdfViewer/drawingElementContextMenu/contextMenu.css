@@ -1,0 +1,349 @@
+/* Menú contextual del visor (clic derecho sobre un elemento): selects, grids de checkbox,
+   botones de dirección, paneles y etiquetas — look único del menú.
+   Antes vivía como consts MENU_* y ASSOC_* exportadas desde context.ts. */
+
+.dcm-select {
+  width: 100%;
+  padding: 4px 6px;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  color: #e2e2e8;
+  font-size: 12px;
+  font-family: 'Geist', monospace;
+  cursor: pointer;
+}
+
+.dcm-select-plain {
+  border: none;
+  color: var(--txt3);
+}
+.dcm-select-center-tight {
+  text-align: center;
+  padding: 3px 4px;
+}
+
+.dcm-dir-btn {
+  padding: 3px 5px;
+  text-align: left;
+  font-size: 12px;
+  font-family: 'Geist', monospace;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  transition: all 0.1s;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.dcm-fantasma-btn {
+  border: none;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 11px;
+  font-family: 'Geist', monospace;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  border-top: 1px solid #3a494a;
+  width: 100%;
+}
+
+.dcm-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 8px;
+  max-height: 120px;
+  overflow-y: auto;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  padding: 4px;
+}
+
+.dcm-grid-2col-tall {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 8px;
+  max-height: 160px;
+  overflow-y: auto;
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  border-radius: 3px;
+  padding: 4px;
+}
+
+.dcm-check-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: #b9caca;
+  font-family: 'Geist', monospace;
+}
+
+.dcm-check-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #b9caca;
+  font-family: 'Geist', monospace;
+  min-width: 0;
+}
+
+.dcm-check-row-assoc {
+  padding: 4px 6px;
+  background: #1e2024;
+  border: none;
+  border-radius: 3px;
+}
+
+.dcm-action-btn {
+  width: 100%;
+  padding: 6px 8px;
+  cursor: pointer;
+  background: #1e2024;
+  border: 1px dashed #00dce5;
+  border-radius: 4px;
+  color: #00dce5;
+  font-size: 12px;
+  font-family: 'Geist', monospace;
+  text-align: center;
+  font-weight: 600;
+}
+
+.dcm-panel {
+  position: absolute;
+  z-index: 101;
+  background: #1a1c20;
+  border: 1px solid #3a494a;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  min-width: 170px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+
+.dcm-panel-bajante {
+  min-width: 280px;
+  max-width: 480px;
+}
+
+.dcm-section-label {
+  font-size: 12px;
+  color: #849495;
+  padding: 4px 8px;
+  font-family: 'Geist', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dcm-section-label-row {
+  font-size: 12px;
+  color: #849495;
+  font-family: 'Geist', monospace;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Secciones de asociación (bajantes/cajas/canales/montantes/ramales — deben verse idénticas). */
+.dcm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+  border-top: 1px solid #3a494a;
+  margin-top: 4px;
+}
+
+.dcm-assoc-empty {
+  font-size: 12px;
+  color: #6b8cae;
+  font-family: 'Geist', monospace;
+  grid-column: span 2;
+}
+
+.dcm-assoc-checkbox {
+  accent-color: #f5a623;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.dcm-cell-span {
+  flex: 1;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.dcm-pad-top {
+  padding-top: 4px;
+}
+
+.dcm-label-p0 {
+  padding: 0;
+}
+.dcm-action-mt {
+  margin-top: 4px;
+}
+.dcm-action-wrap {
+  white-space: normal;
+  line-height: 1.3;
+}
+.dcm-action-left {
+  text-align: left;
+}
+
+/* Variantes activas de los botones del menú de dirección. */
+.dcm-dir-btn[data-on='true'] {
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid #2563eb;
+  color: #3b82f6;
+}
+.dcm-dir-btn[data-on='false'] {
+  background: #1e2024;
+  border: 1px solid #3a494a;
+  color: #e2e2e8;
+}
+.dcm-dir-btn[data-on='false']:hover {
+  background: #2563eb33;
+}
+.dcm-fantasma-btn[data-on='true'] {
+  background: rgba(245, 166, 35, 0.12);
+  color: #f5a623;
+}
+.dcm-fantasma-btn[data-on='false'] {
+  background: transparent;
+  color: #e2e2e8;
+}
+.dcm-fantasma-btn[data-on='false']:hover {
+  background: #2563eb33;
+}
+.dcm-dir-icon {
+  flex-shrink: 0;
+}
+.dcm-dir-up {
+  color: #00dce5;
+  flex-shrink: 0;
+}
+.dcm-dir-down {
+  color: #f04545;
+  flex-shrink: 0;
+}
+.dcm-dir-flat {
+  color: #ffeb3b;
+  flex-shrink: 0;
+}
+
+.dcm-dir-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 0 6px 4px;
+  box-sizing: border-box;
+  overflow: hidden;
+  width: 100%;
+}
+.dcm-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* FLUYE / NO FLUYE del rociador rci (checkbox del selector de accesorio en cuerpo). */
+.dcm-fluye {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--txt2);
+  cursor: pointer;
+}
+
+/* Secciones de ramalMenu (split 2026-11-13): separador entre grupos de secciones,
+ * contenedor interior de un grupo y filas de los grids de asociados. */
+.dcm-sep {
+  padding: 4px 8px;
+  border-top: 1px solid #3a494a;
+  margin-top: 4px;
+}
+.dcm-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dcm-mono {
+  font-size: 11px;
+  color: var(--txt2);
+  font-family: var(--mono);
+}
+.dcm-paso {
+  font-size: 12px;
+  color: #e2e2e8;
+  font-family: 'Geist', monospace;
+}
+.dcm-check-amber {
+  accent-color: #f5a623;
+  cursor: pointer;
+  margin: 0;
+}
+
+/* Variantes de las secciones de ramalMenu (fila de tramo con contenido a ambos lados,
+ * contenedor vertical con aire, nota gris de tramo, mensaje span-4 del grid de asociados). */
+.dcm-sep-row {
+  padding: 4px 8px;
+  border-top: 1px solid #3a494a;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.dcm-sep-col {
+  padding: 4px 8px;
+  border-top: 1px solid #3a494a;
+  margin-top: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.dcm-nota-tramo {
+  font-size: 11px;
+  color: #6b7280;
+  font-family: 'Geist', monospace;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+.dcm-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 8px;
+}
+.dcm-span4 {
+  font-size: 12px;
+  color: #6b8cae;
+  font-family: 'Geist', monospace;
+  grid-column: span 4;
+}
+
+/* Ramal con flujo invertido (_tribReversed flag de flujo invertido en tributario): fondo
+ *  cian para distinguirlo de un ramal normal en el menú. */
+.dcm-reversed {
+  background: #00dce5;
+  color: #1e2024;
+}

@@ -1,5 +1,6 @@
 // Contexto del menú contextual del visor (click derecho sobre un elemento): estado del
 // menú, motor, pisos y estilos compartidos por todas las secciones del menú.
+import './contextMenu.css';
 import { createContext, useContext } from 'react';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type {
@@ -96,6 +97,10 @@ export { DrawingElementContextMenuCtx };
 
 // ── Estilos del menú (select, botones de dirección, grids de checkboxes y botones de
 // acción) — look único del menú contextual.
+// @deprecated (2026-11-13): el menú migró a clases en contextMenu.css (.dcm-*). Estas
+// constantes quedan SOLO mientras los dos archivos en WIP del refactor RCI (ramalMenu y
+// midRamalAccessorySelector) las sigan importando — al cerrar ese refactor se borran todas.
+// NO uses estas constantes en archivos nuevos.
 
 /** Select del menú contextual (clic derecho sobre un elemento): elegir material, Ø o piso sin salir del plano. Ej: cambiar el Ø en el menú del ramal. */
 export const MENU_SELECT_STYLE: React.CSSProperties = {

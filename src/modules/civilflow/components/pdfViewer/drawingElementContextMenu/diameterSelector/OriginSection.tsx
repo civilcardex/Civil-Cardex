@@ -5,7 +5,12 @@
  * Ej: BAN1 piso 2 con origen BAN1 piso 3 — el agua baja de la montante del piso de arriba.
  */
 import { useState, useEffect } from 'react';
-import { pisoLbl, pisoCorto, buildBajanteVisualLabel, compararPorCodigo } from '../../../../constants';
+import {
+  pisoLbl,
+  pisoCorto,
+  buildBajanteVisualLabel,
+  compararPorCodigo,
+} from '../../../../constants';
 import { loadFromStorage } from '../../../../services/storageService.ts';
 import { TRAZOS_PREFIX } from '../../../../constants/storage-keys.ts';
 import { writeBajantePropToDrawing } from '../../../../utils/writeDiameterToDrawing.ts';
@@ -20,12 +25,7 @@ import type { MutableRefObject, Dispatch, SetStateAction } from 'react';
 import type PlanoEngine from '../../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoBajante, PlanoElement } from '../../../../lib/PlanoEngine/PlanoState.ts';
 import type { PlanItem } from '../../../../context/PlansContext.tsx';
-import {
-  MENU_SELECT_STYLE,
-  MENU_SECTION_LABEL_ROW_STYLE,
-  type ContextMenuState,
-  type LowerFloorRamales,
-} from '../context.ts';
+import { type ContextMenuState, type LowerFloorRamales } from '../context.ts';
 
 /** Bloque "Origen (piso superior)": asociar/desasociar el bajante con el del piso inmediatamente superior. */
 export function OriginSection({
@@ -202,12 +202,12 @@ export function OriginSection({
 
   return (
     <div style={{ padding: '0 8px 4px' }}>
-      <div style={MENU_SECTION_LABEL_ROW_STYLE}>Origen (piso superior)</div>
+      <div className="dcm-section-label-row">Origen (piso superior)</div>
       <select
         value={element.origenId || ''}
         aria-label="Origen"
         onChange={(e) => associateOrigin(e.target.value || null)}
-        style={MENU_SELECT_STYLE}
+        className="dcm-select"
       >
         <option value="">Sin origen</option>
         {(() => {
