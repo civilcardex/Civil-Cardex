@@ -390,6 +390,181 @@
   letter-spacing: 0.5px;
 }
 
+/* ── Catálogo maestro (CatalogTables): el estilo que antes vivía inline (thBase/Td/Tr/coef)
+   migrado a clases — los valores son los mismos del catálogo pre-CSP (bg3/#00dce5). ── */
+
+/* Contenedores: fixed = PipeTable/GasTable (layout fijo por anchos %); cat = auto. */
+.cat-table-fixed,
+.cat-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+}
+.cat-table-fixed {
+  table-layout: fixed;
+}
+/* Anchos de columna en % (antes style width inline): enumerados por data-w. */
+.cat-th[data-w='7'] {
+  width: 7%;
+}
+.cat-th[data-w='10'] {
+  width: 10%;
+}
+.cat-th[data-w='14'] {
+  width: 14%;
+}
+.cat-th[data-w='20'] {
+  width: 20%;
+}
+.cat-th[data-w='24'] {
+  width: 24%;
+}
+.cat-th[data-w='25'] {
+  width: 25%;
+}
+.cat-th[data-w='28'] {
+  width: 28%;
+}
+.cat-th[data-w='30'] {
+  width: 30%;
+}
+.cat-th[data-w='35'] {
+  width: 35%;
+}
+.cat-th[data-w='40'] {
+  width: 40%;
+}
+.cat-th[data-w='50'] {
+  width: 50%;
+}
+.cat-th[data-w='70'] {
+  width: 70%;
+}
+
+/* Cebra de filas (antes Tr index%2). */
+.cat-tr-even {
+  background: var(--bg3);
+}
+.cat-tr-odd {
+  background: var(--bg);
+}
+
+/* Cabecera base: sticky, cian del catálogo. (PipeTable/GasTable la comprimen más arriba.) */
+.cat-th {
+  background: var(--bg3);
+  color: #00dce5;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  text-align: center;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+/* Celdas base + variante mono (dn, valores numéricos). */
+.cat-td {
+  font-family: var(--body);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  text-align: center;
+  color: var(--txt);
+  border: 1px solid var(--line);
+}
+.cat-td-mono {
+  font-family: var(--mono);
+}
+.cat-td-left {
+  text-align: left;
+}
+
+/* Celda rowSpan del material: vertical, tono apagado; compact la agranda (cp del original). */
+.cat-mat {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+  color: var(--txt2);
+  border: 1px solid var(--line);
+}
+.cat-table-fixed.cat-table-compact .cat-td {
+  padding: 3px 8px;
+}
+.cat-table-fixed.cat-table-compact .cat-mat {
+  padding: 3px 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* MaterialesPorRedTable: encabezado y celdas compactas (cmpTd del original). */
+.cat-th-cmp {
+  padding: 2px 6px;
+  font-size: 12px;
+  letter-spacing: 0.4px;
+}
+.cat-td-cmp {
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+/* CoefFriccionTable: wrapper con scroll, th de grupo (S6) y th/td de coeficientes. */
+.cat-scroll {
+  overflow-x: auto;
+}
+.cat-th-group {
+  padding: 2px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: var(--bg2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+}
+.cat-coef-th {
+  background: var(--bg3);
+  color: #00dce5;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 1px 4px;
+  border: 1px solid var(--line);
+  text-align: center;
+  white-space: nowrap;
+}
+.cat-coef-th[data-w='7'] {
+  width: 7%;
+}
+.cat-coef-th[data-w='10'] {
+  width: 10%;
+}
+.cat-coef-th[data-w='14'] {
+  width: 14%;
+}
+.cat-coef-td {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 3px;
+  text-align: center;
+  color: var(--txt);
+  border: 1px solid var(--line);
+}
+/* Descripción/sistema/material/pn van en la fuente de texto (no mono) — antes fontFamily
+   var(--body) inline sobre coefTd. */
+.cat-coef-td-body {
+  font-family: var(--body);
+}
+
 /* ── Rejillas de ventilación: tabla de tipologías y chrome del header
    (antes TD/TH/INP/SEL/TXT en rejillasShared.ts y props inline) ── */
 
