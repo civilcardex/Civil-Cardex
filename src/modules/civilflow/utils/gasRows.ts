@@ -88,7 +88,11 @@ export interface GasRow {
 }
 
 /** Construye las filas de la tabla de gas desde los trazos guardados de los planos confirmados: tramos + accesorios + datos generales → calculaFilasGas (Renouard). Es la MISMA cuenta que la pantalla viva (GasDesign), pero leyendo storage — la usan los reportes. */
-export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
+export function computeGasRows(
+  plans: PlanItem[],
+  pais?: string,
+  tipoGas: 'gn' | 'glp' = 'gn',
+): GasRow[] {
   const datos = loadFromStorage<GasDatosGenerales>(GAS_DATOS_KEY, GAS_DATOS_DEFAULT);
   const pMin = Number(datos.pmin) || 17;
   const { pAtm, DR, fAlt, fTemp, fDens } = factoresGas(datos);
@@ -163,6 +167,7 @@ export function computeGasRows(plans: PlanItem[], pais?: string): GasRow[] {
     pMin,
     factores: { pAtm, DR, fAlt, fTemp, fDens },
     pais,
+    tipoGas,
   }).map((f) => {
     const t = porClave.get(f.clave)!;
     const opt = lookupDn(t.material, t.diametro);

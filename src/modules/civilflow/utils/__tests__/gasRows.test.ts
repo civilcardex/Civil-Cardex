@@ -122,7 +122,7 @@ describe('computeGasRows · filas de la tabla de gas desde storage', () => {
     localStorage.setItem('civilflow_trazos_p1', JSON.stringify({ ramales: [tramoGas()] }));
     localStorage.setItem('civilflow_aparatos_by_tramo_v2', JSON.stringify({ gas_g1: { est2: 4 } }));
     const rows = computeGasRows([plan()]);
-    expect(rows[0].qConsumo).toBe(1.36); // (0.68·4)/2
+    expect(rows[0].qConsumo).toBe(2.18); // fs(4)=0.8 × 0.68×4
     expect(rows[0].qDiseno).toBe(2.7); // 1.36×1.12×0.99 = 1.51 < 2.7
   });
 

@@ -122,7 +122,7 @@ const formulas = {
           <p>
             Profundiza:{' '}
             <Link to="/aprende/fuerza-tractiva-sanitaria">
-              Fuerza tractiva mínima — autolimpieza y RAS 2000
+              Fuerza tractiva mínima — autolimpieza
             </Link>
             .
           </p>
@@ -139,24 +139,14 @@ const formulas = {
           </p>
           {fx(
             <>
-              K = 1 &nbsp;&nbsp;(N = 1 descarga)
-              <br />
-              K = 1 / &radic;(N − 1) &nbsp;&nbsp;(N &gt; 1)
-              <br />
-              <br />q<sub>UC</sub> = 0.1163 · UC<sup>0.6875</sup> &nbsp;&nbsp;(UC &lt; 240) [L/s]
-              <br />q<sub>UC</sub> = 0.074 · UC<sup>0.7504</sup> &nbsp;&nbsp;(UC ≥ 240) [L/s]
-              <br />
-              <br />Q<sub>diseño</sub> = K · q<sub>UC</sub>
+              Q = 0.1163 · UC<sup>0.6875</sup> &nbsp;&nbsp;(UC &lt; 240) [L/s]
+              <br />Q = 0.074 · UC<sup>0.7504</sup> &nbsp;&nbsp;(UC ≥ 240) [L/s]
             </>,
           )}
-          {donde([
-            ['N', 'número de descargas simultáneas del tramo (columna "No. de descargas")'],
-            ['UC', 'unidades de consumo acumuladas (propias + otros ramales)'],
-          ])}
+          {donde([['UC', 'unidades de consumo acumuladas (propias + otros ramales)']])}
           <p className="text-[13px]">
-            Ejemplo: tramo con 240 UC y 6 descargas → K = 1/&radic;5 = 0.447; q = 0.1163·240
-            <sup>0.6875</sup> ≈ 7.2 L/s → Q ≈ 3.2 L/s. Cambiar el diámetro NO cambia Q: la curva
-            solo depende de UC.
+            Curva simplificada (sin factor de simultaneidad): el caudal depende solo de las UC
+            acumuladas — cambiar el diámetro NO cambia Q.
           </p>
         </div>
       ),

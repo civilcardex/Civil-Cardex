@@ -67,7 +67,7 @@ export const NTC1500_DOTACIONES = [
 export const NTC1500_UC = [
   ['Lavamanos', 'Lvm', 0.5, 0.5, 0.51, 5.63],
   ['Inodoro', 'San', 2.2, '—', 0.71, 14.1],
-  ['Sanitario fluxómetro', 'San-F', 5.0, '—', 1.05, 14.1],
+  ['Sanitario fluxómetro', 'San-F', 6.0, '—', 1.05, 14.1],
   ['Ducha', 'Duc', 1.0, 1.0, 1.02, 5.63],
   ['Tina / bañera', 'Tin', 1.0, 1.0, 0.51, 14.1],
   ['Lavaplatos doméstico', 'Lvp', 1.0, 1.0, 0.51, 5.63],

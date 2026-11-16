@@ -21,6 +21,8 @@ export interface Proyecto {
   dir: string;
   ciudad: string;
   pais: string;
+  /** Tipo de gas de la red (redes gas): 'gn' gas natural | 'glp' gas licuado de petróleo. Define qué columna del catálogo NTC 3728 alimenta el consumo por aparato. */
+  tipoGas: 'gn' | 'glp';
   uso: string;
   empresa: string;
   p_red: string;
@@ -77,6 +79,7 @@ export const PROY_DEFAULTS: Proyecto = {
   dir: '',
   ciudad: '',
   pais: '',
+  tipoGas: 'gn',
   uso: '',
   empresa: '',
   p_red: '',

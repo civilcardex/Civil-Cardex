@@ -2,6 +2,7 @@ import { APARATOS_DEF } from '../constants';
 
 /** Aparatos de gas (Gas) del catálogo con caudal propio (qgas > 0, grupo 'g'): estufa, calentador, secadora... */
 export const GAS_APPARATUS = APARATOS_DEF.filter((a) => a.grupo === 'g' && (a.qgas || 0) > 0);
+import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 
 /**
  * Caudal probable de una instalación de gas (m³/h) por el criterio de diversidad del método
@@ -11,24 +12,42 @@ export const GAS_APPARATUS = APARATOS_DEF.filter((a) => a.grupo === 'g' && (a.qg
  * @param counts cuántos aparatos hay de cada id ('estufa': 4).
  * @returns caudal probable en m³/h; 0 si no hay aparatos.
  */
-export function renouardByType(counts: Record<string, number>) {
-  const present = [];
+/** Factor de simultaneidad del gas por número TOTAL de aparatos del tramo (NTC 3728 §5.3):
+ *  1–2 → 1.0 · 3–5 → 0.8 · 6–10 → 0.7 · 11–20 → 0.6 · >20 → 0.5. Ej: 7 aparatos → 0.7. */
+export function fsGas(nTotal: number): number {
+  if (nTotal <= 2) return 1.0;
+  if (nTotal <= 5) return 0.8;
+  if (nTotal <= 10) return 0.7;
+  if (nTotal <= 20) return 0.6;
+  return 0.5;
+}
+
+/** Caudal probable del tramo de gas (m³/h): suma de consumos por aparato × factor fs de la
+ *  tabla NTC 3728 §5.3 según el número TOTAL de aparatos. El consumo por aparato sale del
+ *  catálogo según el tipoGas del proyecto: GN (qgas) o GLP (qglp del CAT_GAS).
+ *  Ej: {est4: 2} GN → fs(2)=1.0 × 2×1.35 = 2.7 m³/h; {cal11:1} GLP → fs(1)=1.0 × 0.75.
+ *  @param counts cuántos aparatos hay de cada id ('estufa': 4).
+ *  @param tipoGas tipo de gas del proyecto ('gn' por defecto).
+ *  @returns caudal probable en m³/h; 0 si no hay aparatos. */
+export function renouardByType(
+  counts: Record<string, number>,
+  tipoGas: 'gn' | 'glp' = 'gn',
+): number {
+  let totalN = 0;
+  let sumaQ = 0;
   for (const ap of GAS_APPARATUS) {
     const n = counts[ap.id] || 0;
-    if (n > 0) present.push({ q: ap.qgas, n });
+    if (n <= 0) continue;
+    totalN += n;
+    let q = ap.qgas;
+    if (tipoGas === 'glp') {
+      const cat = CAT_GAS.find((c) => c.id === ap.id);
+      q = cat?.qglp ?? ap.qgas;
+    }
+    sumaQ += q * n;
   }
-  const sorted = present.sort((a, b) => b.q - a.q);
-  const nTypes = sorted.length;
-  if (nTypes === 0) return 0;
-  if (nTypes === 1) return (sorted[0].q * sorted[0].n) / 2;
-  if (nTypes === 2) return (sorted[0].q * sorted[0].n + sorted[1].q * sorted[1].n) / 2;
-  const part1 = (sorted[0].q * sorted[0].n + sorted[1].q * sorted[1].n) / 2;
-  const qMayor2 = sorted[1].q;
-  const part2 = sorted
-    .slice(2)
-    .filter((p) => p.q < qMayor2)
-    .reduce((s, p) => s + p.q * p.n, 0);
-  return part1 + part2;
+  if (totalN === 0) return 0;
+  return round2(fsGas(totalN) * sumaQ);
 }
 
 // Factores de corrección del Excel "Calculo red de Gas KML" (celdas AB/AC/AD): cada

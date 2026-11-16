@@ -25,13 +25,12 @@ const agua_fria = {
               ['Lavaplatos', '1.0', '1.0', '2'],
               ['Tina', '1.0', '1.0', '2'],
               ['Lavadora', '1.0', '—', '4'],
-              ['Lavadero', '0.75', '0.75', '2'],
+              ['Lavadero', '1.0', '1.0', '2'],
             ]}
           />
           <p>
-            Profundiza en el método:{' '}
-            <Link to="/aprende/hunter-ntc-1500">Método Hunter en la NTC 1500</Link> (por qué a
-            partir de 240 UC cambia la fórmula).
+            Profundiza en el método: <Link to="/aprende/hunter-ntc-1500">El método de Hunter</Link>{' '}
+            (por qué a partir de 240 UC cambia la fórmula).
           </p>
         </div>
       ),
@@ -97,13 +96,12 @@ const agua_fria = {
           {fx(
             <>
               UC total = UC propia + UC de otros ramales
-              <br />Q = K · 0.1163·UC<sup>0.6875</sup> &nbsp;&nbsp;(curva de Hunter)
+              <br />Q = 0.1163·UC<sup>0.6875</sup> &nbsp;&nbsp;(curva de Hunter, UC &lt; 240)
               <br />V = Q / ((π/4) · D<sub>i</sub>²)
               <br />P<sub>fin</sub> = P<sub>ini</sub> − h<sub>f</sub> ± ΔZ
             </>,
           )}
           {donde([
-            ['K', 'factor de simultaneidad = 1/√(N−1), con N = descargas simultáneas del tramo'],
             [
               'ΔZ',
               <>

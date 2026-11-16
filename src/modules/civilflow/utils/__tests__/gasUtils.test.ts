@@ -1,31 +1,46 @@
 import { describe, expect, it } from 'vitest';
-import { renouardByType, factoresGas, qDisenoGas, patmDeAltitud } from '../gasUtils.ts';
+import { fsGas, renouardByType, factoresGas, qDisenoGas, patmDeAltitud } from '../gasUtils.ts';
 
 // Spec: criterio de simultaneidad y factores del Excel "Calculo red de Gas KML 2025"
 // (hoja "Red de Gas": AA = criterio Renouard de tipos, AB/AC/AD factores redondeados
 // a 2 decimales, AE = Q de diseño con piso 2.7 m³/h).
 
-describe('renouardByType — criterio de los dos tipos mayores (Excel celda AA)', () => {
-  it('1 solo tipo: la mitad de su consumo total', () => {
-    expect(renouardByType({ est4: 2 })).toBeCloseTo(1.35, 2); // 2·1.35/2
+describe('renouardByType — fs tabulada NTC 3728 §5.3 por N° de aparatos', () => {
+  it('2 aparatos del mismo tipo: fs=1.0 → 2·1.35 = 2.7 m³/h', () => {
+    expect(renouardByType({ est4: 2 })).toBeCloseTo(2.7, 2);
   });
 
-  it('2 tipos: promedio de los dos totales', () => {
-    expect(renouardByType({ est4: 1, sauna: 1 })).toBeCloseTo(1.215, 3); // (1.35+1.08)/2
+  it('2 tipos (2 aparatos): fs=1.0 → 1.35 + 1.08 = 2.43', () => {
+    expect(renouardByType({ est4: 1, sauna: 1 })).toBeCloseTo(2.43, 2);
   });
 
-  it('3+ tipos: los dos mayores al 50 % + el resto al 100 % (fila del Excel: 5.81)', () => {
-    // pisc 6.08 + jac 3.38 + sauna 1.08 → (6.08+3.38)/2 + 1.08 = 5.81
-    expect(renouardByType({ pisc: 1, jac: 1, sauna: 1 })).toBeCloseTo(5.81, 2);
+  it('3 aparatos (3 tipos): fs=0.8 → (6.08+3.38+1.08)·0.8 = 8.43', () => {
+    expect(renouardByType({ pisc: 1, jac: 1, sauna: 1 })).toBeCloseTo(8.43, 2);
   });
 
-  it('el resto solo cuenta tipos ESTRICTAMENTE menores que el segundo mayor', () => {
-    // empate en el 2° mayor: est4 (1.35) NO es < 1.35 → no suma: (6.08+1.35)/2 = 3.715
-    expect(renouardByType({ pisc: 1, turco: 1, est4: 1 })).toBeCloseTo(3.715, 3);
+  it('GLP: usa qglp del CAT_GAS — cal11 GN 1.88 → GLP 0.75', () => {
+    expect(renouardByType({ cal11: 1 }, 'gn')).toBeCloseTo(1.88, 2);
+    expect(renouardByType({ cal11: 1 }, 'glp')).toBeCloseTo(0.75, 2);
   });
 
   it('sin aparatos → 0', () => {
     expect(renouardByType({})).toBe(0);
+  });
+});
+
+describe('fsGas — tabla por N° total de aparatos (NTC 3728 §5.3)', () => {
+  it('1–2 → 1.0', () => {
+    expect(fsGas(1)).toBe(1.0);
+    expect(fsGas(2)).toBe(1.0);
+  });
+  it('3–5 → 0.8 · 6–10 → 0.7 · 11–20 → 0.6 · >20 → 0.5', () => {
+    expect(fsGas(3)).toBe(0.8);
+    expect(fsGas(5)).toBe(0.8);
+    expect(fsGas(6)).toBe(0.7);
+    expect(fsGas(10)).toBe(0.7);
+    expect(fsGas(11)).toBe(0.6);
+    expect(fsGas(20)).toBe(0.6);
+    expect(fsGas(21)).toBe(0.5);
   });
 });
 

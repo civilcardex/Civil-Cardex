@@ -36,38 +36,26 @@ const sanitarias = {
       title: 'Caudal por simultaneidad',
       body: (
         <div className="space-y-3">
-          <p>Factor de simultaneidad y caudal de diseño por el método de Hunter:</p>
+          <p>
+            Caudal de diseño por el método de Hunter simplificado — curva pura, sin factor de
+            simultaneidad adicional:
+          </p>
           {fx(
             <>
-              K = 1 / &radic;(N − 1) &nbsp;&nbsp; (N &gt; 1)
-              <br />K = 1 &nbsp;&nbsp; (N = 1)
-            </>,
-          )}
-          {fx(
-            <>
-              Q = K · Q<sub>UD</sub>
-              <br />
-              <br />Q<sub>UD</sub> = 0.1163 · UD<sup>0.6875</sup> &nbsp;&nbsp; (UD &lt; 240)
-              <br />Q<sub>UD</sub> = 0.074 · UD<sup>0.7504</sup> &nbsp;&nbsp; (UD &ge; 240)
+              Q = 0.1163 · UD<sup>0.6875</sup> &nbsp;&nbsp; (UD &lt; 240) [L/s]
+              <br />Q = 0.074 · UD<sup>0.7504</sup> &nbsp;&nbsp; (UD &ge; 240) [L/s]
             </>,
           )}
           <div>
             <span className="text-on-surface-variant">Donde:</span>
           </div>
           {donde([
-            ['K', 'factor de simultaneidad'],
-            ['N', 'número de aparatos conectados'],
-            ['Q', 'caudal de diseño (L/min)'],
-            [
-              <>
-                Q<sub>UD</sub>
-              </>,
-              'caudal por unidad de descarga (L/min)',
-            ],
-            ['UD', 'unidades de descarga totales'],
+            ['Q', 'caudal de diseño (L/s)'],
+            ['UD', 'unidades de descarga totales del tramo'],
           ])}
           <div className="text-[12px] text-on-surface-variant">
-            Fórmula basada en Hunter - ASHRAE
+            Curva basada en Hunter — adoptada por las normas de la región (NTC 1500, RNE IS.010,
+            NEC-11, NCh 2485/OGUC, ERAS, NB).
           </div>
         </div>
       ),

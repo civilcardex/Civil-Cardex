@@ -90,7 +90,7 @@ export const APARATOS_DEF = [
     grupo: 'h',
     uc_af: 1.0,
     uc_ac: 1.0,
-    ud: 2,
+    ud: 4,
     pmin: 0.51,
     pmax: 5.63,
     qgas: 0,

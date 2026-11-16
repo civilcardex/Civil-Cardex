@@ -299,8 +299,9 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       pMin,
       factores: { pAtm, DR, fAlt, fTemp, fDens },
       pais: proy.pais,
+      tipoGas: proy.tipoGas,
     });
-  }, [gasTramos, diamInt, getAcc, pmin, temp, densRel, patm, proy.pais]);
+  }, [gasTramos, diamInt, getAcc, pmin, temp, densRel, patm, proy.pais, proy.tipoGas]);
 
   // Índice por clave: el render busca la fila de cada tramo (antes era un .find por fila,
   // O(n²) en una tabla que puede traer cientos de tramos).

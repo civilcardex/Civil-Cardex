@@ -13,6 +13,7 @@ interface ProjectIdInfo {
   dir: string;
   ciudad: string;
   pais: string;
+  tipoGas?: 'gn' | 'glp';
   uso: string;
 }
 
@@ -112,6 +113,21 @@ const ProjectIdCard = React.memo(function ProjectIdCard({
                 {p.nombre}
               </option>
             ))}
+          </select>
+        </div>
+        <div className="f" style={{ marginBottom: 3 }}>
+          <label htmlFor="proj-tipogas" style={{ fontSize: 12 }}>
+            Tipo de gas
+          </label>
+          <select
+            id="proj-tipogas"
+            disabled={!isEditing}
+            value={proy.tipoGas ?? 'gn'}
+            onChange={(e) => setP('tipoGas', e.target.value)}
+            style={{ fontSize: 12, padding: '3px 6px', opacity: isEditing ? 1 : 0.7 }}
+          >
+            <option value="gn">Gas natural (GN)</option>
+            <option value="glp">GLP — licuado</option>
           </select>
         </div>
         <div className="f" style={{ marginBottom: 0 }}>

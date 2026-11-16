@@ -15,11 +15,12 @@ export function useGasInforme(args: {
   hasGas: boolean;
   plans: WorkAreaState['plans'];
   pais: WorkAreaState['proy']['pais'];
+  tipoGas?: WorkAreaState['proy']['tipoGas'];
 }) {
-  const { hasGas, plans, pais } = args;
+  const { hasGas, plans, pais, tipoGas } = args;
   const gasRowsCalc = useMemo(
-    () => (hasGas ? computeGasRows(plans, pais) : []),
-    [hasGas, plans, pais],
+    () => (hasGas ? computeGasRows(plans, pais, tipoGas) : []),
+    [hasGas, plans, pais, tipoGas],
   );
 
   const gasTable = useMemo<MemoriaTable | null>(() => {

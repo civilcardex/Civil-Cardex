@@ -88,6 +88,8 @@ export interface EntradaCalculoGas {
   propios: Map<string, Record<string, number>>;
   /** Presión mínima de la red (mbar). */
   pMin: number;
+  /** Tipo de gas del proyecto: define si el consumo por aparato sale de la tabla GN o GLP (NTC 3728). */
+  tipoGas?: 'gn' | 'glp';
   /** Factores de corrección del sitio. */
   factores: FactoresGasCalc;
   /** País: fija los límites de velocidad y de pérdida acumulada. */
@@ -104,7 +106,7 @@ export interface EntradaCalculoGas {
  * m³/h; con factores 1.0 el qDiseno cae al piso 2.7 m³/h y su dP entra al acumulado del árbol.
  */
 export function calculaFilasGas(entrada: EntradaCalculoGas): FilaGasCalc[] {
-  const { tramos, dIntDe, accDe, propios, pMin, factores, pais } = entrada;
+  const { tramos, dIntDe, accDe, propios, pMin, factores, pais, tipoGas } = entrada;
   const { pAtm, DR, fAlt, fTemp, fDens } = factores;
 
   const tramosNeto: GasTramoNeto[] = tramos.map((t) => ({
@@ -149,7 +151,7 @@ export function calculaFilasGas(entrada: EntradaCalculoGas): FilaGasCalc[] {
       sumLe += (acc[k] || 0) * ((LE_K as Record<string, number>)[k] || 0);
     const le = dInt > 0 ? (dInt * sumLe) / 1000 : 0;
     const appCounts = acumulados.get(claveGas(t.planId, t.id)) || {};
-    const qRenouard = renouardByType(appCounts);
+    const qRenouard = renouardByType(appCounts, tipoGas);
     const qDiseno = qDisenoGas(qRenouard, { pAtm, DR, fAlt, fTemp, fDens });
     const dP =
       dInt > 0
