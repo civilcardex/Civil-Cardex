@@ -71,7 +71,6 @@ function mk(id: string, label: string, pts: number[][], extra: Record<string, un
     piso: '',
     dz: '',
     uc: 0,
-    nSalidas: 1,
     labelX: 0,
     labelY: 0,
     labelAngle: 0,

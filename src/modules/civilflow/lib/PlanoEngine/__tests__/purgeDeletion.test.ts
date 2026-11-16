@@ -71,7 +71,6 @@ function mk(id: string, label: string, pts: number[][], extra: Record<string, un
     piso: '',
     dz: '',
     uc: 0,
-    nSalidas: 1,
     labelX: 0,
     labelY: 0,
     labelAngle: 0,
@@ -96,7 +95,7 @@ function seedConteosRS1(): void {
     san_RS1_8: { san: 1 }, // OTRO piso con el mismo id — debe sobrevivir
   });
   saveToStorage(HYDRO_DATA_STORAGE_KEY, {
-    san_RS1_7: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 0 },
+    san_RS1_7: { accesorios: { codo90rmSube: 1 }, Lh: 0 },
   });
   saveToStorage(GAS_ACC_KEY, { RS1: { cocina: 1 } });
 }

@@ -77,7 +77,6 @@ export interface PlanoRamal {
   diametroFin?: string;
   aparatoInicio?: string;
   aparatoFin?: string;
-  nSalidas?: number;
   _labelBox?: LabelBoxCorners;
   _net?: string;
   diamPulg?: number;
@@ -108,11 +107,11 @@ export interface PlanoRamal {
   // interfaz lee/escribe durante la sesión.
   fixtures?: Record<string, number>;
   // Igual que `fixtures`: solo para el viaje ida/vuelta a la base de datos. Accesorios
-  // hidrosanitarios ({ accesorios, Lh, nSalidas }) y de gas (aparato-id -> cantidad) que
+  // hidrosanitarios ({ accesorios, Lh }) y de gas (aparato-id -> cantidad) que
   // FixturesPanel/GasDesign guardan en HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY (localStorage).
   // El motor NO los lee — storageService.ts los lleva hacia/desde `hydro_accesorios` /
   // `gas_accesorios` de planos_ramales.
-  hydroAcc?: { accesorios: Record<string, number>; Lh: number; nSalidas: number };
+  hydroAcc?: { accesorios: Record<string, number>; Lh: number };
   gasAcc?: Record<string, number>;
   // Posición en el plano de la etiqueta "S D=..." de un sifón, una vez que el usuario la arrastró
   // fuera de su posición calculada por defecto (renderRamales.ts). Indefinido = usar la posición

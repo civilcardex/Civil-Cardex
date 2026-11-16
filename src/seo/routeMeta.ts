@@ -138,9 +138,9 @@ export const ROUTE_META: RouteMeta[] = [
   },
   {
     path: '/aprende/hunter-ntc-1500',
-    title: 'Método Hunter en la NTC 1500: el quiebre de 240 UC',
+    title: 'Método Hunter en LATAM: el quiebre de 240 UC',
     description:
-      'Cómo la curva de Hunter convierte UC (Unidades de Consumo) en caudal de diseño: la fórmula 0.1163·UC^0.6875 cambia a 0.074·UC^0.7504 a partir de 240 UC. Ejemplo numérico completo y errores comunes.',
+      'Cómo la curva de Hunter convierte UC (Unidades de Consumo) en caudal de diseño: la fórmula 0.1163·UC^0.6875 cambia a 0.074·UC^0.7504 a partir de 240 UC. Normas que la adoptan en LATAM, ejemplo numérico completo y errores comunes.',
     changefreq: 'monthly',
     priority: '0.6',
     lastmod: '2026-11-11',
@@ -148,7 +148,7 @@ export const ROUTE_META: RouteMeta[] = [
       autor: 'Equipo CivilCardex',
       fechaPublicacion: '2026-11-11',
       descripcion:
-        'Qué es la probabilidad de uso simultáneo, cómo se asignan UC a cada aparato según NTC 1500, por qué la fórmula de Hunter cambia en 240 UC y cómo calcular el caudal de diseño paso a paso con un baño completo de ejemplo.',
+        'Qué es la probabilidad de uso simultáneo, cómo se asignan UC a cada aparato según la norma de cada país (NTC 1500, RNE IS.010, NEC-11, NCh 2485…), por qué la fórmula de Hunter cambia en 240 UC y cómo calcular el caudal de diseño paso a paso con un baño completo de ejemplo.',
     },
   },
   {

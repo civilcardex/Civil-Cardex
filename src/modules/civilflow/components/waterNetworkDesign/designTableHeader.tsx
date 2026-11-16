@@ -53,19 +53,6 @@ function fila1(pais?: string): ColEnc[] {
       colSpan: 3,
       th: BORDE_INF,
     },
-    {
-      title: 'Número de descargas conectadas al tramo.',
-      label: (
-        <>
-          Número
-          <br />
-          de descargas
-        </>
-      ),
-      rowSpan: 2,
-      th: { minWidth: 44 },
-    },
-    { title: 'Coeficiente de simultaneidad K aplicado al cálculo.', label: 'K', rowSpan: 2 },
     { title: 'Caudal de diseño del tramo (L/s).', label: 'Caudal', cls: 'css', rowSpan: 2 },
     {
       title: 'Diámetro que sugiere el cálculo para el caudal. Unidad: pulgadas (").',

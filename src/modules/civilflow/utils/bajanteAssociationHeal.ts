@@ -35,7 +35,7 @@ export function healHerenciaInvertida(
   let changed = false;
   const apos = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
   const hydro = loadFromStorage<
-    Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+    Record<string, { accesorios?: Record<string, number>; Lh?: number }>
   >(HYDRO_DATA_STORAGE_KEY, {});
   let hydroDirty = false;
   const bogusIds = new Map<string, number>(); // id → nivel del piso donde vivía el libro falso
@@ -102,7 +102,7 @@ export function healHerenciaInvertida(
           }
           h.accesorios = acc;
           if (Object.keys(acc).length === 0) delete h.accesorios;
-          if (!h.accesorios && !((h.Lh ?? 0) > 0) && !((h.nSalidas ?? 0) > 0)) delete hydro[tk];
+          if (!h.accesorios && !((h.Lh ?? 0) > 0)) delete hydro[tk];
           hydroDirty = true;
         }
       }

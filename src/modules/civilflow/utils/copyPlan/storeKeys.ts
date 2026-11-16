@@ -32,7 +32,7 @@ export function copyStoreKeys(
     {},
   );
   const hidro = loadFromStorage<
-    Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+    Record<string, { accesorios?: Record<string, number>; Lh?: number }>
   >(HYDRO_DATA_STORAGE_KEY, {});
   const gas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
   let aC = false;

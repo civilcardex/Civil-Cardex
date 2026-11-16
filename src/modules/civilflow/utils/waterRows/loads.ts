@@ -84,8 +84,7 @@ export function computeLoads(
   const qpropMap: Record<string, number> = {};
   for (const t of tramos) {
     const key = tramoKeyOf(t);
-    const nDesc = t.nSalidas || 0;
-    qpropMap[key] = hunterQ(componentTotalMap[key] || 0, nDesc);
+    qpropMap[key] = hunterQ(componentTotalMap[key] || 0);
   }
 
   const nodeParentOf: Record<string, string> = {};

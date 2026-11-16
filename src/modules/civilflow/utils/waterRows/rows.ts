@@ -6,7 +6,6 @@
  */
 import { matHazenC } from '../../constants';
 import { calcLeAcces } from '../fittingsUtils.ts';
-import { hunterK } from '../../components/waterNetworkDesign/rowPhysics.ts';
 import { tramoKeyOf } from '../keys.ts';
 import type { Tramo } from '../../context/tramosReducer';
 import type { WnRow, DiamOpt } from './types.ts';
@@ -33,8 +32,6 @@ export function buildWaterRows(tramosOrden: Tramo[], ctx: RowsCtx): WnRow[] {
     const propia = propiaMap[ownKey] || 0;
     const total = componentTotalMap[ownKey] || 0;
     const isTr2Row = t === tr2;
-    const nDesc = t.nSalidas || 0;
-    const K = hunterK(nDesc);
     const Qprob = isTr2Row ? Qaco : qpropMap[ownKey] || 0;
     const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
     const disPulg = t.diamDisPulg || 0;
@@ -69,8 +66,6 @@ export function buildWaterRows(tramosOrden: Tramo[], ctx: RowsCtx): WnRow[] {
       piso: t.piso,
       udPropia: propia,
       udTotal: total,
-      nDesc,
-      K,
       Qprob,
       diamEst: raizQ,
       diamDis: matchedOpt?.nominal || '—',

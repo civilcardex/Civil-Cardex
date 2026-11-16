@@ -87,8 +87,8 @@ describe('computeBombaTables · memoria Bomba AR', () => {
     localStorage.setItem('civilflow_civilflow_memoria_bomba_data', JSON.stringify(datosBase));
     const [entrada] = computeBombaTables();
     expect(fila(entrada, 'Número de salidas simultáneas')![2]).toBe('2');
-    const sinSalidas = { ...datosBase, inputs: { ...datosBase.inputs, salSim: '' } };
-    localStorage.setItem('civilflow_civilflow_memoria_bomba_data', JSON.stringify(sinSalidas));
+    const sinSalSim = { ...datosBase, inputs: { ...datosBase.inputs, salSim: '' } };
+    localStorage.setItem('civilflow_civilflow_memoria_bomba_data', JSON.stringify(sinSalSim));
     const [entrada2] = computeBombaTables();
     expect(fila(entrada2, 'Número de salidas simultáneas')![2]).toBe('—');
   });

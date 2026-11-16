@@ -347,7 +347,7 @@ export function applyBajanteAssociation(
     } | null>(TRAZOS_PREFIX + source.planId, null);
     const apos = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
     const hydro = loadFromStorage<
-      Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+      Record<string, { accesorios?: Record<string, number>; Lh?: number }>
     >(HYDRO_DATA_STORAGE_KEY, {});
     const { agg, hydroAgg } = collectSourceAgg({
       net: source.net,
@@ -387,7 +387,7 @@ export function applyBajanteAssociation(
           aposDirty = true;
         }
         if (hydroAgg) {
-          hydro[ldKey] = { accesorios: { ...hydroAgg }, Lh: 0, nSalidas: 0 };
+          hydro[ldKey] = { accesorios: { ...hydroAgg }, Lh: 0 };
           hydroDirty = true;
         }
       }
@@ -480,7 +480,7 @@ export function applyBajanteAssociation(
         ucAplicado[tk] = { ...extra };
         if (hydroAgg) {
           const prevH = prevHydroBook[tk] || {};
-          const hcur = hydro[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+          const hcur = hydro[tk] || { accesorios: {}, Lh: 0 };
           const acc: Record<string, number> = {};
           for (const k of new Set([
             ...Object.keys(hcur.accesorios || {}),
@@ -538,7 +538,7 @@ export function applyBajanteAssociation(
         }
         aposDirty = true;
         if (hydroAgg) {
-          hydro[ldKey] = { accesorios: { ...hydroAgg }, Lh: 0, nSalidas: 0 };
+          hydro[ldKey] = { accesorios: { ...hydroAgg }, Lh: 0 };
           hydroDirty = true;
           ucAplicadoHidro[ldKey] = { ...hydroAgg };
         } else {

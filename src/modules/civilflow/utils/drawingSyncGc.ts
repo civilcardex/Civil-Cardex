@@ -76,7 +76,7 @@ interface FixtureCarrier {
   id?: unknown;
   net?: unknown;
   fixtures?: Record<string, number>;
-  hydroAcc?: { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number };
+  hydroAcc?: { accesorios?: Record<string, number>; Lh?: number };
   gasAcc?: Record<string, number>;
 }
 
@@ -88,7 +88,7 @@ export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number
     {},
   );
   const mergedHidro = loadFromStorage<
-    Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+    Record<string, { accesorios: Record<string, number>; Lh: number }>
   >(HYDRO_DATA_STORAGE_KEY, {});
   const mergedGas = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
   let aparatosChanged = false;
@@ -151,15 +151,12 @@ export function reanclarClavesDesdeTrazosLocales(plans: SyncPlanInput[]): number
       }
       if (
         r.hydroAcc &&
-        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 ||
-          (r.hydroAcc.Lh ?? 0) > 0 ||
-          (r.hydroAcc.nSalidas ?? 0) > 0) &&
+        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 || (r.hydroAcc.Lh ?? 0) > 0) &&
         !mergedHidro[apKey]
       ) {
         mergedHidro[apKey] = r.hydroAcc as {
           accesorios: Record<string, number>;
           Lh: number;
-          nSalidas: number;
         };
         hidroChanged = true;
       }

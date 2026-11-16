@@ -5,30 +5,14 @@ export const AGUA_DENSIDAD: number = 1000;
 /** Rugosidad Manning (formula de flujo en tuberia) del PVC san (Sanitaria): cuánto frena la pared al agua (adimensional, 0.009). */
 export const manning_SAN: number = 0.009;
 
-// ─── Factor de simultaneidad (Hunter modificado) ───
-/** Factor Hunter (metodo de probabilidad de uso simultaneo) modificado: cuánto se reduce el caudal porque no todos los aparatos descargan a la vez (1/√(n-1), rango (0,1]).
- *  Ej: 10 salidas -> 1/3 = 0.33.
- *  @param numSalidas - N° de salidas de aparatos.
- *  @returns factor de simultaneidad. */
-export function factorSimultaneidad(numSalidas: number): number {
-  if (numSalidas <= 1) return 1;
-  return 1 / Math.sqrt(numSalidas - 1);
-}
-
-// ─── Caudal de Hunter (Rodriguez Diaz) ───
-/** Q (Caudal) Hunter (metodo de probabilidad de uso simultaneo) en L/s: cuánta agua residual se junta si varios aparatos descargan a la vez (Rodríguez Díaz).
- *  Ej: 40 UD (Unidades de Desague) con K=0.3 -> ~0.44 L/s.
+// ─── Caudal de Hunter simplificado (decisión producto 2026-11-16) ───
+/** Q (Caudal) Hunter simplificado en L/s: curva pura f(UD (Unidades de Desague) totales) con quiebre en 240 UD — sin factor de simultaneidad (salieron K y N° de salidas de la tabla).
+ *  Ej: 40 UD -> 0.1163·40^0.6875 ≈ 1.58 L/s; 300 UD -> 0.074·300^0.7504 ≈ 51.5 L/s.
  *  @param UD - UD (Unidades de Desague) totales.
- *  @param K - coeficiente de simultaneidad.
  *  @returns Q (Caudal) de diseño en L/s. */
-export function caudalHunterLPS(UD: number, K: number): number {
-  let Q;
-  if (UD < 240) {
-    Q = K * 0.1163 * Math.pow(UD, 0.6875);
-  } else {
-    Q = K * 0.074 * Math.pow(UD, 0.7504);
-  }
-  return Q;
+export function caudalHunterLPS(UD: number): number {
+  if (UD <= 0) return 0;
+  return UD < 240 ? 0.1163 * Math.pow(UD, 0.6875) : 0.074 * Math.pow(UD, 0.7504);
 }
 
 // ─── Caudal a tubo lleno (Manning) ───

@@ -346,12 +346,12 @@ function WaterNetworkDesign({
   const Qaco = useMemo(() => {
     if (tr2) {
       const ownKey = tr2._key || tr2.id;
-      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
+      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0);
       if (qTr2 > 0) {
         return qTr2;
       }
     }
-    return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
+    return hunterQ(ucTotal);
   }, [ucTotal, tr2, componentTotalMap]);
 
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
@@ -463,7 +463,7 @@ function WaterNetworkDesign({
       const ownKey = t._key || t.id;
       const isTr2 = t === tr2;
       const total = componentTotalMap[ownKey] || 0;
-      const Qprob = isTr2 ? Qaco : hunterQ(total, t.nSalidas || 0);
+      const Qprob = isTr2 ? Qaco : hunterQ(total);
       const c = computeDesignRow(t, {
         qprob: Qprob,
         diamOpts: DIAM_OPTS,
@@ -633,9 +633,6 @@ function WaterNetworkDesign({
                         perfilDe(proy.pais).af.vMin * 1000,
                         perfilDe(proy.pais).af.vMax * 1000,
                       ]}
-                      plans={plans}
-                      updTramo={updTramo}
-                      net={networkType}
                       pais={proy.pais}
                     />
                   ))}

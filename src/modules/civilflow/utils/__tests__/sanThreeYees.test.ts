@@ -294,7 +294,7 @@ describe('Resumen san — 3 yees simples sobre el tronco', () => {
     ]);
     // Verdad del motor (calcSanitaryAccessories): 3 yees simples, 0 dobles.
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { yeeSimple: 3 }, Lh: 0, nSalidas: 0 },
+      san_RS1_1: { accesorios: { yeeSimple: 3 }, Lh: 0 },
     });
     const table = computeAccesoriosTable(
       'san',

@@ -37,7 +37,7 @@ export function resolvePressures(inputs: ResolvePressuresInputs) {
   const pipeLoss = (t: Tramo) => {
     const ownKey = keyOf(t);
     const total = inputs.componentTotalMap[ownKey] || 0;
-    const Qprob = t === inputs.tr2 ? inputs.Qaco : hunterQ(total, t.nSalidas || 0);
+    const Qprob = t === inputs.tr2 ? inputs.Qaco : hunterQ(total);
     const c = computeDesignRow(t, {
       qprob: Qprob,
       diamOpts: inputs.diamOpts,

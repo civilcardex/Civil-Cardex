@@ -337,7 +337,7 @@ export function clearBajanteAssociation(
         {},
       );
       const hydro = loadFromStorage<
-        Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+        Record<string, { accesorios?: Record<string, number>; Lh?: number }>
       >(HYDRO_DATA_STORAGE_KEY, {});
       // SUELO de lo propio (foto `aparatos_propio_v1` del enlace): la resta de un libro
       // rancio jamás debe bajar la clave por debajo de lo propio del usuario — con la
@@ -382,7 +382,7 @@ export function clearBajanteAssociation(
           if (Object.keys(h.accesorios).length === 0) delete h.accesorios;
         }
         // Sin accesorios ni valores queda un cascarón vacío creado por la herencia: fuera.
-        if (h && !h.accesorios && !((h.Lh ?? 0) > 0) && !((h.nSalidas ?? 0) > 0)) delete hydro[tk];
+        if (h && !h.accesorios && !((h.Lh ?? 0) > 0)) delete hydro[tk];
       }
       if (tb) {
         tb.ucAcum = 0;
@@ -449,7 +449,7 @@ export function clearBajanteAssociation(
     // recomputa en directo (mejor esfuerzo, sin topes).
     const apos = loadFromStorage<Record<string, Record<string, number>>>(APARATOS_BY_TRAMO_KEY, {});
     const hydro = loadFromStorage<
-      Record<string, { accesorios?: Record<string, number>; Lh?: number; nSalidas?: number }>
+      Record<string, { accesorios?: Record<string, number>; Lh?: number }>
     >(HYDRO_DATA_STORAGE_KEY, {});
     const ldKeyExact = roles && exactLd ? `${sourceNet}_${exactLd}_${roles.lowerPlanId}` : null;
     const ldAgg: Record<string, number> = (ldKeyExact && apos[ldKeyExact]) || {};

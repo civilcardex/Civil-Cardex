@@ -3,15 +3,12 @@ import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
 import { fmt, sectorDe } from '../../utils/formatUtils.ts';
 import { parseDecimalInput } from '../../utils/parseDecimal.ts';
-import { hunterK, computeDesignRow } from './rowPhysics.ts';
+import { computeDesignRow } from './rowPhysics.ts';
 import { chequeoPresionAparato } from '../../utils/waterRowsShared.ts';
 import { perfilDe } from '../../constants/countryStandards';
 import { leerHeredadosPresion } from '../../utils/propagation';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
 import ChipList from '../shared/ChipList.tsx';
-import { writeNSalidasToDrawing } from '../../utils/drawingWrites/others';
-import type { PlanItem } from '../../context/PlansContext.tsx';
-import { useState } from 'react';
 
 /** Estilo compacto del input de presión (misma pinta del LazyNumInput que reemplaza). */
 const PRESION_INP: React.CSSProperties = {
@@ -92,9 +89,6 @@ export function DesignTableRow({
   diamIntMap,
   lookupFn,
   edit,
-  plans,
-  updTramo,
-  net,
   handleDiamChange,
   setPresIni,
   setPresFin,
@@ -124,10 +118,6 @@ export function DesignTableRow({
   pressureByKey: Record<string, { Pin: number; Pfin: number }>;
   /** Límites de velocidad del país (mm/s) — normasPais. */
   velLim?: [number, number];
-  /** Planes + updTramo + red: Nº de descargas editable y bidireccional con el dibujo. */
-  plans: PlanItem[];
-  updTramo: (id: string, field: string, val: string | number | boolean) => void;
-  net: 'af' | 'ac';
   /** País del proyecto: el chequeo por aparato usa el catálogo NTC hasta que haya catálogo por país. */
   pais?: string;
 }) {
@@ -140,8 +130,6 @@ export function DesignTableRow({
     .join(', ');
   const isTr2 = t === tr2;
   const total = displayTotalMap[ownKey] || 0;
-  const nDesc = t.nSalidas || 0;
-  const K = hunterK(nDesc);
   const Qprob = isTr2 ? Qaco : qprobMap[ownKey] || 0;
   const raizQ = Qprob > 0 ? Math.round(Math.sqrt(Qprob) * 100) / 100 : 0;
   const calc = computeDesignRow(t, {
@@ -152,9 +140,6 @@ export function DesignTableRow({
     lookupFn,
   });
   const { Pin, Pfin } = pressureByKey[ownKey] ?? { Pin: pRed, Pfin: pRed };
-  // Nº de descargas EDITABLE y BIDIRECCIONAL con el dibujo (patrón sanitaria: input en modo
-  // edición, commit → updTramo + writeNSalidasToDrawing; el buildTramos lo re-lee del trazo).
-  const [editNs, setEditNs] = useState<string | null>(null);
   const vCumple = calc.Vmms >= (velLim?.[0] ?? 500) && calc.Vmms <= (velLim?.[1] ?? 2500);
   // Chequeo de presión en el aparato conectado (catálogo NTC 1500: pmin ≤ P ≤ pmax en el
   // extremo). Sin catálogo por país todavía: si el país es referencia, el tooltip lo dice.
@@ -191,47 +176,6 @@ export function DesignTableRow({
         />
       </td>
       <td className="c td-mono-b">{fmt(total, 2)}</td>
-      <td className="c" style={{ padding: '1px 2px' }}>
-        {edit ? (
-          <input
-            type="text"
-            inputMode="numeric"
-            value={editNs !== null ? editNs : nDesc > 0 ? String(nDesc) : ''}
-            placeholder="—"
-            aria-label="Número de descargas"
-            onChange={(e) => setEditNs(e.target.value.replace(/[^0-9]/g, ''))}
-            onBlur={() => {
-              const raw = editNs !== null ? editNs : '';
-              const v = parseInt(raw, 10);
-              setEditNs(null);
-              if (!Number.isFinite(v) || v < 1) return;
-              updTramo(ownKey, 'nSalidas', v);
-              writeNSalidasToDrawing(ownKey, net, v, plans);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-            }}
-            style={{
-              width: 52,
-              textAlign: 'center',
-              border: '1px solid #3a494a',
-              borderRadius: 3,
-              background: '#1e2024',
-              color: '#e2e2e8',
-              fontSize: 10.5,
-              fontFamily: 'var(--mono)',
-              padding: '2px 4px',
-            }}
-          />
-        ) : nDesc > 0 ? (
-          <span className="td-mono" style={{ fontFamily: 'var(--mono)' }}>
-            {nDesc}
-          </span>
-        ) : (
-          '—'
-        )}
-      </td>
-      <td className="c td-mono-b">{K > 0 ? fmt(K, 2) : '—'}</td>
       <td className="c td-mono-b">{Qprob > 0 ? fmt(Qprob, 3) : '—'}</td>
       <td className="c td-mono">{raizQ > 0 ? fmt(raizQ, 2) : '—'}</td>
       <td className="c" style={{ padding: '0 1px' }}>

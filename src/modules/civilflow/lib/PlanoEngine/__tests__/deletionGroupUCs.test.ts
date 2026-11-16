@@ -249,7 +249,7 @@ function seedAsociacion() {
   });
   set('aparatos_by_tramo_v2', { san_RS9_2: { san: 2 } });
   set('tramo_hidro_data_v3', {
-    san_RS9_2: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 1 },
+    san_RS9_2: { accesorios: { codo90rmSube: 1 }, Lh: 0 },
   });
 }
 

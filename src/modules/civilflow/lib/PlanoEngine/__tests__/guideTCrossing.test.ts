@@ -142,7 +142,6 @@ describe('T-crossing — canónicos', () => {
         label: `T${cnt}${padreLabel}`,
         piso: '1',
         uc: 0,
-        nSalidas: 1,
         pendiente: 2,
         bloqueado: true,
       };
@@ -192,7 +191,6 @@ describe('T-crossing — canónicos', () => {
         label: `T${cnt}${padreLabel}`,
         piso: '1',
         uc: 0,
-        nSalidas: 1,
         pendiente: 2,
         bloqueado: true,
         _tribReversed: tribReversed,

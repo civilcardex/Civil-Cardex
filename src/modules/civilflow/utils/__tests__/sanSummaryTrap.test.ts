@@ -66,8 +66,8 @@ describe('Resumen accesorios sanitarios — sifones y codo 90', () => {
     });
     // hidroData — sifon RS1 =1, codo90rmSube T1 =1
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { sifon: 1 }, Lh: 0, nSalidas: 1 },
-      san_T1_1: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 1 },
+      san_RS1_1: { accesorios: { sifon: 1 }, Lh: 0 },
+      san_T1_1: { accesorios: { codo90rmSube: 1 }, Lh: 0 },
     });
   });
 

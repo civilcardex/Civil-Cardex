@@ -2,23 +2,14 @@ import type { Tramo } from '../../context/tramosReducer';
 import { matHazenC } from '../../constants';
 import { calcLeAcces } from '../../utils/fittingsUtils.ts';
 
-// Fórmula de Hunter (caudal probable): K depende del número de descargas y el caudal es
-// K·f(UC totales), con el cambio de fórmula en 240 UC. Misma operación (y mismos redondeos)
-// que se aplicaba inline en la tabla, el efecto de memoria y el de velocidad.
-/** Coeficiente K de la fórmula de Hunter (metodo de probabilidad de uso simultaneo) según el número de descargas simultáneas, SIN redondeo (la NTC define K = 1/√(N−1) exacto — el round a 2 dec era un artefacto del HTML de referencia que costaba precisión: K(3) daba 0.71 en vez de 0.7071 y Qaco caía de 0.133 a 0.132). Ej: 1 descarga → 1; 3 descargas → 1/√2 ≈ 0.7071. */
-export function hunterK(nDesc: number): number {
-  return nDesc > 0 ? (nDesc === 1 ? 1 : 1 / Math.sqrt(nDesc - 1)) : 0;
-}
-
-/** Caudal probable de Hunter (metodo de probabilidad de uso simultaneo) (L/s aprox.): K·f(UC (Unidades de Consumo) totales), con
- * cambio de fórmula a partir de 240 UC (Unidades de Consumo). Ej: 60 UC con 3 descargas (K 0.71) → 0.1163·60^0.6875·0.71 ≈ 1.38 L/s. */
-export function hunterQ(total: number, nDesc: number): number {
-  const K = hunterK(nDesc);
-  return total > 0 && K > 0
+// Fórmula de Hunter simplificado (decisión producto 2026-11-16): el caudal probable depende
+// SOLO de las UC totales del tramo — curva pura con quiebre en 240 UC. Sin factor K de
+// simultaneidad ni número de descargas (esa columna salió de la tabla y de la memoria).
+/** Caudal probable de Hunter simplificado (L/s aprox.): curva pura f(UC (Unidades de Consumo) totales), con cambio de fórmula a partir de 240 UC. Ej: 60 UC → 0.1163·60^0.6875 ≈ 1.95 L/s; 300 UC → 0.074·300^0.7504 ≈ 51.5 L/s. */
+export function hunterQ(total: number): number {
+  return total > 0
     ? Math.round(
-        K *
-          (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) *
-          1000,
+        (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000,
       ) / 1000
     : 0;
 }

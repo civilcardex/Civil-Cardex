@@ -180,7 +180,6 @@ function BombaARDesign() {
     const flat = memoriaInit?.inputs ?? {};
     if (flat.salSim !== undefined) {
       seed['__legacy__'] = {
-        sal: flat.salSim ?? '',
         hz: flat.hz ?? '',
         lImp: flat.lImp ?? '',
         dImp: flat.dImp ?? '',
@@ -291,7 +290,6 @@ function BombaARDesign() {
             const cur = next[firstCode];
             if (!cur || !Object.values(cur).some((v) => v))
               next[firstCode] = {
-                sal: d.salSim,
                 hz: d.hz,
                 lImp: d.lImp,
                 dImp: d.dImp,
@@ -331,7 +329,7 @@ function BombaARDesign() {
       const f = first;
       void guardaConReintento('bomba', () =>
         saveBombaDatos(proyectoId, {
-          salSim: f ? f.inp.sal : '',
+          salSim: '',
           udTot: f ? String(f.uds) : '0',
           hz: f ? f.inp.hz : '',
           lImp: f ? f.inp.lImp : '',
@@ -363,7 +361,7 @@ function BombaARDesign() {
     saveToStorage('civilflow_memoria_bomba_data', {
       inputs: f
         ? {
-            salSim: f.inp.sal,
+            salSim: '',
             udTot: String(f.uds),
             hz: f.inp.hz,
             lImp: f.inp.lImp,

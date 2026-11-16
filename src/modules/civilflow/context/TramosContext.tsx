@@ -59,7 +59,6 @@ export function TramosProvider({ children }: { children?: ReactNode }) {
               ? {
                   ...i,
                   descripcion: existing.descripcion || i.descripcion,
-                  nSalidas: i.nSalidas || existing.nSalidas || 1,
                 }
               : i;
           });

@@ -498,7 +498,7 @@ describe('asociación entre pisos: herencia de UDs', () => {
   it('hidro heredado no se duplica al re-aplicar y el clear lo restaura', () => {
     localStorage.setItem(
       'civilflow_' + HYDRO_DATA_STORAGE_KEY,
-      JSON.stringify({ san_RS4_2: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 0 } }),
+      JSON.stringify({ san_RS4_2: { accesorios: { codo90rmSube: 1 }, Lh: 0 } }),
     );
     const eng = makeEngine('2');
     eng.bajantes.push({

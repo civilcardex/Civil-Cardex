@@ -133,14 +133,7 @@ export const pageEntrada = (p: PumpPageCtx) => {
               'tbl-edge-r',
             ]}
             rows={[
-              [
-                'Número de salidas simultáneas',
-                'Sal sim',
-                cellInp(selCode, 'sal', 'Salidas simultáneas'),
-                '—',
-                '—',
-                'Método Hunter (NTC 1500)',
-              ],
+              ['Sal sim', '—', '—', 'Método Hunter (NTC 1500)'],
               [
                 'Unidades de descarga acumuladas en sótano',
                 'UD tot',
@@ -149,7 +142,6 @@ export const pageEntrada = (p: PumpPageCtx) => {
                 '—',
                 'Aparatos conectados a la bomba (trazos del diseño)',
               ],
-              ['Coeficiente de simultaneidad', 'K', Fmt2(c.K), '—', '—', 'K = 1/√(n − 1)'],
               [
                 'Caudal de diseño',
                 'Q dis',

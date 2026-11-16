@@ -153,7 +153,7 @@ describe('Resumen san — codo por aparato y cajas/bombas sin accesorios', () =>
     });
     // El motor escribe el codo 90 sube implícito del sifón en hidroData.
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { sifon: 1, codo90rmSube: 1 }, Lh: 0, nSalidas: 1 },
+      san_RS1_1: { accesorios: { sifon: 1, codo90rmSube: 1 }, Lh: 0 },
     });
     const table = computeAccesoriosTable(
       'san',
@@ -216,7 +216,7 @@ describe('Resumen san — codo por aparato y cajas/bombas sin accesorios', () =>
     });
     // El motor escribe el reventilado del accesorio en hidroData.
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0, nSalidas: 1 },
+      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0 },
     });
     const table = computeAccesoriosTable(
       'san',
@@ -249,7 +249,7 @@ describe('Resumen san — codo por aparato y cajas/bombas sin accesorios', () =>
       bajantes: [],
     });
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0, nSalidas: 1 },
+      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0 },
     });
     const table = computeAccesoriosTable(
       'san',
@@ -281,7 +281,7 @@ describe('Resumen san — codo por aparato y cajas/bombas sin accesorios', () =>
     });
     // El motor detecta la unión vent⊥san y escribe el reventilado en hidroData.
     setLocalStorage('tramo_hidro_data_v3', {
-      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0, nSalidas: 1 },
+      san_RS1_1: { accesorios: { codoReventilado: 1 }, Lh: 0 },
     });
     const table = computeAccesoriosTable(
       'san',

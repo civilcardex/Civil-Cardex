@@ -30,7 +30,6 @@ const ramalBase = {
   accMed: undefined,
   aparatoInicio: undefined,
   aparatoFin: undefined,
-  nSalidas: 1,
 };
 
 beforeEach(() => {

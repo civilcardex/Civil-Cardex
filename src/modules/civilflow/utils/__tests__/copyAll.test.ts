@@ -82,7 +82,7 @@ function seedSource() {
   );
   localStorage.setItem(
     'civilflow_' + HYDRO_DATA_STORAGE_KEY,
-    JSON.stringify({ san_RS1_99: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 0 } }),
+    JSON.stringify({ san_RS1_99: { accesorios: { codo90rmSube: 1 }, Lh: 0 } }),
   );
   localStorage.setItem('civilflow_' + GAS_ACC_KEY, JSON.stringify({ gas_RS1_99: { acc: 1 } }));
 }
@@ -180,7 +180,6 @@ describe('copyDrawingFromPlan copia todo', () => {
     expect(readHidro()[`san_${rs.id}_100`]).toEqual({
       accesorios: { codo90rmSube: 1 },
       Lh: 0,
-      nSalidas: 0,
     });
     expect(readGas()[`gas_${rs.id}_100`]).toEqual({ acc: 1 });
     // Origen intacto

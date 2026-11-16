@@ -1,17 +1,18 @@
 import { Link } from 'react-router-dom';
 import ArticlePage from './ArticlePage.tsx';
 
-/** Artículo "Método Hunter en la NTC 1500": contenido editorial de /aprende/hunter-ntc-1500.
- *  Los valores numéricos (UC por aparato, coeficientes de la curva, límites de presión) son los
+/** Artículo "El método de Hunter": contenido editorial de /aprende/hunter-ntc-1500.
+ *  TEORÍA GENERAL (ped. usuario 2026-11-16): sin normas de país — la curva y sus valores son
+ *  los de Roy Hunter, que muchos códigos de fontanería adoptan. Los números que cita son los
  *  mismos que calcula el módulo CivilFlow — el artículo no contradice a la app. */
 function HunterNtc1500Page() {
   return (
     <ArticlePage
       data={{
         path: '/aprende/hunter-ntc-1500',
-        titulo: 'Método Hunter en la NTC 1500: por qué a partir de 240 UC cambia la fórmula',
+        titulo: 'El método de Hunter: por qué a partir de 240 UC cambia la fórmula',
         bajada:
-          'Dimensionar una red de agua fría no es sumar los caudales de todos los aparatos. La NTC 1500 toma prestada la curva de Hunter, que convierte unidades de consumo en un caudal probable — y esa curva tiene dos tramos, con frontera en 240 UC.',
+          'Dimensionar una red de agua fría no es sumar los caudales de todos los aparatos. El método de Hunter convierte unidades de consumo en un caudal probable mediante una curva probabilística — y esa curva tiene dos tramos, con frontera en 240 UC.',
         fecha: '11 de noviembre de 2026',
         autor: 'Equipo CivilCardex',
         secciones: [
@@ -33,8 +34,9 @@ function HunterNtc1500Page() {
                   <strong> probabilidad de uso simultáneo</strong>: en lugar de caudales por
                   aparato, asigna a cada uno una cantidad adimensional — las{' '}
                   <strong>UC (Unidades de Consumo)</strong> — y usa una curva que convierte la suma
-                  de UC en caudal de diseño. La NTC 1500 (la norma colombiana de fontanería) adopta
-                  este método para las redes de agua fría y agua caliente.
+                  de UC en caudal de diseño. Es el método de referencia de la fontanería de
+                  edificaciones y lo adoptan la mayoría de los códigos modernos para las redes de
+                  agua fría y agua caliente.
                 </p>
               </>
             ),
@@ -44,9 +46,9 @@ function HunterNtc1500Page() {
             cuerpo: (
               <>
                 <p>
-                  Cada aparato sanitario aporta un valor de UC fijo según la tabla de la NTC 1500.
-                  Los valores que maneja la app (editables por proyecto en los parámetros de diseño)
-                  para la red de agua fría son:
+                  Cada aparato sanitario aporta un valor de UC fijo según la tabla clásica de
+                  Hunter. Los valores que maneja la app (editables por proyecto en los parámetros de
+                  diseño) para la red de agua fría son:
                 </p>
                 <table>
                   <thead>
@@ -101,50 +103,21 @@ function HunterNtc1500Page() {
             ),
           },
           {
-            titulo: 'K: el factor de simultaneidad',
+            titulo: 'Sin factor de simultaneidad: la curva simplificada',
             cuerpo: (
               <>
                 <p>
-                  Antes de entrar a la curva, el total de UC se modula por un factor{' '}
-                  <strong>K</strong> que penaliza — o mejor, favorece — la probabilidad de que
-                  varios aparatos descarguen a la vez:
+                  Algunas prácticas añaden al caudal de la curva un{' '}
+                  <strong>factor de simultaneidad</strong> adicional que reduce el resultado según
+                  el número de descargas del tramo (formas tipo K = 1/√(N−1)). CivilFlow aplica la{' '}
+                  <strong>curva simplificada</strong>: el caudal probable sale directamente de la
+                  curva de Hunter — la propia curva ya es probabilística y premia la simultaneidad
+                  en tramos grandes (su exponente hace que el caudal crezca más despacio que las
+                  UC).
                 </p>
-                <div className="formula">
-                  K = 1 &nbsp;(N = 1 descarga)
-                  <br />K = 1 / &radic;(N − 1) &nbsp;(N &gt; 1)
-                </div>
-                <p>donde N es el número de descargas (aparatos) del tramo. Algunos valores:</p>
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Descargas (N)</th>
-                      <th scope="col">K</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>1</td>
-                      <td>1.00</td>
-                    </tr>
-                    <tr>
-                      <td>3</td>
-                      <td>0.71</td>
-                    </tr>
-                    <tr>
-                      <td>6</td>
-                      <td>0.45</td>
-                    </tr>
-                    <tr>
-                      <td>60</td>
-                      <td>0.13</td>
-                    </tr>
-                  </tbody>
-                </table>
                 <p>
-                  Con un solo aparato el caudal probable es el caudal real (K = 1); con 60, la
-                  probabilidad de coincidencia se dispara y K cae a 0.13. La simultaneidad es la
-                  razón por la que un edificio de 20 apartamentos no necesita 20 veces el tubo de
-                  uno.
+                  La ventaja es trazabilidad: un solo paso entre las UC del tramo y el caudal de
+                  diseño, sin parámetros intermedios que dependan de criterios de cada oficina.
                 </p>
               </>
             ),
@@ -158,10 +131,8 @@ function HunterNtc1500Page() {
                   tamaño del tramo (resultados en L/s):
                 </p>
                 <div className="formula">
-                  q<sub>UC</sub> = 0.1163 · UC<sup>0.6875</sup> &nbsp;&nbsp;(UC &lt; 240)
-                  <br />q<sub>UC</sub> = 0.074 · UC<sup>0.7504</sup> &nbsp;&nbsp;(UC &ge; 240)
-                  <br />
-                  <br />Q<sub>diseño</sub> = K · q<sub>UC</sub>
+                  Q<sub>diseño</sub> = 0.1163 · UC<sup>0.6875</sup> &nbsp;&nbsp;(UC &lt; 240)
+                  <br />Q<sub>diseño</sub> = 0.074 · UC<sup>0.7504</sup> &nbsp;&nbsp;(UC &ge; 240)
                 </div>
                 <p>
                   Las dos expresiones son ajustes a la misma curva experimental de Hunter, cada uno
@@ -171,7 +142,7 @@ function HunterNtc1500Page() {
                   grandes la coincidencia simultánea de todos los aparatos es cada vez más
                   improbable. Es el corazón probabilístico del método.
                 </p>
-                <p>¿Qué significa en números? Comparando justo al borde del quiebre, con K = 1:</p>
+                <p>¿Qué significa en números? Comparando justo al borde del quiebre:</p>
                 <table>
                   <thead>
                     <tr>
@@ -218,31 +189,22 @@ function HunterNtc1500Page() {
                     <strong>3.7 UC</strong>.
                   </li>
                   <li>
-                    <strong>Factor K:</strong> N = 3 descargas → K = 1/&radic;(3−1) ={' '}
-                    <strong>0.71</strong>.
-                  </li>
-                  <li>
-                    <strong>Curva (UC &lt; 240):</strong> q<sub>UC</sub> = 0.1163 · 3.7
-                    <sup>0.6875</sup> ≈ 0.29 L/s.
-                  </li>
-                  <li>
-                    <strong>Caudal de diseño:</strong> Q = 0.71 × 0.29 ≈ <strong>0.20 L/s</strong>{' '}
-                    (unos 12 L/min).
+                    <strong>Curva (UC &lt; 240):</strong> Q = 0.1163 · 3.7<sup>0.6875</sup> ≈{' '}
+                    <strong>0.29 L/s</strong> (unos 17 L/min).
                   </li>
                 </ol>
                 <p>
-                  Ese Q ≈ 0.20 L/s es el caudal que entra al dimensionamiento: con él se escoge el
+                  Ese Q ≈ 0.29 L/s es el caudal que entra al dimensionamiento: con él se escoge el
                   diámetro, se calculan las pérdidas por Hazen-Williams y se verifica que al aparato
-                  más desfavorable le llegue su presión mínima de la NTC 1500 (ducha ≥ 1.02 m.c.a.,
-                  inodoro con tanque ≥ 0.71 m.c.a., lavamanos ≥ 0.51 m.c.a., según la Tabla 3 de la
-                  norma).
+                  más desfavorable le llegue su presión mínima (la que fije el criterio aplicable al
+                  proyecto — cada aparato tiene un piso de presión con el que funciona bien).
                 </p>
                 <p>
                   ¿Y cuando la red crece? Sumando 20 baños iguales a un mismo ramal: 20 × 3.7 = 74
-                  UC, con N = 60 descargas → K = 0.13. Sin simultaneidad, el caudal sería 0.1163 ·
-                  74<sup>0.6875</sup> ≈ 2.24 L/s; con el factor K, Q ≈ 0.13 × 2.24 ≈{' '}
-                  <strong>0.29 L/s</strong>. Casi ocho veces menos: la probabilidad de que veinte
-                  baños descarguen al mismo tiempo es minúscula, y el tubo lo agradece.
+                  UC. La curva da 0.1163 · 74<sup>0.6875</sup> ≈ 2.24 L/s — mucho menos que los 20
+                  caudales sumados a la vez, porque su forma probabilística ya premia la
+                  simultaneidad: cuanto más grande el tramo, más improbable que todo descargue a la
+                  vez.
                 </p>
               </>
             ),
@@ -263,18 +225,14 @@ function HunterNtc1500Page() {
                     cambia el resultado de forma sistemática.
                   </li>
                   <li>
-                    <strong>Olvidar K… o aplicarlo dos veces.</strong> El factor entra una única
-                    vez, multiplicando la curva: Q = K · q<sub>UC</sub>.
-                  </li>
-                  <li>
                     <strong>Usar el tramo alto de la curva en tramos pequeños.</strong> La expresión
                     con coeficiente 0.074 solo aplica a partir de 240 UC; en un tramo de 40 UC da un
                     caudal menor al real y subdimensiona.
                   </li>
                   <li>
                     <strong>Verificar solo el caudal.</strong> Aunque el Q alcance, el diámetro
-                    elegido puede dejar la presión del aparato crítico por debajo del mínimo de la
-                    NTC 1500. La cadena completa es UC → Q → diámetro → pérdidas → presión en el
+                    elegido puede dejar la presión del aparato crítico por debajo del mínimo
+                    exigido. La cadena completa es UC → Q → diámetro → pérdidas → presión en el
                     aparato.
                   </li>
                 </ul>
@@ -289,9 +247,9 @@ function HunterNtc1500Page() {
             </h2>
             <p>
               CivilFlow arma la tabla de diseño tramo por tramo: acumula las UC (propias + otros
-              ramales), aplica K y el tramo correcto de la curva de Hunter, escoge diámetro, calcula
-              pérdidas por Hazen-Williams y verifica la presión de cada aparato contra la NTC 1500 —
-              sobre tu plano PDF, sin fórmulas a mano.
+              ramales), aplica el tramo correcto de la curva de Hunter, escoge diámetro, calcula
+              pérdidas por Hazen-Williams y verifica la presión de cada aparato — sobre tu plano
+              PDF, sin fórmulas a mano.
             </p>
             <p>
               <Link

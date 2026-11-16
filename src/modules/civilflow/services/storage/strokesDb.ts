@@ -189,7 +189,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
       {},
     );
     const hidroMap = loadFromStorage<
-      Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+      Record<string, { accesorios: Record<string, number>; Lh: number }>
     >(HYDRO_DATA_STORAGE_KEY, {});
     const gasMap = loadFromStorage<Record<string, Record<string, number>>>(GAS_ACC_KEY, {});
     // Dedup por id: un documento viejo con el mismo bajante/ramal DOS veces hacía que el RPC
@@ -202,9 +202,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
         const hydroEntry = hidroMap[apKey];
         const hydroAcc =
           hydroEntry &&
-          (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
-            (hydroEntry.Lh ?? 0) > 0 ||
-            (hydroEntry.nSalidas ?? 0) > 0)
+          (Object.keys(hydroEntry.accesorios ?? {}).length > 0 || (hydroEntry.Lh ?? 0) > 0)
             ? hydroEntry
             : undefined;
         const gasEntry = gasMap[apKey];
@@ -229,9 +227,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
       const hydroEntry = hidroMap[`ac_${calId}_${planoId}`] || hidroMap[`af_${calId}_${planoId}`];
       const hydroAcc =
         hydroEntry &&
-        (Object.keys(hydroEntry.accesorios ?? {}).length > 0 ||
-          (hydroEntry.Lh ?? 0) > 0 ||
-          (hydroEntry.nSalidas ?? 0) > 0)
+        (Object.keys(hydroEntry.accesorios ?? {}).length > 0 || (hydroEntry.Lh ?? 0) > 0)
           ? hydroEntry
           : undefined;
       ramales.push({
@@ -467,7 +463,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     let aparatosChanged = false;
     const mergedAparatos = { ...existingAparatos };
     const existingHidro = loadFromStorage<
-      Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
+      Record<string, { accesorios: Record<string, number>; Lh: number }>
     >(HYDRO_DATA_STORAGE_KEY, {});
     let hidroChanged = false;
     const mergedHidro = { ...existingHidro };
@@ -494,9 +490,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       }
       if (
         r.hydroAcc &&
-        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 ||
-          (r.hydroAcc.Lh ?? 0) > 0 ||
-          (r.hydroAcc.nSalidas ?? 0) > 0) &&
+        (Object.keys(r.hydroAcc.accesorios ?? {}).length > 0 || (r.hydroAcc.Lh ?? 0) > 0) &&
         !mergedHidro[apKey]
       ) {
         mergedHidro[apKey] = r.hydroAcc;

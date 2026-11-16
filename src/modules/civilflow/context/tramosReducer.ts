@@ -13,7 +13,6 @@ export interface Tramo {
   descripcion?: string;
   diamDisPulg?: number;
   diametroOriginal?: string;
-  nSalidas?: number;
   nmaning?: number;
   sPercent?: number;
   qLps?: number;

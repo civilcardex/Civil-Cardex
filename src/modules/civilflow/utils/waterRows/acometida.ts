@@ -90,12 +90,12 @@ export function resolveAcometida(
   const Qaco = (() => {
     if (tr2) {
       const ownKey = tramoKeyOf(tr2);
-      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0, tr2.nSalidas || 0);
+      const qTr2 = hunterQ(componentTotalMap[ownKey] || 0);
       if (qTr2 > 0) {
         return qTr2;
       }
     }
-    return ucTotal > 0 ? Math.round(0.1163 * Math.pow(ucTotal, 0.6875) * 1000) / 1000 : 0;
+    return hunterQ(ucTotal);
   })();
 
   const calcFila = (

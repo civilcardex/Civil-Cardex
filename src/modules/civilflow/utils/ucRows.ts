@@ -61,7 +61,7 @@ export function computeUcTable(
     ...AP.map((d) => `${d.nombre}\n(${d[field]} UC)`),
     'Parcial',
   ];
-  if (showTotal) headers.push('Total', 'Longitud (m)', 'No. desc. simult.');
+  if (showTotal) headers.push('Total', 'Longitud (m)');
 
   const headerGroups: (string | MemoriaHeaderGroup)[] = [
     'Tramo',
@@ -70,12 +70,7 @@ export function computeUcTable(
     'Fin',
     { label: 'Aparatos', span: AP.length },
   ];
-  if (showTotal)
-    headerGroups.push(
-      { label: 'Unidades de consumo', span: 2 },
-      'Longitud (m)',
-      'No. desc. simult.',
-    );
+  if (showTotal) headerGroups.push({ label: 'Unidades de consumo', span: 2 }, 'Longitud (m)');
   else headerGroups.push('Parcial');
 
   const rows = sortedTramos.map((t) => {
@@ -99,8 +94,7 @@ export function computeUcTable(
     ];
     if (showTotal) {
       const vLh = t.totalL || t.Lh || 0;
-      const vNS = t.nSalidas ?? 0;
-      row.push(acum, vLh > 0 ? vLh.toFixed(2) : '—', vNS > 0 ? vNS : '—');
+      row.push(acum, vLh > 0 ? vLh.toFixed(2) : '—');
     }
     return row;
   });
@@ -121,7 +115,7 @@ export function computeUcTable(
     ...totales.map((d) => `${d.cant} × ${d.uc} UC`),
   ];
   sumRow.push(showTotal ? '' : totalUC);
-  if (showTotal) sumRow.push(totalUC, '', '');
+  if (showTotal) sumRow.push(totalUC, '');
   rows.push(sumRow);
 
   return { title: `Cálculo de unidades de consumo ${title}`, headerGroups, headers, rows };

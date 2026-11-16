@@ -19,7 +19,6 @@ export default function DisenosSanitarios() {
   const [edit, setEdit] = useState(false);
   const tablaRef = useStickyThead2Offset();
   const [editingPend, setEditingPend] = useState<Record<string, string>>({});
-  const [editingNSalidas, setEditingNSalidas] = useState<Record<string, string>>({});
   const { tramosSan, updTramoSan } = useTramos();
   const { aps } = useApparatus();
   const { plans } = usePlans();
@@ -60,9 +59,6 @@ export default function DisenosSanitarios() {
           edit={edit}
           editingPend={editingPend}
           setEditingPend={setEditingPend}
-          editingNSalidas={editingNSalidas}
-          setEditingNSalidas={setEditingNSalidas}
-          updTramoSan={updTramoSan}
           handleDiamChange={handleDiamChange}
           plans={plans}
         />

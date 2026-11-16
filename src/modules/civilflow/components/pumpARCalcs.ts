@@ -6,7 +6,6 @@ import { matHazenC } from '../constants/engineeringDataMaterials.ts';
 
 /** Inputs editables por bomba. */
 export interface BombaInputs {
-  sal: string;
   hz: string;
   lImp: string;
   dImp: string;
@@ -24,7 +23,6 @@ export interface BombaInputs {
 
 /** Valores con los que arranca el formulario de cada bomba. Exportada porque el test de regresión compara la forma completa. */
 export const INPUTS_DEFAULT: BombaInputs = {
-  sal: '',
   hz: '',
   lImp: '',
   dImp: '',
@@ -56,7 +54,6 @@ export function cHazenDe(tipoTuberia: string): number {
  *  estática, potencia hidráulica/eje/comercial y la selección en HP. Cadenas a precisión
  *  completa (el Excel maestro encadena sin redondear). Ej: eta vacía -> P eje '' (nunca inventar). */
 export function calcsDe(inp: BombaInputs, uds: number) {
-  const sal = dec(inp.sal);
   const hz = dec(inp.hz);
   const li = dec(inp.lImp);
   const di = dec(inp.dImp);
@@ -72,10 +69,7 @@ export function calcsDe(inp: BombaInputs, uds: number) {
   const Dm = di * 0.0254;
   const ud = uds;
 
-  const K = sal <= 1 ? 1 : +(1 / Math.sqrt(sal - 1)).toFixed(2);
-  const Qd = +(
-    K * (ud < 240 ? 0.1163 * Math.pow(ud, 0.6875) : 0.074 * Math.pow(ud, 0.7504))
-  ).toFixed(2);
+  const Qd = +(ud < 240 ? 0.1163 * Math.pow(ud, 0.6875) : 0.074 * Math.pow(ud, 0.7504)).toFixed(2);
   const Qb = +(Qd * 1.25).toFixed(2);
   // V con Qd (caudal de diseño — metodología del Excel maestro, D27).
   const Vi = Qd > 0 && Dm > 0 ? +((Qd * 0.001) / (3.14159 * Math.pow(Dm / 2, 2))).toFixed(3) : 0;
@@ -120,7 +114,6 @@ export function calcsDe(inp: BombaInputs, uds: number) {
   const Vgeo = bc > 0 && lc > 0 && hmx - hmn > 0 ? +(bc * lc * (hmx - hmn)).toFixed(2) : 0;
   const Vchk = Vgeo > 0 && Vcam > 0 ? (Vgeo >= Vcam / 1000 ? 'O.K.' : 'AMPLIAR CÁMARA') : '';
   return {
-    K,
     Qd,
     Qb,
     Vi,

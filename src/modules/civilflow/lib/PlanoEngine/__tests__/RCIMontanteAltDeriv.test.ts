@@ -20,7 +20,6 @@ function mkRamal(id: string, net: string, pts: number[][]): PlanoRamal {
     piso: '',
     dz: '',
     uc: 0,
-    nSalidas: 1,
     material: '',
     diametro: '4"',
     bloqueado: false,

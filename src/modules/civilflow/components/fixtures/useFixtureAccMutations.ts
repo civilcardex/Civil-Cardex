@@ -8,7 +8,7 @@ import {
   type GasAccMap,
 } from '../fixturesStorage.ts';
 
-const HIDRO_VACIA = { accesorios: {}, Lh: 0, nSalidas: 0 };
+const HIDRO_VACIA = { accesorios: {}, Lh: 0 };
 
 /** Suma o resta 1 a un accesorio hidráulico (codos, tees) sobre el mapa (función pura:
  *  se prueba con un store de mentiras). */

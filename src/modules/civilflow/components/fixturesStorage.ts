@@ -34,7 +34,7 @@ import type { HidroDataEntry } from '../utils/drawingSyncTypes.ts';
  *  (utils/drawingSyncTypes). */
 export type { HidroDataEntry };
 /** Ficha hidráulica por clave de tramo: accesorios contados, Lh (longitud equivalente de los
- *  accesorios, en m) y nSalidas. */
+ *  accesorios, en m). */
 export type HidroDataMap = Record<string, HidroDataEntry>;
 /** Accesorios de gas por clave de tramo: accesorio → cantidad (codos, tees…) para las pérdidas
  *  por accesorios de la red gas. */
@@ -51,7 +51,7 @@ export function saveAll(map: CountsMap) {
   saveToStorage(APARATOS_BY_TRAMO_KEY, map);
 }
 
-/** Lee las fichas hidráulicas por tramo (accesorios + Lh + nSalidas). */
+/** Lee las fichas hidráulicas por tramo (accesorios + Lh). */
 export function loadHidroData(): HidroDataMap {
   return loadFromStorage(HYDRO_DATA_STORAGE_KEY, {});
 }
@@ -337,8 +337,8 @@ import { leerHeredadosPresion, mezclarMax } from '../utils/propagation';
 
 /** Accesorios hidráulicos (codos, tees) guardados del tramo; entrada vacía si no tiene. */
 export function hidroDeClave(hidroData: HidroDataMap, storageKey: string | null): HidroDataEntry {
-  if (!storageKey) return { accesorios: {}, Lh: 0, nSalidas: 0 };
-  return hidroData[storageKey] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+  if (!storageKey) return { accesorios: {}, Lh: 0 };
+  return hidroData[storageKey] || { accesorios: {}, Lh: 0 };
 }
 
 /** Total de UD (Unidades de Desague) del tramo: suma de cada aparato (cuántos hay × las UD que gasta cada uno). */

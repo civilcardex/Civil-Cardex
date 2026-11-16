@@ -67,7 +67,6 @@ describe('computeAcometidaSummary', () => {
       material: 'PVC-S',
       fixtures: {},
       accesorios: {},
-      nSalidas: 0,
     } as unknown as Tramo;
     const s = computeAcometidaSummary([tr1, tr2], [] as PlanItem[], DIAMS)!;
     expect(s.tr1).toMatchObject({ h: 8, hasta: 'Contador' });
@@ -96,8 +95,8 @@ describe('computeAcometidaSummary', () => {
     expect(s.diamConformeOk).toBe(true);
   });
 
-  it('Qaco por Hunter cuando hay UC acumulada en AC-02 (0.1163·UC^0.6875 con K de salidas)', () => {
-    // AC-02 con aparatos y nSalidas 1 → K = 1/√(1−1)… sin divisor: hunterQ(total>0, nDesc)
+  it('Qaco por Hunter cuando hay UC acumulada en AC-02 (curva pura 0.1163·UC^0.6875, Hunter simplificado)', () => {
+    // AC-02 con aparatos: Qaco por la curva pura (Hunter simplificado)
     const tr2 = {
       id: 'AC-02',
       tipo: 'ramal',
@@ -108,7 +107,6 @@ describe('computeAcometidaSummary', () => {
       material: 'PVC-S',
       fixtures: { lvm: 4 }, // 4 lavamanos × 0.5 UC_af = 2 UC
       accesorios: {},
-      nSalidas: 3,
     } as unknown as Tramo;
     const tr1 = {
       id: 'AC-01',
@@ -122,9 +120,8 @@ describe('computeAcometidaSummary', () => {
       accesorios: {},
     } as unknown as Tramo;
     const s = computeAcometidaSummary([tr1, tr2], [] as PlanItem[], DIAMS)!;
-    // K(3) = 1/√2 ≈ 0.7071 — hunterK ya NO redondea (el round a 2 dec era artefacto del HTML)
-    const K = 1 / Math.sqrt(2);
-    const esperado = Math.round(K * 0.1163 * Math.pow(2, 0.6875) * 1000) / 1000;
+    // Curva pura (Hunter simplificado): sin K de simultaneidad.
+    const esperado = Math.round(0.1163 * Math.pow(2, 0.6875) * 1000) / 1000;
     expect(s.Qaco).toBe(esperado);
     expect(s.Qaco).toBeGreaterThan(0);
   });
@@ -151,7 +148,6 @@ describe('computeAcometidaSummary', () => {
       material: 'PVC-S',
       fixtures: { lvm: 40 },
       accesorios: {},
-      nSalidas: 3,
     } as unknown as Tramo;
     const s = computeAcometidaSummary([tr1, tr2], [] as PlanItem[], DIAMS)!;
     expect(s.p2Ini).toBe(s.p1Fin);

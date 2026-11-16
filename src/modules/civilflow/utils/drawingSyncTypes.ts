@@ -17,7 +17,6 @@ export interface RawElement {
   lvert?: string;
   piso?: string;
   pts?: number[][];
-  nSalidas?: number;
   descargaEnId?: string | null;
   code?: string;
   dNominal?: string;
@@ -94,11 +93,10 @@ export interface TraceData {
   [key: string]: unknown;
 }
 
-/** Fila hidráulica de un tramo: conteo de accesorios, longitud horizontal (Lh, m) y número de salidas — alimenta las tablas de af/ac. */
+/** Fila hidráulica de un tramo: conteo de accesorios y longitud horizontal (Lh, m) — alimenta las tablas de af/ac. */
 export interface HidroDataEntry {
   accesorios: Record<string, number>;
   Lh: number;
-  nSalidas: number;
 }
 
 /** Ramal listo para BD: geometría, diámetros, punteros entre pisos (descargaEnId) y claves internas (_aparatosKey). */
@@ -118,7 +116,6 @@ export interface RamalSyncObj {
   piso: string;
   _aparatosKey: string;
   _net: string;
-  nSalidas: number;
   descargaEnId: string | null;
   aparatoInicio: string;
   aparatoFin: string;

@@ -63,7 +63,12 @@ export function computeHeaterSelectionTables(
 
   const resolvedFactorSim =
     factorSim !== undefined ? factorSim : (loadPersistedFactorSim(tramosAc) ?? 50);
-  const caudalProbableLps = totalUC > 0 ? 0.1163 * Math.pow(totalUC, 0.6875) : 0;
+  const caudalProbableLps =
+    totalUC > 0
+      ? totalUC < 240
+        ? 0.1163 * Math.pow(totalUC, 0.6875)
+        : 0.074 * Math.pow(totalUC, 0.7504)
+      : 0;
   const caudalProbableLpm = caudalProbableLps * 60.0;
   const caudalAjustado = caudalProbableLpm * (resolvedFactorSim / 100);
 

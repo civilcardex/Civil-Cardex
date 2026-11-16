@@ -286,10 +286,7 @@ describe('sanAccessoryCount (conteo por ramal)', () => {
       eng,
       eng.ramales.filter((r) => r.net === 'san'),
     );
-    const hidro: Record<
-      string,
-      { accesorios: Record<string, number>; Lh: number; nSalidas: number }
-    > = {};
+    const hidro: Record<string, { accesorios: Record<string, number>; Lh: number }> = {};
     const changed = contarAccesoriosPorRamal(
       ctx,
       { yeeCounts: {}, teeCounts: {} },
@@ -316,11 +313,8 @@ describe('sanAccessoryCount (conteo por ramal)', () => {
       eng,
       eng.ramales.filter((r) => r.net === 'san'),
     );
-    const hidro: Record<
-      string,
-      { accesorios: Record<string, number>; Lh: number; nSalidas: number }
-    > = {
-      san_RS1_1: { accesorios: { sifon: 1, codo90rmSube: 1 }, Lh: 0, nSalidas: 0 },
+    const hidro: Record<string, { accesorios: Record<string, number>; Lh: number }> = {
+      san_RS1_1: { accesorios: { sifon: 1, codo90rmSube: 1 }, Lh: 0 },
     };
     const changed = contarAccesoriosPorRamal(ctx, { yeeCounts: {}, teeCounts: {} }, [], '1', hidro);
     expect(changed).toBe(true);

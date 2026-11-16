@@ -32,7 +32,7 @@ export const BAJADAS_RECEPTORAS_KEY = 'bajadas_receptoras_v1';
  *  relativa (pantalla GasDatosGenerales). */
 export const GAS_DATOS_KEY = 'gas_datos_generales';
 /** Ficha hidráulica por tramo (v3): accesorios, Lh (longitud equivalente de accesorios, en m) y
- *  nSalidas — la consume el dimensionamiento de af (Agua Fria)/ac (Agua Caliente). */
+ *  alimenta las fichas hidráulicas de af/ac. */
 export const HYDRO_DATA_STORAGE_KEY = 'tramo_hidro_data_v3';
 /** Blob de sync hidráulico (af/ac): qué aparatos hay en cada tramo de cada piso; Informes y los
  *  paneles lo leen sin recorrer el dibujo. */

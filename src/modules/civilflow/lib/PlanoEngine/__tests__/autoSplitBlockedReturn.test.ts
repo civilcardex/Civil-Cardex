@@ -19,7 +19,6 @@ function mkRamal(id: string, net: string, pts: number[][], tipo = 'ramal'): Plan
     piso: '',
     dz: '',
     uc: 0,
-    nSalidas: 1,
     material: '',
     diametro: '',
     bloqueado: false,

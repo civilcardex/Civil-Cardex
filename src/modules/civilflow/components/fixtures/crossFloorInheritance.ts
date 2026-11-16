@@ -142,7 +142,7 @@ export function heredarEntrePisos(
           ucAplicadoNuevo[tk] = { ...extra };
           if (liveHydro) {
             const prevH = aplicadoHidroPrev[tk] || {};
-            const hcur = hdisk[tk] || { accesorios: {}, Lh: 0, nSalidas: 0 };
+            const hcur = hdisk[tk] || { accesorios: {}, Lh: 0 };
             const tieneEntradaH = Object.prototype.hasOwnProperty.call(aplicadoHidroPrev, tk);
             const propioH = propioDeClave(
               hcur.accesorios || {},

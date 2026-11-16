@@ -6,11 +6,7 @@ export {
   writeContadorDiamToDrawing,
   writeAcoDiamToDrawing,
 } from './drawingWrites/diameters';
-export {
-  writePendienteToDrawing,
-  writeNSalidasToDrawing,
-  writeCanalDimsToDrawing,
-} from './drawingWrites/others';
+export { writePendienteToDrawing, writeCanalDimsToDrawing } from './drawingWrites/others';
 export {
   writeDiametroToDrawingBatch,
   writeBajantePropToDrawing,

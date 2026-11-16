@@ -2,14 +2,16 @@ import { Link } from 'react-router-dom';
 import ArticlePage from './ArticlePage.tsx';
 
 /** Artículo "Fuerza tractiva en redes sanitarias": contenido editorial de /aprende/fuerza-tractiva-sanitaria.
- *  Los criterios citados (0.10/0.15 kg/m², V 0.45–4.0 m/s, y/D ≤ 0.75, pendiente mínima 2% para
- *  D ≥ 2") son los mismos que verifica la app para Colombia — sin inventar numerales adicionales. */
+ *  TEORÍA GENERAL (ped. usuario 2026-11-16): sin normas de país — la hidráulica (τ = ρ·g·Rh·S,
+ *  Manning, flujo parcial) y los criterios de referencia citados (τ ≈ 0.10–0.15 kg/m²,
+ *  V 0.45–4.0 m/s, y/D ≤ 0.75) son práctica internacional común; el perfil numérico exacto lo
+ *  define cada proyecto. Los criterios son los mismos que verifica la app — sin contradecirla. */
 function SanTractiveForcePage() {
   return (
     <ArticlePage
       data={{
         path: '/aprende/fuerza-tractiva-sanitaria',
-        titulo: 'Fuerza tractiva mínima en redes sanitarias: autolimpieza y RAS 2000',
+        titulo: 'Fuerza tractiva mínima en redes sanitarias: el criterio de autolimpieza',
         bajada:
           'Un tubo sanitario bien dimensionado en caudal puede seguir fallando en la práctica: si el agua no "jala" lo suficiente, los sólidos se sedimentan y la red se tapa. Ese jalón se mide y se llama fuerza tractiva.',
         fecha: '11 de noviembre de 2026',
@@ -32,8 +34,8 @@ function SanTractiveForcePage() {
                   donde &rho; es la densidad del agua, g la gravedad, R<sub>h</sub> el radio
                   hidráulico (área mojada dividida por perímetro mojado; a tubo lleno R<sub>h</sub>{' '}
                   = D/4) y S la pendiente de la tubería en m/m. Su magnitud es pequeña — se habla de
-                  pocos pascals — y por eso la práctica colombiana la expresa en kg/m² (1 kg/m² ≈
-                  9.81 Pa). La app la calcula con la forma equivalente:
+                  pocos pascals — y por eso la práctica la expresa en kg/m² (1 kg/m² ≈ 9.81 Pa). La
+                  app la calcula con la forma equivalente:
                 </p>
                 <div className="formula">
                   &tau; ≈ 1000 · R<sub>h</sub> · S &nbsp;&nbsp;[kg/m²]
@@ -60,16 +62,17 @@ function SanTractiveForcePage() {
                 </p>
                 <p>
                   El criterio de <strong>autolimpieza</strong> es entonces un piso mínimo de
-                  arrastre: los valores de referencia usados en Colombia son{' '}
-                  <strong>τ ≥ 0.10 kg/m²</strong> (mínimo, NTC 1500) y{' '}
-                  <strong>τ ≥ 0.15 kg/m²</strong> (recomendado; el criterio que verifica la app, con
-                  referencia al RAS 2000) — equivalentes a aproximadamente 1.0 y 1.5 Pa.
+                  arrastre. La práctica internacional de referencia usa{' '}
+                  <strong>τ ≥ 0.10 kg/m²</strong> como mínimo y <strong>τ ≥ 0.15 kg/m²</strong> como
+                  valor recomendado — equivalentes a aproximadamente 1.0 y 1.5 Pa. Son los valores
+                  con los que la app verifica cada tramo (configurables según el perfil del
+                  proyecto).
                 </p>
                 <div className="nota">
-                  Los numerales y valores exactos de las normas cambian con las revisiones:{' '}
-                  <strong>verifica el numeral vigente</strong> de la NTC 1500 y del RAS 2000 antes
-                  de sustentar un diseño. Los aquí citados son los criterios de verificación con los
-                  que la app trabaja para Colombia.
+                  El valor exacto del piso de arrastre lo fija cada código o especificación de
+                  proyecto: <strong>verifica el criterio vigente</strong> que aplique a tu diseño
+                  antes de sustentarlo. Los aquí citados son los valores de referencia con los que
+                  la app trabaja por defecto.
                 </div>
               </>
             ),
@@ -84,9 +87,10 @@ function SanTractiveForcePage() {
                 <ul>
                   <li>
                     <strong>La pendiente (S)</strong> es la palanca directa: τ es proporcional a
-                    ella. Bajar la pendiente a la mitad baja la τ a la mitad. Es la razón de que las
-                    normas fijen pendientes mínimas por diámetro (la NTC 1500, por ejemplo, exige ≥
-                    2.0% para tuberías sanitarias de 2" o más).
+                    ella. Bajar la pendiente a la mitad baja la τ a la mitad. Es la razón de que los
+                    códigos fijen pendientes mínimas por diámetro (en instalaciones internas, un
+                    mínimo del orden de 2.0% para tuberías sanitarias de 2" o más es práctica
+                    común).
                   </li>
                   <li>
                     <strong>El diámetro (D)</strong> es la palanca traicionera. A tubo lleno, un
@@ -192,55 +196,55 @@ function SanTractiveForcePage() {
             ),
           },
           {
-            titulo: 'Los criterios aplicados en Colombia',
+            titulo: 'Los criterios de referencia',
             cuerpo: (
               <>
                 <p>
-                  Los límites de verificación con los que la app valida cada tramo sanitario para
-                  Colombia:
+                  Además del piso de fuerza tractiva, la autolimpieza se acompaña de criterios
+                  complementarios de velocidad y llenado — los valores de referencia común en la
+                  práctica de diseño (los mismos que la app aplica, ajustables por perfil de
+                  proyecto):
                 </p>
                 <table>
                   <thead>
                     <tr>
                       <th scope="col">Criterio</th>
-                      <th scope="col">Valor</th>
-                      <th scope="col">Referencia</th>
+                      <th scope="col">Valor de referencia</th>
+                      <th scope="col">Qué controla</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
                       <td>Velocidad mínima (autolimpieza)</td>
                       <td>≥ 0.45 m/s</td>
-                      <td>RAS 2000 §D.4.3</td>
+                      <td>Que el arrastre mueva los sólidos en caudales bajos</td>
                     </tr>
                     <tr>
                       <td>Velocidad máxima</td>
                       <td>≤ 4.00 m/s</td>
-                      <td>RAS 2000 §D.4.3</td>
+                      <td>Erosión y ruido; no "lavar" el tubo a costa de dañarlo</td>
                     </tr>
                     <tr>
                       <td>Llenado máximo y/D</td>
                       <td>≤ 0.75</td>
-                      <td>RAS 2000 §D.4.3</td>
+                      <td>Ventilación del flujo parcial y margen ante picos</td>
                     </tr>
                     <tr>
                       <td>Fuerza tractiva mínima</td>
                       <td>≥ 0.10 kg/m² (mín.) · 0.15 kg/m² (recom.)</td>
-                      <td>NTC 1500 · criterio de la app (ref. RAS 2000)</td>
+                      <td>Autolimpieza: que el agua "jale" los sedimentos</td>
                     </tr>
                     <tr>
                       <td>Pendiente mínima sanitaria (D ≥ 2")</td>
                       <td>≥ 2.0%</td>
-                      <td>NTC 1500 §8.3</td>
+                      <td>Piso de τ en tramos pequeños de instalaciones internas</td>
                     </tr>
                   </tbody>
                 </table>
                 <p>
-                  El RAS 2000 (el Reglamento Técnico del Sector de Agua Potable y Saneamiento
-                  Básico) fija el marco para alcantarillado — velocidades, llenados y pendientes — y
-                  la NTC 1500 cubre las redes internas del edificio. Antes de sustentar un diseño,
-                  consulta el numeral vigente de cada norma: los valores citados aquí son los
-                  criterios con los que la app verifica, no una copia literal de la norma.
+                  Antes de sustentar un diseño, consulta el código o la especificación aplicable:
+                  los valores citados aquí son los criterios de referencia con los que la app
+                  verifica, no una copia literal de ninguna norma en particular.
                 </p>
               </>
             ),
@@ -268,8 +272,8 @@ function SanTractiveForcePage() {
             </h2>
             <p>
               CivilFlow calcula la fuerza tractiva real de cada tramo sanitario junto con velocidad,
-              llenado y/D y Froude, y marca los que no cumplen los criterios de RAS 2000 y NTC 1500
-              — así el tubo "por si acaso" no pasa inadvertido hasta la obra.
+              llenado y/D y Froude, y marca los que no cumplen los criterios de autolimpieza — así
+              el tubo "por si acaso" no pasa inadvertido hasta la obra.
             </p>
             <p>
               <Link

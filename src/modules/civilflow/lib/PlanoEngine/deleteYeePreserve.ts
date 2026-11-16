@@ -384,7 +384,7 @@ export function preserveYeeDobleAt(
         const kBest = `san_${best.id}_${planId}`;
         const delEntry = hidroMap[kDel];
         const yeeVal = delEntry?.accesorios?.['yeeDoble'] ?? 1;
-        if (!hidroMap[kBest]) hidroMap[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+        if (!hidroMap[kBest]) hidroMap[kBest] = { accesorios: {}, Lh: 0 };
         if (!hidroMap[kBest].accesorios) hidroMap[kBest].accesorios = {};
         hidroMap[kBest].accesorios['yeeDoble'] = yeeVal;
       }
@@ -495,14 +495,14 @@ function placeTaponOnHost(
   if (hidro) {
     // Mapa compartido del pase: solo mutar — preserveYeeDobleAt persiste al final.
     const kBest = `san_${host.id}_${planId}`;
-    if (!hidro[kBest]) hidro[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidro[kBest]) hidro[kBest] = { accesorios: {}, Lh: 0 };
     if (!hidro[kBest].accesorios) hidro[kBest].accesorios = {};
     hidro[kBest].accesorios['tapon'] = (hidro[kBest].accesorios['tapon'] || 0) + 1;
   } else if (planId != null) {
     try {
       const map = loadFromStorage<Record<string, HidroDataEntry>>(HYDRO_DATA_STORAGE_KEY, {});
       const kBest = `san_${host.id}_${planId}`;
-      if (!map[kBest]) map[kBest] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+      if (!map[kBest]) map[kBest] = { accesorios: {}, Lh: 0 };
       if (!map[kBest].accesorios) map[kBest].accesorios = {};
       map[kBest].accesorios['tapon'] = (map[kBest].accesorios['tapon'] || 0) + 1;
       saveToStorage(HYDRO_DATA_STORAGE_KEY, map);

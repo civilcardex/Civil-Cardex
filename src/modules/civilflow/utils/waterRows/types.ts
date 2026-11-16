@@ -8,8 +8,6 @@ export interface WnRow {
   piso: number;
   udPropia: number;
   udTotal: number;
-  nDesc: number;
-  K: number;
   Qprob: number;
   diamEst: number;
   diamDis: string;

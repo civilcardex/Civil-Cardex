@@ -253,7 +253,6 @@ export function buildTribFromGuide(
     piso: String(eng.nivelActual?.n ?? ''),
     dz: '',
     uc: 0,
-    nSalidas: 1,
     labelX: (pStart[0] + endPt[0]) / 2,
     labelY: (pStart[1] + endPt[1]) / 2,
     labelAngle: _firstSegmentAngle(fullPts),

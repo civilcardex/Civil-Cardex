@@ -1,8 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-  APARATOS_BY_TRAMO_KEY,
-  HYDRO_DATA_STORAGE_KEY,
-} from '../../../constants/storage-keys.ts';
+import { APARATOS_BY_TRAMO_KEY, HYDRO_DATA_STORAGE_KEY } from '../../../constants/storage-keys.ts';
 import { _renumberRamales, isPlanKeyFor, keyPlanSuffixOf } from '../networkRenumber.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
@@ -107,8 +104,8 @@ describe('_renumberRamales entre pisos', () => {
     localStorage.setItem(
       HIDRO,
       JSON.stringify({
-        san_RS4_2: { accesorios: { codo90rmSube: 1 }, Lh: 0, nSalidas: 0 },
-        san_RS4_1: { accesorios: { codo90rmSube: 2 }, Lh: 0, nSalidas: 0 },
+        san_RS4_2: { accesorios: { codo90rmSube: 1 }, Lh: 0 },
+        san_RS4_1: { accesorios: { codo90rmSube: 2 }, Lh: 0 },
       }),
     );
     _renumberRamales(makeEngine(['RS1', 'RS4'], '2'), 'san');

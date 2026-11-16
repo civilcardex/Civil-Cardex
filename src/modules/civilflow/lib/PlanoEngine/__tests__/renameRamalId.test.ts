@@ -76,7 +76,7 @@ describe('renameRamalId', () => {
     resetStorage();
     setLocalStorage('aparatos_by_tramo_v2', { san_T1788_1: { lv: 2 } });
     setLocalStorage('tramo_hidro_data_v3', {
-      san_T1788_1: { accesorios: { codo90: 1 }, Lh: 3, nSalidas: 2 },
+      san_T1788_1: { accesorios: { codo90: 1 }, Lh: 3 },
     });
   });
 

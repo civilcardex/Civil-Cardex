@@ -11,12 +11,11 @@ import type { SanJunctionCtx } from './sanJunctionGeometry.ts';
 import type { SanJunctionResult } from './sanJunctionDetect.ts';
 
 /** Entrada de hidráulica por tramo san/ll: accesorios contados, longitud horizontal (m) y
- *  n.º de salidas. Ej: {accesorios:{c90:2,tee:1}, Lh:6.4, nSalidas:3} alimenta el resumen
+ *  accesorios. Ej: {accesorios:{c90:2,tee:1}, Lh:6.4} alimenta el resumen
  *  de accesorios por diámetro. */
 export interface HidroTramoEntry {
   accesorios: Record<string, number>;
   Lh: number;
-  nSalidas: number;
 }
 
 /** Regla del usuario (definición fija): Yee doble SOLO cuando las DOS derivaciones caen en
@@ -175,7 +174,7 @@ export function contarAccesoriosPorRamal(
     // Only persisted accesorio (aparato/montante) counts — removes the "extra codo 90".
 
     const rKey = `san_${r.id}_${planId}`;
-    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0 };
     if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
 
     const acc = hidroData[rKey].accesorios;

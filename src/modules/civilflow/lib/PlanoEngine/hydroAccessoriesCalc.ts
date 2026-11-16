@@ -27,7 +27,7 @@ export function calcHydroAccessories(engine: IPlanoEngineCore): void {
 
   for (const r of ramales) {
     const rKey = `${r.net}_${r.id}_${planId}`;
-    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0, nSalidas: 0 };
+    if (!hidroData[rKey]) hidroData[rKey] = { accesorios: {}, Lh: 0 };
     if (!hidroData[rKey].accesorios) hidroData[rKey].accesorios = {};
     const acc = hidroData[rKey].accesorios;
 

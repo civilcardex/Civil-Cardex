@@ -90,7 +90,12 @@ export default function HeaterSelection() {
   }, [tramosAc, plans]);
 
   // Caudal probable por Hunter
-  const caudalProbableLps = totalUC > 0 ? 0.1163 * Math.pow(totalUC, 0.6875) : 0;
+  const caudalProbableLps =
+    totalUC > 0
+      ? totalUC < 240
+        ? 0.1163 * Math.pow(totalUC, 0.6875)
+        : 0.074 * Math.pow(totalUC, 0.7504)
+      : 0;
   const caudalProbableGpm = caudalProbableLps * 15.8503;
   const caudalProbableLpm = caudalProbableLps * 60.0;
 

@@ -35,7 +35,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'RS1',
       ini: 'LVM',
       fin: '',
-      nSalidas: 2,
       fixtures: { lvm: 2 },
       diamDisPulg: 0.75,
       totalL: 8,
@@ -46,7 +45,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'RS2',
       ini: 'INO',
       fin: '',
-      nSalidas: 1,
       fixtures: { san: 1 },
       diamDisPulg: 1.25,
       totalL: 12,
@@ -56,8 +54,8 @@ describe('computeWaterNetworkRows · caracterización', () => {
     expect(rows).toHaveLength(2);
     // UC propia = parcial (sin heredados): 2 lavamanos × 0.5 = 1; 1 inodoro × 2.2 = 2.2.
     // Carga propagada: udTotal === udPropia, sin acumular subárbol.
-    expect(rows[0]).toMatchObject({ id: 'RS1', udPropia: 1, udTotal: 1, K: 1, Qprob: 0.116 });
-    expect(rows[1]).toMatchObject({ id: 'RS2', udPropia: 2.2, udTotal: 2.2, K: 1, Qprob: 0.2 });
+    expect(rows[0]).toMatchObject({ id: 'RS1', udPropia: 1, udTotal: 1, Qprob: 0.116 });
+    expect(rows[1]).toMatchObject({ id: 'RS2', udPropia: 2.2, udTotal: 2.2, Qprob: 0.2 });
     // Diámetro estimado = √Q redondeado a 2 decimales.
     expect(rows[0].diamEst).toBe(0.34);
     expect(rows[1].diamEst).toBe(0.45);
@@ -82,7 +80,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'M1-1',
       ini: 'M1',
       fin: 'LVM',
-      nSalidas: 3,
       fixtures: { lvm: 4 },
       diamDisPulg: 1.25,
       totalL: 12,
@@ -93,7 +90,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'RS1-1',
       ini: 'M1',
       fin: 'LVM',
-      nSalidas: 2,
       fixtures: { lvm: 2 },
       diamDisPulg: 0.75,
       totalL: 8,
@@ -128,8 +124,8 @@ describe('computeWaterNetworkRows · caracterización', () => {
     // Su Pin viene de la acometida f1 (Pfin de la fila Contador→Montante); RS1 hereda Pfin de M1.
     expect(rows[1].Pin).toBe(rows[0].Pfin);
     expect(rows[0].Pin).toBe(19.73);
-    expect(rows[0].Pfin).toBe(19.72);
-    expect(rows[1].Pfin).toBe(19.66);
+    expect(rows[0].Pfin).toBe(19.71);
+    expect(rows[1].Pfin).toBeCloseTo(19.65, 2);
   });
 
   it('ac con calentador: raíz CALENT toma pFin×0.9 del tramo af fuente; heater total = tabla', () => {
@@ -138,7 +134,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'CALENT1',
       ini: 'CALENT1',
       fin: 'M1',
-      nSalidas: 2,
       fixtures: { lvm: 4 },
       diamDisPulg: 1.25,
       totalL: 3,
@@ -149,7 +144,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'M1',
       ini: 'M1',
       fin: 'LVM',
-      nSalidas: 1,
       fixtures: { lvm: 2 },
       diamDisPulg: 0.75,
       totalL: 5,
@@ -183,7 +177,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'AC-01',
       ini: 'RP',
       fin: 'CNT1',
-      nSalidas: 0,
       fixtures: {},
       diamDisPulg: 0.75,
       totalL: 8,
@@ -194,7 +187,6 @@ describe('computeWaterNetworkRows · caracterización', () => {
       _key: 'AC-02',
       ini: 'CNT1',
       fin: 'M1',
-      nSalidas: 2,
       fixtures: { lvm: 6 },
       diamDisPulg: 1.25,
       totalL: 9,

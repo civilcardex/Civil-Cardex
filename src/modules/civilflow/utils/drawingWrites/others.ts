@@ -1,11 +1,10 @@
-import { writeHydroDrawingSync, writeSanDrawingSync } from '../drawingSync.ts';
+import { writeSanDrawingSync } from '../drawingSync.ts';
 import { loadFromStorage, saveToStorage, saveTrazosToDB } from '../../services/storageService.ts';
-import { TRAZOS_PREFIX, HYDRO_FAMILIES, SAN_FAMILIES } from '../../constants/storage-keys.ts';
+import { TRAZOS_PREFIX, SAN_FAMILIES } from '../../constants/storage-keys.ts';
 import type { SyncPlanInput, RawElement } from '../drawingSync.ts';
 import { normalizarCanal } from '../../lib/PlanoEngine/channelAssociation';
 import { cmToPlanePx } from '../../lib/PlanoEngine/planoCoords.ts';
 import { parseBajanteKey } from './diameters';
-import { devError } from '../../../../utils/devError.ts';
 
 /** Doc de dibujo local (ramales + bajantes con ts) para los writes de este módulo. */
 interface LocalDrawingData {
@@ -46,62 +45,6 @@ export function writePendienteToDrawing(
     }
   }
   if (isSan) writeSanDrawingSync(plans);
-}
-
-/** Escribe el número de salidas de un ramal al doc + BD y refleja en tramo_hidro_data_v3 (el caller ya aplicó updTramo en contexto — aquí se reporta si el doc no se tocó). */
-export function writeNSalidasToDrawing(
-  ramalKey: string,
-  net: string,
-  newVal: number,
-  plans: SyncPlanInput[],
-): void {
-  if (!ramalKey || !net || !plans) return;
-  const isSan = SAN_FAMILIES.has(net);
-  const isHydro = HYDRO_FAMILIES.has(net);
-  const [ramalId, planId] = parseBajanteKey(ramalKey);
-  // Surfacing (auditoría #10): el caller (tabla) ya aplicó `updTramo` en contexto — si aquí
-  // no se toca ningún doc, ambas fuentes divergen en silencio. Se reporta en DEV.
-  let planesVistos = 0;
-  let ramalVisto = false;
-  for (const plan of plans) {
-    if (!plan || plan.status !== 'confirmed') continue;
-    if (planId && String(plan.id) !== String(planId)) continue;
-    planesVistos++;
-    const key = TRAZOS_PREFIX + plan.id;
-    const raw = loadFromStorage<LocalDrawingData | null>(key, null);
-    if (!raw) continue;
-    const data = raw;
-    let changed = false;
-    for (const r of data.ramales || []) {
-      if (r.id === ramalId && r.net === net) {
-        r.nSalidas = newVal;
-        changed = true;
-        ramalVisto = true;
-      }
-    }
-    // también actualizar hidroData nSalidas si existe
-    if (changed) {
-      data.ts = Date.now();
-      saveToStorage(key, data);
-      saveTrazosToDB(String(plan.id), data);
-      // sincronizar hidroData
-      const hKey = `${net}_${ramalId}_${plan.id}`;
-      const hidro = loadFromStorage<
-        Record<string, { accesorios: Record<string, number>; Lh: number; nSalidas: number }>
-      >('tramo_hidro_data_v3', {});
-      if (hidro[hKey]) {
-        hidro[hKey].nSalidas = newVal;
-        saveToStorage('tramo_hidro_data_v3', hidro);
-      }
-    }
-  }
-  if (planesVistos === 0) {
-    devError(`[writeNSalidasToDrawing] sin doc confirmado para ${ramalKey}`);
-  } else if (!ramalVisto) {
-    devError(`[writeNSalidasToDrawing] ramal ${ramalId}/${net} ausente en el doc`);
-  }
-  if (isSan) writeSanDrawingSync(plans);
-  if (isHydro) writeHydroDrawingSync(plans);
 }
 
 /** Escribe dims del canal ll (Lluvias) al doc + BD (con normalizarCanal en el mismo write). */

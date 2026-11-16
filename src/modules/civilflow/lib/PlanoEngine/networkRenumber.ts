@@ -547,12 +547,11 @@ export function renameRamalId(
         `${net}_${newId}_${planId}`,
         (dst) => dst,
       );
-      // Hidro guarda { accesorios, Lh, nSalidas }: fusionar accesorios por suma y conservar
+      // Hidro guarda { accesorios, Lh }: fusionar accesorios por suma y conservar
       // escalares del destino si existen.
       migrarClave<{
         accesorios?: Record<string, number>;
         Lh?: number;
-        nSalidas?: number;
       }>(
         HYDRO_DATA_STORAGE_KEY,
         `${net}_${oldId}_${planId}`,
@@ -561,7 +560,6 @@ export function renameRamalId(
           // Mismo ramal, dos copias: MAX por accesorio y por escalar (sumar duplicaba).
           accesorios: mezclarMax(dst.accesorios || {}, src.accesorios || {}),
           Lh: Math.max(dst.Lh ?? 0, src.Lh ?? 0),
-          nSalidas: Math.max(dst.nSalidas ?? 0, src.nSalidas ?? 0),
         }),
       );
     }

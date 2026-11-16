@@ -70,7 +70,7 @@ export function usePresionAfAc(args: {
   const qacoAf = useMemo(() => {
     if (tr2Af) {
       const key = tr2Af._key || tr2Af.id;
-      const q = hunterQ(graphAf.componentTotalMap[key] || 0, tr2Af.nSalidas || 0);
+      const q = hunterQ(graphAf.componentTotalMap[key] || 0);
       if (q > 0) return q;
     }
     return 0;
@@ -86,9 +86,7 @@ export function usePresionAfAc(args: {
       // seguridad si el grafo no alcanza a calcularlo.
       const totalAcum = (net === 'af' ? graphAf : graphAc).componentTotalMap[key] || 0;
       const qFresco =
-        net === 'af' && tr2Af && (tr2Af._key || tr2Af.id) === key
-          ? qacoAf
-          : hunterQ(totalAcum, t.nSalidas || 0);
+        net === 'af' && tr2Af && (tr2Af._key || tr2Af.id) === key ? qacoAf : hunterQ(totalAcum);
       const qLps = qFresco > 0 ? qFresco : (stored?.qLps ?? t.qLps ?? 0);
       let vel: boolean | null = null;
       if (qLps > 0) {

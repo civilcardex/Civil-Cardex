@@ -535,39 +535,7 @@ export function RamalEditor({
                 />
               </div>
             )}
-            {showDescargas && (
-              <div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: '#9BA8AA',
-                    fontFamily: "'Geist',monospace",
-                    marginBottom: 2,
-                    textTransform: 'uppercase',
-                    letterSpacing: 0,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  Descargas
-                </div>
-                <input
-                  type="number"
-                  step="1"
-                  min="1"
-                  value={selElement?.nSalidas ?? 1}
-                  placeholder="1"
-                  aria-label="Número de descargas en simultáneo"
-                  onChange={(e) => {
-                    if (engineRef.current) {
-                      const v = parseInt(e.target.value) || 1;
-                      engineRef.current.updateSelected({ nSalidas: v });
-                      setSelElement({ ...selElement, nSalidas: v } as PlanoRamal);
-                    }
-                  }}
-                  style={READONLY_CENTER_STYLE}
-                />
-              </div>
-            )}
+            {showDescargas && <div></div>}
           </div>
         )}
       </div>

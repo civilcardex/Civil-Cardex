@@ -153,7 +153,6 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     piso: String(engine.nivelActual?.n ?? ''),
     dz: '',
     uc: 0,
-    nSalidas: 1,
     labelX: labelX,
     labelY: labelY,
     labelAngle: firstAngle,

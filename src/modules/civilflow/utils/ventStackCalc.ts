@@ -83,7 +83,7 @@ export function calculateVentStack(params: BajanteVentilacionParams): BajanteVen
     ventDprop = 0,
   } = params;
 
-  const Q = caudalHunterLPS(UD_acum, 1);
+  const Q = caudalHunterLPS(UD_acum);
 
   // Radio (r) con guarda: un radio 0 (el usuario escribe 0 en la columna "Radio", o una
   // fila legacy trae baj_r=0) hacía Math.pow(0, 5/3)=0 -> división por cero -> Infinity

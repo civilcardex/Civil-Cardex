@@ -490,8 +490,7 @@ export function useWaterNetworkGraph({
     const qpropMap: Record<string, number> = {};
     for (const t of tramos) {
       const key = t._key || t.id;
-      const nDesc = t.nSalidas || 0;
-      qpropMap[key] = hunterQ(componentTotalMap[key] || 0, nDesc);
+      qpropMap[key] = hunterQ(componentTotalMap[key] || 0);
     }
 
     return [displayMap, componentTotalMap, tramoParentOf, rootKey, qpropMap] as const;
