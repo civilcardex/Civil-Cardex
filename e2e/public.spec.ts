@@ -43,7 +43,7 @@ const RUTAS: RutaPublica[] = [
   {
     ruta: '/aprende/hunter-ntc-1500',
     // Título del artículo (h1 en ArticlePage).
-    clave: (page) => page.getByRole('heading', { name: /Método Hunter en la NTC 1500/ }),
+    clave: (page) => page.getByRole('heading', { name: /El método de Hunter/ }),
   },
   {
     ruta: '/civilflow',
