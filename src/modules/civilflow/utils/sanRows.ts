@@ -1,6 +1,7 @@
 import type { Tramo } from '../context/tramosReducer';
 import { calcUDparcial, compareTramosPisoDesc } from './componentHelpers.tsx';
-import { diametroManning, caudalHunterLPS, factorSimultaneidad } from './calcSanitaryCore.ts';
+import { diametroManning, caudalHunterLPS } from './calcSanitaryCore.ts';
+import { perfilDe } from '../constants/countryStandards.ts';
 import { calcHydraulicCheck } from './hydraulicCheck.ts';
 import { DIAM_OPTIONS_SAN } from '../constants';
 import { type MergedApBase } from './sanConnectivity';
@@ -13,8 +14,6 @@ export interface SanRow {
   piso: number;
   udPropias: number;
   udAcum: number;
-  nSalidas: number;
-  K: number | null;
   Q: number | null;
   n: number;
   sVal: number;
@@ -34,6 +33,8 @@ export interface SanRow {
   chequeoYn: string;
   fuerzaTractiva: number;
   chequeoFT: string;
+  nivelFT: string;
+  chequeoS: string;
 }
 
 // Fila de diseño hidráulico por-tramo — mismas fórmulas que la tabla DisenosSanitarios
@@ -46,6 +47,7 @@ export function computeSanRows(
   mergedBase: MergedApBase[],
   allTramos?: Tramo[],
   fullChildrenMap?: Record<string, string[]>,
+  pais?: string,
 ): SanRow[] {
   // ponytail: lookup for tributary UD aggregation (support both _key and planId keys)
   const byKey = new Map<string, Tramo>();
@@ -126,15 +128,11 @@ export function computeSanRows(
     }
     const udAcum = componentTotalMap[tKey] ?? componentTotalMap[tPlanKey] ?? 0;
 
-    const nSalidas = t.nSalidas ?? 0;
-    const K =
-      nSalidas != null && nSalidas > 0
-        ? Math.round(factorSimultaneidad(nSalidas) * 100) / 100
-        : null;
     const n = t.nmaning || 0.009;
     const sVal = t.sPercent ?? 0;
     const S = sVal != null && sVal > 0 ? sVal / 100 : null;
-    const Q = udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
+    // Hunter simplificado: el Q depende solo de las UD acumuladas (sin K de simultaneidad).
+    const Q = udAcum > 0 ? Math.round(caudalHunterLPS(udAcum) * 1000) / 1000 : null;
     const dSel = DIAM_OPTIONS_SAN.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
     let DcalcPulg = 0;
     const DdisPulg = dSel ? dSel.pulg : 0;
@@ -151,12 +149,21 @@ export function computeSanRows(
       Ymax = 0,
       chequeoYn = '—';
     let fuerzaTractiva = 0,
-      chequeoFT = '—';
+      chequeoFT = '—',
+      nivelFT = '—',
+      chequeoS = '—';
     if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0) {
       DcalcPulg = Math.round(((diametroManning(Q / 1000, n, S) * 1000) / 25.4) * 100) / 100;
     }
     if (Q != null && Q > 0 && S != null && S > 0 && n != null && n > 0 && DintMm > 0) {
-      const hc = calcHydraulicCheck({ Q, S, n, DintMm });
+      const hc = calcHydraulicCheck({
+        Q,
+        S,
+        n,
+        DintMm,
+        lim: perfilDe(pais).san,
+        pendMin: perfilDe(pais).sanPendMin,
+      });
       Qo = hc.Qo;
       Vo = hc.Vo;
       qqo = hc.qqo;
@@ -170,6 +177,8 @@ export function computeSanRows(
       chequeoYn = hc.chequeoYn;
       fuerzaTractiva = hc.fuerzaTractiva;
       chequeoFT = hc.chequeoFT;
+      nivelFT = hc.nivelFT;
+      chequeoS = hc.chequeoS;
     }
     return {
       tKey,
@@ -177,8 +186,6 @@ export function computeSanRows(
       piso: t.piso,
       udPropias,
       udAcum,
-      nSalidas,
-      K,
       Q,
       n,
       sVal,
@@ -198,6 +205,8 @@ export function computeSanRows(
       chequeoYn,
       fuerzaTractiva,
       chequeoFT,
+      nivelFT,
+      chequeoS,
     };
   });
 }

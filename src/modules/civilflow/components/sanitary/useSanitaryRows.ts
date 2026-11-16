@@ -2,13 +2,13 @@
  * Modelo de la tabla de diseño sanitario: aparatos fusionados, conectividad del árbol del
  * piso, filas de chequeo hidráulico (UD -> Hunter -> Manning) y el handler de cambio de
  * diámetro. Todo lo que es CÁLCULO vive aquí; SanitaryDesign solo arma la pantalla.
- * Ej: con 2 lavamanos en RS1 (4 UD) y K 0.8 -> sanRows trae Q = caudalHunterLPS(4, 0.8) L/s.
+ * Ej: con 2 lavamanos en RS1 (4 UD) -> sanRows trae Q = caudalHunterLPS(4) L/s.
  */
 import { useCallback, useEffect, useMemo } from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { DIAM_OPTIONS_SAN, SAN_UC_IDS, APARATOS_DEF } from '../../constants';
-import { caudalHunterLPS, factorSimultaneidad } from '../../utils/calcSanitaryCore.ts';
+import { caudalHunterLPS } from '../../utils/calcSanitaryCore.ts';
 import { calcHydraulicCheck } from '../../utils/hydraulicCheck.ts';
 import { perfilDe } from '../../constants/countryStandards';
 import {
@@ -116,20 +116,25 @@ export function useSanitaryRows({
       const tKey = tramoKeyPisoOf(t);
       const idKey = t._key || t.id;
       const udAcum = componentTotalMap[tKey] || 0;
-      const nSalidas = t.nSalidas ?? 0;
-      const K = nSalidas > 0 ? Math.round(factorSimultaneidad(nSalidas) * 100) / 100 : null;
       const n = t.nmaning || 0.009;
       const sVal = t.sPercent ?? 0;
       const S = sVal > 0 ? sVal / 100 : null;
-      const Q =
-        udAcum > 0 && K != null ? Math.round(caudalHunterLPS(udAcum, K) * 1000) / 1000 : null;
+      // Hunter simplificado: el Q depende solo de las UD acumuladas (sin K de simultaneidad).
+      const Q = udAcum > 0 ? Math.round(caudalHunterLPS(udAcum) * 1000) / 1000 : null;
       const dSel = DIAM_OPTIONS_SAN.find((d) => d.pulg === (t.diamDisPulg || 0)) || null;
       const DintMm = dSel ? dSel.mm : 0;
       let v_real = 0,
         yD = 0,
         qQ0 = 0;
       if (Q != null && Q > 0 && S != null && S > 0 && n > 0 && DintMm > 0) {
-        const hc = calcHydraulicCheck({ Q, S, n, DintMm, lim: perfilDe(pais).san });
+        const hc = calcHydraulicCheck({
+          Q,
+          S,
+          n,
+          DintMm,
+          lim: perfilDe(pais).san,
+          pendMin: perfilDe(pais).sanPendMin,
+        });
         v_real = hc.Vreal;
         yD = Math.round((Math.max(hc.Yc, hc.Yn) / DintMm) * 1000) / 1000;
         qQ0 = hc.qqo;
@@ -157,8 +162,16 @@ export function useSanitaryRows({
   );
 
   const sanRows = useMemo(
-    () => computeSanRows(displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap),
-    [displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap],
+    () =>
+      computeSanRows(
+        displayTramos,
+        componentTotalMap,
+        mergedBase,
+        tramosSan,
+        fullChildrenMap,
+        pais,
+      ),
+    [displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap, pais],
   );
 
   return {

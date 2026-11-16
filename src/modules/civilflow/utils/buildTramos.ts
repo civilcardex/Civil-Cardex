@@ -3,8 +3,7 @@ import { readSanDrawingSync, readHydroDrawingSync } from './drawingSync.ts';
 import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { countKey } from './keys.ts';
-import { HYDRO_DATA_STORAGE_KEY } from '../constants/storage-keys.ts';
-import { loadFromStorage, loadPlanTrazos, savePlanTrazos } from '../services/storageService.ts';
+import { loadPlanTrazos, savePlanTrazos } from '../services/storageService.ts';
 import { pisoLbl, pisoCorto } from '../constants';
 // ponytail: loadPlanTrazos kept for lazy write-back only — read path uses plane.bajantes/ramales directly to avoid second JSON.parse per plane
 import type { Tramo } from '../context/tramosReducer';
@@ -39,7 +38,6 @@ interface DrawingRamal {
   diamPulg?: number;
   material?: string;
   totalL?: number;
-  nSalidas?: number;
   lvert?: string | number;
   dz?: string | number;
   _aparatosKey?: string;
@@ -74,7 +72,6 @@ interface DrawingBajante {
   capacidad?: string;
   diamPulg?: number;
   area_m2?: number;
-  nSalidas?: number;
   bajR?: number;
   bajLong?: number;
   bajFDarcy?: number;
@@ -99,7 +96,6 @@ interface HidroEntry {
   Lh?: number;
   dNominal?: string | number;
   material?: string;
-  nSalidas?: number;
 }
 
 /** Convierte el dibujo en tramos de af (Agua Fria)/ac (Agua Caliente), detectando solo si hay contador o calentador en los extremos (lo demás lo calculan las tablas).
@@ -256,7 +252,6 @@ export function buildTramos(
         };
       }
       const extra = hidroData[apKey] || {};
-      const dznSalidas = r.nSalidas || 1;
       const dzLvert = Number(r.lvert ?? r.dz ?? 0);
       incoming.push({
         _key: `${rId}-${planId}`,
@@ -272,7 +267,6 @@ export function buildTramos(
         accesorios: extra.accesorios || {},
         Lh: extra.Lh || 0,
         Lv: family === 'ac' && (isAC1 || isAC2) ? 0 : dzLvert,
-        nSalidas: dznSalidas,
         recibeDe: [],
         descripcion: '',
         ini: ini,
@@ -377,7 +371,6 @@ export function buildTramos(
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0,
             Lv: 0,
-            nSalidas: 1,
             recibeDe: [],
             descripcion: '',
             ini: 'RP',
@@ -427,7 +420,6 @@ export function buildTramos(
             accesorios: extra.accesorios || {},
             Lh: extra.Lh || 0,
             Lv: 0,
-            nSalidas: 1,
             recibeDe: [],
             descripcion: '',
             ini: 'AF',
@@ -453,7 +445,6 @@ export function buildTramos(
 export function loadSanLlTramos() {
   const sync = readSanDrawingSync();
   const planes = sync.planes as unknown as Record<string, DrawingPlane>;
-  const hidroData = loadFromStorage<Record<string, HidroEntry>>(HYDRO_DATA_STORAGE_KEY, {});
   const sanIncoming: Tramo[] = [];
   const llIncoming: Tramo[] = [];
   const tribIds = new Set<string>();
@@ -487,7 +478,6 @@ export function loadSanLlTramos() {
       // automático que reemplaza); su codo 90° baja sí cuenta vía accesorioInicio.
       if (r.esCanalId) continue;
       const apKey = r._aparatosKey || countKey(r._net || 'san', r.id, planId);
-      const hd = hidroData[apKey] || {};
       const tramo: Tramo = {
         _key: `${r.id}-${planId}`,
         id: r.id,
@@ -506,7 +496,6 @@ export function loadSanLlTramos() {
         ini: r.ini || '',
         fin: r.fin || '',
         diamDisPulg: r.diamPulg || 0,
-        nSalidas: r.nSalidas || hd.nSalidas || 1,
         totalL: r.totalL || 0,
         nmaning: r.maning ?? 0,
         sPercent: r.pendiente ?? 0,
@@ -543,7 +532,6 @@ export function loadSanLlTramos() {
       // bajantes en la tabla de chequeo de bajantes de aguas lluvias.
       if (b.tipo === 'canal') continue;
       const apKey = b._aparatosKey || countKey(b._net || 'san', b.id, planId);
-      const hd = hidroData[apKey] || {};
 
       let ventData = venMap.get(b.id);
       if (!ventData) {
@@ -572,7 +560,6 @@ export function loadSanLlTramos() {
         esBajante: true,
         descripcion: '',
         diamDisPulg: b.diamPulg || 0,
-        nSalidas: b.nSalidas || hd.nSalidas || 1,
         nmaning: b.maning ?? 0,
         sPercent: 0,
         bajR: b.bajR ?? 7 / 24,

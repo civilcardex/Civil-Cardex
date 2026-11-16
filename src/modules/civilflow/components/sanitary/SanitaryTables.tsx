@@ -6,17 +6,13 @@
  */
 import { renderStatus } from '../../utils/componentHelpers.tsx';
 import { pisoCorto, DIAM_OPTIONS_SAN } from '../../constants';
-import {
-  writePendienteToDrawing,
-  writeNSalidasToDrawing,
-} from '../../utils/writeDiameterToDrawing.ts';
+import { writePendienteToDrawing } from '../../utils/writeDiameterToDrawing.ts';
 import { rangoSanTxt, ftTxt } from '../../constants/countryStandards';
 import { fmt, sectorDe } from '../../utils/formatUtils.ts';
 import { dec } from '../../utils/parseDecimal.ts';
 import EmptyRow from '../shared/EmptyRow.tsx';
 import type { SanRow } from '../../utils/sanitaryRows.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
-import type { UpdTramoSan } from './useSanitaryRows.ts';
 
 /** Props de la tabla: el modelo ya calculado (useSanitaryRows) + el estado de edición. */
 export interface SanitaryTablesProps {
@@ -35,10 +31,6 @@ export interface SanitaryTablesProps {
   /** Borradores de pendiente por tramo mientras se escribe en el input. */
   editingPend: Record<string, string>;
   setEditingPend: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  /** Borradores de nº de descargas por tramo mientras se escribe en el input. */
-  editingNSalidas: Record<string, string>;
-  setEditingNSalidas: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-  updTramoSan: UpdTramoSan;
   handleDiamChange: (tramoId: string, newPulg: number) => void;
   plans: PlanItem[];
 }
@@ -55,9 +47,6 @@ export default function SanitaryTables({
   edit,
   editingPend,
   setEditingPend,
-  editingNSalidas,
-  setEditingNSalidas,
-  updTramoSan,
   handleDiamChange,
   plans,
 }: SanitaryTablesProps) {
@@ -84,26 +73,6 @@ export default function SanitaryTables({
                 colSpan={3}
               >
                 Unidades de descarga
-              </th>
-              <th
-                title="Descargas simultáneas esperadas en el tramo."
-                scope="col"
-                className="san-th col-h"
-                rowSpan={2}
-                data-w="6"
-              >
-                descargas
-                <br />
-                simultaneas
-              </th>
-              <th
-                title="Coeficiente de simultaneidad K aplicado al cálculo del caudal."
-                scope="col"
-                className="san-th col-h"
-                rowSpan={2}
-                data-w="3"
-              >
-                K
               </th>
               <th
                 title="Caudal de diseño del tramo (L/s). Unidad: L/s."
@@ -321,8 +290,6 @@ export default function SanitaryTables({
                   const {
                     udPropias,
                     udAcum,
-                    nSalidas,
-                    K,
                     Q,
                     n,
                     sVal,
@@ -342,6 +309,8 @@ export default function SanitaryTables({
                     chequeoYn,
                     fuerzaTractiva,
                     chequeoFT,
+                    nivelFT,
+                    chequeoS,
                   } = row;
                   return (
                     <tr key={tKey}>
@@ -376,58 +345,6 @@ export default function SanitaryTables({
                         )}
                       </td>
                       <td className="san-mono-700 c">{udAcum}</td>
-                      <td className="c san-pad">
-                        {edit ? (
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={
-                              editingNSalidas[tKey] !== undefined
-                                ? editingNSalidas[tKey]
-                                : nSalidas > 0
-                                  ? String(nSalidas)
-                                  : ''
-                            }
-                            placeholder="—"
-                            onFocus={() => {
-                              if (editingNSalidas[tKey] === undefined && nSalidas > 0) {
-                                setEditingNSalidas((prev) => ({
-                                  ...prev,
-                                  [tKey]: String(nSalidas),
-                                }));
-                              }
-                            }}
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/[^0-9]/g, '');
-                              setEditingNSalidas((prev) => ({ ...prev, [tKey]: raw }));
-                            }}
-                            onBlur={(e) => {
-                              const raw =
-                                editingNSalidas[tKey] !== undefined
-                                  ? editingNSalidas[tKey]
-                                  : e.target.value;
-                              const v = parseInt(String(raw), 10) || 1;
-                              const clamped = Math.max(1, v);
-                              setEditingNSalidas((prev) => {
-                                const n = { ...prev };
-                                delete n[tKey];
-                                return n;
-                              });
-                              updTramoSan(tKey, 'nSalidas', clamped);
-                              writeNSalidasToDrawing(tKey, 'san', clamped, plans);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                            }}
-                            className="san-input san-input-w52"
-                          />
-                        ) : nSalidas > 0 ? (
-                          <span className="san-mono">{nSalidas}</span>
-                        ) : (
-                          '—'
-                        )}
-                      </td>
-                      <td className="san-mono-600 c">{K != null ? K.toFixed(2) : '—'}</td>
                       <td className="san-mono-600 c">{Q != null && Q > 0 ? Q.toFixed(2) : '—'}</td>
                       <td className="c san-pad san-mono">{n > 0 ? n.toFixed(3) : '—'}</td>
                       <td className="c san-pad">
@@ -477,10 +394,23 @@ export default function SanitaryTables({
                             className="san-input san-input-w50"
                           />
                         ) : sVal > 0 ? (
-                          fmt(sVal, 2)
+                          <span
+                            style={
+                              chequeoS !== 'O.K.'
+                                ? { color: '#ef5350', fontWeight: 700 }
+                                : undefined
+                            }
+                          >
+                            {fmt(sVal, 2)}
+                          </span>
                         ) : (
                           '—'
                         )}
+                        {chequeoS !== 'O.K.' && sVal > 0 ? (
+                          <div style={{ fontSize: 10, color: '#ef5350', lineHeight: 1.2 }}>
+                            {chequeoS}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="san-pad san-mono san-fs c">
                         {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '--'}
@@ -546,7 +476,29 @@ export default function SanitaryTables({
                         {DdisPulg > 0 && fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '--'}
                       </td>
                       <td className="c san-pad">
-                        {DdisPulg > 0 ? renderStatus(chequeoFT) : 'No cumple'}
+                        {DdisPulg > 0 && nivelFT === 'NO CUMPLE' ? (
+                          renderStatus('NO CUMPLE')
+                        ) : DdisPulg > 0 && nivelFT === 'RECOMENDADO' ? (
+                          <span
+                            style={{ color: '#fbbf24', fontWeight: 600, fontSize: 11 }}
+                            title="Sobre el mínimo normativo (NIVEL 1); por debajo del recomendado de diseño (NIVEL 2)"
+                          >
+                            REC.
+                          </span>
+                        ) : DdisPulg > 0 ? (
+                          nivelFT === 'RECOMENDADO' ? (
+                            <span
+                              style={{ color: '#fbbf24', fontWeight: 600, fontSize: 11 }}
+                              title="Sobre el mínimo normativo, pero por debajo del recomendado de diseño"
+                            >
+                              REC.
+                            </span>
+                          ) : (
+                            renderStatus(chequeoFT)
+                          )
+                        ) : (
+                          'No cumple'
+                        )}
                       </td>
                     </tr>
                   );

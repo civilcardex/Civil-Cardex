@@ -55,7 +55,7 @@ describe('normasPais: matriz completa y honesta', () => {
   it('CO conserva los valores históricos (cero cambios de conducta)', () => {
     const co = perfilDe('Colombia');
     expect(co.af).toEqual({ vMin: 0.5, vMax: 2.5, pMinRed: 5, pMinAparato: 3, pMax: 50 });
-    expect(co.san).toEqual({ vMin: 0.45, vMax: 4.0, ydMax: 0.75, ftMin: 0.15 });
+    expect(co.san).toEqual({ vMin: 0.45, vMax: 4.0, ydMax: 0.75, ftMin: 0.1, ftRec: 0.15 });
   });
 
   it('PE separa red de aparato (IS.010 §2.3: 10 red OS.050 / 2 aparato)', () => {
@@ -67,9 +67,9 @@ describe('normasPais: matriz completa y honesta', () => {
     expect(pe.ref).toBe(true);
   });
 
-  it('EC usa sus valores NEC-11 (v 0,6–2,5, p nudo ≤50, umbral 15)', () => {
+  it('EC usa sus valores NEC-11 (v 0,6–2,0, p nudo ≤50, umbral 15)', () => {
     const ec = perfilDe('EC');
-    expect(ec.af.vMax).toBe(2.5);
+    expect(ec.af.vMax).toBe(2.0);
     expect(ec.af.pMax).toBe(50);
     expect(ec.af.pMinRed).toBe(15);
     expect(ec.norma.gas).toContain('INEN 2295');
@@ -126,8 +126,8 @@ describe('normasPais: perfilDe y helpers', () => {
   it('helpers CO sin marca ref, resto con marca ref', () => {
     expect(rangoAfTxt('CO')).toBe('0,50–2,50 m/s (NTC 1500 / RAS 2000)');
     expect(rangoAfTxt('PE')).toContain('(ref. RNE IS.010');
-    expect(rangoSanTxt('CL')).toContain('OGUC 4.4');
-    expect(ftTxt('EC')).toContain('(ref. NEC (cap. desagüe pendiente)');
+    expect(rangoSanTxt('CL')).toContain('NCh 1105');
+    expect(ftTxt('EC')).toContain('NEC-11 Cap.16 desagüe');
     expect(gasTxt('CO')).toBe('V ≤ 10 m/s · ΔP acumulada ≤ 9,81 mbar (NTC 3728)');
     expect(gasTxt('CL')).toContain('DS 66/2007');
   });

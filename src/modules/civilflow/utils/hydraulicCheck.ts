@@ -28,6 +28,11 @@ interface HydraulicResult {
   chequeoYn: string;
   fuerzaTractiva: number;
   chequeoFT: string;
+  /** Nivel FT: 'O.K.' (≥ recomendado), 'RECOMENDADO' (entre mínimo y recomendado) o 'NO CUMPLE' (< mínimo). */
+  nivelFT: string;
+  /** Pendiente mínima exigida (%) para el diámetro del tramo, o null si no hay tabla para el país. */
+  pendMinima: number | null;
+  chequeoS: string;
 }
 
 interface HydraulicParams {
@@ -49,11 +54,16 @@ export function calcHydraulicCheck({
   n,
   DintMm,
   lim,
-}: HydraulicParams & { lim?: Partial<LimitesSan> }): HydraulicResult {
+  pendMin,
+}: HydraulicParams & {
+  lim?: Partial<LimitesSan>;
+  pendMin?: Record<string, number>;
+}): HydraulicResult {
   const V_MINp = lim?.vMin ?? V_MIN;
   const V_MAXp = lim?.vMax ?? V_MAX;
   const Y_Dp = lim?.ydMax ?? Y_D_MAX;
   const FTp = lim?.ftMin ?? FUERZA_TRACTIVA_MIN;
+  const FTr = lim?.ftRec ?? FUERZA_TRACTIVA_MIN;
   const Qo = Math.round(caudalTuboLleno(DintMm / 1000, n, S) * 1000 * 100) / 100;
   const Vo = Math.round(velocidadTuboLleno(DintMm / 1000, n, S) * 100) / 100;
   const qqo = Qo > 0 ? Math.round((Q / Qo) * 100) / 100 : 0;
@@ -69,7 +79,20 @@ export function calcHydraulicCheck({
   const Froude = Math.round(numeroFroude(Vreal, (rel.Rh_D * DintMm) / 1000) * 100) / 100;
   const tipoFlujo = tipoRegimen(Froude);
   const fuerzaTractiva = Math.round(fuerzaTractivaCore(Rh / 1000, S) * 100) / 100;
-  const chequeoFT = fuerzaTractiva > FTp ? 'O.K.' : 'NO CUMPLE';
+  // FT en DOS niveles (doctrina 2026-11-16): bajo el mínimo normativo = NO CUMPLE; entre el
+  // mínimo y el recomendado = RECOMENDADO (funciona, pero el diseño ideal está sobre ftRec).
+  const chequeoFT =
+    fuerzaTractiva > FTr ? 'O.K.' : fuerzaTractiva > FTp ? 'RECOMENDADO' : 'NO CUMPLE';
+  const nivelFT = chequeoFT;
+  // Pendiente mínima por diámetro (tabla del país en sanPendMin, pulg → %): la pendiente es
+  // input del diseñador y la norma fija un piso por diámetro (NTC 1500 §8.3). Solo evalúa si
+  // el país trae tabla; si no, null = sin chequeo.
+  const pendMinima = pendMin ? buscaPendMin(pendMin, DintMm) : null;
+  const sPct = S * 100;
+  const chequeoS =
+    pendMinima == null || sPct >= pendMinima
+      ? 'O.K.'
+      : `NO CUMPLE (pendiente mínima ${String(pendMinima).replace('.', ',')} %)`;
   return {
     Qo,
     Vo,
@@ -84,5 +107,23 @@ export function calcHydraulicCheck({
     chequeoYn,
     fuerzaTractiva,
     chequeoFT,
+    nivelFT,
+    pendMinima,
+    chequeoS,
   };
+}
+
+/** Busca la pendiente mínima (%) para el diámetro del tramo: elige el diámetro nominal en
+ *  pulgadas registrado en la tabla más cercano por debajo (el último que aplique). Ej: Ø 89 mm
+ *  (3") con tabla {'2':2.0,'3':1.0,'4':1.0,'6':0.5,'8':0.3} → 1.0. */
+function buscaPendMin(tabla: Record<string, number>, DintMm: number): number | null {
+  const pulg = DintMm / 25.4;
+  const orden = Object.entries(tabla)
+    .map(([d, pct]) => ({ d: parseFloat(d), pct }))
+    .sort((a, b) => a.d - b.d);
+  let hit: number | null = null;
+  for (const { d, pct } of orden) {
+    if (pulg >= d - 0.25) hit = pct;
+  }
+  return hit;
 }

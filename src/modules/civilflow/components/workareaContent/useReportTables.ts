@@ -62,6 +62,7 @@ export function useInfTablas(state: WorkAreaState) {
     hasSan,
     hasLl,
     hasAf,
+    pais: proy.pais,
     hasAc,
   });
   const {
@@ -127,7 +128,12 @@ export function useInfTablas(state: WorkAreaState) {
     sinVerificarAc,
     acometidaOk,
   } = usePresionAfAc({ plans, tramosAf, tramosAc, pais: proy.pais, perfil });
-  const { gasRowsCalc, gasTable, fallosGas } = useGasInforme({ hasGas, plans, pais: proy.pais });
+  const { gasRowsCalc, gasTable, fallosGas } = useGasInforme({
+    hasGas,
+    plans,
+    pais: proy.pais,
+    tipoGas: proy.tipoGas,
+  });
   const { alertasBomba, buildBombaTables, buildEpTables } = useEquiposInforme({
     hasBom,
     hasEp,

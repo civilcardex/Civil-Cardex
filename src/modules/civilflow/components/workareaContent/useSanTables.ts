@@ -22,8 +22,9 @@ export function useSanTables(args: {
   hasLl: boolean;
   hasAf: boolean;
   hasAc: boolean;
+  pais?: string;
 }) {
-  const { pisos, plans, tramosSan, aps, udBase, hasSan, hasLl, hasAf, hasAc } = args;
+  const { pisos, plans, tramosSan, aps, udBase, hasSan, hasLl, hasAf, hasAc, pais } = args;
   const sanMergedBase = useMemo(
     () =>
       SAN_UC_IDS.map((id) => {
@@ -79,8 +80,15 @@ export function useSanTables(args: {
       plans,
       mergedBase,
     );
-    return computeSanRows(displayTramos, componentTotalMap, mergedBase, tramosSan, fullChildrenMap);
-  }, [hasSan, tramosSan, plans, sanMergedBase]);
+    return computeSanRows(
+      displayTramos,
+      componentTotalMap,
+      mergedBase,
+      tramosSan,
+      fullChildrenMap,
+      pais,
+    );
+  }, [hasSan, tramosSan, plans, sanMergedBase, pais]);
 
   const sanTable = useMemo<MemoriaTable | null>(() => {
     if (!hasSan) return null;
@@ -92,7 +100,6 @@ export function useSanTables(args: {
         'Nivel',
         { label: 'Unidades de descarga', span: 3 },
         'No. Descargas',
-        'K',
         'Caudal (LPS)',
         'Manning',
         'Pendiente (%)',
@@ -117,7 +124,6 @@ export function useSanTables(args: {
         'Otros',
         'Total',
         'No. Descargas',
-        'K',
         'Caudal (LPS)',
         'Manning',
         'Pendiente (%)',
@@ -144,8 +150,6 @@ export function useSanTables(args: {
         r.udPropias,
         Math.max(0, r.udAcum - r.udPropias),
         r.udAcum,
-        r.nSalidas || '—',
-        r.K != null ? r.K.toFixed(2) : '—',
         r.Q != null && r.Q > 0 ? r.Q.toFixed(2) : '—',
         r.n > 0 ? r.n.toFixed(3) : '—',
         r.sVal > 0 ? r.sVal : '—',

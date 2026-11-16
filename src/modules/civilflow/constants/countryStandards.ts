@@ -25,8 +25,10 @@ export interface PerfNormas {
     pMinAparato: number;
     pMax: number;
   };
-  /** Sanitaria y lluvias por gravedad: velocidad (m/s), llenado máximo y/D, fuerza tractiva mínima (kg/m²). */
-  san: { vMin: number; vMax: number; ydMax: number; ftMin: number };
+  /** Sanitaria y lluvias por gravedad: velocidad (m/s), llenado máximo y/D y fuerza tractiva en DOS niveles: ftMin (mínimo normativo — por debajo = NO CUMPLE) y ftRec (recomendado de diseño — por debajo = aviso). Ej: CO ftMin 0.10 (NTC 1500) / ftRec 0.15 (RAS 2000 §D.4.3). */
+  san: { vMin: number; vMax: number; ydMax: number; ftMin: number; ftRec: number };
+  /** Pendiente mínima (%) por diámetro nominal en pulgadas (diámetros mayores: la última que aplique). Ej: CO '2"→2.0, 3"→1.0, 4"→1.0, 6"→0.5, ≥8"→0.3' (NTC 1500 §8.3). */
+  sanPendMin: Record<string, number>;
   /** Gas: pérdida de presión máxima (mbar) y velocidad máxima (m/s). */
   gas: { dpMax: number; vMax: number };
   /** La norma que se le muestra al usuario para cada red. */
@@ -46,7 +48,8 @@ const CO: PerfNormas = {
   id: 'CO',
   nombre: 'Colombia',
   af: { vMin: 0.5, vMax: 2.5, pMinRed: 5, pMinAparato: 3, pMax: 50 },
-  san: { vMin: 0.45, vMax: 4.0, ydMax: 0.75, ftMin: 0.15 },
+  san: { vMin: 0.45, vMax: 4.0, ydMax: 0.75, ftMin: 0.1, ftRec: 0.15 },
+  sanPendMin: { '1.5': 2.0, '2': 2.0, '3': 1.0, '4': 1.0, '6': 0.5, '8': 0.3 },
   gas: { dpMax: 9.81, vMax: 10 },
   norma: {
     af: 'NTC 1500 / RAS 2000',
@@ -59,7 +62,7 @@ const CO: PerfNormas = {
   refPmax: 'NSR-10 H.4.2 — límite 500 kPa',
   fuente: {
     af: 'NTC 1500 / RAS 2000 (artículo pendiente de cita exacta)',
-    san: 'RAS 2000 (artículo pendiente de cita exacta)',
+    san: 'RAS 2000 §D.4.3 (0.15 recomendado) + NTC 1500 §8.3 (pendientes mín) — 0.10 mínimo NTC',
     ll: 'RAS 2000 (artículo pendiente de cita exacta)',
     gas: 'NTC 3728 (artículo pendiente de cita exacta)',
     rci: 'NFPA 13 + NSR-10 Título J',
@@ -74,10 +77,12 @@ export const NORMAS_PAIS: PerfNormas[] = [
     nombre: 'Perú',
     ref: true,
     af: { vMin: 0.6, vMax: 3.0, pMinRed: 10, pMinAparato: 2, pMax: 50 },
+    san: { vMin: 0.6, vMax: 4.0, ydMax: 0.75, ftMin: 0.1, ftRec: 0.15 },
+    sanPendMin: { '2': 2.0, '3': 1.5, '4': 1.5, '6': 1.0, '8': 1.0 },
     norma: {
       af: 'RNE IS.010',
-      san: 'RNE IS.010',
-      ll: 'RNE OS.050',
+      san: 'RNE IS.010 (interior) · OS.070 (redes, ref.)',
+      ll: 'RNE OS.070 (ref.)',
       gas: 'RNE EM.040 (RM 341-2018)',
       rci: 'NFPA 13 (ref.)',
     },
@@ -85,8 +90,8 @@ export const NORMAS_PAIS: PerfNormas[] = [
     refPmax: 'RNE IS.010 §2.3.c — estática máx 50 m.c.a.',
     fuente: {
       af: 'IS.010 §2.3.f (v 0,60 + tabla por diámetro hasta 3,0) y §2.3.c/d (estática máx 50; aparato mín 2); pMinRed 10 de OS.050 §4.8 (dinámica mín a demanda máx. horaria). Todo DIGESA/MINSA + gob.pe, 2026-10-16.',
-      san: 'IS.010 §6 (método UD + pendientes 1% ≥100mm / 1,5% ≤75mm + ventilación Art.24); límites Manning de verificación: criterio de la app (referencia técnica RAS 2000).',
-      ll: 'RNE OS.050 (artículo pendiente)',
+      san: 'IS.010 §6 (método UD + pendientes 1% ≥100mm / 1,5% ≤75mm + ventilación Art.24). FT dos niveles: mínimo normativo 0.10 y recomendado 0.15 como criterio de la app (ref. OS.070 redes: τ≥0.10 con d/D 0.15–0.25 — gob.pe, 2026-11-16).',
+      ll: 'RNE OS.070 Redes de Aguas Residuales (redes interiores → IS.010; artículo pendiente)',
       gas: 'RNE EM.040 Instalaciones de Gas (RM 341-2018; grupo de actualización 2026) + NTP 111.011/321.121; dpMax/vMax: criterio de verificación de la app.',
       rci: 'NFPA 13 (int.)',
     },
@@ -96,19 +101,21 @@ export const NORMAS_PAIS: PerfNormas[] = [
     id: 'EC',
     nombre: 'Ecuador',
     ref: true,
-    af: { vMin: 0.6, vMax: 2.5, pMinRed: 15, pMinAparato: 5, pMax: 50 },
+    af: { vMin: 0.6, vMax: 2.0, pMinRed: 15, pMinAparato: 5, pMax: 50 },
+    san: { vMin: 0.6, vMax: 4.0, ydMax: 0.75, ftMin: 0.1, ftRec: 0.15 },
+    sanPendMin: { '2': 1.0, '3': 1.0, '4': 1.0, '6': 1.0, '8': 1.0 },
     norma: {
       af: 'NEC-11 Cap.16 NHE Agua',
-      san: 'NEC (cap. desagüe pendiente)',
-      ll: 'NEC (cap. desagüe pendiente)',
+      san: 'NEC-11 Cap.16 desagüe',
+      ll: 'NEC-11 Cap.16 desagüe',
       gas: 'NEC-SB-IG · NTE INEN 2295',
       rci: 'NFPA 13 (ref.)',
     },
     refPmin: 'NEC-11 Cap.16 Tabla 16.1 por aparato (2–15 m.c.a.)',
     refPmax: 'NEC-11 Cap.16 §17.b — máx 50 m.c.a. en nudo de consumo',
     fuente: {
-      af: 'NEC-11 Cap.16 §17: v 0,6–2,5 (óptimo 1,2) y acometida 1,5; p nudo ≤50; hidroneumático obligatorio si PminA<15 (umbral de red). pMinAparato 5: criterio operativo único (Tabla 16.1 da 2–15 por aparato).',
-      san: 'Capítulo de desagüe NEC pendiente de identificación; práctica: pendiente mín 1%, inodoro Ø4". Límites Manning: criterio de la app.',
+      af: 'NEC-11 Cap.16 §17: v máx 2,0 (memorias oficiales de Quito, 2024) — la envolvente 2,5 era del texto antiguo; p nudo ≤50; hidroneumático obligatorio si PminA<15. pMinAparato 5: criterio operativo único (Tabla 16.1 da 2–15 por aparato).',
+      san: 'NEC-11 Cap.16 desagüe: pendiente mín 1% en redes secundarias (memoria oficial de Quito, 2024); UD por aparato según el método del capítulo. Límites Manning: criterio de la app.',
       ll: 'NEC (pendiente)',
       gas: 'NEC-SB-IG Instalaciones de gases combustibles + NTE INEN 2295; dpMax/vMax: criterio de verificación de la app.',
       rci: 'NFPA 13 (int.)',
@@ -119,10 +126,12 @@ export const NORMAS_PAIS: PerfNormas[] = [
     id: 'CL',
     nombre: 'Chile',
     ref: true,
-    af: { vMin: 0.6, vMax: 2.5, pMinRed: 15, pMinAparato: 14, pMax: 45 },
+    af: { vMin: 0.6, vMax: 2.0, pMinRed: 15, pMinAparato: 14, pMax: 45 },
+    san: { vMin: 0.6, vMax: 4.0, ydMax: 0.75, ftMin: 0.1, ftRec: 0.15 },
+    sanPendMin: { '2': 2.0, '3': 1.0, '4': 1.0, '6': 0.5, '8': 0.3 },
     norma: {
       af: 'OGUC 4.1.5 · SISS · NCh 2485',
-      san: 'RIDAA · OGUC 4.4',
+      san: 'RIDAA Art.37 · NCh 1105 (ref.)',
       ll: 'RIDAA · OGUC 4.4',
       gas: 'DS 66/2007 · SEC',
       rci: 'NFPA 13 (ref.)',
@@ -130,8 +139,8 @@ export const NORMAS_PAIS: PerfNormas[] = [
     refPmin: 'NCh 2485 vía RIDAA Art.52.f — 14 m.c.a. tras medidor',
     refPmax: 'pendiente (45 operativo; NCh 691 §8.5.2 fija 70 solo para red pública)',
     fuente: {
-      af: 'RIDAA Dto.50 Art.52: v ≤2,5 ext./principal y ≤2,0 interior (envolvente 2,5); pmin según NCh 2485; prestador garantiza 14 tras medidor. NCh 691 §8.5: red pública 15 mín/70 máx — BCN LeyChile, 2026-10-16. vMin 0,6: criterio de la app.',
-      san: 'RIDAA: UEH para dimensionar + desagüe gravitacional Art.37 + ventilación/descompresión; OGUC Título 5 Cap.9. Límites Manning: criterio de la app.',
+      af: 'RIDAA Dto.50 Art.52: v ≤2,0 interior / ≤2,5 exterior-principal (envolvente corregida 2026-11-16: la red interior manda 2,0); pmin según NCh 2485; prestador garantiza 14 tras medidor. NCh 691 §8.5: red pública 15 mín/70 máx — BCN LeyChile. vMin 0,6: criterio de la app.',
+      san: 'RIDAA: UEH para dimensionar + desagüe gravitacional Art.37 + ventilación/descompresión; OGUC Título 5 Cap.9. NCh 1105: vMin tubo lleno 0,60 m/s (AIDIS/MOP, 2026-11-16). FT dos niveles: criterio de la app (ref. RAS 2000).',
       ll: 'RIDAA · OGUC 4.4 (artículo pendiente)',
       gas: 'DS 66/2007 Reglamento Instalaciones Interiores y Medidores de Gas, SEC (BCN idNorma=263058; mod. DS 13/2026); dpMax/vMax: criterio de verificación de la app.',
       rci: 'NFPA 13 (int.)',
@@ -177,8 +186,8 @@ export const NORMAS_PAIS: PerfNormas[] = [
     refPmin: 'NB 689: bandas 5/10/13 m.c.a. por población (valor 10 = banda media)',
     refPmax: 'pendiente (45 operativo; NB 689 fija 70 solo para red pública)',
     fuente: {
-      af: 'RENISDA Reglamento Nacional de Instalaciones Sanitarias Domiciliarias (agua + desagüe + pluvial) + NB 689 §9.5.5/9.5.6 (redes: v 0,3–2,0; presiones 5/10/13 por población; estática máx 70). Interior: vMin y pMax operativos pendientes.',
-      san: 'RENISDA + NB 688 alcantarillado (artículos pendientes). Límites Manning: criterio de la app.',
+      af: 'RENISDA Reglamento Nacional de Instalaciones Sanitarias Domiciliarias (agua + desagüe + pluvial) + NB 689 §9.5.5/9.5.6 (redes: v 0,3–2,0; presiones 5/10/13 por población; estática máx 70) — PDF completo en ANESAPA (anesapa.org). Interior: vMin y pMax operativos pendientes.',
+      san: 'RENISDA + NB 688 alcantarillado — segunda revisión (Ministerio del Agua; PDF ANESAPA/Scribd publicados). Límites Manning: criterio de la app.',
       ll: 'RENISDA (artículo pendiente)',
       gas: 'NB 1069 (pendiente de contenido)',
       rci: 'NFPA 13 (int.)',
