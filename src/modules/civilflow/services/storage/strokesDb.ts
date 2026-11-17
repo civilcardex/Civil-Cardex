@@ -308,16 +308,41 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
       fantasmas_entrepisos: crossFloorGhosts.map((g) => ghostToRow(id, user.id, g)),
     };
 
-    const { error } = await supabase.rpc('save_plano_data', {
-      p_plano_id: id,
-      p_data: payload,
-    });
+    // Concurrencia optimistic: el updated_at LEÍDO de ESTE plano (no de otro). Si la BD
+    // aún tiene la firma de 2 args, se manda sin reloj (retry abajo degrada la sesión).
+    const reloj = relojesPorPlano.get(planoId) ?? null;
+    const argsBase = { p_plano_id: id, p_data: payload } as Record<string, unknown>;
+    let { error } = savePlanoConReloj
+      ? await supabase.rpc('save_plano_data', { ...argsBase, p_updated_at: reloj })
+      : await supabase.rpc('save_plano_data', argsBase);
+    // Firma vieja en BD (migración sin aplicar): degradar a 2 args por el resto de la
+    // sesión en vez de fallar cada autosave — el check vuelve al recargar tras migrar.
+    if (error && savePlanoConReloj && rpcFirmaNoDesplegada(error)) {
+      savePlanoConReloj = false;
+      ({ error } = await supabase.rpc('save_plano_data', argsBase));
+    }
     if (error) {
       devError('storageService saveTrazosToDB rpc:', error.message);
-      emitBdSaveError('rpc', error.message);
+      if (/conflicto_concurrencia/i.test(error.message)) {
+        // El reloj quedó desarmado por definición (otro save es más nuevo): sin él el
+        // siguiente intento pasa sin check en vez de chocar en cada tecla.
+        relojesPorPlano.delete(planoId);
+        if (!conflictoAvisados.has(planoId)) {
+          conflictoAvisados.add(planoId);
+          emitBdSaveError(
+            'rpc',
+            'Este plano fue guardado desde otro dispositivo hace un momento. Recargue la página para traer la versión más reciente antes de seguir editando.',
+          );
+        }
+      } else {
+        emitBdSaveError('rpc', error.message);
+      }
       journalTrazos('db-block', planoId, data, `rpc: ${error.message}`);
     } else {
       emitBdSaveOk();
+      // El propio save subió el reloj de la BD: el valor cargado quedó VIEJO y haría
+      // conflicto con el siguiente autosave. Sin check hasta la próxima carga del plano.
+      relojesPorPlano.delete(planoId);
     }
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
@@ -358,6 +383,33 @@ supabase.auth.onAuthStateChange?.(() => {
   _cachedUserPromise = null;
 });
 
+// Reloj de concurrencia POR PLANO: loadTrazosFromDB fija el updated_at leído de cada plano
+// y cada save_plano_data viaja con el SUYO (la cola serializa por plano pero los planos
+// DISTINTOS se guardan en paralelo — una global mezclaría relojes). El wrapper lo compara
+// contra cf_planos.updated_at. Ausente = sin check (plano nuevo, carga fallida o tras un
+// guardado propio).
+const relojesPorPlano = new Map<string, string>();
+// Avisos de conflicto ya emitidos por plano (uno por sesión de plano — el autosave seguiría
+// chocando en cada tecla hasta que el usuario recargue).
+const conflictoAvisados = new Set<string>();
+// ¿La BD ya tiene la firma de 3 args de save_plano_data? false = migración 20261118000001
+// sin aplicar → se manda el rpc de 2 args (sin check) hasta recargar, como siempre funcionó.
+let savePlanoConReloj = true;
+
+/** Detecta firma-no-desplegada (PGRST202/404) — misma heurística que rpcSaveStateNoDesplegada de civilmanager. */
+function rpcFirmaNoDesplegada(
+  err: { code?: string; message?: string } | null | undefined,
+): boolean {
+  return err?.code === 'PGRST202' || /not found|not find|404/i.test(err?.message ?? '');
+}
+
+/** Reset del estado de concurrencia de sesión (relojes, avisos, degradación de firma). Solo tests: en la app el estado vive hasta recargar, que es su semántica. */
+export function resetConcurrenciaParaTest(): void {
+  relojesPorPlano.clear();
+  conflictoAvisados.clear();
+  savePlanoConReloj = true;
+}
+
 /** Añade un enlace a una lista sin repetirlo (recibeDeIds / alimentaIds). */
 function agregaEnlace(lista: string[], id: string): void {
   if (id && !lista.includes(id)) lista.push(id);
@@ -380,9 +432,15 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     const { data, error } = await supabase.rpc('get_plano_data', { p_plano_id: id });
     if (error) {
       devError('storageService loadTrazosFromDB:', error.message);
+      // Sin lectura fresca el reloj anterior quedaría VIEJO y fabricaría un conflicto
+      // espurio en el siguiente save de este plano.
+      relojesPorPlano.delete(planoId);
       return null;
     }
-    if (!data || !data.plano) return null;
+    if (!data || !data.plano) {
+      relojesPorPlano.delete(planoId);
+      return null;
+    }
 
     const result = data as {
       plano?: {
@@ -410,6 +468,12 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       fantasmas_entrepisos?: SupabaseRow[];
     };
     const plano = result.plano || {};
+    // Reloj de concurrencia de ESTE plano: get_plano_data usa to_jsonb(fila) → trae
+    // updated_at. El guardado lo manda de vuelta y el wrapper save_plano_data rechaza si
+    // la BD tiene uno mayor (otro dispositivo guardó después) — conflicto_concurrencia.
+    const updLeido = (result.plano as { updated_at?: string } | undefined)?.updated_at;
+    if (updLeido) relojesPorPlano.set(planoId, updLeido);
+    else relojesPorPlano.delete(planoId);
 
     const bajantes = (result.bajantes ?? []).map(rowToBajante);
     const conexiones = (result.bajante_conexiones ?? []) as {

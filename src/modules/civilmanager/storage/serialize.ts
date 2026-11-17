@@ -40,25 +40,17 @@ export function defaultState(): CivilManagerState {
     config_listas: {
       unidades: UNIDADES.slice(),
       categorias_insumo: CATEGORIAS_INSUMO.slice(),
-      categorias_apu: CATEGORIAS_APU.map((c) => ({
-        codigo: c.codigo,
-        categoria: c.categoria,
-        desc: c.desc,
-      })),
       tipos_equipo: TIPO_EQUIPO.slice(),
       origenes: ORIGENES.slice(),
       unidades_transporte: TRANSP_UNIDADES.slice(),
       perfiles_pais: perfilesPaisDefault(),
-      tipos_unidad: [],
-      mapeos_formulario: [],
     },
     config: {
       pais: 'CO',
       // Default USD (la app migró su moneda a USD): el salario ya se expresa en USD.
       moneda: 'USD',
       salario_base: 400,
-      auxilio_transporte: 0, // sembrar por país (PerfilPaisPanel)
-      ibc_tope: 25,
+      iva_pct: 19,
       pct_administracion: 10,
       pct_imprevistos: 3,
       pct_utilidad: 6,
@@ -94,7 +86,6 @@ export function migrateState(
         equipos_snap: p.equipos_snap ?? [],
         cuadrillas_snap: p.cuadrillas_snap ?? [],
         perfil_pais_snap: p.perfil_pais_snap ?? null,
-        formulario_original: p.formulario_original ?? null,
       }))
     : base.presupuestos;
   return {
@@ -214,9 +205,6 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     'equipos_snap',
     'cuadrillas_snap',
     'perfil_pais_snap',
-    'formulario_original',
-    'tipo_precio_formulario',
-    'alarmas_precio_faltante',
   ],
 };
 // FKs (Foreign Key, llave foránea) anulables: '' no existe en la tabla referenciada y
@@ -232,13 +220,7 @@ const NULLABLE_FK_EMPTY_TO_NULL: Record<string, string[]> = {
 const NULLABLE: Record<string, string[]> = {
   cm_equipos: ['proveedor_id'],
   cm_insumos: ['proveedor_id', 'apu_basico_id'],
-  cm_presupuestos: [
-    'parent_id',
-    'perfil_pais_snap',
-    'formulario_original',
-    'tipo_precio_formulario',
-    'alarmas_precio_faltante',
-  ],
+  cm_presupuestos: ['parent_id', 'perfil_pais_snap'],
 };
 
 /**

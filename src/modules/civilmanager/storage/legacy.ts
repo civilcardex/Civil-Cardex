@@ -76,9 +76,9 @@ export async function saveToSupabaseLegacy(state: CivilManagerState): Promise<vo
           proyecto_id: proyectoUid,
           cuadrilla_id: q.id,
           cargo_id: it.cargo_id,
-          // cantidad integer not null check >= 0: NaN serializa a null y un decimal tumba el
-          // insert con 400 — redondear y acotar.
-          cantidad: Math.max(0, Math.round(Number(it.cantidad) || 0)),
+          // cantidad numeric(6,2) (migración cm_doctrina_fixes): la UI acepta decimales
+          // (1.5 integrantes = plaza y media). NaN → 0; se conserva el decimal tal cual.
+          cantidad: Math.max(0, Number(it.cantidad) || 0),
         })),
     );
     const cuadrillaIds = state.cuadrillas.map((q) => q.id);

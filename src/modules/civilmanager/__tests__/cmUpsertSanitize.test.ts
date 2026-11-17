@@ -186,9 +186,6 @@ function seedState() {
       equipos_snap: [],
       cuadrillas_snap: [],
       perfil_pais_snap: null,
-      formulario_original: null,
-      tipo_precio_formulario: 'entidad',
-      alarmas_precio_faltante: ['1.1'],
     },
   ];
   return s;
@@ -215,12 +212,12 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     expect(ins[0].proveedor_id).toBeNull();
   });
 
-  it('tipo_precio_formulario/alarmas_precio_faltante son columnas BD: sobreviven al saneo', async () => {
+  it('tipo_precio_formulario/alarmas_precio_faltante (columnas dropeadas, M-14) NO viajan', async () => {
     await civilManagerSave(seedState());
     const pp = rowsOf('cm_presupuestos');
     expect(pp).toHaveLength(1);
-    expect(pp[0]).toHaveProperty('tipo_precio_formulario', 'entidad');
-    expect(pp[0]).toHaveProperty('alarmas_precio_faltante', ['1.1']);
+    expect(pp[0]).not.toHaveProperty('tipo_precio_formulario');
+    expect(pp[0]).not.toHaveProperty('alarmas_precio_faltante');
     expect(pp[0]).toHaveProperty('items');
     expect(pp[0]).toHaveProperty('aiu_override');
   });
@@ -266,21 +263,15 @@ describe('civilManagerSave sanea payloads Supabase', () => {
         ...s.presupuestos[0],
         parent_id: null,
         perfil_pais_snap: null,
-        formulario_original: null,
-        tipo_precio_formulario: null as unknown as 'apu' | 'entidad',
-        alarmas_precio_faltante: null,
       },
     ];
     await civilManagerSave(s);
     const pp = rowsOf('cm_presupuestos')[0];
     expect(pp).toHaveProperty('parent_id', null);
     expect(pp).toHaveProperty('perfil_pais_snap', null);
-    expect(pp).toHaveProperty('formulario_original', null);
-    expect(pp).toHaveProperty('tipo_precio_formulario', null);
-    expect(pp).toHaveProperty('alarmas_precio_faltante', null);
   });
 
-  it('cantidad decimal se redondea y el integrante sin cargo se salta (400 insert)', async () => {
+  it('cantidad decimal viaja tal cual (numeric 6,2) y el integrante sin cargo se salta (400 insert)', async () => {
     const s = seedState();
     s.cuadrillas = [
       {
@@ -297,7 +288,7 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     const ins = rowsOf('cm_cuadrilla_integrantes');
     expect(ins).toHaveLength(1);
     expect(ins[0].id).toBe('it1');
-    expect(ins[0].cantidad).toBe(2);
+    expect(ins[0].cantidad).toBe(1.5);
   });
 
   it('integrantes stale se borran tras un upsert exitoso (sin vaciado previo)', async () => {
