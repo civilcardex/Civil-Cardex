@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type * as THREE_NS from 'three';
-import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { dibujarGizmoEjes } from '../aparatos3d/axisGizmo.ts';
-import { RCI_FOV } from './RCI3dData.ts';
-import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
+import { attachAntiAutoscroll } from '../shared/controls3d';
+import { disposeEscena, montarEscena } from '../shared/threeStage';
 import { devError } from '../../../../utils/devError.ts';
 
 export type Three = typeof THREE_NS;
@@ -14,7 +13,7 @@ export interface Rci3DApi {
   scene: THREE_NS.Scene;
   camP: THREE_NS.PerspectiveCamera;
   camO: THREE_NS.OrthographicCamera;
-  controls: OrbitControls;
+  controls: import('three/examples/jsm/controls/OrbitControls.js').OrbitControls;
   renderer: THREE_NS.WebGLRenderer;
   keyLight: THREE_NS.DirectionalLight;
   fillLight: THREE_NS.DirectionalLight;
@@ -45,7 +44,10 @@ export interface Rci3DApi {
 
 export type Rci3DApiRef = React.MutableRefObject<Rci3DApi | null>;
 
-/** Monta renderer + escena + cámaras + rig de 4 luces + OrbitControls con el look del HTML original (fondo 0x0d1117 + fog, sombras PCFSoft 2048², sRGB + LinearToneMapping). */
+/** Monta la escena RCI (base común threeStage: look del HTML original 0x0d1117 + fog, sombras
+ * PCFSoft 2048², sRGB + LinearToneMapping, rig 4 luces ×π, anti shadow-acne) con RENDER BAJO
+ * DEMANDA: el loop solo pinta si hubo movimiento, hay animación de vista o quedan frames
+ * pendientes (carga, selección, sombras). */
 export function useRci3DScene(
   wrapRef: React.RefObject<HTMLDivElement | null>,
   canvasRef: React.RefObject<HTMLCanvasElement | null>,
@@ -61,72 +63,28 @@ export function useRci3DScene(
     let cancelled = false;
     let detachAntiAutoscroll: (() => void) | null = null;
     let raf = 0;
-    let threeMod: typeof THREE_NS | null = null;
+    let restaurarColor: (() => void) | null = null;
     const ro = new ResizeObserver(() => apiRef.current?.ajustar?.());
 
     (async () => {
-      const THREE = await import('three');
-      const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
-      if (cancelled) return;
-      threeMod = THREE;
-      THREE.ColorManagement.enabled = false; // pipeline r128: vertex colors lineales + sRGB out
-
-      const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        powerPreference: 'high-performance',
+      // Base común con las calibraciones del HTML rci (maxDistance 400, bias anti-acne,
+      // pipeline r128, render bajo demanda).
+      const base = await montarEscena(canvas, {
+        maxDistance: 400,
+        highPerf: true,
+        fillPos: [0, 0, 0],
+        cmLegacy: true,
+        shadowBias: { bias: -0.0005, normalBias: 0.02 },
+        sombrasEstaticas: true,
       });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-      // RENDIMIENTO (orig. usuario): la escena es estática — las sombras se pintan solo cuando
-      // la carga/recolor marca needsUpdate, no en cada frame.
-      renderer.shadowMap.autoUpdate = false;
-      renderer.shadowMap.needsUpdate = true;
-      renderer.outputColorSpace = THREE.SRGBColorSpace; // sustituye outputEncoding de r128
-      renderer.toneMapping = THREE.LinearToneMapping;
-      renderer.toneMappingExposure = 1.0;
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0d1117);
-      scene.fog = new THREE.Fog(0x0d1117, 60, 300);
-
-      const camP = new THREE.PerspectiveCamera(RCI_FOV, 1, 0.01, 500);
-      camP.position.set(8, 4, 10);
-      const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
-
-      // Iluminación metálica 4 puntos del original (intensidades EXACTAS del HTML). three
-      // r155+ eliminó el modo "legacy lights" que multiplicaba por π — sin la compensación
-      // todo queda ~3× más oscuro que el HTML (orig. usuario: "se sigue viendo oscuro").
-      const LEG = Math.PI;
-      const ambient = new THREE.AmbientLight(0xffffff, 0.4 * LEG);
-      const keyLight = new THREE.DirectionalLight(0xffffff, 1.6 * LEG);
-      keyLight.position.set(8, 16, 10);
-      keyLight.castShadow = true;
-      keyLight.shadow.mapSize.set(2048, 2048);
-      // Anti shadow-acne del HTML §569-570 (sin esto, franjas que titilean en pisos/muros).
-      keyLight.shadow.bias = -0.0005;
-      keyLight.shadow.normalBias = 0.02;
-      const fillLight = new THREE.DirectionalLight(0x88aaff, 0.5 * LEG);
-      const rimLight = new THREE.DirectionalLight(0xffffff, 0.4 * LEG);
-      rimLight.position.set(2, -3, -12);
-      const topLight = new THREE.DirectionalLight(0xffffff, 0.25 * LEG);
-      topLight.position.set(0, 20, 2);
-      scene.add(ambient, keyLight, fillLight, rimLight, topLight);
-
-      const assembly = new THREE.Group();
-      scene.add(assembly);
+      if (cancelled) {
+        disposeEscena(base);
+        return;
+      }
+      restaurarColor = base.restaurarColor;
+      const { THREE, scene, camP, camO, controls, renderer, keyLight, fillLight, assembly } = base;
 
       detachAntiAutoscroll = attachAntiAutoscroll(canvas);
-
-      const controls = new OrbitControls(camP, canvas);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.rotateSpeed = 0.25;
-      controls.panSpeed = 0.25;
-      controls.minDistance = 0.02;
-      controls.maxDistance = 400;
-      aplicarControlesOrbit(controls, THREE.MOUSE);
 
       const api: Rci3DApi = {
         THREE,
@@ -199,25 +157,8 @@ export function useRci3DScene(
       cancelAnimationFrame(raf);
       ro.disconnect();
       detachAntiAutoscroll?.();
-      if (threeMod) threeMod.ColorManagement.enabled = true; // es estado global de three: dejarlo como estaba
-      const api = apiRef.current;
-      if (api) {
-        if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
-        api.controls.dispose();
-        api.scene.traverse((obj) => {
-          const mesh = obj as THREE_NS.Mesh;
-          if (mesh.geometry) mesh.geometry.dispose();
-          const mat = mesh.material as THREE_NS.Material | THREE_NS.Material[] | undefined;
-          if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
-          else mat?.dispose();
-        });
-        api.scene.clear();
-        api.renderer.dispose();
-        // Libera el contexto WebGL real (dispose() solo libera recursos): sin esto, alternar
-        // visores 3D acumula contextos hasta el tope de Chrome y mata el canvas de otro visor.
-        api.renderer.forceContextLoss();
-        apiRef.current = null;
-      }
+      disposeEscena(apiRef.current, restaurarColor ?? undefined);
+      apiRef.current = null;
     };
     // Montaje único de la escena (el api es imperativo; Strict Mode remonta y re-crea limpio).
     // eslint-disable-next-line react-hooks/exhaustive-deps

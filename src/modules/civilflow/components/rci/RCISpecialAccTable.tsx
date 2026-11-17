@@ -50,6 +50,7 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
           <img
             src="/iconos/accesorios_especiales.webp"
             alt=""
+            loading="lazy"
             style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
           Catálogo de accesorios especiales

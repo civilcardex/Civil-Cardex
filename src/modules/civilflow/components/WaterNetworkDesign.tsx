@@ -596,7 +596,11 @@ function WaterNetworkDesign({
         </div>
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div className="scroll-top" style={{ padding: '6px' }}>
-            <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
+            {/* Resumen compacto para lectores: la tabla de diseño es grande y viva. */}
+            <div className="sr-only" role="status" aria-live="polite">
+              {`Diseño de red ${title}: ${tramosOrden.length} tramos`}
+            </div>
+            <div className="scroll-inner">
               <table
                 ref={tablaRef}
                 className="tbl"

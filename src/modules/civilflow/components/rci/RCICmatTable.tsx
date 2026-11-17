@@ -92,6 +92,7 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
           <img
             src="/iconos/coeficiente_c.webp"
             alt=""
+            loading="lazy"
             style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
           Coeficiente C de Hazen-Williams por material

@@ -64,7 +64,12 @@ function CardLectura({
           }}
         >
           {icono ? (
-            <img src={icono} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            <img
+              src={icono}
+              alt=""
+              loading="lazy"
+              style={{ width: 22, height: 22, objectFit: 'contain' }}
+            />
           ) : null}
           {titulo}
         </h3>

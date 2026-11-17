@@ -59,7 +59,7 @@ export interface TuberiaRow {
 
 /** Identificación del proyecto (pestaña «Datos del proyecto»): nombre, país/ciudad, diseñador
  *  y revisión. Ej: {proyecto:'Edificio Eureka', pais:'Colombia', revision:'B'}. */
-export interface RciMeta {
+interface RciMeta {
   proyecto: string;
   pais: string;
   ciudad: string;
@@ -118,14 +118,14 @@ export interface RciRoc {
 /** Límites de la red de tubería: Vmax (velocidad máxima, m/s) y Pcomp (presión que exigen los
  *  componentes, psi — donde exige válvula reductora VRP). Ej: Vmax=6 marca «NO CUMPLE» la
  *  verificación de velocidad si un tramo llega a 6.4 m/s. */
-export interface RciTub {
+interface RciTub {
   Vmax: NumIn;
   Pcomp: NumIn;
 }
 
 /** Mangueras de bomberos: largo en la succión de la bomba y en el tanque, y duración de la
  *  descarga que el tanque debe sostener. Ej: duracion=60 dimensiona el tanque de NFPA 22. */
-export interface RciMang {
+interface RciMang {
   mangBomba: string;
   mangTanque: string;
   duracion: NumIn;
@@ -173,14 +173,14 @@ export interface RciBomba {
 
 /** Volumen extra del tanque (m³) además del que exige la duración de mangueras. Ej:
  *  vextra=5 suma 5 m³ al V total de NFPA 22. */
-export interface RciTanque {
+interface RciTanque {
   vextra: NumIn;
 }
 
 /** Siamesa (conexión de bomberos a la calle): n.º de entradas y rosca, altura sobre el NPT
  *  (m), material/diámetro y su tubería de alimentación (L y accesorios). Ej: entradas=2 con
  *  dn='4"' y L=15 calcula la presión que debe entregar la bomba de bomberos. */
-export interface RciSia {
+interface RciSia {
   n: NumIn;
   entradas: NumIn;
   rosca: string;
@@ -228,7 +228,7 @@ export interface MontanteCfg {
 
 /** Cota de un nodo del árbol de la red (z, en m — la misma referencia que zRam). Ej:
  *  nodos:{A:{z:3.5}} fija la altura del nudo A para el perfil de presiones. */
-export interface NodoCfg {
+interface NodoCfg {
   z: NumIn;
 }
 
@@ -246,7 +246,7 @@ export interface Red {
 /** Generador rápido de pisos del formulario: n.º de sótanos, n.º de pisos, altura de piso
  *  (m), altura de salida de manguera (m) y cota del piso 1 (m). Ej: {sot:1, pis:5, h:3.2}
  *  crea 6 niveles encadenados. */
-export interface PisoGen {
+interface PisoGen {
   sot: number;
   pis: number;
   h: number;

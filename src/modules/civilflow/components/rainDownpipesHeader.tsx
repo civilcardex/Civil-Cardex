@@ -102,7 +102,7 @@ export function RainDownpipesHeader() {
             scope="col"
             className="col-h ll"
             rowSpan={2}
-            style={{ ...thC, width: 84, minWidth: 84, maxWidth: 100 }}
+            style={{ ...thC, width: 84, maxWidth: 100 }}
           >
             Chequeo
           </th>
@@ -136,7 +136,7 @@ export function RainDownpipesHeader() {
             title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
             scope="col"
             className="col-h ll"
-            style={{ ...thC, minWidth: 96 }}
+            style={{ ...thC, width: 96 }}
           >
             Material
             <br />

@@ -1,5 +1,6 @@
 /** Fila de la tabla de bajantes: UD (Unidades de Desague), diámetros por piso y aportes del
  *  bajante, con las celdas editables sincronizadas al dibujo. */
+import { useId } from 'react';
 import type { CSSProperties } from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import type { FilaBajante } from '../../utils/bajanteRowModel.ts';
@@ -49,6 +50,10 @@ export function DownpipesRow({
   updTramoSan,
   storageByPlan,
 }: DownpipesRowProps) {
+  // Ids para aria-describedby de los avisos de diámetro (san/vent): el select invalidado
+  // apunta a su mensaje para que el lector anuncie el error, no solo vea el borde rojo.
+  const sanWarnId = useId();
+  const ventWarnId = useId();
   const {
     rStr,
     origenVal,
@@ -226,6 +231,8 @@ export function DownpipesRow({
           aria-label="Diámetro Bajante Propuesto"
           value={resolvedSanDprop || ''}
           disabled={!edit}
+          aria-invalid={sanDiamWarn ? true : undefined}
+          aria-describedby={sanDiamWarn ? sanWarnId : undefined}
           onChange={(e) => {
             const val = parseFloat(e.target.value) || 0;
             const matched = entradaPor(DIAM_BAN, 'pulg', val);
@@ -266,6 +273,7 @@ export function DownpipesRow({
         </select>
         {sanDiamWarn && (
           <div
+            id={sanWarnId}
             style={{
               fontSize: 11,
               color: 'var(--err)',
@@ -350,6 +358,8 @@ export function DownpipesRow({
       <td className="c" style={{ padding: '1px 1px' }}>
         <select
           aria-label="Diámetro Ventilación Propuesto"
+          aria-invalid={ventDiamWarn ? true : undefined}
+          aria-describedby={ventDiamWarn ? ventWarnId : undefined}
           value={resolvedVentDprop || ''}
           disabled={!edit}
           onChange={(e) => {
@@ -431,6 +441,7 @@ export function DownpipesRow({
         </select>
         {ventDiamWarn && (
           <div
+            id={ventWarnId}
             style={{
               fontSize: 11,
               color: 'var(--err)',

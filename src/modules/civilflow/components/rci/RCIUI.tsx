@@ -138,38 +138,47 @@ export function TabBarRci({
         padding: '6px 0',
       }}
     >
-      {TABS_RCI.map((t) => (
-        <button
-          type="button"
-          key={t.id}
-          onClick={() => setTab(t.id)}
-          aria-current={tab === t.id ? 'page' : undefined}
-          style={{
-            padding: '6px 16px',
-            border: `1.5px solid ${tab === t.id ? 'var(--rci)' : 'var(--line)'}`,
-            borderRadius: 'var(--r)',
-            background: tab === t.id ? 'rgba(179,19,27,0.10)' : 'var(--bg3)',
-            color: tab === t.id ? 'var(--rci)' : 'var(--txt2)',
-            cursor: 'pointer',
-            fontSize: 12,
-            fontFamily: 'var(--body)',
-            fontWeight: tab === t.id ? 700 : 500,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {t.lbl}
-          {t.id === 'verificaciones' ? (
-            <span
-              style={{
-                ...CHIP_CNT,
-                background: noCumplen > 0 ? 'var(--err)' : 'var(--succ)',
-              }}
-            >
-              {noCumplen}
-            </span>
-          ) : null}
-        </button>
-      ))}
+      {TABS_RCI.map((t) => {
+        // La pestaña «Guía de diseño» abre el MODAL (nunca queda activa): color de la RED
+        // (--rci) pero MÁS BRILLANTE (mezcla con blanco, ped. usuario 2026-11-17), con
+        // RELLENO de ese color y letra NEGRA — el borde lo acompaña. Los demás tabs: patrón
+        // activo/inactivo de siempre.
+        const esGuia = t.id === 'guia';
+        const activa = !esGuia && tab === t.id;
+        const rciBrillo = 'color-mix(in oklab, var(--rci) 75%, white)';
+        return (
+          <button
+            type="button"
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            aria-current={tab === t.id ? 'page' : undefined}
+            style={{
+              padding: '6px 16px',
+              border: `1.5px solid ${esGuia ? rciBrillo : activa ? 'var(--rci)' : 'var(--line)'}`,
+              borderRadius: 'var(--r)',
+              background: esGuia ? rciBrillo : activa ? 'rgba(179,19,27,0.10)' : 'var(--bg3)',
+              color: esGuia ? '#000' : activa ? 'var(--rci)' : 'var(--txt2)',
+              cursor: 'pointer',
+              fontSize: 12,
+              fontFamily: 'var(--body)',
+              fontWeight: activa ? 700 : 500,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t.lbl}
+            {t.id === 'verificaciones' ? (
+              <span
+                style={{
+                  ...CHIP_CNT,
+                  background: noCumplen > 0 ? 'var(--err)' : 'var(--succ)',
+                }}
+              >
+                {noCumplen}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -368,7 +377,12 @@ export function SecRci({
           style={{ color: 'var(--txt2)', display: 'flex', alignItems: 'center', gap: 7 }}
         >
           {icono ? (
-            <img src={icono} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            <img
+              src={icono}
+              alt=""
+              loading="lazy"
+              style={{ width: 22, height: 22, objectFit: 'contain' }}
+            />
           ) : null}
           {titulo}
         </h3>

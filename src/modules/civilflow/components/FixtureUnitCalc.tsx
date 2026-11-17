@@ -145,12 +145,8 @@ function CalculoUD() {
           </span>
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
-          <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            <table
-              ref={tablaRef}
-              className="tbl"
-              style={{ minWidth: 'min(900px, calc(100vw - 260px))' }}
-            >
+          <div className="scroll-inner">
+            <table ref={tablaRef} className="tbl">
               <caption className="sr-only">Cálculo de unidades de descarga</caption>
               <thead>
                 <tr>
@@ -158,7 +154,7 @@ function CalculoUD() {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 90, textAlign: 'center' }}
+                    style={{ width: 90, textAlign: 'center' }}
                     title="Identificador del tramo con su nivel (ej. RAC1-P1 · S1 = sótano · C = cubierta)"
                   >
                     Ramal/Bajante
@@ -167,7 +163,7 @@ function CalculoUD() {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 60, textAlign: 'center' }}
+                    style={{ width: 60, textAlign: 'center' }}
                     title="Punto de inicio del tramo (nodo o bajante de origen)."
                   >
                     Inicio
@@ -176,7 +172,7 @@ function CalculoUD() {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 60, textAlign: 'center' }}
+                    style={{ width: 60, textAlign: 'center' }}
                     title="Punto donde termina el tramo (nodo o bajante de destino)."
                   >
                     Fin
@@ -194,7 +190,7 @@ function CalculoUD() {
                     scope="col"
                     className="col-h ok"
                     rowSpan={2}
-                    style={{ minWidth: 90, textAlign: 'center' }}
+                    style={{ width: 90, textAlign: 'center' }}
                     title="Suma de unidades de descarga del tramo: aparatos × UD, acumulando sus tributarios."
                   >
                     Unidades de descarga totales
@@ -207,7 +203,7 @@ function CalculoUD() {
                       key={d.id}
                       className="col-h san"
                       title={`${d.nombre}: ${d.ud} UD por aparato (NTC 1500).`}
-                      style={{ minWidth: 52, fontSize: 12, textAlign: 'center' }}
+                      style={{ width: 52, fontSize: 12, textAlign: 'center' }}
                     >
                       {d.nombre}
                       <br />

@@ -13,13 +13,6 @@ export const SI: React.CSSProperties = {
   textAlign: 'center',
   padding: '3px 5px',
 };
-/** Celda-input alineada a la izquierda con fuente de texto (nombres largos: descripciones). */
-export const SD: React.CSSProperties = {
-  ...SI,
-  textAlign: 'left',
-  fontFamily: 'var(--body)',
-  cursor: 'pointer',
-};
 /** Encabezado de columna: mayúsculas, gris tenue y borde compartido. Ej: "DIÁMETRO (PULG)". */
 export const TH: React.CSSProperties = {
   fontSize: 12,
@@ -47,11 +40,6 @@ export const TD: React.CSSProperties = {
   textAlign: 'center',
   verticalAlign: 'middle',
 };
-
-/** Cabecera compacta de las tablas EP (Cisterna/Verificación): 11 px, sin fondo propio. */
-export const TH_R: React.CSSProperties = { fontSize: 11, padding: '2px 4px' };
-/** Celda compacta de las tablas EP. */
-export const TD_R: React.CSSProperties = { fontSize: 11, padding: '3px 4px' };
 
 /** Cabecera de tabla a 12 px (la familia rci de tablas de resultados). Ej: RciTramosTable. */
 export const TH10: React.CSSProperties = { ...TH, fontSize: 12 };

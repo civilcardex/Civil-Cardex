@@ -61,6 +61,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
           <img
             src="/iconos/tuberia_cuarto_bombas.webp"
             alt=""
+            loading="lazy"
             style={{ width: 22, height: 22, objectFit: 'contain' }}
           />
           Tubería del cuarto de bombas: de la base del montante a la brida de descarga (CB)

@@ -246,7 +246,9 @@ export function SeccionVerificacion(props: AcometidaProps) {
                   borderBottom: '1px solid var(--line)',
                 }}
               >
-                {okPresion && hfContador <= acoHfMax ? 'O.K.' : 'NO CUMPLE'}
+                <span role="status" aria-live="polite">
+                  {okPresion && hfContador <= acoHfMax ? 'O.K.' : 'NO CUMPLE'}
+                </span>
               </td>
             </tr>
           </tbody>

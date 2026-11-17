@@ -17,7 +17,8 @@ import {
   type ProbedElement,
 } from './context.ts';
 import { diamPulgFromLabel } from '../../../utils/diamInchesFromLabel.ts';
-import { BajanteEditor, RamalEditor } from './legacyEditors.tsx';
+import { BajanteEditor } from './bajanteEditor';
+import { RamalEditor } from './ramalEditor';
 
 // ponytail: la fuente mono del panel repetida en 7 estilos — una constante para que un cambio
 // de tipografía no tenga que tocar 7 sitios.

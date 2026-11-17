@@ -30,7 +30,7 @@ export const MATS_DEFAULT = Object.fromEntries(
 );
 
 /** Abreviatura de material -> nombre completo para mostrar en UI. Ej: 'A.C.' -> 'Acero al carbono'. */
-export const MAT_LONGFORM = {
+const MAT_LONGFORM = {
   'PVC-PR': 'PVC Presión',
   'PVC-S': 'PVC Sanitario',
   'PVC C900 DR14': 'PVC C900 RDE 14',
@@ -65,7 +65,7 @@ export function matLongName(short: string) {
 /** Alias de MIGRACIÓN del catálogo rci (pre-unificación): los dibujos guardados antes del
  *  cambio guardan los nombres viejos — sus listas de Ø deben seguir resolviendo y el valor
  *  se NORMALIZA a la clave de PIPES al mostrarse/editarse. */
-export const MAT_RCI_LEGACY: Record<string, string> = {
+const MAT_RCI_LEGACY: Record<string, string> = {
   'A.C. SCH 40': 'Acero SCH 40',
   'A.C. SCH 10': 'Acero SCH 10',
   'PVC C900 DR14': 'PVC C900 RDE 14',
@@ -334,7 +334,7 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
 // muestra desde estas constantes).
 
 /** Material de cubierta con su coeficiente de escorrentía C (0-1) para el método racional de lluvias. */
-export interface MaterialCubiertaLL {
+interface MaterialCubiertaLL {
   nombre: string;
   abrev: string;
   C: number;
@@ -370,7 +370,7 @@ export function cDeCubierta(nombre: string): number | null {
 }
 
 /** Material de canaleta con su rugosidad n de Manning. */
-export interface MaterialCanalLL {
+interface MaterialCanalLL {
   nombre: string;
   abrev: string;
   n: number;

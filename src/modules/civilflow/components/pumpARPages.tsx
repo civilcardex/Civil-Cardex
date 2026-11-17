@@ -30,10 +30,10 @@ export interface PumpPageCtx {
   cellSel: (code: string, aria: string, w?: number) => ReactNode;
   sinBombasNote: ReactNode;
 }
-/** Celda de valor con 3 decimales (mono); '—' gris si vacío. */
-const Fmt3 = (v: string | number, u = '') => {
+/** Celda de valor mono; d decimales (default 3), '—' gris si vacío. */
+const Fmt = (v: string | number, u = '', d = 3) => {
   if (v === '' || v === null || v === undefined) return <span className="ar-dim-13">—</span>;
-  const val = typeof v === 'number' ? v.toFixed(3) : v;
+  const val = typeof v === 'number' ? v.toFixed(d) : v;
   return (
     <span className="ar-mono-14">
       {val}
@@ -41,18 +41,7 @@ const Fmt3 = (v: string | number, u = '') => {
     </span>
   );
 };
-
-/** Celda de valor con 2 decimales (mono); '—' gris si vacío. */
-const Fmt2 = (v: string | number, u = '') => {
-  if (v === '' || v === null || v === undefined) return <span className="ar-dim-13">—</span>;
-  const val = typeof v === 'number' ? v.toFixed(2) : v;
-  return (
-    <span className="ar-mono-14">
-      {val}
-      {u ? ` ${u}` : ''}
-    </span>
-  );
-};
+const Fmt2 = (v: string | number, u = '') => Fmt(v, u, 2);
 
 /** Celda de encabezado de las tablas de Bomba AR. */
 /** Celda de valor de las tablas de Bomba AR. */
@@ -255,7 +244,7 @@ export const pagePerdidas = (p: PumpPageCtx) => {
               [
                 'Velocidad en tubería de impulsión',
                 'V imp',
-                Fmt3(c.Vi),
+                Fmt(c.Vi),
                 'm/s',
                 '—',
                 '0.6 < V < 3.5 m/s (residuales)',
@@ -263,17 +252,17 @@ export const pagePerdidas = (p: PumpPageCtx) => {
               [
                 'Pérdida por fricción',
                 'Hf',
-                Fmt3(c.Hf),
+                Fmt(c.Hf),
                 'm.c.a.',
                 '—',
                 'Hazen-Williams: 10.67·L·Q^1.852 / (C^1.852·D^4.87)',
               ],
-              ['Pérdida en accesorios', 'H ac', Fmt3(c.Hac), 'm.c.a.', '—', '25% de Hf'],
-              ['Pérdida total por fricción', 'H fri', Fmt3(c.Hfri), 'm.c.a.', '—', 'Hf + H ac'],
+              ['Pérdida en accesorios', 'H ac', Fmt(c.Hac), 'm.c.a.', '—', '25% de Hf'],
+              ['Pérdida total por fricción', 'H fri', Fmt(c.Hfri), 'm.c.a.', '—', 'Hf + H ac'],
               [
                 'Altura estática total',
                 'H est',
-                Fmt3(c.Hest),
+                Fmt(c.Hest),
                 'm.c.a.',
                 Eq(c.Hest, 1.42233, 'psi'),
                 'Hz + P desc',
@@ -281,7 +270,7 @@ export const pagePerdidas = (p: PumpPageCtx) => {
               [
                 'Altura manométrica total',
                 'H m',
-                Fmt3(c.Hm),
+                Fmt(c.Hm),
                 'm.c.a.',
                 Eq(c.Hm, 1.42233, 'psi'),
                 'H fri + H est',

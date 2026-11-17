@@ -184,7 +184,6 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                   style={{
                     fontSize: 12,
                     borderCollapse: 'collapse',
-                    minWidth: 'min(980px, calc(100vw - 260px))',
                   }}
                 >
                   <caption
@@ -380,7 +379,6 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                     style={{
                       fontSize: 12,
                       borderCollapse: 'collapse',
-                      minWidth: 'min(560px, calc(100vw - 260px))',
                     }}
                   >
                     <caption

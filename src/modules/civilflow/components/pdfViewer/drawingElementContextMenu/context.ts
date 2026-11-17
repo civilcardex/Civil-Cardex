@@ -115,87 +115,17 @@ export const MENU_SELECT_STYLE: React.CSSProperties = {
   cursor: 'pointer',
 };
 /** Botón de dirección de flujo (↔) de las secciones del menú: fila compacta con elipsis si el texto no cabe. */
-export const MENU_DIR_BTN_STYLE: React.CSSProperties = {
-  padding: '3px 5px',
-  textAlign: 'left',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  cursor: 'pointer',
-  borderRadius: 3,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 3,
-  transition: 'all 0.1s',
-  boxSizing: 'border-box',
-  overflow: 'hidden',
-  whiteSpace: 'nowrap',
-  textOverflow: 'ellipsis',
-  minWidth: 0,
-};
+
 /** Fila-botón de la sección fantasma entrepisos (XFG (fantasma entrepisos)): ancha, con separador superior. */
-export const MENU_FANTASMA_BTN_STYLE: React.CSSProperties = {
-  border: 'none',
-  padding: '6px 8px',
-  textAlign: 'left',
-  fontSize: 11,
-  fontFamily: "'Geist',monospace",
-  cursor: 'pointer',
-  borderRadius: 3,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  marginTop: 4,
-  borderTop: '1px solid #3a494a',
-  width: '100%',
-};
+
 /** Grid de casillas del menú en 2 columnas con scroll (tope 120 px). Ej: marcar qué canales recibe el bajante (associatedChannels). */
-export const MENU_GRID_2COL_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '4px 8px',
-  maxHeight: 120,
-  overflowY: 'auto',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  padding: 4,
-};
+
 /** Fila de casilla del menú (checkbox + etiqueta a 11 px, un paso menor que el editor lateral). Ej: 'Canal C3' en la lista de canales asociados. */
-export const MENU_CHECK_LABEL_STYLE: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: 4,
-  cursor: 'pointer',
-  fontSize: 11,
-  color: '#b9caca',
-  fontFamily: "'Geist',monospace",
-};
+
 /** Grid de casillas más alto (tope 160 px) para listas largas. Ej: los aparatos de la sección del ramal (ramalMenu). */
-export const MENU_GRID_2COL_TALL_STYLE: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(2, 1fr)',
-  gap: '4px 8px',
-  maxHeight: 160,
-  overflowY: 'auto',
-  background: '#1e2024',
-  border: '1px solid #3a494a',
-  borderRadius: 3,
-  padding: 4,
-};
+
 /** Botón de acción del menú con borde punteado celeste: resalta la operación principal de la sección. Ej: conectar/desconectar en el panel de conexión del bajante. */
-export const MENU_ACTION_BTN_STYLE: React.CSSProperties = {
-  width: '100%',
-  padding: '6px 8px',
-  cursor: 'pointer',
-  background: '#1e2024',
-  border: '1px dashed #00dce5',
-  borderRadius: 4,
-  color: '#00dce5',
-  fontSize: 12,
-  fontFamily: "'Geist',monospace",
-  textAlign: 'center',
-  fontWeight: 600,
-};
+
 // ponytail: mismo estilo de fila-checkbox que tramoEditor — una sola definición.
 export { CHECK_ROW_STYLE as MENU_CHECK_ROW_STYLE } from '../tramoEditor/context.ts';
 /** La caja flotante del menú contextual: se posiciona donde cae el clic derecho (ancho 170-320 px) y contiene todas las secciones. */
@@ -216,21 +146,8 @@ export const MENU_PANEL_STYLE: React.CSSProperties = {
 };
 
 /** Variante más ancha solo para menús de bajante/montante (más filas y selects largos). */
-export const MENU_PANEL_BAJANTE_STYLE: React.CSSProperties = {
-  ...MENU_PANEL_STYLE,
-  minWidth: 280,
-  maxWidth: 480,
-};
 
 /** Título de sección del menú en MAYÚSCULAS (12 px, gris). Ej: 'MATERIAL' sobre el selector de material. */
-export const MENU_SECTION_LABEL_STYLE: React.CSSProperties = {
-  fontSize: 12,
-  color: '#849495',
-  padding: '4px 8px',
-  fontFamily: "'Geist',monospace",
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-};
 
 /** Misma etiqueta de sección pero como fila propia con margen inferior de 4 px: la variante que usan casi todas las secciones. Ej: 'DIRECCIÓN' sobre los botones de dirección. */
 export const MENU_SECTION_LABEL_ROW_STYLE: React.CSSProperties = {

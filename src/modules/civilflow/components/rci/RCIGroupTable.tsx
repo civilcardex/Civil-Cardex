@@ -131,15 +131,16 @@ const LBL_TD: CSSProperties = {
   textAlign: 'left',
 };
 /** Celda de observación: la ayuda del campo SIEMPRE visible (no solo el title), texto que
- *  puede ocupar varias líneas (maxWidth para envolver a ~2 líneas). Ej: tub.Vmax muestra
- *  «NFPA 13 no fija límite; 6 m/s es práctica común» sin pasar el mouse. */
+ *  puede ocupar varias líneas (maxWidth para envolver). Ej: tub.Vmax muestra
+ *  «NFPA 13 no fija límite; 6 m/s es práctica común» sin pasar el mouse. Las subpestañas
+ *  anchas la liberan (maxWidth undefined) para que absorba el excedente de la tabla a 100%. */
 const OBS_TD: CSSProperties = {
   ...TD,
   fontSize: 13,
   color: 'var(--txt2)',
   textAlign: 'left',
   whiteSpace: 'normal',
-  maxWidth: 380,
+  maxWidth: 520,
 };
 /** Botón chico dentro de la celda Observación: abre el modal de la clave d.abreModal. */
 const BTN_OBS: CSSProperties = {
@@ -301,19 +302,17 @@ export function GrupoTabla({
   const ancha = !!minAncho && minAncho >= 1600;
   const obsS: CSSProperties = compacta
     ? { ...OBS_TD, fontSize: 11.5 }
-    : minAncho && minAncho >= 1600
+    : ancha
       ? { ...OBS_TD, maxWidth: undefined }
       : OBS_TD;
   return (
-    // Subpestañas anchas (≥1600): el card ocupa TODO el ancho y hace scroll horizontal interno
-    // — la tabla conserva su ancho real y las filas quedan compactas sin scroll vertical.
+    // Doctrina ancho (ped. usuario 2026-11-17): el card SIEMPRE ocupa todo el ancho y la
+    // tabla lo llena — en Clasificación (720) el select de Construcción del techo se ve
+    // completo y la Observación absorbe el excedente (sin scroll vertical). «ancha» solo
+    // controla el padding compacto de las subpestañas ≥1600.
     <section
       className="card"
-      style={
-        ancha
-          ? { width: '100%', overflowX: 'auto', padding: '2px 6px' }
-          : { width: 'fit-content', maxWidth: '100%' }
-      }
+      style={ancha ? { width: '100%', padding: '2px 6px' } : { width: '100%' }}
     >
       <div
         className="card-h"
@@ -330,7 +329,12 @@ export function GrupoTabla({
           }}
         >
           {icono ? (
-            <img src={icono} alt="" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+            <img
+              src={icono}
+              alt=""
+              loading="lazy"
+              style={{ width: 22, height: 22, objectFit: 'contain' }}
+            />
           ) : null}
           {titulo}
           {depNota ? (
@@ -350,13 +354,12 @@ export function GrupoTabla({
             style={{
               fontSize: compacta ? 11 : 12,
               borderCollapse: 'collapse',
-              /* Subpestañas anchas (normativa/succión ≥1600): la tabla LLENA el card (100%,
-               * ped. usuario 2026-11-13 «estirar bien a lo ancho») — el excedente se va a la
-               * columna Observación; minWidth mantiene el ancho real con scroll interno. */
-              width: minAncho && minAncho >= 1600 ? '100%' : 'auto',
-              minWidth:
-                minAncho && minAncho >= 1600 ? minAncho : `min(${minAncho}px, calc(100vw - 260px))`,
-              maxWidth: minAncho && minAncho >= 1600 ? 'none' : '100%',
+              /* Doctrina sin-scroll (2026-11-17): tabla SIEMPRE 100% fluida, sin techo —
+               * comprime al estrechar y en pantallas anchas llena el card entero; el
+               * excedente lo absorbe la columna Observación (obsS sin maxWidth en «ancha»).
+               * minAncho ya no constricción de ancho: solo elige padding compacto (ancha). */
+              width: '100%',
+              minWidth: 0,
             }}
           >
             <thead>
@@ -403,9 +406,11 @@ export function GrupoTabla({
                 /* Título del control: la ayuda + la forma compacta si el campo tiene fmtValor
                  * (p. ej. mont.dn guarda '1 1/2"' y muestra '1-1/2"'). */
                 const titulo = d.fmtValor ? `${ayu} · formato: ${d.fmtValor(v)}` : ayu;
-                /* Ancho del control: anchoValor tapa a 28ch — un select con valor largo
-                 * (clas.constr 'Combustible obstruida…') necesita hasta 60ch para leerse. */
-                const anchoCtl = `calc(${Math.min(60, Math.max(6, v.length + 2))}ch + 30px)`;
+                /* Ancho del control: se mide sobre la OPCIÓN más larga del desplegable (no solo
+                 * el valor guardado — ped. usuario 2026-11-17: «Construcción del techo» debe
+                 * verse completa). Techo 60ch; la celda cede si la tabla se aprieta. */
+                const maxLbl = Math.max(v.length, ...pares.map(([, l]) => l.length), 6);
+                const anchoCtl = `calc(${Math.min(60, maxLbl + 2)}ch + 30px)`;
                 return (
                   <Fragment key={d.path}>
                     <tr style={off ? { opacity: 0.55 } : undefined}>

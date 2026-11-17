@@ -50,7 +50,6 @@ export function RciTramosTable({
         style={{
           fontSize: 12,
           borderCollapse: 'collapse',
-          minWidth: 'min(860px, calc(100vw - 260px))',
         }}
       >
         <caption

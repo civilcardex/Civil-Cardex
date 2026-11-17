@@ -133,14 +133,8 @@ function CalculoUC({ tipo }: CalculoUCProps) {
           <span className="card-s">{tramos.length} tramos</span>
         </div>
         <div className="scroll-top" style={{ padding: '16px' }}>
-          <div className="scroll-inner" style={{ minWidth: 'max-content' }}>
-            {/* minWidth clamp: en pantallas <27" la tabla cabe sin scroll (bajo 1280px manda
-                el wrapper .scroll-top ya existente). Mismo patrón en todas las tablas densas. */}
-            <table
-              ref={tablaRef}
-              className="tbl"
-              style={{ minWidth: 'min(800px, calc(100vw - 260px))' }}
-            >
+          <div className="scroll-inner">
+            <table ref={tablaRef} className="tbl">
               <caption className="sr-only">{`Cálculo de unidades de consumo ${title}`}</caption>
               <thead>
                 <tr>
@@ -148,7 +142,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 84, textAlign: 'center' }}
+                    style={{ width: 84, textAlign: 'center' }}
                     title="Identificador del tramo con su nivel (ej. RAC1-P1 · S1 = sótano · C = cubierta)"
                   >
                     Ramal/Montante
@@ -157,7 +151,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
+                    style={{ width: 44, textAlign: 'center', padding: '4px' }}
                     title="Punto de inicio del tramo (nodo o bajante de origen)."
                   >
                     Inicio
@@ -166,7 +160,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h"
                     rowSpan={2}
-                    style={{ minWidth: 44, textAlign: 'center', padding: '4px' }}
+                    style={{ width: 44, textAlign: 'center', padding: '4px' }}
                     title="Punto donde termina el tramo (nodo o bajante de destino)."
                   >
                     Fin
@@ -188,7 +182,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                     scope="col"
                     className="col-h ok"
                     rowSpan={2}
-                    style={{ minWidth: 90, textAlign: 'center', padding: '4px' }}
+                    style={{ width: 90, textAlign: 'center', padding: '4px' }}
                     title="Suma de unidades de consumo del tramo: aparatos × UC (la carga ya incluye lo propagado)."
                   >
                     Unidades de consumo totales
@@ -202,7 +196,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
                       className={`col-h ${clsHeader}`}
                       title={`${d.nombre}: ${d[field]} UC por aparato.`}
                       style={{
-                        minWidth: 70,
+                        width: 70,
                         fontSize: 12,
                         textAlign: 'center',
                         whiteSpace: 'nowrap',

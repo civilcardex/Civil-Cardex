@@ -42,6 +42,7 @@ function ModalClases({ cerrar }: { cerrar: () => void }) {
             <img
               src="/iconos/montantes_nfpa14.webp"
               alt=""
+              loading="lazy"
               style={{ width: 22, height: 22, objectFit: 'contain' }}
             />
             ¿Qué clase elegir?

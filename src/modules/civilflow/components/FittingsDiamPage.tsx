@@ -13,7 +13,6 @@ const TH: React.CSSProperties = {
   textAlign: 'center',
   background: 'var(--bg2)',
   padding: '6px 8px',
-  whiteSpace: 'nowrap',
   letterSpacing: 0.4,
 };
 const TD: React.CSSProperties = {
@@ -167,7 +166,6 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
               style={{
                 fontSize: 13,
                 borderCollapse: 'collapse',
-                whiteSpace: 'nowrap',
               }}
             >
               <thead>

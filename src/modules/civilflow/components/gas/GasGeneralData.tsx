@@ -146,7 +146,7 @@ export function GasDatosGenerales(props: GasDatosGeneralesProps) {
               alignItems: 'center',
             }}
           >
-            <table className="tbl" style={{ fontSize: 13, whiteSpace: 'nowrap' }}>
+            <table className="tbl" style={{ fontSize: 13 }}>
               <caption className="sr-only">Datos generales</caption>
               <tbody>
                 {filas.map((row, i, arr) => (

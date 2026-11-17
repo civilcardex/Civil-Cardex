@@ -21,11 +21,14 @@ export default defineConfig({
         'src/components/landing/**',
         'src/modules/civilmanager/**',
       ],
+      // Ratchet (2026-11-17): real medido con la suite completa = 44.0% líneas / 37.8%
+      // ramas / 34.7% funciones (el 63.9/56 del reporte externo NO corresponde a este
+      // include/exclude). Umbral justo por debajo del real para que sea un piso honesto.
       thresholds: {
-        statements: 20,
-        branches: 15,
-        functions: 20,
-        lines: 20,
+        statements: 42,
+        branches: 35,
+        functions: 33,
+        lines: 42,
       },
     },
   },

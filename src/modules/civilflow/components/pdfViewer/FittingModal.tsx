@@ -233,6 +233,7 @@ export default function AccesorioModal({ modalState, onClose, onSelect }: Acceso
                 alt={t.nombre}
                 width={24}
                 height={24}
+                loading="lazy"
                 style={{ objectFit: 'contain' }}
               />
               <span>{t.nombre}</span>

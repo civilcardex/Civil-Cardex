@@ -283,7 +283,10 @@ export default function HeaterSelection() {
                 className="c"
                 style={{ fontStyle: 'italic', fontWeight: 'bold', color: 'var(--acc)' }}
               >
-                {heaterRecommendation}
+                {/* El veredicto cambia al recalcular el caudal: live para que el lector lo oiga. */}
+                <span role="status" aria-live="polite">
+                  {heaterRecommendation}
+                </span>
               </td>
             </tr>
           </tbody>

@@ -1,7 +1,8 @@
 /** Hub de variantes del TramoEditor: contadores/calentadores en vivo y re-exports de las secciones por tipo (canal, cabeceras, bajante/ramal). Ej: index.tsx consume todo desde aquí (contrato previo al split). */
 import type { PlanoBajante } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { useTramoEditorContext } from './context.ts';
-import { ContadorEditor, CalentadorEditor } from './legacyEditors.tsx';
+import { ContadorEditor } from './meterEditor.tsx';
+import { CalentadorEditor } from './heaterEditor.tsx';
 
 /** Contador seleccionado en el panel: delega en ContadorEditor con el contexto compartido. */
 export function ContadorTramoEditor() {

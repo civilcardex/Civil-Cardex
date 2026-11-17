@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import type * as THREE_NS from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLB_POSITIONS, GLB_SCALE_OVERRIDE, GLB_URL } from './epc3dData.ts';
-import { FOV_3D } from '../shared/config3d';
 import { parseGLB } from './glbParser.ts';
 import { cargarModelosSecuencial } from '../shared/sequentialLoad.ts';
 import { cargarGlbBuffer } from '../shared/glbCache';
-import { aplicarControlesOrbit, attachAntiAutoscroll } from '../shared/controls3d';
+import { attachAntiAutoscroll } from '../shared/controls3d';
+import { disposeEscena, montarEscena } from '../shared/threeStage';
 import { actualizarEtiquetas } from './labels.ts';
 import { dibujarGizmoEjes } from '../aparatos3d/axisGizmo.ts';
 
@@ -83,57 +83,20 @@ export function useEpc3DScene({
     if (!canvasEl) return;
     (async (): Promise<void> => {
       detachAntiAutoscroll = attachAntiAutoscroll(canvasEl);
-      const THREE = await import('three');
-      const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
-      if (cancelled) return;
-
-      const renderer = new THREE.WebGLRenderer({ canvas: canvasEl, antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFShadowMap; // PCFSoft deprecado en three moderno (cae a PCF igual)
-      // Escena estática: el mapa de sombras se renderiza UNA vez tras la carga, no por frame
-      // (rendimiento — orbitar no cambia las sombras).
-      renderer.shadowMap.autoUpdate = false;
-      // r128 del HTML usaba outputEncoding = sRGBEncoding
-      renderer.outputColorSpace = THREE.SRGBColorSpace;
-      renderer.toneMapping = THREE.LinearToneMapping;
-      renderer.toneMappingExposure = 1.0;
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0d1117);
-      scene.fog = new THREE.Fog(0x0d1117, 60, 300);
-
-      const camP = new THREE.PerspectiveCamera(FOV_3D, 1, 0.01, 500);
-      camP.position.set(8, 4, 10);
-      const camO = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.001, 1000);
-
-      // Iluminación 4 puntos del HTML — intensidades del r128 original ×π: three moderno
-      // (r155+) usa unidades de luz físicas y sin la conversión la escena se ve más oscura.
-      const PI = Math.PI;
-      scene.add(new THREE.AmbientLight(0xffffff, 0.4 * PI));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.6 * PI);
-      dir.position.set(8, 16, 10);
-      dir.castShadow = true;
-      dir.shadow.mapSize.set(2048, 2048);
-      scene.add(dir);
-      const fill = new THREE.DirectionalLight(0x88aaff, 0.5 * PI);
-      fill.position.set(-10, 5, -6);
-      scene.add(fill);
-      const rim = new THREE.DirectionalLight(0xffffff, 0.4 * PI);
-      rim.position.set(2, -3, -12);
-      scene.add(rim);
-      const topLight = new THREE.DirectionalLight(0xffffff, 0.25 * PI);
-      topLight.position.set(0, 20, 2);
-      scene.add(topLight);
-
-      const controls = new OrbitControls(camP, canvasEl);
-      aplicarControlesOrbit(controls, THREE.MOUSE); // mapeo unificado: derecho = nada (decisión 2026-09-22)
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.rotateSpeed = 0.25;
-      controls.panSpeed = 0.25;
-      controls.minDistance = 0.02;
-      controls.maxDistance = 200;
+      // Base común con las calibraciones del HTML epc (sombra PCF — "PCFSoft deprecado en
+      // three moderno", fill -10,5,-6; ColorManagement NO se toca aquí).
+      const base = await montarEscena(canvasEl, {
+        maxDistance: 200,
+        shadowType: 'pcf',
+        fillPos: [-10, 5, -6],
+        // Escena estática: el mapa de sombras se renderiza UNA vez tras la carga, no por frame.
+        sombrasEstaticas: true,
+      });
+      if (cancelled) {
+        disposeEscena(base);
+        return;
+      }
+      const { THREE, renderer, scene, camP, camO, controls, keyLight: dir, fillLight: fill } = base;
 
       const ensamble = new THREE.Group();
       scene.add(ensamble);
@@ -329,20 +292,7 @@ export function useEpc3DScene({
       detachAntiAutoscroll?.();
       const api = apiRef.current;
       apiRef.current = null;
-      if (api?.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
-      if (api) {
-        api.controls.dispose();
-        api.scene.traverse((obj) => {
-          if (obj instanceof api.THREE.Mesh) {
-            obj.geometry.dispose();
-            const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-            mats.forEach((m) => m.dispose());
-          }
-        });
-        api.scene.clear();
-        api.renderer.dispose();
-        api.renderer.forceContextLoss();
-      }
+      if (api) disposeEscena(api);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- montaje único; callbacks por ref
   }, []);

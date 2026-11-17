@@ -50,9 +50,17 @@ export default function SanitaryTables({
   handleDiamChange,
   plans,
 }: SanitaryTablesProps) {
+  // Resumen para lectores de pantalla: la tabla es grande y viva — anunciar UNA línea
+  // compacta cuando cambia, no cada celda.
+  const noCumple = sanRows.filter((r) =>
+    [r.chequeoV, r.chequeoYn, r.chequeoFT, r.chequeoS].some((c) => c?.startsWith('NO CUMPLE')),
+  ).length;
   return (
     <div className="scroll-top san-pad-16">
       <div className="scroll-inner">
+        <div className="sr-only" role="status" aria-live="polite">
+          {`Red sanitaria: ${sanRows.length} tramos, ${noCumple} con chequeo NO CUMPLE`}
+        </div>
         <table ref={tablaRef} className="tbl san-fs">
           <caption className="sr-only">Diseño de red sanitaria</caption>
           <thead>

@@ -86,7 +86,6 @@ function TablaTipologias({
           style={{
             fontSize: 11,
             borderCollapse: 'collapse',
-            minWidth: 'min(980px, calc(100vw - 260px))',
           }}
         >
           <caption

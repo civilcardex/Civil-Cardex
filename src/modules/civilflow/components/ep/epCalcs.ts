@@ -30,7 +30,7 @@ export interface EpCisternaIn {
 
 /** Resultado de la cadena cisterna: alturas (Hg/Hf/HMT), NPSH disponible y veredicto de
  *  cavitación, más volúmenes de consumo/total. Ej: npshOk false -> ampliar la succión. */
-export interface EpCisternaCalc {
+interface EpCisternaCalc {
   /** Modo RED: los números de cisterna no aplican (la página solo muestra aviso). */
   aplica: boolean;
   HgTotal: number;
@@ -80,7 +80,7 @@ export function calcularCisterna(ep: EpCisternaIn): EpCisternaCalc {
 
 /** Forma mínima de EPData que los cálculos de verificación leen: extiende la cisterna porque
  *  en modo cisterna la HMT (altura manométrica total) sale de calcularCisterna. */
-export interface EpVerifIn extends EpCisternaIn {
+interface EpVerifIn extends EpCisternaIn {
   qac: string;
   qasc: string;
   pred: string;
@@ -101,14 +101,14 @@ export interface EpVerifIn extends EpCisternaIn {
 }
 
 /** Diámetro y velocidad de un ramal del equipo: el teórico (D calc) y el comercial elegido. */
-export interface EpRamalCol {
+interface EpRamalCol {
   diamCalcMm: number;
   dn: number;
   vReal: number;
 }
 
 /** Diámetro con velocidad real, ya sea el recomendado por catálogo o el DN que digitó el usuario. */
-export interface EpDiamSel {
+interface EpDiamSel {
   dn: number;
   Vreal: number;
 }
@@ -211,7 +211,7 @@ function autoNemaHp(pinsHp: number): number {
 /** Diámetro del ramal del equipo: si el usuario eligió un DN (diámetro nominal) PVC (Policloruro
  *  de Vinilo) Sch 40 válido usa ese y calcula su velocidad real; si no, recomienda selectDN.
  *  Ej: dnsuc "40" con Qd 5 L/s -> DN 40 y su Vreal. */
-export function resolverDiametroEp(dnUsuario: number, Qlps: number, vDiseno: number): EpDiamSel {
+function resolverDiametroEp(dnUsuario: number, Qlps: number, vDiseno: number): EpDiamSel {
   if (dnUsuario > 0) {
     const entry = entradaPor(PVC_SCH40, 'dn', dnUsuario);
     if (entry) {

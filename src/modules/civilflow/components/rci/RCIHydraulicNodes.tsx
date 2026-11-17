@@ -45,7 +45,6 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
               style={{
                 fontSize: 12,
                 borderCollapse: 'collapse',
-                minWidth: 'min(760px, calc(100vw - 260px))',
               }}
             >
               <caption
@@ -185,7 +184,6 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
                   style={{
                     fontSize: 12,
                     borderCollapse: 'collapse',
-                    minWidth: 'min(640px, calc(100vw - 260px))',
                   }}
                 >
                   <caption

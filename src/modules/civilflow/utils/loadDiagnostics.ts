@@ -38,7 +38,7 @@ export function decideEscalaPorDefectoDelPlan(args: {
 }
 
 /** Qué hacer con la escala del doc frente a la escala calibrada del piso. */
-export type DecisionEscalaDoc =
+type DecisionEscalaDoc =
   /** El doc y la calibración coinciden (o no hay calibración): no se toca nada. */
   | { accion: 'nada' }
   /** La diferencia es redondeo del meta: el doc (exacto) corrige al meta, la geometría no se mueve. */
@@ -108,7 +108,7 @@ export function corrigeEscalaMeta(
 }
 
 /** Lo que pasó en una carga de piso (escala, decisión, lámina y cámara). */
-export interface ReporteCargaPlano {
+interface ReporteCargaPlano {
   planId: string;
   ts: number;
   /** `scaleM` del doc cargado (m/px). */
