@@ -1506,8 +1506,8 @@ tr.rt-subrow-selected > td {
 }
 
 .dp-w-90 {
-  padding: 4px 8px;
-  min-width: 90px;
+  padding: 4px 6px;
+  min-width: 40px;
 }
 .dp-w-60 {
   width: 60px;
@@ -1525,7 +1525,7 @@ tr.rt-subrow-selected > td {
   padding: 4px 6px;
 }
 .dp-w-130 {
-  width: 130px;
+  width: 200px;
   padding: 4px 6px;
 }
 
@@ -1561,6 +1561,18 @@ tr.rt-subrow-selected > td {
 }
 
 .dp-mono-600 {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+}
+/* Material FIJO (no editable) de Materiales por red: mismo box que el select .dp-ghost de
+ * la fila editable — así ambos textos quedan al mismo nivel y las filas a la misma altura. */
+.dp-mat-fixed {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 4px;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;

@@ -411,23 +411,63 @@ function RciDesign() {
     <NavRciProvider nav={nav}>
       <div
         className="fu"
-        style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}
+        style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}
       >
-        {/* Fila superior: las PÁGINAS centradas (mismo patrón que las otras redes). */}
+        {/* Fila superior: las PÁGINAS centradas (mismo patrón que las otras redes); los CHIPS
+         *  de verificaciones al MISMO NIVEL (ped. usuario 2026-11-17) — anclados a la derecha
+         *  de la banda de pestañas. */}
         {/* Guía de diseño: la PESTAÑA abre el MODAL (ped. usuario: se comporta como modal,
          *  no como página) — la pestaña activa NO cambia. */}
-        <TabBarRci
-          tab={tab}
-          setTab={(t) => {
-            if (t === 'guia') {
-              setGuiaOpen(true);
-              return;
-            }
-            irA(t);
-          }}
-          noCumplen={noCumplen}
-        />
-        {/* Segunda fila (sección piso activo): Guía · pisos · estado de verificaciones */}
+        <div style={{ position: 'relative' }}>
+          <TabBarRci
+            tab={tab}
+            setTab={(t) => {
+              if (t === 'guia') {
+                setGuiaOpen(true);
+                return;
+              }
+              irA(t);
+            }}
+            noCumplen={noCumplen}
+          />
+          <button
+            type="button"
+            onClick={() => irA('verificaciones', 'todas')}
+            title="Estado de las verificaciones — clic para verlas"
+            style={{
+              position: 'absolute',
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              display: 'flex',
+              gap: 5,
+              alignItems: 'center',
+              border: 0,
+              background: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            {conteo
+              .filter((c) => c.n > 0)
+              .map((c) => (
+                <span
+                  key={c.st}
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    fontFamily: 'var(--mono)',
+                    padding: '1px 7px',
+                    borderRadius: 9,
+                    color: COLOR_ESTADO[c.st],
+                    border: `1px solid ${COLOR_ESTADO[c.st]}`,
+                  }}
+                >
+                  {c.n} {c.st === 'CUMPLE' ? 'cumplen' : c.st.toLowerCase()}
+                </span>
+              ))}
+          </button>
+        </div>
+        {/* Segunda fila (sección piso activo): Guía · pisos · avisos del merge */}
         <div
           style={{
             display: 'flex',
@@ -488,39 +528,6 @@ function RciDesign() {
           >
             <AvisosRci avisos={[...avisosGris, ...huerfanos]} />
           </div>
-          <button
-            type="button"
-            onClick={() => irA('verificaciones', 'todas')}
-            title="Estado de las verificaciones — clic para verlas"
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              gap: 5,
-              alignItems: 'center',
-              border: 0,
-              background: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            {conteo
-              .filter((c) => c.n > 0)
-              .map((c) => (
-                <span
-                  key={c.st}
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    fontFamily: 'var(--mono)',
-                    padding: '1px 7px',
-                    borderRadius: 9,
-                    color: COLOR_ESTADO[c.st],
-                    border: `1px solid ${COLOR_ESTADO[c.st]}`,
-                  }}
-                >
-                  {c.n} {c.st === 'CUMPLE' ? 'cumplen' : c.st.toLowerCase()}
-                </span>
-              ))}
-          </button>
         </div>
         {/* Contenido de la pestaña activa (cada página maneja sus sub-pestañas verticales). */}
         <div

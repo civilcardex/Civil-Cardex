@@ -261,7 +261,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td className="dp-pad-3x">
                         {r.fixed ? (
-                          <span className="dp-mono-600">{r.mat}</span>
+                          <span className="dp-mat-fixed">{r.mat}</span>
                         ) : (
                           <select
                             aria-label="Seleccionar material"
@@ -365,9 +365,6 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               Catálogo de aparatos sanitarios
             </h3>
             <div className="dp-row-auto">
-              <span className="dp-fs12 card-s">
-                Unidades de consumo/Unidades de descarga editables
-              </span>
               <EditButton edit={isEditingAparatos} setEdit={setIsEditingAparatos} />
             </div>
           </div>

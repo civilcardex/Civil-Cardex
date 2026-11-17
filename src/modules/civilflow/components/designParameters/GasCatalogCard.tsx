@@ -19,21 +19,18 @@ export function GasCatalogCard() {
       data-tour="datos-gas"
       style={{ display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}
     >
-      <div className="card-h" style={{ padding: '6px 10px', flexShrink: 0 }}>
-        <h3 className="card-t" style={{ fontSize: 13 }}>
+      <div className="dp-head-pad card-h">
+        <h3 className="dp-fs13-flex card-t">
           <img
             src="/iconos_civilflow/parametros_de_diseno/catalogo_gasodomesticos.webp"
             alt="Catálogo de gasodomésticos"
             width={20}
             height={20}
-            style={{ width: 20, height: 20, verticalAlign: 'middle', marginRight: 2 }}
+            className="dp-icon-20"
             loading="lazy"
           />
           Catálogo de gasodomésticos
         </h3>
-        <span className="card-s" style={{ fontSize: 12 }}>
-          NTC 3728 · m³/hr
-        </span>
       </div>
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         <table className="tbl" style={{ fontSize: 12, width: '100%', tableLayout: 'fixed' }}>

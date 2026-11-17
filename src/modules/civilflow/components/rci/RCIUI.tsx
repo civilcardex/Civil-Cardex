@@ -217,9 +217,9 @@ export function SubTabsRci({
 }) {
   const visibles = subs.filter((s) => !s.oculto);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minHeight: 0, flex: 1 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minHeight: 0, flex: 1 }}>
       {/* Sub-pestañas HORIZONTALES (ped. usuario): una fila de chips en la banda superior de
-       *  la página — al nivel visual de la fila de chips de verificaciones del shell. */}
+       *  la página — pegada ARRIBA (ped. 2026-11-17: «sube un poco») y con letra mayor. */}
       <nav
         style={{
           position: 'sticky',
@@ -229,7 +229,7 @@ export function SubTabsRci({
           display: 'flex',
           flexWrap: 'wrap',
           gap: 4,
-          padding: '4px 2px 6px',
+          padding: '2px 2px 4px',
           borderBottom: '1px solid var(--line)',
         }}
       >
@@ -250,10 +250,10 @@ export function SubTabsRci({
               color: sub === s.id ? 'var(--txt)' : 'var(--txt2)',
               fontWeight: sub === s.id ? 600 : 400,
               borderBottom: `2px solid ${sub === s.id ? 'var(--rci)' : 'transparent'}`,
-              fontSize: 12.5,
+              fontSize: 14,
             }}
           >
-            <span style={{ fontWeight: 700, color: 'var(--txt3)', fontSize: 10.5 }}>{i + 1}</span>
+            <span style={{ fontWeight: 700, color: 'var(--txt3)', fontSize: 11 }}>{i + 1}</span>
             <span>{s.titulo}</span>
           </button>
         ))}

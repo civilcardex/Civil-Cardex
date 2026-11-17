@@ -196,7 +196,7 @@ export function EscorrentiaCubiertaTable() {
       <tbody>
         {MATERIALES_CUBIERTA_LL.map((m, i) => (
           <Tr key={m.nombre} index={i}>
-            <Td className="cat-td-left">{m.nombre}</Td>
+            <Td>{m.nombre}</Td>
             <Td mono>{m.C.toFixed(2)}</Td>
           </Tr>
         ))}
@@ -219,7 +219,7 @@ export function ManningCanalesLlTable() {
       <tbody>
         {MATERIALES_CANAL_LL.map((m, i) => (
           <Tr key={m.nombre} index={i}>
-            <Td className="cat-td-left">{m.nombre}</Td>
+            <Td>{m.nombre}</Td>
             <Td mono>{m.n.toFixed(3)}</Td>
           </Tr>
         ))}
