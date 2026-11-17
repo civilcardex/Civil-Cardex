@@ -2,7 +2,9 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 // useRejillasData: filas (sectores desde áreas gas del visor), resultados NTC 3631, estado
 // de overrides/gas, hidratación desde BD y push con debounce. Extraído verbatim del hub.
 import { pisoLbl } from '../../constants/helpers.ts';
-import { CATALOGO_BASE, TIPO_DEFAULT } from '../../constants/rejillasNTC3631';
+import { TIPO_DEFAULT } from '../../constants/rejillasNTC3631';
+import { catalogoRejillasDe } from '../../constants/rejillas/catalogo-por-pais.ts';
+import { useProject } from '../../context/ProjectContext.tsx';
 import { APARATOS_BY_TRAMO_KEY, TRAZOS_PREFIX } from '../../constants/storage-keys.ts';
 import { usePlans } from '../../context/PlansContext.tsx';
 import type { PlanoArea } from '../../lib/PlanoEngine/PlanoState.ts';
@@ -36,6 +38,7 @@ import {
 } from '../../utils/fixtureEvents.ts';
 
 export function useRejillasData() {
+  const { proy } = useProject();
   const { plans } = usePlans();
   const [tick, setTick] = useState(0);
   const [overrides, setOverrides] = useState<OverridesMap>(loadOverrides);
@@ -272,11 +275,11 @@ export function useRejillasData() {
           padj: f.padj,
           aconec: f.aconec,
           gas,
-          catalogo: CATALOGO_BASE,
+          catalogo: catalogoRejillasDe(proy.pais),
           importadas: false,
         }),
       ),
-    [filas, gas],
+    [filas, gas, proy.pais],
   );
 
   // Ponytail: updater puro — StrictMode invoca los updaters 2× (doble save/push); efectos fuera.
