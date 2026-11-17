@@ -1,10 +1,11 @@
+import { useMemo, useState } from 'react';
 import { useCivilManager } from '../context.tsx';
-import { calcItemValue, esCapituloFinal, fmtMoneda } from '../calc.ts';
+import { calcItemValue, calcMapParaPres, esCapituloFinal, fmtMoneda } from '../calc.ts';
 import { NumInput } from '../shared/NumInput.tsx';
 import { ActionIcon } from '../shared/icons.tsx';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
-import { DimEnLectura, TableHeader } from '../shared/EditLock.tsx';
-import { useEditable } from '../shared/EditLock.tsx';
+import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock.tsx';
+import PageNav from '../../civilflow/components/PageNav.tsx';
 import type { Presupuesto, PresupuestoItem } from '../types.ts';
 
 interface Props {
@@ -12,10 +13,21 @@ interface Props {
   onUpdate: (patch: Partial<Presupuesto>) => void;
 }
 
-/** Grilla de ítems del presupuesto: cantidad editable, asignación de APU (Análisis de Precios Unitarios) por fila, filas capítulo que agrupan, y valor total por ítem con AIU (Administración, Imprevistos, Utilidad). */
+/** Grilla de ítems del presupuesto: cantidad editable, asignación de APU (Análisis de Precios Unitarios) por fila, filas capítulo que agrupan, y valor total por ítem con AIU (Administración, Imprevistos, Utilidad). El importador acepta hasta 5000 filas → el render pagina de a 50 (cada fila renderiza un select con TODOS los APU: sin página, O(items×apus) nodos tumban el tab). */
+const FILAS_POR_PAG = 50;
+
 export function ItemsPanel({ pres, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const editable = useEditable();
+  // Cerrado → snaps congeladas; borrador/en revisión → catálogos vivos.
+  const mapa = useMemo(() => calcMapParaPres(pres, state, apuCalcMap), [pres, state, apuCalcMap]);
+  const [pagePedida, setPage] = useState(0);
+  const totalPages = Math.max(1, Math.ceil(pres.items.length / FILAS_POR_PAG));
+  // Clamped en render (sin effect): cambiar de presupuesto o importar menos filas puede
+  // dejar la página pedida fuera de rango — cae a la última válida.
+  const page = Math.min(pagePedida, totalPages - 1);
+  const desde = page * FILAS_POR_PAG;
+  const itemsPagina = pres.items.slice(desde, desde + FILAS_POR_PAG);
 
   function setItems(items: PresupuestoItem[]) {
     onUpdate({ items });
@@ -36,6 +48,8 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
       es_capitulo_manual: null,
     };
     setItems([...pres.items, nuevo]);
+    // El ítem nuevo cae al final: saltar a su página para que "Agregar Ítem" se vea.
+    setPage(Math.ceil((pres.items.length + 1) / FILAS_POR_PAG) - 1);
   }
 
   function upd(i: number, k: keyof PresupuestoItem, v: string | number | boolean | null) {
@@ -101,23 +115,24 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                     </td>
                   </tr>
                 )}
-                {pres.items.map((it, i) => {
+                {itemsPagina.map((it, i) => {
+                  const idx = desde + i; // índice REAL para upd()/del() sobre pres.items
                   const esCap = esCapituloFinal(it);
                   const calc = calcItemValue(
                     it,
-                    apuCalcMap.get(it.apu_id),
+                    mapa.get(it.apu_id),
                     pres.aiu_override,
                     state.config,
                   );
                   return (
                     <tr key={it.id} className={esCap ? 'cm-row-cap' : undefined}>
-                      <XlRowNum n={i + 1} />
+                      <XlRowNum n={idx + 1} />
                       <td>
                         <input
                           className="cm-ni"
                           aria-label="Ítem"
                           value={it.num_item}
-                          onChange={(e) => upd(i, 'num_item', e.target.value)}
+                          onChange={(e) => upd(idx, 'num_item', e.target.value)}
                         />
                       </td>
                       <td>
@@ -125,7 +140,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                           className="cm-ni"
                           aria-label="Descripción"
                           value={it.descripcion}
-                          onChange={(e) => upd(i, 'descripcion', e.target.value)}
+                          onChange={(e) => upd(idx, 'descripcion', e.target.value)}
                         />
                       </td>
                       <td>
@@ -134,7 +149,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                             className="cm-sel"
                             aria-label="Unidad"
                             value={it.unidad}
-                            onChange={(e) => upd(i, 'unidad', e.target.value)}
+                            onChange={(e) => upd(idx, 'unidad', e.target.value)}
                           >
                             {state.config_listas.unidades.map((u) => (
                               <option key={u.abreviatura} value={u.abreviatura}>
@@ -149,7 +164,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                           <NumInput
                             value={it.cantidad}
                             decimals={2}
-                            onChange={(v) => upd(i, 'cantidad', v)}
+                            onChange={(v) => upd(idx, 'cantidad', v)}
                           />
                         )}
                       </td>
@@ -159,7 +174,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                             className={`cm-sel${it.alerta_sin_apu ? ' cm-sel-alert' : ''}`}
                             aria-label="APU"
                             value={it.apu_id}
-                            onChange={(e) => upd(i, 'apu_id', e.target.value)}
+                            onChange={(e) => upd(idx, 'apu_id', e.target.value)}
                           >
                             <option value="">— sin APU —</option>
                             {state.apus.map((a) => (
@@ -177,7 +192,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                           <input
                             type="checkbox"
                             checked={esCap}
-                            onChange={(e) => upd(i, 'es_capitulo_manual', e.target.checked)}
+                            onChange={(e) => upd(idx, 'es_capitulo_manual', e.target.checked)}
                             title="Marcar como capítulo"
                             aria-label="Marcar como capítulo"
                           />
@@ -185,7 +200,7 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
                         <button
                           type="button"
                           className="cm-btn-icon"
-                          onClick={() => del(i)}
+                          onClick={() => del(idx)}
                           aria-label="Eliminar ítem"
                         >
                           <ActionIcon name="delete" label="Eliminar ítem" color="var(--err)" />
@@ -204,6 +219,10 @@ export function ItemsPanel({ pres, onUpdate }: Props) {
           <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
             Agregar Ítem
           </button>
+        )}
+        <span className="cm-flex-1" />
+        {totalPages > 1 && (
+          <PageNav page={page + 1} setPage={(p) => setPage(p - 1)} total={totalPages} />
         )}
         <span className="cm-flex-1" />
         <span className="cm-label-11">

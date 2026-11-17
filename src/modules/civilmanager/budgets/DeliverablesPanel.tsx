@@ -1,7 +1,15 @@
+import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
 import { loadJspdf, loadXlsx } from '../../../utils/exportLoaders.ts';
 import { filaSegura, sanitizarCelda } from '../excelSafe.ts';
-import { calcItemValue, calcResumenPresupuesto, esCapituloFinal, fmt, fmtMoneda } from '../calc.ts';
+import {
+  calcItemValue,
+  calcMapParaPres,
+  calcResumenPresupuesto,
+  esCapituloFinal,
+  fmt,
+  fmtMoneda,
+} from '../calc.ts';
 import { showToast } from '../shared/Toast.tsx';
 import { ActionIcon } from '../shared/icons.tsx';
 import type { ApuCalculado, CivilManagerConfig, Presupuesto, PresupuestoItem } from '../types.ts';
@@ -26,14 +34,20 @@ function buildItemRows(
 /** Sub-pestaña 'Entregables' del presupuesto: export de los ítems (con su valor AIU (Administración, Imprevistos, Utilidad) calculado) a Excel y PDF para el cliente. */
 export function EntregablesPanel({ pres }: Props) {
   const { state, apuCalcMap } = useCivilManager();
+  // Cerrado → snaps congeladas; borrador/en revisión → catálogos vivos.
+  const mapa = useMemo(() => calcMapParaPres(pres, state, apuCalcMap), [pres, state, apuCalcMap]);
 
   async function exportExcelPresupuesto() {
     const XLSX = await loadXlsx();
-    const rows = buildItemRows(pres.items, apuCalcMap, pres.aiu_override, state.config);
-    const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
+    const rows = buildItemRows(pres.items, mapa, pres.aiu_override, state.config);
+    const resumen = calcResumenPresupuesto(pres.items, mapa, pres.aiu_override, state.config);
     const ws = XLSX.utils.aoa_to_sheet([
       [sanitizarCelda(pres.nombre)],
       [sanitizarCelda(`Código: ${pres.codigo}`), sanitizarCelda(`Entidad: ${pres.entidad}`)],
+      [
+        sanitizarCelda(`País: ${state.config.pais}`),
+        sanitizarCelda(`Moneda: ${state.config.moneda}`),
+      ],
       [],
       ['Ítem', 'Descripción', 'Unidad', 'Cantidad', 'Vr. Unitario', 'Vr. Total'],
       ...rows.map(filaSegura),
@@ -55,7 +69,7 @@ export function EntregablesPanel({ pres }: Props) {
   async function exportExcelPrecios() {
     const XLSX = await loadXlsx();
     const rows = state.apus.map((a) => {
-      const c = apuCalcMap.get(a.id);
+      const c = mapa.get(a.id);
       return [a.codigo, a.nombre, a.unidad, c?.totalDirecto ?? 0];
     });
     const ws = XLSX.utils.aoa_to_sheet([
@@ -74,7 +88,7 @@ export function EntregablesPanel({ pres }: Props) {
   async function exportPdfFicha() {
     const { jsPDF, autoTable } = await loadJspdf();
     const doc = new jsPDF({ orientation: 'landscape', format: 'letter' });
-    const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
+    const resumen = calcResumenPresupuesto(pres.items, mapa, pres.aiu_override, state.config);
     doc.setFontSize(13);
     doc.text(pres.nombre, 14, 16);
     doc.setFontSize(9);
@@ -85,7 +99,7 @@ export function EntregablesPanel({ pres }: Props) {
     line('Entidad', pres.entidad || '—', 30);
     line('Contrato', pres.contrato || '—', 36);
 
-    const rows = buildItemRows(pres.items, apuCalcMap, pres.aiu_override, state.config);
+    const rows = buildItemRows(pres.items, mapa, pres.aiu_override, state.config);
     autoTable(doc, {
       startY: 42,
       head: [['Ítem', 'Descripción', 'Unidad', 'Cantidad', 'Vr. Unitario', 'Vr. Total']],

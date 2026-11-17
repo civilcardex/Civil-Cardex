@@ -1,5 +1,6 @@
 import { useCivilManager } from '../context.tsx';
 import { flattenPresupuestos, getTipoProyecto } from '../calc.ts';
+import { getPaisData } from '../seedData.ts';
 import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { CrudFooter } from '../shared/CrudFooter.tsx';
@@ -50,7 +51,8 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
         pct_a: state.config.pct_administracion,
         pct_i: state.config.pct_imprevistos,
         pct_u: state.config.pct_utilidad,
-        iva_pct: 19,
+        // IVA del país activo (CO 19, PE 18, EC 15, CL 19, AR 21, BO 13).
+        iva_pct: getPaisData(state.config.pais, state.config_listas.perfiles_pais).iva_pct,
       },
       factores_snap: state.factoresPrestaciones,
       cargos_snap: state.cargos,
@@ -60,7 +62,6 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       cuadrillas_snap: state.cuadrillas,
       perfil_pais_snap:
         state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ?? null,
-      formulario_original: null,
     };
     patch({ presupuestos: [...state.presupuestos, nuevo] });
     onSelect(nuevo.id);
@@ -82,7 +83,31 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
   }
 
   function upd(id: string, k: keyof Presupuesto, v: string | boolean) {
-    patch({ presupuestos: state.presupuestos.map((p) => (p.id === id ? { ...p, [k]: v } : p)) });
+    patch({
+      presupuestos: state.presupuestos.map((p) => {
+        if (p.id !== id) return p;
+        // Doctrina 'cerrado' = congelado: al pasar a cerrado se REFRESCAN las snaps con los
+        // catálogos vigentes (las del crear ya serían viejas). Volviendo a borrador/en
+        // revisión el cálculo vuelve a ser vivo (calcMapParaPres ignora las snaps).
+        if (k === 'estado' && v === 'cerrado') {
+          return {
+            ...p,
+            estado: 'cerrado',
+            fecha_cierre: new Date().toISOString().slice(0, 10),
+            factores_snap: state.factoresPrestaciones,
+            cargos_snap: state.cargos,
+            apus_snap: state.apus,
+            insumos_snap: state.insumos,
+            equipos_snap: state.equipos,
+            cuadrillas_snap: state.cuadrillas,
+            perfil_pais_snap:
+              state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ??
+              p.perfil_pais_snap,
+          };
+        }
+        return { ...p, [k]: v };
+      }),
+    });
   }
 
   return (

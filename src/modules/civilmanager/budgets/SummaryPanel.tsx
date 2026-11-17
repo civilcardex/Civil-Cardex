@@ -1,5 +1,6 @@
+import { useMemo } from 'react';
 import { useCivilManager } from '../context.tsx';
-import { calcResumenPresupuesto, fmtMoneda } from '../calc.ts';
+import { calcMapParaPres, calcResumenPresupuesto, fmtMoneda } from '../calc.ts';
 import { NumInput } from '../shared/NumInput.tsx';
 import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock.tsx';
 import type { AiuOverride, Presupuesto } from '../types.ts';
@@ -13,7 +14,9 @@ interface Props {
 export function ResumenPanel({ pres, onUpdate }: Props) {
   const { state, apuCalcMap } = useCivilManager();
   const editable = useEditable();
-  const resumen = calcResumenPresupuesto(pres.items, apuCalcMap, pres.aiu_override, state.config);
+  // Cerrado → snaps congeladas; borrador/en revisión → catálogos vivos.
+  const mapa = useMemo(() => calcMapParaPres(pres, state, apuCalcMap), [pres, state, apuCalcMap]);
+  const resumen = calcResumenPresupuesto(pres.items, mapa, pres.aiu_override, state.config);
   const aiu = pres.aiu_override;
 
   function updAiu<K extends keyof AiuOverride>(k: K, v: AiuOverride[K]) {
@@ -85,7 +88,25 @@ export function ResumenPanel({ pres, onUpdate }: Props) {
           )}
         </fieldset>
 
+        {(() => {
+          const pct = aiu.activo
+            ? aiu.pct_a + aiu.pct_i + aiu.pct_u
+            : state.config.pct_administracion +
+              state.config.pct_imprevistos +
+              state.config.pct_utilidad;
+          return pct < 5 || pct > 50 ? (
+            <p
+              className="cm-warn-note"
+              role="status"
+            >{`AIU total ${pct.toLocaleString('es')} % — fuera del rango típico 5–50 % (heurística de control, no norma).`}</p>
+          ) : null;
+        })()}
+
         <div className="cm-xl-wrap cm-fieldset-bare">
+          {/* Los 6 totales en una línea para lectores: la tabla cambia al recalcular. */}
+          <div className="sr-only" role="status" aria-live="polite">
+            {`Resumen: costo directo ${fmtMoneda(resumen.costoDirecto)}, valor total ${fmtMoneda(resumen.valorTotal)}`}
+          </div>
           <table className="cm-tbl">
             <tbody>
               <tr>

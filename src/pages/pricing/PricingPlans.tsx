@@ -74,6 +74,7 @@ function ModuleCard({
           alt={`Logo ${modulo.nombre}`}
           width={230}
           height={76}
+          loading="lazy"
           className="pr-card-logo"
         />
         {/* Check circular (visual — la tarjeta entera es el control) */}
@@ -244,7 +245,14 @@ export function PricingResumen({
             ) : (
               [...seleccion].map((id) => (
                 <div key={id} className="flex items-center gap-2">
-                  <img src={LOGO[id]} alt="" width={18} height={18} className="pr-summary-logo" />
+                  <img
+                    src={LOGO[id]}
+                    alt=""
+                    width={18}
+                    height={18}
+                    loading="lazy"
+                    className="pr-summary-logo"
+                  />
                   <span className="text-[14px]">
                     {CATALOGO.find((c) => c.id === id)?.nombre}
                     {empresarial && (

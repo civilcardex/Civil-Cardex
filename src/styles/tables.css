@@ -17,7 +17,10 @@
   text-transform: uppercase;
   text-align: center;
   border-bottom: 1px solid var(--line);
-  white-space: nowrap;
+  /* El header ENVUELVE bajo presión (doctrina 2026-11-17: tablas sin scroll horizontal a
+   * cualquier ancho). En pantallas grandes cabe en 1 línea y no cambia nada; al estrechar,
+   * envolver a 2 líneas es lo que deja comprimir la tabla en vez de scrollearla. */
+  white-space: normal;
 }
 
 .tbl th.c,
@@ -70,6 +73,23 @@
   .col-h {
     padding: 3px 7px;
     font-size: 11px;
+  }
+}
+
+/* Último tier de compresión (doctrina 2026-11-17: sin scroll horizontal a CUALQUIER ancho):
+ * bajo 1200px la tipografía y los paddings ceden un punto más — las columnas se aprietan
+ * antes que scrollear. */
+@media (max-width: 1200px) {
+  .tbl {
+    font-size: 11px;
+  }
+  .tbl th {
+    font-size: 9px;
+    padding: 3px 4px;
+    letter-spacing: 0.1px;
+  }
+  .tbl td {
+    padding: 3px 4px;
   }
 }
 
@@ -325,7 +345,6 @@
 }
 .tbl td.san-td-minmax {
   padding: 1px 2px;
-  min-width: 60px;
   max-width: 120px;
 }
 .san-connected {
@@ -460,7 +479,7 @@
   padding: 4px 8px;
   border: 1px solid var(--line);
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
   position: sticky;
   top: 0;
   z-index: 5;
@@ -910,23 +929,32 @@ tr.rt-subrow-selected > td {
 .ds-celda12.ds-err-border {
   border-color: #e05252;
 }
+/* Anchos de los inputs de la tabla de pisos (doctrina 2026-11-17: ceden bajo presión —
+ * el px queda como MAX en vez de fijo; en pantallas anchas se ven igual y al estrechar
+ * comprimen en vez de empujar scroll horizontal). */
 .ds-px-58 {
-  width: 58px;
+  width: 100%;
+  max-width: 58px;
 }
 .ds-px-60 {
-  width: 60px;
+  width: 100%;
+  max-width: 60px;
 }
 .ds-px-76 {
-  width: 76px;
+  width: 100%;
+  max-width: 76px;
 }
 .ds-px-84 {
-  width: 84px;
+  width: 100%;
+  max-width: 84px;
 }
 .ds-px-96 {
-  width: 96px;
+  width: 100%;
+  max-width: 96px;
 }
 .ds-px-116 {
-  width: 116px;
+  width: 100%;
+  max-width: 116px;
 }
 
 .ds-scroll-x {
@@ -1048,20 +1076,23 @@ tr.rt-subrow-selected > td {
 .tbl th.gas-th-11 {
   font-size: 11px;
 }
+/* gas-th-min*: width sugerido (doctrina sin-scroll 2026-11-17) — el auto-layout lo usa de
+ * preferencia y lo COMPRIME si la tabla no cabe (a diferencia de min-width, que nunca cede).
+ * El nombre se conserva para no tocar los 18 th de GasNetworkTable. */
 .tbl th.gas-th-min44 {
-  min-width: 44px;
+  width: 44px;
   font-size: 11px;
 }
 .tbl th.gas-th-min26 {
-  min-width: 26px;
+  width: 26px;
   font-size: 11px;
 }
 .tbl th.gas-th-min40 {
-  min-width: 40px;
+  width: 40px;
   font-size: 11px;
 }
 .tbl th.gas-th-min30 {
-  min-width: 30px;
+  width: 30px;
   font-size: 11px;
   padding: 2px 2px;
   line-height: 1.1;

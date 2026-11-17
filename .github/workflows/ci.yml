@@ -50,8 +50,8 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [ "$EVENT_NAME" = "push" ]; then
-            echo "Push a main: suite completa (pre-release)."
-            npx vitest run
+            echo "Push a main: suite completa (pre-release) con cobertura — los thresholds de vitest.config.ts (ratchet) solo aplican cuando corre coverage."
+            npx vitest run --coverage.enabled
           else
             DIFF=$(git diff --name-only origin/main...HEAD -- 'src/**')
             CHANGED=$(printf '%s' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -v '.test.' || true)

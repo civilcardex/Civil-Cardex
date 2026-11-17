@@ -14,9 +14,7 @@ export function CategoriasApuPanel() {
       title="Categorías de APU"
       icon="categorias_de_apu"
       items={state.categorias_apu}
-      onChange={(categorias_apu) =>
-        patch({ categorias_apu, config_listas: { ...state.config_listas, categorias_apu } })
-      }
+      onChange={(categorias_apu) => patch({ categorias_apu })}
       prefix="CAT"
       labelField="categoria"
       labelHeader="Categoría"

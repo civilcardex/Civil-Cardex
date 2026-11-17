@@ -1,9 +1,11 @@
 /**
  * Catálogos semilla con los que nace el módulo CM (Civil Manager): factores
- * prestacionales colombianos, cargos típicos de obra, unidades, orígenes,
- * categorías de insumo y APU (Análisis de Precios Unitarios), y perfiles
- * laborales de ~30 países. Se siembran una sola vez al inicializar; después
- * las ediciones del usuario son la verdad.
+ * prestacionales por país (los 6 del selector de civilflow: CO/PE/EC/CL/AR/BO),
+ * cargos típicos de obra, unidades, orígenes, categorías de insumo y APU
+ * (Análisis de Precios Unitarios), y perfiles laborales de esos 6 países.
+ * Se siembran una sola vez al inicializar; después las ediciones del usuario
+ * son la verdad. Valores con vigencia 2026 (verificados contra fuente oficial;
+ * el campo vigencia activa el semáforo de frescura).
  */
 import type { FactorPrestacional, ListaItem, PerfilPais, UnidadMedida } from './types.ts';
 
@@ -47,6 +49,197 @@ export const FP_CAT_DESC_DEFAULTS: Record<FactorPrestacional['tipo'], string> = 
     'Aportes a fondos de bienestar social: Caja de Compensación Familiar, SENA, ICBF. Solo a cargo del empleador.',
   otros:
     'Componentes adicionales específicos de cada empresa o sector: horas extras, recargos nocturnos, dominicales, beneficios extralegales.',
+};
+
+/**
+ * FP (Factores Prestacionales) semilla POR PAÍS — solo los 6 del selector. Cada fila lleva
+ * la fuente de su % en el nombre (verificación 2026-11); lo no verificable no se inventa.
+ * CO = PREST_DEFAULTS (liquidación colombiana). Los otros 5 son aportes patronales +
+ * provisiones mensualizadas (beneficio anual ÷ 12), la misma doctrina de las filas CO.
+ */
+export const FP_POR_PAIS: Record<string, Omit<FactorPrestacional, 'id'>[]> = {
+  CO: PREST_DEFAULTS,
+  // Perú (régimen general, planilla): EsSalud 9 % (Ley 26790); gratificaciones jul+dic
+  // = 2 sueldos/año → 16.67 %/mes; bonificación extraordinaria del 9 % sobre gratificación
+  // (DS 005-97-TR) ≈ 1.5 %; CTS ≈ 1 sueldo/año → 8.33 %; vacaciones 30 días → 8.33 %.
+  PE: [
+    {
+      codigo: 'FP-101',
+      nombre: 'EsSalud (aporte empleador, Ley 26790)',
+      factor: 9,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-102',
+      nombre: 'Gratificaciones julio + diciembre (provisión 2/12)',
+      factor: 16.67,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-103',
+      nombre: 'Bonificación extraordinaria 9 % s/ gratificación (DS 005-97-TR)',
+      factor: 1.5,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-104',
+      nombre: 'CTS (compensación por tiempo de servicios, provisión 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-105',
+      nombre: 'Vacaciones 30 días (provisión 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+  ],
+  // Ecuador (régimen general, IESS): aporte patronal 11.15 % (Ley de Seguridad Social,
+  // tabla 2026); décimo tercero y décimo cuarto = 8.33 % c/u (provisión 1/12); fondos de
+  // reserva 8.33 % (desde el 3.er año — ajustar si el operario es nuevo); provisión de
+  // vacaciones 8.33 %.
+  EC: [
+    {
+      codigo: 'FP-201',
+      nombre: 'IESS aporte patronal (11.15 %)',
+      factor: 11.15,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-202',
+      nombre: 'IESS riesgos del trabajo (0.5 %)',
+      factor: 0.5,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-203',
+      nombre: 'Décimo tercer sueldo (provisión 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-204',
+      nombre: 'Décimo cuarto sueldo (provisión 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-205',
+      nombre: 'Fondos de reserva (provisión 1/12, desde 3.er año)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+    { codigo: 'FP-206', nombre: 'Vacaciones (provisión 1/12)', factor: 8.33, tipo: 'prestaciones' },
+  ],
+  // Chile: cargo del EMPLEADOR — cotización SSP (reforma previsional) 3.5 % desde ago-2026
+  // (Ley 21.735, escala hasta 7 % en 2033); seguro de cesantía AFC contrato indefinido
+  // 2.4 %; SIS invalidez y sobrevivencia 1.78 % (2026); Ley 16.744 accidentes 0.95 % base.
+  // El 10 % AFP + salud los paga el trabajador (no son carga patronal).
+  CL: [
+    {
+      codigo: 'FP-301',
+      nombre: 'SSP cotización empleador (reforma previsional, 3.5 % desde ago-2026)',
+      factor: 3.5,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-302',
+      nombre: 'Seguro de cesantía AFC, contrato indefinido (2.4 %)',
+      factor: 2.4,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-303',
+      nombre: 'SIS invalidez y sobrevivencia (1.78 %, 2026)',
+      factor: 1.78,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-304',
+      nombre: 'Ley 16.744 accidentes del trabajo (prima base 0.95 %)',
+      factor: 0.95,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-305',
+      nombre: 'Feriado legal 15 días (provisión práctica 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+  ],
+  // Argentina (construcción, convenio UOCRA 130/75): jubilación 16 % (régimen construcción),
+  // asignaciones familiares 4.5 %, FNE 1 %, INSSJP 2.5 %, obra social 6 %, contribución
+  // adicional 0 % (construcción), Fondo de Cese Laboral ≈ 8.33 %. Excluye aportes
+  // sindicales del trabajador y escalones de altos salarios (+19.5 % sobre excedente).
+  AR: [
+    {
+      codigo: 'FP-401',
+      nombre: 'Jubilación SIPA régimen construcción (16 %)',
+      factor: 16,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-402',
+      nombre: 'Asignaciones familiares (4.5 %)',
+      factor: 4.5,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-403',
+      nombre: 'Fondo Nacional de Empleo (1 %)',
+      factor: 1,
+      tipo: 'seguridad_social',
+    },
+    { codigo: 'FP-404', nombre: 'INSSJP (2.5 %)', factor: 2.5, tipo: 'seguridad_social' },
+    { codigo: 'FP-405', nombre: 'Obra social (6 %)', factor: 6, tipo: 'seguridad_social' },
+    {
+      codigo: 'FP-406',
+      nombre: 'Fondo de Cese Laboral (provisión ≈ 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+    {
+      codigo: 'FP-407',
+      nombre: 'Otros (ajustar según CCT y aportes sindicales)',
+      factor: 0,
+      tipo: 'otros',
+    },
+  ],
+  // Bolivia: CNS 10 %, AFP empresario (riesgo profesional) 1.71 %, aporte patronal
+  // solidario 3 % (Ley 154 art. 4), pro-vivienda FOVIESS 2 % (exclusivamente patronal);
+  // aguinaldo = 1 sueldo/año → provisión 8.33 %.
+  BO: [
+    {
+      codigo: 'FP-501',
+      nombre: 'CNS Caja Nacional de Salud (10 %)',
+      factor: 10,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-502',
+      nombre: 'AFP empresario, riesgo profesional (1.71 %)',
+      factor: 1.71,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-503',
+      nombre: 'Aporte patronal solidario (Ley 154, 3 %)',
+      factor: 3,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-504',
+      nombre: 'Pro-vivienda FOVIESS (2 %, solo empleador)',
+      factor: 2,
+      tipo: 'seguridad_social',
+    },
+    {
+      codigo: 'FP-505',
+      nombre: 'Aguinaldo diciembre (provisión 1/12)',
+      factor: 8.33,
+      tipo: 'prestaciones',
+    },
+  ],
 };
 
 /** Cargos típicos de obra con su paga en salarios base: ayudante 1.0 sb, oficial 2.0, Ing Civil Jr. 5.0. */
@@ -348,53 +541,24 @@ export const CATEGORIAS_APU: ListaItem[] = [
   },
 ];
 
+/** Perfiles de país semilla: los MISMOS 6 del selector de civilflow. Vigencia = año de referencia de smmlv/iva (verificados 2026-11: Decreto 1469 de 2025 CO; DS 015-2026-TR PE; Min. Trabajo EC 2026; Ley 21.830 CL desde may-2026; resolución SMVM AR nov-2026; DS 5516 BO). iva_pct = tasa general vigente (Art. 468 ET CO; SUNAT PE; SRI EC; SII CL; AFIP AR; Ley 843 BO). */
 const PAISES: Record<string, Omit<PerfilPais, 'codigo'>> = {
   CO: {
     nombre: 'Colombia',
     moneda: 'COP',
     smmlv: 1750905,
-    tope_ibc_mult: 2,
-    auxilio_transporte: 147674,
+    vigencia: 2026,
+    iva_pct: 19,
     dias_mes: 25,
     horas_mes: 182,
-    unidad: 'mes',
-  },
-  MX: {
-    nombre: 'México',
-    moneda: 'MXN',
-    smmlv: 9582,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
     unidad: 'mes',
   },
   PE: {
     nombre: 'Perú',
     moneda: 'PEN',
-    smmlv: 1130,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  CL: {
-    nombre: 'Chile',
-    moneda: 'CLP',
-    smmlv: 539000,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 225,
-    unidad: 'mes',
-  },
-  AR: {
-    nombre: 'Argentina',
-    moneda: 'ARS',
-    smmlv: 341000,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
+    smmlv: 1230,
+    vigencia: 2026,
+    iva_pct: 18,
     dias_mes: 30,
     horas_mes: 240,
     unidad: 'mes',
@@ -403,265 +567,45 @@ const PAISES: Record<string, Omit<PerfilPais, 'codigo'>> = {
     nombre: 'Ecuador',
     moneda: 'USD',
     smmlv: 482,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
+    vigencia: 2026,
+    iva_pct: 15,
     dias_mes: 30,
     horas_mes: 240,
     unidad: 'mes',
   },
-  VE: {
-    nombre: 'Venezuela',
-    moneda: 'VES',
-    smmlv: 130,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
+  CL: {
+    nombre: 'Chile',
+    moneda: 'CLP',
+    smmlv: 553553,
+    vigencia: 2026,
+    iva_pct: 19,
     dias_mes: 30,
-    horas_mes: 220,
+    horas_mes: 225,
+    unidad: 'mes',
+  },
+  AR: {
+    nombre: 'Argentina',
+    moneda: 'ARS',
+    smmlv: 398800,
+    vigencia: 2026,
+    iva_pct: 21,
+    dias_mes: 30,
+    horas_mes: 240,
     unidad: 'mes',
   },
   BO: {
     nombre: 'Bolivia',
     moneda: 'BOB',
     smmlv: 3300,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
+    vigencia: 2026,
+    iva_pct: 13,
     dias_mes: 30,
     horas_mes: 240,
     unidad: 'mes',
-  },
-  PY: {
-    nombre: 'Paraguay',
-    moneda: 'PYG',
-    smmlv: 2899048,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  UY: {
-    nombre: 'Uruguay',
-    moneda: 'UYU',
-    smmlv: 24572,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 220,
-    unidad: 'mes',
-  },
-  BR: {
-    nombre: 'Brasil',
-    moneda: 'BRL',
-    smmlv: 1621,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  CR: {
-    nombre: 'Costa Rica',
-    moneda: 'CRC',
-    smmlv: 373092,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  PA: {
-    nombre: 'Panamá',
-    moneda: 'PAB',
-    smmlv: 637,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  GT: {
-    nombre: 'Guatemala',
-    moneda: 'GTQ',
-    smmlv: 4002,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  HN: {
-    nombre: 'Honduras',
-    moneda: 'HNL',
-    smmlv: 12930,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 220,
-    unidad: 'mes',
-  },
-  SV: {
-    nombre: 'El Salvador',
-    moneda: 'USD',
-    smmlv: 409,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 220,
-    unidad: 'mes',
-  },
-  NI: {
-    nombre: 'Nicaragua',
-    moneda: 'NIO',
-    smmlv: 5950,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 240,
-    unidad: 'mes',
-  },
-  DO: {
-    nombre: 'Rep. Dominicana',
-    moneda: 'DOP',
-    smmlv: 16993,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 220,
-    unidad: 'mes',
-  },
-  CU: {
-    nombre: 'Cuba',
-    moneda: 'CUP',
-    smmlv: 2100,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 220,
-    unidad: 'mes',
-  },
-  US: {
-    nombre: 'Estados Unidos',
-    moneda: 'USD',
-    smmlv: 7.25,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 200,
-    unidad: 'hora',
-  },
-  ES: {
-    nombre: 'España',
-    moneda: 'EUR',
-    smmlv: 1184,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'mes',
-  },
-  DE: {
-    nombre: 'Alemania',
-    moneda: 'EUR',
-    smmlv: 1241,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'mes',
-  },
-  FR: {
-    nombre: 'Francia',
-    moneda: 'EUR',
-    smmlv: 1188,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 150,
-    unidad: 'mes',
-  },
-  GB: {
-    nombre: 'Reino Unido',
-    moneda: 'GBP',
-    smmlv: 11.44,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 150,
-    unidad: 'hora',
-  },
-  IT: {
-    nombre: 'Italia',
-    moneda: 'EUR',
-    smmlv: 1184,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'mes',
-  },
-  PT: {
-    nombre: 'Portugal',
-    moneda: 'EUR',
-    smmlv: 820,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'mes',
-  },
-  JP: {
-    nombre: 'Japón',
-    moneda: 'JPY',
-    smmlv: 1004,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'hora',
-  },
-  CN: {
-    nombre: 'China',
-    moneda: 'CNY',
-    smmlv: 2420,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'mes',
-  },
-  IN: {
-    nombre: 'India',
-    moneda: 'INR',
-    smmlv: 17892,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 192,
-    unidad: 'mes',
-  },
-  AU: {
-    nombre: 'Australia',
-    moneda: 'AUD',
-    smmlv: 24.1,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'hora',
-  },
-  CA: {
-    nombre: 'Canadá',
-    moneda: 'CAD',
-    smmlv: 17.3,
-    tope_ibc_mult: 0,
-    auxilio_transporte: 0,
-    dias_mes: 30,
-    horas_mes: 173,
-    unidad: 'hora',
   },
 };
 
-/** Genera los perfiles de país semilla (~30 países: moneda, salario mínimo, días/horas mes, mes vs hora). Copia fresca en cada llamada para no compartir referencias. */
+/** Genera los perfiles de país semilla (6 países: moneda, salario mínimo, IVA, días/horas mes, mes vs hora). Copia fresca en cada llamada para no compartir referencias. */
 export function perfilesPaisDefault(): PerfilPais[] {
   return Object.entries(PAISES).map(([codigo, p]) => ({ codigo, ...p }));
 }

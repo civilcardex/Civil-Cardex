@@ -1,4 +1,12 @@
-import { cargoJornal, fmt, parseNum } from '../calc.ts';
+import {
+  cargoJornal,
+  eqSubtotal,
+  fmt,
+  insCostoU,
+  insSubtotal,
+  moSubtotal,
+  transSubtotal,
+} from '../calc.ts';
 import { sanitizarCelda } from '../excelSafe.ts';
 import { showToast } from '../shared/Toast.tsx';
 import { loadJspdf, loadXlsx } from '../../../utils/exportLoaders.ts';
@@ -18,6 +26,7 @@ function buildRows(apu: Apu, ctx: ExportCtx): (string | number)[][] {
   const cargoMap = new Map(ctx.cargosCalc.map((c) => [c.id, c]));
   const eqMap = new Map(ctx.equipos.map((e) => [e.id, e]));
   const insMap = new Map(ctx.insumos.map((x) => [x.id, x]));
+  const abMap = ctx.abMap;
   const rows: (string | number)[][] = [];
   rows.push(['A. MANO DE OBRA', '', '', '', '']);
   rows.push(['Cargo', 'Cant. Personas', 'Rendimiento', 'Jornal', 'Subtotal']);
@@ -29,43 +38,32 @@ function buildRows(apu: Apu, ctx: ExportCtx): (string | number)[][] {
       r.cant_personas,
       r.rendimiento,
       jornal,
-      jornal * r.cant_personas * r.rendimiento,
+      moSubtotal(jornal, r),
     ]);
   }
   rows.push(['B. EQUIPO', '', '', '', '']);
   rows.push(['Equipo', 'Rendimiento', '', 'Costo/Hora', 'Subtotal']);
   for (const r of apu.recursos_eq) {
     const eq = eqMap.get(r.equipo_id);
-    rows.push([
-      eq?.nombre ?? '',
-      r.rendimiento,
-      '',
-      eq?.costo_hora ?? 0,
-      (eq?.costo_hora ?? 0) * r.rendimiento,
-    ]);
+    const costoHora = eq?.costo_hora ?? 0;
+    rows.push([eq?.nombre ?? '', r.rendimiento, '', costoHora, eqSubtotal(costoHora, r)]);
   }
   rows.push(['C. INSUMOS', '', '', '', '']);
   rows.push(['Insumo', 'Consumo', 'Desperdicio %', 'Costo Unit.', 'Subtotal']);
   for (const r of apu.recursos_ins) {
     const ins = insMap.get(r.insumo_id);
-    const costoU =
-      ins?.origen === 'Preparado en obra'
-        ? (ctx.abMap.get(ins.apu_basico_id)?.costo_unitario ?? 0)
-        : (ins?.costo_unitario ?? 0);
-    const desp = (parseNum(r.desperdicios_pct) || 5) / 100;
     rows.push([
       ins?.nombre ?? '',
       r.consumo,
       r.desperdicios_pct,
-      costoU,
-      costoU * r.consumo * (1 + desp),
+      insCostoU(ins, abMap),
+      insSubtotal(ins, abMap, r),
     ]);
   }
   rows.push(['D. TRANSPORTE', '', '', '', '']);
   rows.push(['Unidad', 'Tarifa', 'Distancia km', '', 'Subtotal']);
   for (const r of apu.recursos_transporte) {
-    const total = r.unidad === 'Global' ? r.tarifa : r.tarifa * r.distancia_km;
-    rows.push([r.unidad, r.tarifa, r.distancia_km, '', total]);
+    rows.push([r.unidad, r.tarifa, r.distancia_km, '', transSubtotal(r)]);
   }
   const calc = ctx.apuCalcMap.get(apu.id);
   rows.push(['', '', '', '', '']);

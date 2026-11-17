@@ -627,6 +627,11 @@
 .cm-warn-text {
   color: var(--warn);
 }
+.cm-warn-note {
+  color: var(--warn);
+  margin: 4px 0;
+  font-size: 13px;
+}
 .cm-num-wrap {
   position: relative;
   display: inline-block;

@@ -52,13 +52,11 @@ export function ParametrosApuPanel() {
               onChange={(v) => upd('salario_base', v)}
             />
           </Field>
-          <Field label="Auxilio de transporte">
-            <NumInput
-              value={config.auxilio_transporte}
-              format
-              moneda
-              onChange={(v) => upd('auxilio_transporte', v)}
-            />
+          <Field
+            label="IVA %"
+            help="Tasa del impuesto al valor agregado del país activo — se aplica solo sobre la utilidad (estilo colombiano de contratos AIU)."
+          >
+            <NumInput value={config.iva_pct} decimals={0} onChange={(v) => upd('iva_pct', v)} />
           </Field>
           <Field label="Días/mes">
             <NumInput value={config.dias_mes} decimals={0} onChange={(v) => upd('dias_mes', v)} />

@@ -46,7 +46,7 @@
     texto de la pantalla de carga) viven en /scripts/*.js (un archivo propio: 'self' los cubre).
     Con 'unsafe-inline' la directiva no restringe NADA.
   - style-src tampoco lleva 'unsafe-inline': el CSS crítico vive en /styles/critical.css y el
-    HTML prerenderizado no trae style="..." (lo vigila scripts/checkPrerenderStyles.mjs).
+    HTML prerenderizado no trae style="..." (pase de estilos CSP-safe, 2026-11).
     React aplica los style={{...}} de runtime por CSSOM, que la CSP no bloquea.
   - 'wasm-unsafe-eval' (no 'unsafe-eval'): pdfjs-dist compila WebAssembly para algunos
     decodificadores de imagen. pdf.js solo usa `new Function` como TEST de disponibilidad

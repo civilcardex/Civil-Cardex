@@ -56,7 +56,10 @@ export function ColaboradoresTab() {
           id: idx >= 0 ? existing[idx].id : crypto.randomUUID(),
           codigo: String(row[0] || nextCode()),
           descripcion: String(row[1] || ''),
-          num_salarios_base: Number(row[2]) || 1,
+          // Celda vacía → 1 sb (default de cargo nuevo); 0 explícito se respeta (el `|| 1`
+          // viejo lo inflaba a 1).
+          num_salarios_base:
+            row[2] === undefined || String(row[2]).trim() === '' ? 1 : Number(row[2]) || 0,
         }),
       },
     });

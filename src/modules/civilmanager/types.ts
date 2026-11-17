@@ -148,36 +148,6 @@ export interface ApuCalculado {
   costo_unitario: number;
 }
 
-/** Columnas del formulario Excel del cliente: qué columna de la hoja corresponde a cada dato.
- * Los valores son índices de columna (0 = primera) o null si esa columna no se usó. */
-export interface MapeoFormulario {
-  fila_inicio: number;
-  col_item: number | null;
-  col_codigo_1: number | null;
-  col_codigo_2: number | null;
-  col_codigo_apu: number | null;
-  col_descripcion: number | null;
-  col_unidad: number | null;
-  col_cantidad: number | null;
-  col_vr_unitario: number | null;
-  nombre_mapeo: string;
-}
-
-/** Un mapeo de columnas guardado en la lista de favoritos, para reutilizarlo en otros formularios. */
-export type MapeoFormularioGuardado = MapeoFormulario & { id: string };
-
-/** Copia del formulario Excel original del cliente, guardada dentro del presupuesto.
- * Si el archivo pesa más de 4 MB no se adjunta (archivo_b64 queda null) y solo se guarda su mapeo. */
-export interface FormularioOriginal {
-  archivo_b64: string | null;
-  archivo_adjunto: boolean;
-  nombre_archivo: string;
-  fecha_importacion: string;
-  total_filas: number;
-  fila_inicio: number;
-  mapeo: MapeoFormulario;
-}
-
 /** Fila del presupuesto. es_capitulo/es_capitulo_manual: fila que agrupa sin valor propio; alerta_sin_apu: quedó sin APU y sin precio al importar. */
 export interface PresupuestoItem {
   id: string;
@@ -204,10 +174,10 @@ export interface AiuOverride {
   usar_en_cada_apu?: boolean;
 }
 
-/** Ciclo de vida del presupuesto: borrador -> en_revision -> cerrado (cerrado = congelado, solo lectura). */
+/** Ciclo de vida del presupuesto: borrador -> en_revision -> cerrado. Doctrina: 'cerrado' calcula SIEMPRE con las snaps congeladas (calcMapParaPres) — editar el catálogo global no mueve un presupuesto ya entregado; borrador/en_revision calculan con los catálogos vivos. Al pasar a 'cerrado' el panel refresca las snaps con los catálogos actuales. */
 export type EstadoPresupuesto = 'borrador' | 'en_revision' | 'cerrado';
 
-/** Objetivo de obra con sus ítems. Los campos *_snap congelan los catálogos al crearlo: si luego editas un cargo o un APU global, este presupuesto sigue calculando con la foto con la que nació. */
+/** Objetivo de obra con sus ítems. Los campos *_snap congelan los catálogos al crearlo; al cambiar estado a 'cerrado' se refrescan con los vigentes — desde ahí el cálculo sale de la foto (calcMapParaPres), no del catálogo global. */
 export interface Presupuesto {
   id: string;
   codigo: string;
@@ -231,16 +201,11 @@ export interface Presupuesto {
   factores_snap: FactorPrestacional[];
   cargos_snap: Cargo[];
   apus_snap: Apu[];
-  /** Copias de los catálogos tomadas al crear el presupuesto: el proyecto calcula con estas, no con el catálogo global. */
+  /** Copias de los catálogos tomadas al cerrar (o crear): el presupuesto cerrado calcula con estas, no con el catálogo global. */
   insumos_snap: Insumo[];
   equipos_snap: Equipo[];
   cuadrillas_snap: Cuadrilla[];
   perfil_pais_snap: PerfilPais | null;
-  formulario_original: FormularioOriginal | null;
-  /** Cómo se precian los ítems importados del formulario: con APU o con el precio de la entidad. */
-  tipo_precio_formulario?: 'apu' | 'entidad';
-  /** Números de ítems que quedaron sin precio cuando el formulario es de tipo "entidad". */
-  alarmas_precio_faltante?: string[] | null;
 }
 
 /** Fila de una lista de precios exportada/importada (desc legible + categoría para agrupar). */
@@ -258,31 +223,27 @@ export interface UnidadMedida {
   tipo: string;
 }
 
-/** Parámetros laborales por país: salario mínimo (smmlv), moneda, días/horas del mes y unidad mes|hora (por hora: el jornal no se divide). tope_ibc_mult: tope del IBC (Ingreso Base de Cotización) en salarios mínimos; 0 = sin tope. */
+/** Parámetros laborales por país: salario mínimo (smmlv), moneda, días/horas del mes y unidad mes|hora (por hora: el jornal no se divide). vigencia: año de referencia de los valores (semáforo de frescura); iva_pct: tasa general del impuesto al valor agregado del país (se copia a config al activar). */
 export interface PerfilPais {
   codigo: string;
   nombre: string;
   moneda: string;
   smmlv: number;
-  tope_ibc_mult: number;
-  auxilio_transporte: number;
+  vigencia: number;
+  iva_pct: number;
   dias_mes: number;
   horas_mes: number;
   unidad: 'mes' | 'hora';
 }
 
-/** Catálogos de las listas desplegables del módulo: unidades, categorías, tipos de equipo, orígenes, perfiles de país y mapeos de formulario guardados. */
+/** Catálogos de las listas desplegables del módulo: unidades, categorías, tipos de equipo, orígenes y perfiles de país. (Las categorías de APU viven SOLO en state.categorias_apu.) */
 export interface ConfigListas {
   unidades: UnidadMedida[];
   categorias_insumo: ListaItem[];
-  categorias_apu: ListaItem[];
   tipos_equipo: ListaItem[];
   origenes: ListaItem[];
   unidades_transporte: ListaItem[];
   perfiles_pais: PerfilPais[];
-  tipos_unidad: string[];
-  /** Mapeos de columnas de formularios guardados por el usuario para reutilizarlos. */
-  mapeos_formulario: MapeoFormularioGuardado[];
 }
 
 /** Ayudas por campo que la hoja de APU muestra junto a cada concepto (texto configurable; no son valores de cálculo). */
@@ -298,13 +259,12 @@ export interface ComentariosApu {
   usar_en_cada_apu: string;
 }
 
-/** Config activa: país/salario base y % de AIU, más flags de doctrina de precios. usar_fp_en_apu: FP dentro del jornal o como línea aparte; vr_resumido: AIU discriminado o en una sola línea. */
+/** Config activa: país/salario base y % de AIU, más flags de doctrina de precios. iva_pct: tasa del país activo (CO 19, PE 18, EC 15, CL 19, AR 21, BO 13) — se aplica solo a la utilidad (estilo colombiano). usar_fp_en_apu: FP dentro del jornal o como línea aparte; vr_resumido: AIU discriminado o en una sola línea. */
 export interface CivilManagerConfig {
   pais: string;
   moneda: string;
   salario_base: number;
-  auxilio_transporte: number;
-  ibc_tope: number;
+  iva_pct: number;
   pct_administracion: number;
   pct_imprevistos: number;
   pct_utilidad: number;

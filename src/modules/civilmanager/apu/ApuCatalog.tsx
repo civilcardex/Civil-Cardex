@@ -107,7 +107,7 @@ export function ApuCatalog() {
                   </th>
                   <th
                     scope="col"
-                    title="Costo directo calculado: mano de obra + equipo + insumos + transporte."
+                    title="Costo directo calculado: mano de obra + equipo + insumos + transporte + herramienta menor (FP aparte si la config lo manda así)."
                   >
                     Costo Unitario
                   </th>

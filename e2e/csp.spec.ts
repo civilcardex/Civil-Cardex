@@ -8,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * Nota: en dev Vite inyecta su CSS como <style> (style-src-elem) — eso se ignora aquí a
  * propósito; lo que se vigila es que la APP no dependa de atributos style inline. El HTML
- * prerenderizado se revisa aparte con `npm run prerender:styles`.
+ * prerenderizado se revisa aparte (pase de estilos CSP-safe, 2026-11).
  */
 
 /** Política de producción con el script-src relajado que exige el dev server (HMR/Refresh). */
