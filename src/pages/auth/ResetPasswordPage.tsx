@@ -136,6 +136,7 @@ function ResetPasswordPage() {
             placeholder="••••••••"
             autoComplete="new-password"
             required
+            error={pwd2.length > 0 && pwd1 !== pwd2 ? 'Las contraseñas no coinciden' : undefined}
           />
           <AuthSubmitButton busy={busy} label="GUARDAR CONTRASEÑA" busyLabel="GUARDANDO..." />
           {error && (

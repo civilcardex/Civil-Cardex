@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { AyudaContexto } from './helpContext.ts';
-import { GUIA, iconoDeGrupo, type GuiaGrupo } from './helpGuide.tsx';
+import { iconoDeGrupo, type GuiaGrupo } from './helpGuideTypes.tsx';
+import type { GUIA_TYPE } from './helpGuideTypes.tsx';
+import { GUIA_FLOW } from './helpGuideFlow.tsx';
+import { GUIA_MANAGER } from './helpGuideManager.tsx';
+import { GUIA_RECORTE } from './helpGuideCrop.tsx';
 import { repetirTour } from '../tour/useTour.tsx';
 import { tourDe } from '../tour/tourSteps.ts';
 import { ModalOverlay } from '../shared/ModalShell.tsx';
+
+/** Guía fusionada por clave de contexto: flow + manager + recorte (el editor de recorte publica su propia clave 'cf:recorte'). */
+export const GUIA: GUIA_TYPE = {
+  ...GUIA_FLOW,
+  ...GUIA_MANAGER,
+  // El editor de recorte publica su propio contexto (cf:recorte): su Ayuda muestra esta
+  // misma sección colapsable, y el «REPETIR TOUR» del pie lanza el tour del recorte.
+  'cf:recorte': [{ titulo: GUIA_RECORTE.titulo, items: GUIA_RECORTE.items }],
+};
 
 // Panel de ayuda IN-PLACE (orig. usuario: el botón AYUDA de la navbar NO redirige a otra
 // página): modal via ModalOverlay (dialog nativo: backdrop, Escape, foco atrapado y

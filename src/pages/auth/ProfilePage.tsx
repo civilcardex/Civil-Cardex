@@ -30,7 +30,13 @@ import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
-import { fetchPerfil as traerPerfil, savePerfil } from '../../lib/profile/profileService.ts';
+/** Cuerpo del RPC save_perfil: upsert del conjunto — los campos omitidos se rescriben a NULL. */
+type PerfilGuardable = { email?: string | undefined; [campo: string]: unknown };
+/** Fila de cf_perfiles del usuario (la misma que CF_TABLES.perfiles en civilflow). */
+const traerPerfil = (userId: string) =>
+  supabase.from('cf_perfiles').select('*').eq('id', userId).single();
+/** Upsert completo vía RPC save_perfil. */
+const savePerfil = (perfil: PerfilGuardable) => supabase.rpc('save_perfil', { p_perfil: perfil });
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
 const campos = [

@@ -58,6 +58,10 @@ function RegisterPage() {
   const MIN_PWD = 8;
   const pwdCumple = REGLAS_PWD.map((r) => r.rx.test(form.password));
   const pwdCoinciden = form.confirm.length > 0 && form.password === form.confirm;
+  // Error per-field en vivo (aria-invalid/describedby): el banner form-level del submit
+  // sigue, pero el lector ya sabe QUÉ campo falla.
+  const errConfirm =
+    form.confirm.length > 0 && !pwdCoinciden ? 'Las contraseñas no coinciden' : undefined;
   const checksPwd = [
     ...REGLAS_PWD.map((r, i) => ({ ok: pwdCumple[i]!, label: r.label })),
     { ok: form.password.length >= MIN_PWD, label: `Mínimo ${MIN_PWD} caracteres` },
@@ -190,6 +194,7 @@ function RegisterPage() {
               minLength={MIN_PWD}
               show={showConfirm}
               onToggle={() => setShowConfirm((prev) => !prev)}
+              error={errConfirm}
             />
           </div>
 

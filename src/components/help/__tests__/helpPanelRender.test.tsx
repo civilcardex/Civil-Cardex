@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import AyudaPanel from '../HelpPanel.tsx';
-import { GUIA } from '../helpGuide.tsx';
+import AyudaPanel, { GUIA } from '../HelpPanel.tsx';
 
 // Regresión reportada: "la info de ayuda ya no está, solo está el video". El panel debe
 // renderizar los acordeones de GUIA además de la sección de video.

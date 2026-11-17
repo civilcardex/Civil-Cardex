@@ -9,6 +9,8 @@ interface FormFieldProps {
   required?: boolean;
   minLength?: number;
   autoComplete?: string;
+  /** Mensaje de validación del campo (ej: "Las contraseñas no coinciden"). Lo anuncia el lector vía aria-invalid + aria-describedby y queda visible bajo el input. */
+  error?: string;
 }
 
 /** Input con su label asociado (htmlFor + useId) en el estilo oscuro de auth. Ej: <FormField label="Email" type="email" onChange={...}/> en el login. */
@@ -21,8 +23,10 @@ function FormField({
   required,
   minLength,
   autoComplete,
+  error,
 }: FormFieldProps) {
   const fieldId = useId();
+  const errorId = useId();
   return (
     <div>
       <label
@@ -40,17 +44,29 @@ function FormField({
         className="w-full h-10 px-3 border text-sm focus-visible:outline-2 focus-visible:outline-[#00dce5] transition-colors"
         style={{
           background: '#0a0e14',
-          borderColor: '#3a494a',
+          borderColor: error ? '#e5484d' : '#3a494a',
           color: '#e2e2e8',
           fontFamily: 'Geist, monospace',
         }}
         onFocus={(e) => (e.target.style.borderColor = '#00dce5')}
-        onBlur={(e) => (e.target.style.borderColor = '#3a494a')}
+        onBlur={(e) => (e.target.style.borderColor = error ? '#e5484d' : '#3a494a')}
         placeholder={placeholder}
         required={required}
         minLength={minLength}
         autoComplete={autoComplete}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
       />
+      {error && (
+        <p
+          id={errorId}
+          role="alert"
+          className="mt-1 text-[12px]"
+          style={{ color: '#e5484d', fontFamily: 'Geist, monospace' }}
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 }

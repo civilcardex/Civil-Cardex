@@ -6,8 +6,8 @@ export const GUIA_MANAGER: GUIA_TYPE = {
       titulo: 'Parámetros APU',
       items: [
         {
-          nombre: 'Salario base, auxilio, días/mes, horas/mes',
-          desc: 'Base para calcular jornales y costo/hora de todos los cargos (respeta el perfil de país).',
+          nombre: 'Salario base, IVA %, días/mes, horas/mes',
+          desc: 'Base para calcular jornales y costo/hora de todos los cargos (respeta el perfil de país). El IVA % es el del país activo y se aplica solo sobre la utilidad.',
         },
         {
           nombre: 'Herramienta menor %, Administración %, Imprevistos %, Utilidad %',
@@ -28,7 +28,7 @@ export const GUIA_MANAGER: GUIA_TYPE = {
         },
         {
           nombre: 'Perfil de país — Activo/Usar',
-          desc: 'Copia SMMLV, auxilio y jornada de un país (31 perfiles precargados) a la configuración global. La moneda global no se toca: se elige una vez y persiste.',
+          desc: 'Copia SMMLV, moneda, IVA y jornada del país (6 perfiles: CO/PE/EC/CL/AR/BO) a la configuración global. Si no editaste los FP a mano, también siembra los factores prestacionales del país; si los editaste, los conserva.',
         },
       ],
     },

@@ -123,7 +123,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
       <Hero
         cfg={cfg}
         onCtaClick={
-          moduleId === 'flow'
+          moduleId === 'flow' || moduleId === 'manage'
             ? () => {
                 // Sin sesión → login llevando el destino: LoginPage vuelve a ESTE módulo
                 // tras autenticar (location.state.from; sin estado iría a /perfil).
@@ -131,25 +131,14 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
                   navigate('/login', { state: { from: `/modulo/${moduleId}` } });
                   return;
                 }
-                if (bloqueando && !tieneModulo('flow')) {
-                  navigate('/pricing?modulo=flow');
+                if (bloqueando && !tieneModulo(moduleId)) {
+                  navigate(`/pricing?modulo=${moduleId}`);
                   return;
                 }
-                setShowCreate(true);
+                if (moduleId === 'flow') setShowCreate(true);
+                else setShowCreateCM(true);
               }
-            : moduleId === 'manage'
-              ? () => {
-                  if (!user) {
-                    navigate('/login', { state: { from: `/modulo/${moduleId}` } });
-                    return;
-                  }
-                  if (bloqueando && !tieneModulo('manage')) {
-                    navigate('/pricing?modulo=manage');
-                    return;
-                  }
-                  setShowCreateCM(true);
-                }
-              : undefined
+            : undefined
         }
       />
 
@@ -177,7 +166,7 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               : 'grid grid-cols-1 md:grid-cols-3 gap-3'
           }`}
         >
-          {cfg.features.map((f, i) => {
+          {(cfg.features ?? []).map((f, i) => {
             const isSpan = f.span
               ? cfg.customLayout === 'manage'
                 ? 'md:col-span-2'
@@ -258,34 +247,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
               </li>
             );
           })}
-
-          {/* Extra block for layouts */}
-          {cfg.customLayout === 'structure' && (
-            <li className="module-structure-block border border-outline-variant flex flex-col hidden lg:flex">
-              <div className="module-structure-head border-b border-outline-variant p-2 flex justify-between items-center">
-                <span className="font-geist-mono text-[13px] text-on-surface-variant">
-                  NODE_MONITOR
-                </span>
-                <span className="w-2 h-2 bg-[var(--ok)] rounded-full animate-pulse" />
-              </div>
-              <div className="module-console p-4 flex-grow text-[10px] text-outline leading-tight space-y-1">
-                <div>&gt; INIT SOLVER ENGINE v4.2.1</div>
-                <div>&gt; MESHING GEOMETRY... [DONE]</div>
-                <div>&gt; APPLYING BOUNDARY COND...</div>
-                <div className="module-console-accent text-primary">
-                  &gt; RUNNING EIGENVALUE ANALYSIS
-                </div>
-                <div className="flex justify-between border-t border-outline-variant mt-2 pt-2">
-                  <span>MODE_1</span>
-                  <span>2.45 Hz</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>MODE_2</span>
-                  <span>5.12 Hz</span>
-                </div>
-              </div>
-            </li>
-          )}
         </ul>
 
         {/* Specifications table section (Only for Flow) */}
@@ -331,20 +292,6 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
         )}
       </section>
 
-      {/* Call To Action bottom block */}
-      {cfg.customLayout === 'flow' ? null : cfg.customLayout === 'structure' ? (
-        <section className="module-cta py-20 px-6 lg:px-8 relative overflow-hidden">
-          <div className="max-w-4xl mx-auto text-center relative z-10">
-            <h2 className="font-hanken text-2xl font-bold text-on-surface mb-6">
-              Precisión Analítica para Infraestructura Crítica
-            </h2>
-            <p className="text-base text-on-surface-variant mb-8 max-w-2xl mx-auto">
-              Únase a los equipos de ingeniería que confían en CivilStructure para validar la
-              seguridad estructural de sus proyectos más exigentes.
-            </p>
-          </div>
-        </section>
-      ) : null}
       <ProjectCreateDialog open={showCreate} onClose={() => setShowCreate(false)} />
       <ProjectCreateDialogCM open={showCreateCM} onClose={() => setShowCreateCM(false)} />
     </ModulePageLayout>

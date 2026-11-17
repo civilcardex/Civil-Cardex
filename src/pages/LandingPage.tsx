@@ -240,7 +240,14 @@ function LandingPage() {
 
                       <div className="mod-glow absolute inset-0 rounded-lg pointer-events-none" />
                       <div className="mod-logo-wrap w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 relative z-10 rounded-xl">
-                        <img src={m.logo} alt={m.name} className="mod-logo-img mod-logo" />
+                        <img
+                          src={m.logo}
+                          alt={m.name}
+                          width={56}
+                          height={56}
+                          loading="lazy"
+                          className="mod-logo-img mod-logo"
+                        />
                       </div>
                       <span className="mod-name text-[10px] sm:text-xs md:text-sm font-bold uppercase tracking-wider relative z-10">
                         <span className="mod-civil">Civil </span>

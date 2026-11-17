@@ -11,6 +11,8 @@ interface PwdFieldProps {
   /** Compartido entre campos de la misma página (mostrar/ocultar ambos a la vez). */
   show: boolean;
   onToggle: () => void;
+  /** Mensaje de validación (ej: "Las contraseñas no coinciden") — pasa a FormField. */
+  error?: string;
 }
 
 /** FormField de contraseña + botón ojo para mostrar/ocultar. El estado `show` lo posee la
@@ -25,6 +27,7 @@ export default function PwdField({
   minLength,
   show,
   onToggle,
+  error,
 }: PwdFieldProps): React.JSX.Element {
   return (
     <div style={{ position: 'relative' }}>
@@ -37,6 +40,7 @@ export default function PwdField({
         autoComplete={autoComplete}
         required={required}
         minLength={minLength}
+        error={error}
       />
       <button
         type="button"
