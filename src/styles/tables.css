@@ -1911,3 +1911,205 @@ tr.rt-subrow-selected > td {
   font-size: 12px;
   font-family: var(--mono);
 }
+
+/* ── EPC · Importación del Perfil de presiones (F1.5, ped. 2026-11-19) ── */
+.ep-imp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+.ep-imp-h {
+  margin: 0;
+  font-size: 13px;
+  color: var(--az1, #1a3a5c);
+}
+.ep-rev-src {
+  font-size: 11.5px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: var(--az4, #d6e4f0);
+  color: var(--az1, #1a3a5c);
+}
+.ep-rev-src.ep-rev-no {
+  background: #fdf2f0;
+  color: #a32d2d;
+}
+.ep-rev-tab {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.ep-rev-tab th {
+  background: var(--az4, #d6e4f0);
+  color: var(--az1, #1a3a5c);
+  text-align: left;
+  padding: 4px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.ep-rev-tab td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eee;
+  vertical-align: top;
+}
+.ep-rev-tab td.n {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ep-ok {
+  color: #2d6a4f;
+  font-weight: 600;
+}
+.ep-wa {
+  color: #ba7517;
+  font-weight: 600;
+}
+.ep-er {
+  color: #a32d2d;
+  font-weight: 600;
+}
+.ep-rev-msg {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.ep-rev-ok {
+  background: #e2efda;
+  color: #2d6a4f;
+}
+.ep-rev-wa {
+  background: #fff2cc;
+  color: #8a5a0a;
+}
+.ep-rev-er {
+  background: #fdf2f0;
+  color: #a32d2d;
+}
+.ep-dim {
+  color: var(--gr2, #888);
+  font-size: 11px;
+}
+.ep-imp-txt {
+  width: 100%;
+  font: 11px var(--mono, monospace);
+  border: 1px solid var(--brd, #d0d0d0);
+  border-radius: 4px;
+  padding: 6px;
+}
+.ep-imp-btns {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ep-btn-lt {
+  border: 1px solid var(--brd, #d0d0d0);
+  background: var(--az4, #d6e4f0);
+  color: var(--az1, #1a3a5c);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font: 700 12px var(--ff, sans-serif);
+  cursor: pointer;
+}
+.ep-btn-lt:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ep-btn-az {
+  border: none;
+  background: var(--az2, #2e6da4);
+  color: #fff;
+  border-radius: 6px;
+  padding: 7px 14px;
+  font: 700 12px var(--ff, sans-serif);
+  cursor: pointer;
+}
+.ep-btn-az:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+/* Marca de origen de los campos importados: azul = del Perfil · ámbar = editado después. */
+
+/* ── EPC · Cisterna V24 (F2): tabla de usos y SVGs ── */
+.ep-usos {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin: 4px 0 6px;
+}
+.ep-usos th {
+  background: var(--az4, #d6e4f0);
+  color: var(--az1, #1a3a5c);
+  padding: 3px 5px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: left;
+}
+.ep-usos td {
+  padding: 3px 5px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.ep-usos select,
+.ep-usos input {
+  width: 100%;
+  min-width: 0;
+  font-size: 11px;
+  padding: 2px 4px;
+  border: 1px solid var(--brd, #d0d0d0);
+  border-radius: 4px;
+  background: #fff;
+}
+.ep-usos .ep-num {
+  text-align: right;
+  font-family: var(--mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+.ep-uso-x {
+  background: none;
+  border: none;
+  color: var(--gr2, #888);
+  cursor: pointer;
+  font-size: 14px;
+}
+.ep-uso-x:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.ep-usos-foot {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 2px 0 8px;
+}
+.ep-cis-svg-wrap {
+  margin-top: 8px;
+}
+.ep-cis-view {
+  display: inline-flex;
+  border: 1.5px solid var(--az2, #2e6da4);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.ep-cis-vb {
+  border: 0;
+  background: #fff;
+  color: var(--az1, #1a3a5c);
+  font: 600 11px var(--ff, sans-serif);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.ep-cis-vb.on {
+  background: var(--az2, #2e6da4);
+  color: #fff;
+}
+.ep-cis-svg-wrap svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}

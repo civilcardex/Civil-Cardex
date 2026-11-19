@@ -1,31 +1,22 @@
 /**
  * Panel "Diámetros y especificación" del ep (Equipo de Presión): tablas 13-15 con setpoint/tanque hidroneumático, diámetros nominales de los ramales y especificación técnica, más los DN (diámetros nominales) que el usuario puede imponer.
  * Ej: si el usuario fija DN 32 en la succión, la tabla muestra la velocidad real que eso provoca.
- * Extracción verbatim de la rama results de EPVerificationPage; el cálculo vive en epCalcs.calcularEp y llega por props.
+ * Extracción verbatim de la rama results de EPVerificationPage; el cálculo vive en epEngine.ts y llega por props ya adaptado.
  */
 import React from 'react';
 import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
 import { LazyInp, Param, type EPData } from './EPShared';
-import {
-  fmtBar,
-  fmtGpm,
-  fmtL,
-  fmtLps,
-  fmtM3h,
-  fmtMca,
-  fmtMm,
-  fmtMs,
-  type EpVerifCalc,
-} from './epCalcs.ts';
+import { fmtBar, fmtGpm, fmtL, fmtLps, fmtM3h, fmtMca, fmtMm, fmtMs } from './epCalcs.ts';
+import { type EpCalc } from './epAdapter.ts';
 import { dec } from '../../utils/parseDecimal.ts';
 
 interface EPResultsPanelProps {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
-  /** Resultado de calcularEp(ep) — la página orquestadora lo memoiza y lo reparte a los paneles. */
-  calc: EpVerifCalc;
+  /** Resultado de calcEpc(ep) vía epAdapter — la página lo memoiza y reparte a los paneles. */
+  calc: EpCalc;
   editDiametros: boolean;
   setEditDiametros: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -61,28 +52,54 @@ export default function EPResultsPanel({
             ]}
             rows={[
               [
-                'Presión de arranque',
-                <span className="ep-m">{fmtMca(calc.Pon)}</span>,
+                'P mínima en la descarga (arranque mín.)',
+                <span className="ep-m">{fmtMca(calc.pdesc)}</span>,
                 'm.c.a.',
-                'P_arranque = HMT',
+                'P mín. descarga = Hg + Hf_ac + Pmin',
               ],
               [
-                'Presión de paro',
+                'Presión de arranque (≥ P mín. + margen)',
+                <span className="ep-m">{fmtMca(calc.Pon)}</span>,
+                'm.c.a.',
+                'Arranque = P mín. descarga + margen, redondeado hacia arriba',
+              ],
+              [
+                'P objetivo del variador (setpoint)',
+                <span className="ep-m">{fmtMca(calc.pset)}</span>,
+                'm.c.a.',
+                'P objetivo = arranque + banda / 2',
+              ],
+              [
+                'Presión de parada',
                 <span className="ep-m">{fmtMca(calc.Poff)}</span>,
                 'm.c.a.',
-                'P_paro = P_arranque × 1.10',
+                'Parada = arranque + banda de control',
               ],
               [
                 'Presión de arranque en bar',
                 <span className="ep-m">{fmtBar(calc.Pon_bar)}</span>,
                 'bar',
-                'P_arranque = HMT × 9.81 / 100',
+                'Arranque en m.c.a. × 9.81 / 100',
               ],
               [
-                'Presión de paro en bar',
+                'Presión de parada en bar',
                 <span className="ep-m">{fmtBar(calc.Poff_bar)}</span>,
                 'bar',
-                'P_paro = P_arranque × 1.10',
+                'Parada en m.c.a. × 9.81 / 100',
+              ],
+              [
+                'P parada máxima admisible (Perfil)',
+                <span className="ep-m">{calc.poffmax != null ? fmtMca(calc.poffmax) : '—'}</span>,
+                'm.c.a.',
+                calc.poffmax != null && calc.poffMca > calc.poffmax
+                  ? '⚠ La parada supera la admisible: VRP en los pisos bajos'
+                  : 'Del Perfil de presiones: tubería y estática en aparatos',
+              ],
+              [
+                'Tarado sugerido de la válvula de alivio (PSV)',
+                <span className="ep-m">{fmtMca(calc.psv)}</span>,
+                'm.c.a.',
+                'PSV = máx(1,10 × parada · parada + 3); ≤ la admisible de la tubería',
               ],
               [
                 'Precarga de nitrógeno N₂ = 0.90 × P_arranque',
@@ -91,16 +108,20 @@ export default function EPResultsPanel({
                 'P_precarga = 0.90 × P_arranque',
               ],
               [
-                <span className="ep-note-600">Volumen útil Vu = Qd × 60 / (4 × n)</span>,
+                <span className="ep-note-600">
+                  Volumen útil Vu = Qmín × Tc / 4 (Qmín = %Qb · Tc = 3600/arranques)
+                </span>,
                 <span className="ep-m">{fmtL(calc.Vu)}</span>,
                 'L',
-                'Vu = Qd × 60 / (4 × n)',
+                'Vu = Qmín × Tc / 4',
               ],
               [
-                <span className="ep-strong-txt-700">Volumen total tanque Vt = Vu / α</span>,
+                <span className="ep-strong-txt-700">
+                  Volumen total tanque Vt = Vu / β (Boyle con precarga)
+                </span>,
                 <span className="ep-mb">{fmtL(calc.Vt)}</span>,
                 'L',
-                'Vt = Vu / α',
+                'β = (P₀+Patm)/(P_arr+Patm) − (P₀+Patm)/(P_par+Patm)',
               ],
               [
                 'Volumen total tanque Vt',

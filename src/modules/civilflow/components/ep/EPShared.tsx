@@ -39,6 +39,36 @@ export interface EPData {
   patm: string;
   pv: string;
   npshr: string;
+  /* ── EPC (ped. usuario 2026-11-19): control con variador, entorno y Perfil ── */
+  /** Margen sobre la P mín. descarga para fijar el arranque (m.c.a.). */
+  margen: string;
+  /** Banda de control del variador arranque→parada (m.c.a.). */
+  dif: string;
+  /** Caudal mínimo de parada (% de Qb): bajo este el variador detiene la bomba. */
+  qminp: string;
+  /** Altitud del proyecto (m s.n.m.) — Patm para el NPSH. */
+  altitud: string;
+  /** Temperatura del agua (°C) — Pv para el NPSH. */
+  temp: string;
+  /** P parada máxima admisible del Perfil de presiones (m.c.a.; vacío = sin verificar). */
+  poffmax: string;
+  /** Aparato crítico: índice en la tabla de aparatos (-1 = otro) y su nombre libre. */
+  apsel: string;
+  apcrit: string;
+  /** Material de la tubería del cuarto de bombas (clave de EP_MATS). */
+  mat: string;
+  /** Hf del cuarto calculada con los accesorios del esquema (método K). */
+  hfauto: string;
+  /** Potencia comercial elegida por el usuario (HP; vacío = la sugerida). */
+  potSel: string;
+  /** Cisterna: tabla de usos (JSON [{k,c,d}]), geometría y reposición. */
+  usos: string;
+  cisHu: string;
+  cisHs: string;
+  cisBl: string;
+  cisQa: string;
+  cisHsum: string;
+  cisDc: string;
 }
 
 /** Semilla del formulario ep (Equipo de Presión): trae los valores típicos de norma ya puestos
@@ -57,14 +87,14 @@ export const EP_DEFAULTS: EPData = {
   ztop: '',
   zcis: '',
   hfcis: '',
-  nt: '1',
+  nt: '2',
   nr: '1',
-  etab: '0.65',
-  etam: '0.85',
-  fs: '1.15',
-  ciclos: '6',
+  etab: '0.72',
+  etam: '0.9',
+  fs: '1.25',
+  ciclos: '20',
   alfa: '0.30',
-  vsuc: '1.5',
+  vsuc: '1.2',
   vimp: '2.0',
   dnsuc: '',
   dnimp: '',
@@ -77,6 +107,25 @@ export const EP_DEFAULTS: EPData = {
   patm: '',
   pv: '0.24',
   npshr: '',
+  /* Defaults EPC (paridad con la prueba de aceptación de la HU). */
+  margen: '2',
+  dif: '5',
+  qminp: '10',
+  altitud: '0',
+  temp: '20',
+  poffmax: '',
+  apsel: '9',
+  apcrit: 'Ducha',
+  mat: 'pvc40',
+  hfauto: 'true',
+  potSel: '',
+  usos: '[{"k":0,"c":192,"d":150}]',
+  cisHu: '2',
+  cisHs: '0.1',
+  cisBl: '0.3',
+  cisQa: '',
+  cisHsum: '24',
+  cisDc: 'false',
 };
 
 /** Entrada decimal ligada a un campo de EPData: solo commitea al perder el foco, así el

@@ -1,21 +1,22 @@
 /**
  * Panel "Cálculo hidráulico y potencia" del ep (Equipo de Presión): tablas 8-12 con parámetros editables del equipo, potencia comercial, caudales, HMT (altura manométrica total) y potencia de la bomba.
  * Ej: si la HMT sale negativa, la tabla 11 marca ✗ en rojo — la bomba no puede vencer el desnivel.
- * Extracción verbatim de la rama section==='params' de EPVerificationPage; el cálculo vive en epCalcs.calcularEp y llega por props.
+ * Extracción verbatim de la rama section==='params' de EPVerificationPage; el cálculo vive en epEngine.ts y llega por props ya adaptado.
  */
 import React from 'react';
 import Card from '../shared/Card.tsx';
 import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
-import { COMM_HP } from './calcs.ts';
+import { EP_HP2KW, EP_POT_COM_HP } from './epEngine.ts';
 import { LazyInp, type EPData } from './EPShared';
-import { fmtGpm, fmtHp, fmtLps, fmtM3h, fmtW, type EpVerifCalc } from './epCalcs.ts';
+import { fmtGpm, fmtHp, fmtLps, fmtM3h, fmtW } from './epCalcs.ts';
+import { type EpCalc } from './epAdapter.ts';
 
 interface EPParamsPanelProps {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
-  /** Resultado de calcularEp(ep) — la página orquestadora lo memoiza y lo reparte a los paneles. */
-  calc: EpVerifCalc;
+  /** Resultado de calcEpc(ep) vía epAdapter — la página lo memoiza y reparte a los paneles. */
+  calc: EpCalc;
   editParams: boolean;
   setEditParams: React.Dispatch<React.SetStateAction<boolean>>;
   editPComercial: boolean;
@@ -158,17 +159,19 @@ export default function EPParamsPanel({
             <select
               aria-label="Potencia comercial"
               disabled={!editPComercial}
-              value={ep.pcomercial || ''}
-              onChange={(e) => updEP('pcomercial', e.target.value)}
+              value={ep.potSel || ''}
+              onChange={(e) => updEP('potSel', e.target.value)}
               className="ep-sel ep-sel-10"
               data-editing={editPComercial ? 'true' : 'false'}
             >
-              <option value="">Seleccione</option>
-              {COMM_HP.map(({ hp, kw }) => (
-                <option key={hp} value={String(hp)}>
-                  {hp} HP ({kw} kW)
-                </option>
-              ))}
+              <option value="">Sugerida ({calc.autoNema} HP)</option>
+              {EP_POT_COM_HP.filter((p) => p >= calc.Pins_hp * 0.6)
+                .slice(0, 12)
+                .map((hp) => (
+                  <option key={hp} value={String(hp)}>
+                    {hp} HP ({EP_HP2KW[hp] || (hp * 0.7457).toFixed(1)} kW)
+                  </option>
+                ))}
             </select>
             <div className="flex-row-6">
               <span className="ep-tiny-nowrap">O ingrese valor:</span>
@@ -176,7 +179,7 @@ export default function EPParamsPanel({
                 ep={ep}
                 updEP={updEP}
                 disabled={!editPComercial}
-                field="pcomercial"
+                field="potSel"
                 ariaLabel="Potencia comercial"
                 className="ds-si-46"
               />
