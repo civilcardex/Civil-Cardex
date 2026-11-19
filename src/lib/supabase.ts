@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from './database.types.ts';
 
 const supabaseUrl: string = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseKey: string = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
@@ -22,7 +23,7 @@ const TIMEOUT_MS = 20_000;
  * el fetch propio impone timeout de 20 s — sin él, una request colgada dejaba el estado
  * "guardando" para siempre. Ej: supabase.rpc('save_proyecto', {...}).
  */
-export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseKey, {
+export const supabase: SupabaseClient<Database> = createClient<Database>(supabaseUrl, supabaseKey, {
   global: {
     fetch: (input, init = {}) => {
       const ctrl = new AbortController();

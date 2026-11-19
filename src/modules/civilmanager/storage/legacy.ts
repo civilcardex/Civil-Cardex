@@ -1,5 +1,10 @@
 import { devError } from '../../../utils/devError.ts';
 import { supabase } from '../../../lib/supabase';
+import type { SupabaseClient } from '@supabase/supabase-js';
+// El legado accede a las tablas POR NOMBRE (upsert/select dinámicos sobre 10 tablas cm_*):
+// el cliente tipado no puede representar `from(string)` — cast local contenido a esta función.
+// (Cuando el legado se elimine tras el deploy de cm_save_state, se va con el cast.)
+const supaDinamico = supabase as unknown as SupabaseClient;
 import { getUserId, ownerIdProyectoActivo } from './session.ts';
 import { limpiarFilas } from './serialize.ts';
 import type { CivilManagerState } from '../types.ts';
@@ -31,7 +36,7 @@ export async function saveToSupabaseLegacy(state: CivilManagerState): Promise<vo
       // defaultToNull:false → header "Prefer: missing=default": las claves omitidas por el
       // saneo (null/NaN en columnas NOT NULL) las rellena PostgREST con el DEFAULT de la
       // columna; sin esto las rellenaba con NULL y tumbaba el upsert (23502).
-      const { error } = await supabase.from(table).upsert(withUser as never, {
+      const { error } = await supaDinamico.from(table).upsert(withUser as never, {
         onConflict: 'id',
         defaultToNull: false,
       });
@@ -42,14 +47,14 @@ export async function saveToSupabaseLegacy(state: CivilManagerState): Promise<vo
       // Reconciliación de borrados: el upsert solo cubre filas presentes — sin delete de los
       // ids que ya no están, un registro eliminado resucitaba al recargar desde Supabase.
       const ids = withUser.map((r) => String(r.id));
-      const existing = await supabase.from(table).select('id').eq('proyecto_id', proyectoUid);
+      const existing = await supaDinamico.from(table).select('id').eq('proyecto_id', proyectoUid);
       if (existing.error) {
         devError(`select ${table}:`, existing.error);
         return;
       }
       const stale = existing.data.map((r) => String(r.id)).filter((id) => !ids.includes(id));
       if (stale.length) {
-        const del = await supabase.from(table).delete().in('id', stale);
+        const del = await supaDinamico.from(table).delete().in('id', stale);
         if (del.error) devError(`delete ${table}:`, del.error);
       }
     };
@@ -101,7 +106,7 @@ export async function saveToSupabaseLegacy(state: CivilManagerState): Promise<vo
         return;
       }
       const keep = new Set(allIntegrantes.map((r) => r.id));
-      const stale = existentes.data.map((r) => r.id).filter((id) => !keep.has(id));
+      const stale = existentes.data.map((r) => String(r.id)).filter((id) => !keep.has(id));
       if (stale.length > 0) {
         const del = await supabase.from('cm_cuadrilla_integrantes').delete().in('id', stale);
         if (del.error) devError(`delete cm_cuadrilla_integrantes:`, del.error);

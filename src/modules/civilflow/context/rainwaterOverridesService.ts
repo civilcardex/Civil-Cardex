@@ -73,7 +73,7 @@ export async function loadRainwaterOverrides(proyectoId: string): Promise<Rainwa
     if (bajantesRes.error) throw bajantesRes.error;
     if (canalesRes.error) throw canalesRes.error;
 
-    const bajantes: BajanteLL[] = ((bajantesRes.data ?? []) as BajanteOverrideRow[]).map(
+    const bajantes: BajanteLL[] = ((bajantesRes.data ?? []) as unknown as BajanteOverrideRow[]).map(
       (r, i) => ({
         id: `BLL-${i + 1}`,
         bajante: r.bajante,
@@ -88,23 +88,25 @@ export async function loadRainwaterOverrides(proyectoId: string): Promise<Rainwa
         diamPropuesto: r.diam_propuesto ?? 0,
       }),
     );
-    const canales: CanalLL[] = ((canalesRes.data ?? []) as CanalOverrideRow[]).map((r, i) => ({
-      id: `CLL-${i + 1}`,
-      sector: r.sector,
-      areaParcial: r.area_parcial ?? 0,
-      areaOtras: r.area_otras ?? 0,
-      areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
-      intensidad: r.intensidad ?? 100,
-      coeficienteC: r.coeficiente_c ?? 0,
-      materialCubierta: r.material_cubierta ?? '',
-      materialCanal: r.material_canal ?? '',
-      muroVertical: r.muro_vertical ?? 0,
-      bordeLibreCm: r.borde_libre_cm ?? 10,
-      manning: r.manning ?? 0.011,
-      pendiente: r.pendiente ?? 0,
-      b: r.b ?? 0,
-      h: r.h ?? 0,
-    }));
+    const canales: CanalLL[] = ((canalesRes.data ?? []) as unknown as CanalOverrideRow[]).map(
+      (r, i) => ({
+        id: `CLL-${i + 1}`,
+        sector: r.sector,
+        areaParcial: r.area_parcial ?? 0,
+        areaOtras: r.area_otras ?? 0,
+        areaAcumulada: (r.area_parcial ?? 0) + (r.area_otras ?? 0),
+        intensidad: r.intensidad ?? 100,
+        coeficienteC: r.coeficiente_c ?? 0,
+        materialCubierta: r.material_cubierta ?? '',
+        materialCanal: r.material_canal ?? '',
+        muroVertical: r.muro_vertical ?? 0,
+        bordeLibreCm: r.borde_libre_cm ?? 10,
+        manning: r.manning ?? 0.011,
+        pendiente: r.pendiente ?? 0,
+        b: r.b ?? 0,
+        h: r.h ?? 0,
+      }),
+    );
     return { bajantes, canales };
   } catch (e) {
     devError('rainwaterOverridesService load:', e);

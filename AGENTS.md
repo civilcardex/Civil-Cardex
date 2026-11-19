@@ -15,6 +15,7 @@ Rules:
 
 - `PROJECT_MAP.md` — dónde vive cada cosa (por CARPETA). **Regla: carpeta nueva o eliminada → 1 línea allí en la misma ronda.**
 - `ARCHITECTURE.md` — cómo funciona (capas, flujos de persistencia/concurrencia, doctrina de cálculo, visores 3D, CI).
+- **Tipos de BD**: `src/lib/database.types.ts` es GENERADO (desde las migraciones). **Migración nueva → `node scripts/genDbTypes.mjs`** en la misma ronda.
 - Historial de sesiones: `docs/sesiones/historial.md` (este archivo queda como guía viva de REGLAS — no duplicar su contenido en los otros dos).
 
 ## Git: NADA se commitea ni pushea sin orden explícita del usuario

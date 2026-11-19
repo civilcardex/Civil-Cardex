@@ -25,7 +25,7 @@ pages/components  ──▶  context (módulo)  ──▶  services  ──▶  
 ```
 
 - `lib/` es **puro** (motor y cálculo sin React): testeable sin render, consumido por componentes y contextos.
-- Los componentes **no** importan `lib/supabase` directo: la capa `services/` (y los contextos) son el único canal. Excepciones legacy contadas (5 archivos) — no crecer.
+- Los componentes y páginas **no** importan `lib/supabase` directo: la capa `services/` (projectDataService, apparatusService, profileService, strokesDb…) es el único canal a BD. Excepciones auth-only (solo `supabase.auth`, cero tablas/RPC): `AuthContext` (arranque de sesión) y `ProfilePage` (refreshSession/signOut).
 - `utils/` hospeda el cálculo por disciplina y las memorias exportables; entra por props/context, no toca red.
 
 ## Motor CAD (PlanoEngine)
