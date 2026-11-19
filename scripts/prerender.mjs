@@ -95,6 +95,10 @@ async function main() {
         [/<link rel="canonical" [^>]*href="[^"]*"/, `<link rel="canonical" id="canonical-link" href="${url}"`, 'canonical'],
         [/<meta name="twitter:title" content="[^"]*"/, `<meta name="twitter:title" content="${title}"`, 'twitter:title'],
         [/<meta name="twitter:description" content="[^"]*"/, `<meta name="twitter:description" content="${desc}"`, 'twitter:description'],
+        // hreflang: la plantilla trae es + x-default a la HOME → cada ruta apunta a sí misma
+        // (un hreflang global a la home contradice el canonical por ruta).
+        [/<link rel="alternate" hreflang="es" [^>]*href="[^"]*"/, `<link rel="alternate" hreflang="es" href="${url}"`, 'hreflang-es'],
+        [/<link rel="alternate" hreflang="x-default" [^>]*href="[^"]*"/, `<link rel="alternate" hreflang="x-default" href="${url}"`, 'hreflang-x'],
       ]) {
         swap(re, contenido, tag);
       }
@@ -108,7 +112,15 @@ async function main() {
           headline: meta.title,
           description: meta.articulo.descripcion || meta.description,
           author: { '@type': 'Person', name: meta.articulo.autor },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Civil Cardex',
+            logo: { '@type': 'ImageObject', url: SITE_URL + '/logos/civilCardexlogo-v2.webp' },
+          },
+          image: SITE_URL + '/og-image-v2.jpg',
           datePublished: meta.articulo.fechaPublicacion,
+          dateModified: meta.lastmod, // fuente única: el lastmod manual honesto de routeMeta
+          mainEntityOfPage: { '@type': 'WebPage', '@id': url },
           inLanguage: 'es-CO',
         });
         out = out.replace(
