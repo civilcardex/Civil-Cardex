@@ -154,8 +154,8 @@ export const NORMAS_PAIS: PerfNormas[] = [
     af: { vMin: 1.0, vMax: 3.0, pMinRed: 10, pMinAparato: 10, pMax: 40 },
     norma: {
       af: 'Guía ERAS/AySA Res. 641/2023',
-      san: 'OSN / Guía ERAS (pendiente de artículo)',
-      ll: 'OSN / Guía ERAS (pendiente de artículo)',
+      san: 'Guía ERAS (Res. 641/2023)',
+      ll: 'Guía ERAS (Res. 641/2023)',
       gas: 'NAG-200 ENARGAS (2019, mod. 2025)',
       rci: 'NFPA 13 (ref.)',
     },
@@ -163,8 +163,8 @@ export const NORMAS_PAIS: PerfNormas[] = [
     refPmax: 'pendiente (40 operativo)',
     fuente: {
       af: 'Guía ERAS/AySA Res. 641/2023 §2.12.1: Ve 1–3 m/s (cañerías 13–60 mm); pmin sobre artefactos §2.9.1.4 pendiente. Antes citaba ENRE por error (ENRE es electricidad).',
-      san: 'OSN clásico (pendientes 1:20–1:100, inodoro Ø100) + Guía ERAS; artículos pendientes. Límites Manning: criterio de la app.',
-      ll: 'OSN / Guía ERAS (pendiente de artículo)',
+      san: 'Guía ERAS Res. 641/2023 (pendientes de colecta 1:20–1:100, inodoro Ø100). Límites Manning: criterio de la app.',
+      ll: 'Guía ERAS (Res. 641/2023)',
       gas: 'NAG-200 ENARGAS: Renouard + caída máx 10 mm c.a. ≈ 0,98 mbar (§5.2.8c ed. 1982; confirmar redacción NAG-200 2025 Cap.5). vMax: criterio de la app.',
       rci: 'NFPA 13 (int.)',
     },

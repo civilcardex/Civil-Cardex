@@ -99,6 +99,14 @@ export const NORMA_URLS: Record<string, string> = {
   NOM: 'https://www.dof.gob.mx',
   'NAG-200': 'https://www.enargas.gob.ar',
   RENISDA: 'https://www.ibnorca.org',
+  // Argentina — la Guía ERAS es el anexo técnico de la Res. 641/2023 de la Secretaría de
+  // Obras Públicas («Guía de Ejecución de Instalaciones Sanitarias Domiciliarias»), texto
+  // oficial en argentina.gob.ar/normativa verificado 2026-11-17. OSN (Obras Sanitarias de la
+  // Nación) fue privatizada en los 90s — sucesora AySA — sin sitio oficial vigente: queda
+  // como texto plano, sin link (linkificarla a deudaosn.mecon.gob.ar sería engañoso).
+  'Guía ERAS': 'https://www.argentina.gob.ar/normativa/nacional/norma-396748/texto',
+  ERAS: 'https://www.argentina.gob.ar/normativa/nacional/norma-396748/texto',
+  'Res. 641/2023': 'https://www.argentina.gob.ar/normativa/nacional/norma-396748/texto',
 };
 
 /** Resuelve el URL de una norma tolerando sufijos de edición («NTC (Norma Tecnica Colombiana) 1500:2023» → «NTC (Norma Tecnica Colombiana)
@@ -115,6 +123,9 @@ export function normaUrl(nombre: string): string | undefined {
 
 /** Tokens reconocidos por NormaTxt (orden: literales largos primero, luego familias). */
 const NORMA_TOKEN_SRC = [
+  'Guía ERAS',
+  'Res. 641/2023',
+  'ERAS',
   'Resolución 0330 de 2017',
   'Resolución 0799 de 2021',
   'Decreto 0926/2010',
