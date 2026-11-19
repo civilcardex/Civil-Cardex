@@ -3,24 +3,18 @@
  * Ej: bajar la pendiente de un canal puede marcar la fila en rojo si el régimen o la fuerza tractiva salen del rango permitido.
  */
 import { useMemo, useCallback, useEffect, useState } from 'react';
-import ChipList from './shared/ChipList.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';
+import { RainwaterTableRow } from './rainwaterTableRow.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
-import { renderStatus } from '../utils/componentHelpers.tsx';
-import { pisoCorto, DIAM_OPTIONS, DIAM_OPTIONS_LL } from '../constants';
-import {
-  writeDiametroToDrawing,
-  writePendienteToDrawing,
-} from '../utils/writeDiameterToDrawing.ts';
+import { DIAM_OPTIONS } from '../constants';
+import { writeDiametroToDrawing } from '../utils/writeDiameterToDrawing.ts';
 import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import { calcHydraulicCheck } from '../utils/hydraulicCheck.ts';
 import { perfilDe } from '../constants/countryStandards';
 import { useProyecto } from '../context/ProjectContext.tsx';
-import { fmt } from '../utils/formatUtils.ts';
-import { dec } from '../utils/parseDecimal.ts';
 import { useRainwater } from '../context/RainwaterContext.tsx';
 import {
   buildLlBajanteAssociations,
@@ -73,17 +67,21 @@ export default function DisenoLluvias() {
     [updTramoLL, plans],
   );
 
-  const tribIds = getTributarioIds(tramosLl);
+  const tribIds = useMemo(() => getTributarioIds(tramosLl), [tramosLl]);
   // Ramales canal↔bajante: conexión física del bajante al canal recolector, no colector de
   // diseño — fuera de la tabla (orig. usuario).
   const canalBajKeys = useMemo(() => computeCanalBajanteRamalKeys(plans), [plans]);
-  const displayTramos = tramosLl.filter(
-    (t) =>
-      t._key != null &&
-      !t.esBajante &&
-      !tribIds.has(t._key) &&
-      !tribIds.has(t.id) &&
-      !canalBajKeys.has(t._key),
+  const displayTramos = useMemo(
+    () =>
+      tramosLl.filter(
+        (t) =>
+          t._key != null &&
+          !t.esBajante &&
+          !tribIds.has(t._key) &&
+          !tribIds.has(t.id) &&
+          !canalBajKeys.has(t._key),
+      ),
+    [tramosLl, tribIds, canalBajKeys],
   );
 
   // Persiste el punto de control hidráulico (velocidad + relación de llenado) en cada Tramo
@@ -371,156 +369,19 @@ export default function DisenoLluvias() {
                 {displayTramos.length === 0 ? (
                   <EmptyRow colSpan={24} fontSize={11.5} />
                 ) : (
-                  llRows.map((row) => {
-                    const {
-                      tKey,
-                      id,
-                      piso,
-                      desde,
-                      hasta,
-                      bajantesAsociadas,
-                      Q,
-                      n,
-                      sVal,
-                      DcalcPulg,
-                      DdisPulg,
-                      chequeoD,
-                      DintMm,
-                      Qo,
-                      Vo,
-                      qqo,
-                      Vreal,
-                      chequeoV,
-                      Yc,
-                      Yn,
-                      Froude,
-                      tipoFlujo,
-                      Ymax,
-                      chequeoYn,
-                      fuerzaTractiva,
-                      chequeoFT,
-                    } = row;
-                    return (
-                      <tr key={tKey}>
-                        <td className="ll-pad-3 c">
-                          <span className="sigla ll-fs">
-                            {id || tKey}
-                            {piso != null ? `-${pisoCorto(piso)}` : ''}
-                          </span>
-                        </td>
-
-                        <td className="ll-pad-3 c">
-                          <span className="ll-mono-dim">{desde || '—'}</span>
-                        </td>
-                        <td className="ll-pad-3 c">
-                          <span className="ll-mono-dim">{hasta || '—'}</span>
-                        </td>
-                        <td className="ll-minmax c">
-                          {(() => {
-                            const associatedBajantes = bajantesAsociadas.map((c) =>
-                              pisoByBajCode[c] != null ? `${c}-${pisoCorto(pisoByBajCode[c])}` : c,
-                            );
-                            return <ChipList items={associatedBajantes} />;
-                          })()}
-                        </td>
-                        <td className="ll-td-mono c">{Q > 0 ? Q.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{n > 0 ? n.toFixed(3) : '—'}</td>
-                        <td className="ll-pad-2 c">
-                          {edit ? (
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              aria-label="Pendiente (%)"
-                              value={editingPend[tKey] ?? (sVal > 0 ? fmt(sVal, 2) : '')}
-                              placeholder="—"
-                              onFocus={() => {
-                                if (editingPend[tKey] === undefined && sVal > 0) {
-                                  setEditingPend((prev) => ({ ...prev, [tKey]: fmt(sVal, 2) }));
-                                }
-                              }}
-                              onChange={(e) => {
-                                const raw = e.target.value
-                                  .replace(/,/g, '.')
-                                  .replace(/[^0-9.]/g, '')
-                                  .replace(/(\..*)\./g, '$1');
-                                setEditingPend((prev) => ({ ...prev, [tKey]: raw }));
-                              }}
-                              onBlur={(e) => {
-                                const raw =
-                                  editingPend[tKey] !== undefined
-                                    ? editingPend[tKey]
-                                    : e.target.value;
-                                // Coma o punto como separador decimal.
-                                const v = dec(String(raw));
-                                setEditingPend((prev) => {
-                                  const n = { ...prev };
-                                  delete n[tKey];
-                                  return n;
-                                });
-                                // Rango físico (manning/PVC): ≤0 drena mal, >15% es
-                                // basura de tipeo — se rechaza y restaura el valor previo.
-                                if (v <= 0 || v > 15) {
-                                  if (
-                                    avisarDiametroInvalido(
-                                      `La pendiente debe ser mayor que 0 % y hasta 15 % (${v} % no es válido).`,
-                                      'Pendiente fuera de rango',
-                                    )
-                                  )
-                                    return;
-                                }
-                                writePendienteToDrawing(tKey, 'll', v, plans);
-                                updTramoLL(tKey, 'sPercent', v);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-                              }}
-                              className="ll-input ll-input-w50"
-                            />
-                          ) : (
-                            <span className="ll-mono">{sVal > 0 ? fmt(sVal, 2) : '—'}</span>
-                          )}
-                        </td>
-                        <td className="ll-td-mono c">
-                          {DcalcPulg > 0 ? DcalcPulg.toFixed(2) + '"' : '—'}
-                        </td>
-                        <td className="ll-pad-2 c">
-                          <select
-                            aria-label="Seleccionar diámetro"
-                            value={DdisPulg || ''}
-                            disabled={!edit}
-                            onChange={(e) =>
-                              handleDiamChange(tKey, id, parseFloat(e.target.value) || 0)
-                            }
-                            className="ll-input"
-                          >
-                            <option value="">—</option>
-                            {DIAM_OPTIONS_LL.map((o) => (
-                              <option key={o.pulg} value={o.pulg}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td className="ll-td-num c">{DintMm > 0 ? fmt(DintMm, 2) : '—'}</td>
-                        <td className="ll-td-num c">{renderStatus(chequeoD)}</td>
-                        <td className="ll-td-mono c">{Qo > 0 ? Qo.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{Vo > 0 ? Vo.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{qqo > 0 ? qqo.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{Vreal > 0 ? Vreal.toFixed(2) : '—'}</td>
-                        <td className="ll-td-num c">{renderStatus(chequeoV)}</td>
-                        <td className="ll-td-mono c">{Yc > 0 ? Yc.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{Yn > 0 ? Yn.toFixed(2) : '—'}</td>
-                        <td className="ll-td-mono c">{Froude > 0 ? Froude.toFixed(2) : '—'}</td>
-                        <td className="ll-td-num c">{tipoFlujo}</td>
-                        <td className="ll-td-num c">{Ymax > 0 ? Ymax.toFixed(2) : '—'}</td>
-                        <td className="ll-td-num c">{renderStatus(chequeoYn)}</td>
-                        <td className="ll-td-num c">
-                          {fuerzaTractiva > 0 ? fuerzaTractiva.toFixed(2) : '—'}
-                        </td>
-                        <td className="ll-td-num c">{renderStatus(chequeoFT)}</td>
-                      </tr>
-                    );
-                  })
+                  llRows.map((row) => (
+                    <RainwaterTableRow
+                      key={row.tKey}
+                      row={row}
+                      pisoByBajCode={pisoByBajCode}
+                      edit={edit}
+                      draft={editingPend[row.tKey]}
+                      setEditingPend={setEditingPend}
+                      handleDiamChange={handleDiamChange}
+                      updTramoLL={updTramoLL}
+                      plans={plans}
+                    />
+                  ))
                 )}
               </tbody>
             </table>

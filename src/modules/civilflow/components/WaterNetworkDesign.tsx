@@ -1,6 +1,6 @@
 /** Diseño de af (Agua Fría)/ac (Agua Caliente): acometida (conexión al acueducto), parámetros
  *  y tabla de diseño por tramo. Ej: editar la presión de acometida recalcula la tabla completa. */
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';
@@ -29,7 +29,7 @@ import { calcFila } from './waterNetworkDesign/acometidaCalc.ts';
 import { resolvePressures } from './waterNetworkDesign/pressureResolver.ts';
 import { hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics.ts';
 import { DesignTableHeader } from './waterNetworkDesign/designTableHeader.tsx';
-import { DesignTableRow } from './waterNetworkDesign/designTableRow.tsx';
+import DesignTableRowMemo from './waterNetworkDesign/designTableRow.tsx';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
 import { CHEQUEOS_PRESION_KEY } from '../constants/storage-keys.ts';
@@ -126,7 +126,7 @@ function WaterNetworkDesign({
   const [diamIntMap, setDiamIntMap] = useState<Record<string, number>>({});
   const [diamNomMap, setDiamNomMap] = useState<Record<string, string>>({});
 
-  const handleDiamChange = (tramoId: string, nominal: string) => {
+  const handleDiamChange = useCallback((tramoId: string, nominal: string) => {
     const opt = DIAM_OPTS.find((o) => o.nominal === nominal);
     if (!opt) return;
     const pulg = opt.pulg;
@@ -148,28 +148,29 @@ function WaterNetworkDesign({
     updTramo(tramoId, 'diamDisPulg', pulg);
     setDiamIntMap((prev) => ({ ...prev, [tramoId]: opt.dInt }));
     setDiamNomMap((prev) => ({ ...prev, [tramoId]: opt.nominal }));
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [presIniEdit, setPresIniEdit] = useState(() => new Map());
   const [presFinEdit, setPresFinEdit] = useState(() => new Map());
 
-  const setPresIni = (tramoId: string, v: number | undefined) => {
+  const setPresIni = useCallback((tramoId: string, v: number | undefined) => {
     setPresIniEdit((prev) => {
       const next = new Map(prev);
       if (v === undefined) next.delete(tramoId);
       else next.set(tramoId, v);
       return next;
     });
-  };
+  }, []);
 
-  const setPresFin = (tramoId: string, v: number | undefined) => {
+  const setPresFin = useCallback((tramoId: string, v: number | undefined) => {
     setPresFinEdit((prev) => {
       const next = new Map(prev);
       if (v === undefined) next.delete(tramoId);
       else next.set(tramoId, v);
       return next;
     });
-  };
+  }, []);
 
   const { AP, conexionesDisplay, componentTotalMap, tramoParentOf, pressureRootKey, qpropMap } =
     useWaterNetworkGraph({ plans, tramos, networkType, ucIds, ucField });
@@ -403,6 +404,13 @@ function WaterNetworkDesign({
   //   3. Todo lo demás hereda Pinicial del Pfinal de su tramo aguas arriba real (tramoParentOf,
   //      la versión dirigida del mismo grafo de conectividad usado para totales UD).
   //   4. Los tramos huérfanos/desconectados caen a pRed, igual que hoy.
+  // Límites de velocidad del país (mm/s) — identidad estable para el memo de fila.
+  const velLim = useMemo(
+    () =>
+      [perfilDe(proy.pais).af.vMin * 1000, perfilDe(proy.pais).af.vMax * 1000] as [number, number],
+    [proy.pais],
+  );
+
   const pressureByKey = useMemo(
     () =>
       resolvePressures({
@@ -612,7 +620,7 @@ function WaterNetworkDesign({
                 <tbody>
                   {tramosOrden.length === 0 && <EmptyRow colSpan={23} fontSize={10.5} />}
                   {tramosOrden.map((t) => (
-                    <DesignTableRow
+                    <DesignTableRowMemo
                       key={t._key || t.id}
                       t={t}
                       tr2={tr2}
@@ -633,10 +641,7 @@ function WaterNetworkDesign({
                       setPresFin={setPresFin}
                       pRed={pRed}
                       pressureByKey={pressureByKey}
-                      velLim={[
-                        perfilDe(proy.pais).af.vMin * 1000,
-                        perfilDe(proy.pais).af.vMax * 1000,
-                      ]}
+                      velLim={velLim}
                       pais={proy.pais}
                     />
                   ))}

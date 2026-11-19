@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Tramo } from '../../context/tramosReducer';
 import { pisoCorto } from '../../constants';
 import { fmt, sectorDe } from '../../utils/formatUtils.ts';
@@ -30,11 +30,16 @@ function OtrosRamalesChips({
   displayTotalMap: Record<string, number>;
   colorVar: string;
 }) {
+  // Map por key: el find O(N) por chip hacía O(N²) por render de tabla.
+  const tramoPorKey = useMemo(
+    () => new Map(tramos.map((tr) => [(tr._key || tr.id) as string, tr])),
+    [tramos],
+  );
   return (
     <ChipList
       items={connectedKeys.map((childKey) => {
         const rId = sectorDe(childKey);
-        const childTramo = tramos.find((tr) => (tr._key || tr.id) === childKey);
+        const childTramo = tramoPorKey.get(childKey);
         const childOwnKey = childTramo?._key || childTramo?.id || childKey;
         const childTotalUd = displayTotalMap[childOwnKey] || 0;
         return { key: childKey, label: rId, title: `${rId} (${childTotalUd.toFixed(2)} UC)` };
@@ -274,3 +279,5 @@ export function DesignTableRow({
     </tr>
   );
 }
+
+export default React.memo(DesignTableRow);
