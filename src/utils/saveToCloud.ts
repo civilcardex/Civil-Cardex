@@ -1,22 +1,6 @@
 import { devError } from './devError.ts';
-
-/** Nombre del evento de ventana con el que se avisa de un fallo de guardado en la nube.
- *  Contrato compartido: lo emiten los servicios de guardado y lo escucha el proveedor
- *  global de alertas (GlobalAlertaDialogoProveedor), que es el único que lo muestra. */
-export const EVENTO_ERROR_GUARDADO = 'civilflow_bd_save_error';
-
-/** Avisa a toda la app de que un guardado en la nube falló.
- *  Ej: el RPC de planos falló -> sale el diálogo "No se pudo guardar en la nube".
- *  @param reason etiqueta corta del guardado que falló (p. ej. 'planos').
- *  @param message detalle del error (mensaje de Supabase o excepción).
- */
-export function emitErrorGuardado(reason: string, message: string): void {
-  try {
-    window.dispatchEvent(new CustomEvent(EVENTO_ERROR_GUARDADO, { detail: { reason, message } }));
-  } catch {
-    /* sin window (tests en node) */
-  }
-}
+import { EVENTO_ERROR_GUARDADO, emitErrorGuardado } from './saveEvents.ts';
+export { EVENTO_ERROR_GUARDADO, emitErrorGuardado };
 
 /** Ejecuta un guardado en la nube reintentando ante fallo y avisa si no se logra. Sin el
  *  reintento, un 5xx puntual dejaba el plano sin binario en la nube y sin aviso. */

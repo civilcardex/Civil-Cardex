@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useMemo, type ReactNode
 import { supabase } from '../lib/supabase';
 import { devError } from '../utils/devError.ts';
 import { esNavInterna, limpiarNavInterna } from '../utils/internalNavigation.ts';
-import { clearLocalWorkspace } from '../modules/civilflow/services/workspaceReset.ts';
 
 interface User {
   id: string;
@@ -66,7 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // navegador del equipo compartido.
           if (event === 'SIGNED_OUT') {
             try {
-              clearLocalWorkspace();
+              // Import dinámico: clearLocalWorkspace arrastra projectDataService (medio MB
+              // de contexto al entry) y SOLO corre al cerrar sesión.
+              void import('../modules/civilflow/services/workspaceReset.ts').then((m) =>
+                m.clearLocalWorkspace(),
+              );
             } catch {
               /* storage bloqueado: ignorar */
             }

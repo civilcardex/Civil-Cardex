@@ -6,7 +6,14 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
 import { GlobalAlertDialog } from './modules/civilflow/components/GlobalAlertDialog.tsx';
-import { CivilFlowProviders } from './modules/civilflow/context/CivilFlowProviders.tsx';
+// LAZY: los providers de civilflow (Project/Tramos/Plans/Apparatus/Rainwater + strokesDb)
+// solo se usan en /dibujoRedes y /civilflowareatrabajo — estáticos arrastraban ~210 KB de
+// contexto+persistencia al preload de la HOME (saveToCloud chunk).
+const CivilFlowProviders = React.lazy(() =>
+  import('./modules/civilflow/context/CivilFlowProviders.tsx').then((m) => ({
+    default: m.CivilFlowProviders,
+  })),
+);
 import { CargandoProyecto } from './modules/civilflow/components/shared/LoadingProject';
 
 // Una sola pantalla de carga en toda la app: el Suspense y el gate de datos usan la MISMA pieza

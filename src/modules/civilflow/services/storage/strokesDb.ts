@@ -1,7 +1,7 @@
 // Sync de trazos con Supabase: cola por plano, merge con disco, usuario cacheado y carga.
 // Extraído verbatim de storageService.
 import { devError } from '../../../../utils/devError.ts';
-import { emitErrorGuardado } from '../../../../utils/saveToCloud.ts';
+import { emitErrorGuardado } from '../../../../utils/saveEvents.ts';
 import { supabase } from '../../../../lib/supabase';
 import {
   TRAZOS_PREFIX,
@@ -311,7 +311,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
     // Concurrencia optimistic: el updated_at LEÍDO de ESTE plano (no de otro). Si la BD
     // aún tiene la firma de 2 args, se manda sin reloj (retry abajo degrada la sesión).
     const reloj = relojesPorPlano.get(planoId) ?? null;
-    const argsBase = { p_plano_id: id, p_data: payload } as Record<string, unknown>;
+    const argsBase = { p_plano_id: id, p_data: payload };
     let { error } = savePlanoConReloj
       ? await supabase.rpc('save_plano_data', { ...argsBase, p_updated_at: reloj })
       : await supabase.rpc('save_plano_data', argsBase);

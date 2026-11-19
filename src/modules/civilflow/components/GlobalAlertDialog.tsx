@@ -3,7 +3,7 @@
  *  Ej: intentar 2" en un ramal con inodoro -> alerta aunque estés en otra pestaña. */
 import React, { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from './shared/config3d';
-import { EVENTO_ERROR_GUARDADO } from '../../../utils/saveToCloud.ts';
+import { EVENTO_ERROR_GUARDADO } from '../../../utils/saveEvents.ts';
 
 const GAlertDialog_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
