@@ -93,7 +93,10 @@ export function useEpc3DScene({
         sombrasEstaticas: true,
       });
       if (cancelled) {
-        disposeEscena(base);
+        // CANCELLADO del race de StrictMode: sin forceContextLoss — el remonte siguiente
+        // reutiliza este MISMO canvas y su contexto (con force loss moría con
+        // «precision» de null y la isometría quedaba vacía).
+        disposeEscena(base, undefined, false);
         return;
       }
       const { THREE, renderer, scene, camP, camO, controls, keyLight: dir, fillLight: fill } = base;

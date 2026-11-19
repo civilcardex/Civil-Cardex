@@ -16,7 +16,8 @@ export interface EscenaOpts {
   /** FOV de la persp (RCI_FOV y FOV_3D valen lo mismo: 50). */
   fov?: number;
   maxDistance?: number;
-  /** PCFSoft (rci/aparatos) o PCF (epc — "PCFSoft deprecado en three moderno"). */
+  /** Legacy del HTML: PCFSoft fue REMOVIDO de three moderno — la opción queda muerta y
+   *  siempre es PCF (sin aviso en consola). */
   shadowType?: 'pcf' | 'pcfsoft';
   /** Canvas con buffer preservado (aparatos: captura PNG del visor). */
   preserveDrawingBuffer?: boolean;
@@ -66,7 +67,8 @@ export async function montarEscena(
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = opts.shadowType === 'pcf' ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+  // PCFSoft fue REMOVIDO de three moderno (aviso en consola, cae a PCF igual): PCF directo.
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   if (opts.sombrasEstaticas) {
     // La escena es estática: las sombras se pintan solo cuando la carga las marca.
     renderer.shadowMap.autoUpdate = false;
@@ -134,7 +136,11 @@ export async function montarEscena(
   };
 }
 
-/** Dispose común de un visor: cancela animación pendiente, libera controls/geometry/materials/renderer y FUERZA la pérdida del contexto WebGL (dispose() solo libera recursos — sin forceContextLoss, alternar visores acumula contextos hasta el tope de Chrome y mata el canvas de otro visor). */
+/** Dispose común de un visor: cancela animación pendiente, libera controls/geometry/materials/renderer y FUERZA la pérdida del contexto WebGL (dispose() solo libera recursos — sin forceContextLoss, alternar visores acumula contextos hasta el tope de Chrome y mata el canvas de otro visor).
+ *  forzarPerdida=false para el CANCELLADO del race de StrictMode: ahí el renderer nació y muere
+ *  sobre el MISMO canvas que el remonte siguiente va a usar — forzar la pérdida lo deja sin
+ *  contexto (WebGLRenderer: «precision» de null, ped. 2026-11-17 isometrías vacías) — sin
+ *  force loss el remonte reusa ese mismo contexto y no hay acumulación (un canvas = un contexto). */
 export function disposeEscena(
   api: {
     scene: THREE_NS.Scene;
@@ -143,6 +149,7 @@ export function disposeEscena(
     cancelAnim?: number | null;
   } | null,
   restaurarColor?: () => void,
+  forzarPerdida = true,
 ): void {
   if (!api) return;
   if (api.cancelAnim != null) cancelAnimationFrame(api.cancelAnim);
@@ -156,6 +163,6 @@ export function disposeEscena(
   });
   api.scene.clear();
   api.renderer.dispose();
-  api.renderer.forceContextLoss();
+  if (forzarPerdida) api.renderer.forceContextLoss();
   restaurarColor?.();
 }

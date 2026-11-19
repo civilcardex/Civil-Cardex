@@ -67,7 +67,10 @@ export function useAparatos3DScene(
         cmLegacy: true,
       });
       if (cancelled) {
-        disposeEscena(base);
+        // CANCELLADO del race de StrictMode: sin forceContextLoss — el remonte siguiente
+        // reutiliza este MISMO canvas y su contexto (con force loss moría con
+        // «precision» de null y la isometría quedaba vacía).
+        disposeEscena(base, undefined, false);
         return;
       }
       restaurarColor = base.restaurarColor;
