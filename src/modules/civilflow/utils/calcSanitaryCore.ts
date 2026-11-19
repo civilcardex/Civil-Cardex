@@ -6,13 +6,15 @@ export const AGUA_DENSIDAD: number = 1000;
 export const manning_SAN: number = 0.009;
 
 // ─── Caudal de Hunter simplificado (decisión producto 2026-11-16) ───
+// La fórmula vive en utils/hunterCurve.ts (ÚNICA copia en la app) — aquí el alias histórico.
+import { hunterCurva } from './hunterCurve.ts';
+
 /** Q (Caudal) Hunter simplificado en L/s: curva pura f(UD (Unidades de Desague) totales) con quiebre en 240 UD — sin factor de simultaneidad (salieron K y N° de salidas de la tabla).
- *  Ej: 40 UD -> 0.1163·40^0.6875 ≈ 1.58 L/s; 300 UD -> 0.074·300^0.7504 ≈ 51.5 L/s.
+ *  Ej: 40 UD -> 0.1163·40^0.6875 ≈ 1.58 L/s; 300 UD -> 0.074·300^0.7504 ≈ 5.35 L/s.
  *  @param UD - UD (Unidades de Desague) totales.
  *  @returns Q (Caudal) de diseño en L/s. */
 export function caudalHunterLPS(UD: number): number {
-  if (UD <= 0) return 0;
-  return UD < 240 ? 0.1163 * Math.pow(UD, 0.6875) : 0.074 * Math.pow(UD, 0.7504);
+  return hunterCurva(UD);
 }
 
 // ─── Caudal a tubo lleno (Manning) ───

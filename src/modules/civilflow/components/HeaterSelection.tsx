@@ -1,15 +1,14 @@
 /** Selección de calentadores para ac (Agua Caliente): elige modelo del catálogo, lo estampa en el dibujo y recalcula el total de la red. Ej: 2 duchas + 1 lavadero -> el Q (Caudal) ac define el calentador de paso necesario. */
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTramos } from '../context/TramosContext.tsx';
 import { APARATOS_DEF } from '../constants';
 import { CAT_APS } from '../constants/engineeringDataFixtures.ts';
 import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from '../utils/formatUtils.ts';
+import { hunterCurva } from '../utils/hunterCurve.ts';
 import { usePlans } from '../context/PlansContext.tsx';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing.ts';
 import { computeHeaterNetworkTotal } from '../utils/waterNetworkRows.ts';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
 const HeaterSelection_S1: React.CSSProperties = {
   width: '100%',
   minWidth: 150,
@@ -29,25 +28,6 @@ export default function HeaterSelection() {
     [tramosAc],
   );
 
-  // Factor de simultaneidad persistido en el bajante CALENTn (storage + DB) — restaurar cuando
-  // el calentador cambia, no arrancar siempre en 50. Ajuste de estado durante el render (patrón
-  // documentado de React para sincronizar estado con un prop que cambia) — evita el setState
-  // síncrono dentro de un effect.
-  const [factorSim, setFactorSim] = useState(50);
-  const [factorSimLoadedKey, setFactorSimLoadedKey] = useState<string | null>(null);
-  const heaterKey = selectedHeaterTram
-    ? `${String(selectedHeaterTram.fin)}-${String(selectedHeaterTram.planId)}`
-    : null;
-  if (heaterKey && heaterKey !== factorSimLoadedKey) {
-    const raw = loadFromStorage<{
-      bajantes?: Array<{ id: string; net?: string; factorSim?: number }>;
-    } | null>(TRAZOS_PREFIX + selectedHeaterTram!.planId, null);
-    const baj = (raw?.bajantes || []).find(
-      (b) => b.id === selectedHeaterTram!.fin && b.net === 'ac',
-    );
-    setFactorSim(baj?.factorSim ?? 50);
-    setFactorSimLoadedKey(heaterKey);
-  }
   const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
   const selectedHeater = useMemo(
     () => CAT_GAS.find((g) => g.id === selectedHeaterId),
@@ -89,17 +69,11 @@ export default function HeaterSelection() {
     return { summary, totalUC };
   }, [tramosAc, plans]);
 
-  // Caudal probable por Hunter
-  const caudalProbableLps =
-    totalUC > 0
-      ? totalUC < 240
-        ? 0.1163 * Math.pow(totalUC, 0.6875)
-        : 0.074 * Math.pow(totalUC, 0.7504)
-      : 0;
+  // Caudal por la curva de Hunter (ÚNICA copia en utils/hunterCurve.ts) — sin factor de
+  // simultaneidad (doctrina 2026-11: curva pura; el factor editable del método viejo salió).
+  const caudalProbableLps = hunterCurva(totalUC);
   const caudalProbableGpm = caudalProbableLps * 15.8503;
-  const caudalProbableLpm = caudalProbableLps * 60.0;
-
-  const caudalAjustado = caudalProbableLpm * (factorSim / 100);
+  const caudalAjustado = caudalProbableLps * 60.0;
 
   const heaterRecommendation = useMemo(() => {
     const heaters = CAT_GAS.filter((g) => g.id.startsWith('cal')); // cal6, cal11, cal21
@@ -212,35 +186,7 @@ export default function HeaterSelection() {
               <td className="c">{fmt(caudalProbableGpm, 2)} GPM</td>
             </tr>
             <tr>
-              <td className="c"></td>
-              <td className="c">{fmt(caudalProbableLpm, 2)} LPM</td>
-            </tr>
-            <tr>
-              <td className="c">Factor de simultaneidad (%)</td>
-              <td className="c">
-                <input
-                  type="number"
-                  className="ni"
-                  style={{ width: 60, textAlign: 'center' }}
-                  value={factorSim}
-                  aria-label="Factor de simultaneidad (%)"
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
-                    setFactorSim(val);
-                    if (selectedHeaterTram) {
-                      const calId = selectedHeaterTram.fin;
-                      const planId = selectedHeaterTram.planId;
-                      const bajanteKey = `${calId}-${planId}`;
-                      writeBajantePropToDrawing(bajanteKey, 'ac', 'factorSim', val, plans);
-                    }
-                  }}
-                  min="0"
-                  max="100"
-                />
-              </td>
-            </tr>
-            <tr>
-              <td className="c">Caudal ajustado</td>
+              <td className="c">Caudal de diseño</td>
               <td className="c" style={{ fontWeight: 'bold' }}>
                 {fmt(caudalAjustado, 2)} LPM
               </td>

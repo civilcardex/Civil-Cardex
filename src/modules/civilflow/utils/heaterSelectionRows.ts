@@ -6,30 +6,15 @@ import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from './formatUtils.ts';
 import type { MemoriaTable } from './exportReportFinal.ts';
 import { computeHeaterNetworkTotal } from './waterNetworkRows.ts';
-import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
-import { loadFromStorage } from '../services/storageService.ts';
+import { hunterCurva } from './hunterCurve.ts';
 
-// Factor de simultaneidad persistido: el guardado en el bajante CALENTn (storage + DB) cuando
-// el usuario lo edita en la pantalla de selección de calentador. Null cuando no existe tramo de
-// calentador / valor guardado.
-function loadPersistedFactorSim(tramosAc: Tramo[]): number | null {
-  const selectedHeaterTram = tramosAc.find((t) => t.calCapacidad !== undefined);
-  if (!selectedHeaterTram) return null;
-  const calId = selectedHeaterTram.fin;
-  const planId = selectedHeaterTram.planId;
-  const raw = loadFromStorage<{
-    bajantes?: Array<{ id: string; net?: string; factorSim?: number }>;
-  } | null>(TRAZOS_PREFIX + planId, null);
-  const baj = (raw?.bajantes || []).find((b) => b.id === calId && b.net === 'ac');
-  return baj?.factorSim ?? null;
-}
+// Curva de Hunter pura (decisión 2026-11-16/19): el caudal del calentador NO lleva factor de
+// simultaneidad — el "Factor de simultaneidad (%)" que era editable en la pantalla (default
+// 50 %, persistido en el bajante CALENTn) salió del método viejo; los bajantes viejos con
+// factorSim guardado lo IGNORAN (campo huérfano, mismo patrón que n_salidas).
 
-/** Tablas de la memoria para la selección de calentador de ac (Agua Caliente): aparatos con su UC (Unidades de Consumo), caudal probable (0.1163·UD^0.6875 LPS) ajustado por el factor de simultaneidad (%), y qué equipo del catálogo cumple. */
-export function computeHeaterSelectionTables(
-  tramosAc: Tramo[],
-  plans: PlanItem[],
-  factorSim?: number,
-): MemoriaTable[] {
+/** Tablas de la memoria para la selección de calentador de ac (Agua Caliente): aparatos con su UC (Unidades de Consumo), caudal probable (curva de Hunter, LPS/LPM) y qué equipo del catálogo cumple. */
+export function computeHeaterSelectionTables(tramosAc: Tramo[], plans: PlanItem[]): MemoriaTable[] {
   const selectedHeaterTram = tramosAc.find((t) => t.calCapacidad !== undefined);
   const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
   const selectedHeater = CAT_GAS.find((g) => g.id === selectedHeaterId);
@@ -61,16 +46,9 @@ export function computeHeaterSelectionTables(
   const { udTotal } = computeHeaterNetworkTotal(tramosAc, plans);
   const totalUC = udTotal > 0 ? udTotal : sumRows;
 
-  const resolvedFactorSim =
-    factorSim !== undefined ? factorSim : (loadPersistedFactorSim(tramosAc) ?? 50);
-  const caudalProbableLps =
-    totalUC > 0
-      ? totalUC < 240
-        ? 0.1163 * Math.pow(totalUC, 0.6875)
-        : 0.074 * Math.pow(totalUC, 0.7504)
-      : 0;
-  const caudalProbableLpm = caudalProbableLps * 60.0;
-  const caudalAjustado = caudalProbableLpm * (resolvedFactorSim / 100);
+  // Curva de Hunter (ÚNICA copia en utils/hunterCurve.ts) — sin factor de simultaneidad.
+  const caudalProbableLps = hunterCurva(totalUC);
+  const caudalAjustado = caudalProbableLps * 60.0;
 
   const heaters = CAT_GAS.filter((g) => g.id.startsWith('cal'));
   const parsedHeaters = heaters
@@ -109,9 +87,7 @@ export function computeHeaterSelectionTables(
   const paramsHeaders = ['Parámetro', 'Valor'];
   const paramsRows: (string | number)[][] = [
     ['Caudal probable (LPS)', fmt(caudalProbableLps, 3)],
-    ['Caudal probable (LPM)', fmt(caudalProbableLpm, 2)],
-    ['Factor de simultaneidad (%)', resolvedFactorSim],
-    ['Caudal ajustado (LPM)', fmt(caudalAjustado, 2)],
+    ['Caudal de diseño (LPM)', fmt(caudalAjustado, 2)],
     ['Calentador seleccionado', selectedHeater ? selectedHeater.n : 'Ninguno'],
     ['Chequeo', cumpleTxt || recText || '—'],
   ];

@@ -1,18 +1,9 @@
 import type { Tramo } from '../../context/tramosReducer';
 import { matHazenC } from '../../constants';
 import { calcLeAcces } from '../../utils/fittingsUtils.ts';
-
-// Fórmula de Hunter simplificado (decisión producto 2026-11-16): el caudal probable depende
-// SOLO de las UC totales del tramo — curva pura con quiebre en 240 UC. Sin factor K de
-// simultaneidad ni número de descargas (esa columna salió de la tabla y de la memoria).
-/** Caudal probable de Hunter simplificado (L/s aprox.): curva pura f(UC (Unidades de Consumo) totales), con cambio de fórmula a partir de 240 UC. Ej: 60 UC → 0.1163·60^0.6875 ≈ 1.95 L/s; 300 UC → 0.074·300^0.7504 ≈ 51.5 L/s. */
-export function hunterQ(total: number): number {
-  return total > 0
-    ? Math.round(
-        (total < 240 ? 0.1163 * Math.pow(total, 0.6875) : 0.074 * Math.pow(total, 0.7504)) * 1000,
-      ) / 1000
-    : 0;
-}
+// La ÚNICA copia de la curva vive en utils/hunterCurve.ts — aquí solo el re-export para los
+// consumidores históricos del módulo de agua.
+export { hunterQ } from '../../utils/hunterCurve.ts';
 
 /** Entradas de computeDesignRow: caudal del tramo, opciones de diámetro y overrides manuales. */
 export interface DesignRowCalcParams {
