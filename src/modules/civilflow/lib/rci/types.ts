@@ -33,6 +33,8 @@ export interface TuberiaRow {
   zf?: NumIn;
   /* Solo ramales: geometría y rociadores */
   dib?: NumIn;
+  /** Rociadores del trazo que FLUYEN (excluye NF) — origen de fl cuando fluyen=los dibujados. */
+  fluDib?: NumIn;
   fluyen?: NumIn;
   S?: NumIn;
   Lr?: NumIn;

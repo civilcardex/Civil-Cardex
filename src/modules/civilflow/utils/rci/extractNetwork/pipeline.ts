@@ -15,6 +15,7 @@ import {
   RE_CODO90,
   RE_CODO45,
   contarRociadores,
+  contarRociadoresTotal,
   leerAltDeriv,
   leerMaterial,
   leerDn,
@@ -101,6 +102,7 @@ export function extraerRedDePiso(
       b: ext[1],
       L: num(el.totalL) ?? 0,
       roci: contarRociadores(el),
+      rociTot: contarRociadoresTotal(el),
       acc: accesoriosDe(el),
       mat: leerMaterial(el),
       dn: leerDn(el),
@@ -133,11 +135,23 @@ export function extraerRedDePiso(
     } as BajanteRaw);
   }
 
+  /* Etiquetas de trazos para los avisos (ped. usuario 2026-11-18: «qué tramo o montante»):
+   * lista la etiqueta del dibujo (RRCI5) — cap 6 + «y N más» para no llenar la pantalla. */
+  const etiquetasDe = (ts: TrazoDib[]): string => {
+    const lbls = ts.map((t) => t.el.id);
+    const visibles = lbls.slice(0, 6).join(', ');
+    return lbls.length > 6 ? `${visibles} y ${lbls.length - 6} más` : visibles;
+  };
+
   const deriv = derivacionDe(trazos, montantesDib);
   if (!deriv) {
     avisos.push({
       piso: piso.label,
-      msg: 'Tiene trazos pero ningún montante conectado: la red no se exporta.',
+      msg: `Ningún montante conectado — la red no se exporta. ${
+        montantesDib.length
+          ? `El montante ${montantesDib.map((m) => m.code || m.id).join(', ')} está dibujado pero ningún trazo toca su derivación.`
+          : 'No hay montante dibujado en el piso.'
+      } Arrastre un extremo del tronco hasta la derivación del montante.`,
     });
     return { ...vacio, gabinetes };
   }
@@ -201,13 +215,13 @@ export function extraerRedDePiso(
   if (sueltos.length > 0) {
     avisos.push({
       piso: piso.label,
-      msg: `${sueltos.length} ramal(es) con rociadores no tocan la red y NO entran al cálculo: sus extremos deben tocar el montante, el tronco u otro ramal ya conectado. Los paralelos de «Dibujar ramales paralelos» nacen conectados; si lo dibujó a mano, arrastre su extremo hasta la red.`,
+      msg: `${sueltos.length} ramal(es) con rociadores no tocan la red y NO entran al cálculo: ${etiquetasDe(sueltos)}. Sus extremos deben tocar el montante, el tronco u otro ramal ya conectado. Los paralelos de «Dibujar ramales paralelos» nacen conectados; si lo dibujó a mano, arrastre su extremo hasta la red.`,
     });
   }
   if (conexiones.size === 0) {
     avisos.push({
       piso: piso.label,
-      msg: 'El tronco no recibe ningún ramal con rociadores: la red no se exporta.',
+      msg: `El tronco del montante ${montDer.code || montDer.id} no recibe ningún ramal con rociadores — la red no se exporta. Conecte un ramal al tronco o revise que los ramales dibujados toquen la red.`,
     });
     return { ...vacio, gabinetes };
   }
@@ -311,7 +325,7 @@ export function extraerRedDePiso(
   if (huerfanosT.length > 0) {
     avisos.push({
       piso: piso.label,
-      msg: `${huerfanosT.length} tramo(s) sin rociadores no conectan la red y no se exportaron: sus extremos deben tocar dos elementos de la red (montante, tronco, ramal o nudo).`,
+      msg: `${huerfanosT.length} tramo(s) sin rociadores no conectan la red y no se exportaron: ${etiquetasDe(huerfanosT)}. Sus extremos deben tocar dos elementos de la red (montante, tronco, ramal o nudo).`,
     });
   }
 
@@ -417,7 +431,8 @@ export function extraerRedDePiso(
     const fila: TuberiaRow = {
       nombre: `R${++iR}`,
       ini: '',
-      dib: t.roci,
+      dib: t.rociTot,
+      fluDib: t.roci,
       fluyen: '',
       mat: t.mat,
       dn: t.dn || 'auto',

@@ -160,8 +160,11 @@ export function clasificar(st: RciState): Tips {
         K: rp.K,
         /* Pmin por piso (vacío = la global roc.Pmin), igual que S/L/K. */
         Pmin: rp.Pmin === undefined || rp.Pmin === '' ? st.roc.Pmin : rp.Pmin,
-        S: rp.S,
-        L: rp.L,
+        /* S/L por piso con herencia de la global (igual que Pmin, ped. usuario 2026-11-19):
+         *  vacíos en la fila → los de Entradas; sin esto el reparto de rociadores (Nramal/
+         *  Nreq) da 0 y la tabla Fluyen queda toda en cero. */
+        S: rp.S === undefined || rp.S === '' ? st.roc.S : rp.S,
+        L: rp.L === undefined || rp.L === '' ? st.roc.L : rp.L,
         /* DMR vacío = la global (roc.Dmuro), igual que el resto de defaults del proyecto. */
         Dmuro: rp.Dmuro === undefined || rp.Dmuro === '' ? st.roc.Dmuro : rp.Dmuro,
       },

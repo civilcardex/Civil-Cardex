@@ -4,7 +4,7 @@
  * Ej: 1 muro a 0,35 m con Dmuro 0,30 → "1 de 2 muro(s) descubiertos" en NO CUMPLE.
  */
 import { fmtEs as f1 } from '../fmtEs.ts';
-import { num } from '../hydraulics';
+import { HZ } from '../tables';
 import { distSegSeg, MIN_MURO_M } from '../../shared/geometry.ts';
 import type { ChecksCtx } from './helpers';
 
@@ -16,35 +16,30 @@ export function verificarMurosDibujo(ctx: ChecksCtx): void {
      del ramal rci más cercano. La geometría llega del doc de trazos del piso activo ya convertida
      a METROS (compute la pasa opcionalmente); sin dibujo no aplica. */
   if (dibujo) {
-    /* DMR del piso ACTIVO: la fila de su tipología (los pisos de una tipología comparten DMR
-       porque entra en la llave de criterios); vacío = la global roc.Dmuro. */
+    /* DMR del piso ACTIVO — INALTERABLE (ped. usuario 2026-11-18: la DMR es siempre un
+       rango, no se define): mitad de la S máxima del riesgo del piso, la misma que el
+       motor del visor aplica en vivo (useDmuroRciInjection). Sin fila/riesgo → riesgo
+       leve. NUNCA queda PENDIENTE por dato faltante. */
     const tipAct = R.edif.active;
-    const dmFila = tipAct ? num(st.pisos.rows[tipAct.g.rep]?.Dmuro) : null;
-    const dm = dmFila ?? num(st.roc.Dmuro) ?? 0;
-    if (!(dm > 0)) {
+    const riesgo =
+      (tipAct ? st.pisos.rows[tipAct.g.rep]?.riesgo : '') || st.clas.riesgo || 'Riesgo leve';
+    const hz = HZ[riesgo] || HZ['Riesgo leve'];
+    const dm = hz.s / 2;
+    if (!dibujo.ramPts.length) {
       add(
-        'Distancia de ramales a muros ≤ Dmuro',
-        'PENDIENTE',
-        'Sin Dmuro definido',
-        'NFPA 13-2025 cap. 10 — defina la distancia máxima de rociador a muro en la columna DMR de Pisos del edificio',
-        'Defina la distancia al muro en RCI → Tipologías → Pisos del edificio (columna DMR).',
-        ['tipologias', 'pisos'],
-      );
-    } else if (!dibujo.ramPts.length) {
-      add(
-        'Distancia de ramales a muros ≤ Dmuro',
+        'Distancia de ramales a muros ≤ DMR',
         'PENDIENTE',
         `Sin ramales rci en el piso activo (${dibujo.muros.length} muro(s) marcados)`,
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano`,
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, ${riesgo})`,
         'Dibuje los ramales de la red en el piso activo.',
         ['rociadores', 'rectangulo'],
       );
     } else if (!dibujo.muros.length) {
       add(
-        'Distancia de ramales a muros ≤ Dmuro',
+        'Distancia de ramales a muros ≤ DMR',
         'PENDIENTE',
         'Sin muros marcados',
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano`,
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, ${riesgo})`,
         'Marque muros con la herramienta Guía (menú → Definir como muro).',
         ['rociadores', 'rectangulo'],
       );
@@ -68,12 +63,12 @@ export function verificarMurosDibujo(ctx: ChecksCtx): void {
         if (mejor > dm + 1e-9) descubiertos++;
       }
       add(
-        'Distancia de ramales a muros ≤ Dmuro',
+        'Distancia de ramales a muros ≤ DMR',
         descubiertos ? 'NO CUMPLE' : 'CUMPLE',
         `${descubiertos} de ${dibujo.muros.length} muro(s) descubiertos · peor ${f1(peor, 2)} m`,
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (Dmuro = ${f1(dm, 2)} m)`,
+        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, inalterable)`,
         descubiertos
-          ? 'Acerque un ramal al muro señalado: la distancia al ramal más cercano no puede superar el DMR de Pisos del edificio.'
+          ? 'Acerque un ramal al muro señalado: la distancia al ramal más cercano no puede superar la DMR (mitad de la S máxima del riesgo).'
           : '',
         ['rociadores', 'rectangulo'],
       );

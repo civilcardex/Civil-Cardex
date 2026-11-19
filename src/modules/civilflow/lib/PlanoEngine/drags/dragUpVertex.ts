@@ -64,11 +64,17 @@ export function dragUpVertex(engine: IPlanoEngineCore): void {
       }
     }
     if (mejor) ram.pts[idxV] = mejor;
-    // S EXACTA (ped. usuario 2026-11-13): el hueco debe coincidir con S. Al mover a mano la
-    // coincidencia exacta es improbable — SE ALERTA la desviación pero la posición (ya
-    // proyectada al eje del ramal) se conserva: revertir haría imposible mover a mano.
+    // S EXACTA (ped. usuario 2026-11-19: «no debe permitir... si se desplaza el rociador»):
+    // el hueco debe seguir coincidiendo con S — si el movimiento la rompe, el arrastre SE
+    // REVIERTE a la posición previa (backups del move) con la alerta. Antes se alertaba y
+    // conservaba la posición nueva, dejando el ramal con separaciones fuera de doctrina.
     const errS = verificaSRociadores(engine, ram.id);
-    if (errS) engine.triggerAlert('Separación de rociadores', errS);
+    if (errS) {
+      // El backup es directamente number[][] (lo llena mouseDown con structuredClone(pts)).
+      const bk = engine._dragBackupPts;
+      if (bk?.[idxV]) ram.pts[idxV] = [...bk[idxV]];
+      engine.triggerAlert('Separación de rociadores', errS);
+    }
     renumeraRociadores(engine);
     engine._dragBackupPts = null;
     engine._markDirty();

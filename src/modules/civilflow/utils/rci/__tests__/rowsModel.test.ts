@@ -55,23 +55,25 @@ const cerca = (x: number | null | undefined, esperado: number, tol = 0.05): void
 };
 
 describe('rowsModel · tablas del piso activo contra el ejemplo de verificación', () => {
-  it('ramales: R1 cierra con 50.75 gpm @ 20.29 psi y R2 se equilibra a la presión del nudo A', () => {
+  it('ramales: R1 cierra con 87.87 gpm @ 19.70 psi y R2 se equilibra a la presión del nudo A', () => {
+    /* Doctrine: fluyen todos los dibujados (16), no solo los del área de diseño (7). */
     const filas = filasRamales(st.redes.A, R.red);
     expect(filas.map((f) => f.nombre)).toEqual(['R2', 'R1', 'R3']);
     const porNombre = new Map(filas.map((f) => [f.nombre, f]));
     const r1 = porNombre.get('R1')!;
-    cerca(r1.Q, 50.75);
-    cerca(r1.P, 20.29);
-    cerca(r1.brazo, 13.6);
+    cerca(r1.Q, 87.87);
+    cerca(r1.P, 19.7);
+    cerca(r1.brazo, 5);
     expect(r1.ok).toBe(true);
-    expect(r1.dnUsado).toBe('1 1/4"');
+    expect(r1.dnUsado).toBe('1 1/2"');
     const r2 = porNombre.get('R2')!;
-    cerca(r2.Q, 50.75);
-    cerca(r2.P, 16.36);
+    cerca(r2.Q, 87.87);
+    cerca(r2.P, 13.84);
+    cerca(r2.Peq, 19.7);
     expect(r2.auto).toBe(true);
   });
 
-  it('tramos: T2 con desglose 1.92 planta + 2.80 bajada; la derivación C queda en 128.54 @ 37.70', () => {
+  it('tramos: T2 con desglose 1.92 planta + 2.80 bajada; la derivación C queda en 311.17 @ 45.08', () => {
     const filas = filasTramos(st.redes.A, R.red, 5.3, 2.5);
     expect(filas.map((f) => f.nombre)).toEqual(['T1', 'T2']);
     const t1 = filas[0];
@@ -82,9 +84,11 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
     cerca(t2.L, 4.72);
     cerca(t2.desgPlanta!, 1.92);
     cerca(t2.desgBajada!, 2.8);
-    cerca(t2.Q, 128.54);
-    cerca(t2.Pfin, 37.7, 0.5);
+    cerca(t2.Q, 311.17);
+    cerca(t2.Pfin, 45.08, 0.5);
     cerca(t2.Pe, 3.98);
+    expect(t2.dnUsado).toBe('2 1/2"');
+    cerca(t2.V, 5.58);
     expect(t2.ok).toBe(true);
   });
 
@@ -103,12 +107,12 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
     const cob = kvRociadorCobertura(R.roc, R.Nop);
     const porC = new Map(cob.map((k) => [k.l, k]));
     expect(porC.get('Rociadores exigidos en el área')!.v).toBe('7');
-    expect(porC.get('Rociadores exigidos en el área')!.nota).toContain('7 con flujo');
+    expect(porC.get('Rociadores exigidos en el área')!.nota).toContain('16 con flujo');
     expect(porC.get('Rociador más remoto')!.v).toBe('16,34');
     expect(porC.get('Presión del más remoto')!.v).toBe('8,5');
   });
 
-  it('tipologías: una T1 con los 3 pisos, representativo P3 y derivación 37.70 psi / 128.54 gpm', () => {
+  it('tipologías: una T1 con los 3 pisos, representativo P3 y derivación 45.08 psi / 311.17 gpm', () => {
     const filas = filasTipologias(st, tips);
     expect(filas.map((f) => f.nombre)).toEqual(['P3', 'P2', 'P1']);
     expect(filas.map((f) => f.esRep)).toEqual([true, false, false]);
@@ -119,8 +123,8 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
     expect(res[0].pisos).toBe('P1 + P2 + P3');
     expect(res[0].representativo).toBe('P3');
     expect(res[0].conRed).toBe(true);
-    cerca(res[0].P, 37.7, 0.5);
-    cerca(res[0].Q, 128.54);
+    cerca(res[0].P, 45.08, 0.5);
+    cerca(res[0].Q, 311.17);
   });
 
   it('montante y siamesa: ruta 500 gpm @ 127.36 psi y siamesa 125.1 psi', () => {
@@ -142,10 +146,10 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
 });
 
 describe('rowsModel · verificaciones agrupadas', () => {
-  it('las 44 del ejemplo quedan repartidas entre los grupos y todas CUMPLE', () => {
+  it('las 43 del ejemplo quedan repartidas entre los grupos y todas CUMPLE', () => {
     const grupos = filasVerificaciones(R.checks);
     const total = grupos.reduce((a, g) => a + g.items.length, 0);
-    expect(total).toBe(44);
+    expect(total).toBe(43);
     const noCumplen = grupos.flatMap((g) => g.items).filter((v) => v.st !== 'CUMPLE');
     expect(noCumplen).toEqual([]);
     /* Sin huérfanas: toda verificación cayó en un grupo del catálogo. */
@@ -197,6 +201,19 @@ describe('rowsModel · verificaciones agrupadas', () => {
       'normativa',
     );
     expect(grupoDeCheck({ lab: '', st: '', val: '', nor: '', guide: '' })).toBe('generales');
+  });
+
+  it('la DMR se agrupa en Rociadores aunque su "go" apunte al dibujo', () => {
+    expect(
+      grupoDeCheck({
+        lab: 'Distancia de ramales a muros ≤ DMR',
+        st: 'CUMPLE',
+        val: '',
+        nor: '',
+        guide: '',
+        go: ['rociadores', 'rectangulo'],
+      }),
+    ).toBe('rociadores');
   });
 });
 
@@ -344,8 +361,8 @@ describe('rowsModelRci2 · perfil de presiones (perfilTable + perfilSide)', () =
     cerca(per[2].Pst!, 170.62, 0.5);
     cerca(per[0].zT!, 14.7);
     cerca(per[2].zS!, 1.2);
-    cerca(per[0].Q!, 128.54);
-    cerca(per[0].Preq!, 37.7, 0.5);
+    cerca(per[0].Q!, 311.17);
+    cerca(per[0].Preq!, 45.08, 0.5);
   });
 
   it('los 3 pisos con salida 2½" + 1½" piden válvula reguladora (residual 1½" > 100) y sin VRP', () => {
@@ -358,7 +375,7 @@ describe('rowsModelRci2 · perfil de presiones (perfilTable + perfilSide)', () =
       expect(f.res15!).toBeGreaterThan(100);
       expect(f.vrp).toBe(false);
       expect(f.vrpFalta).toBe(false);
-      expect(f.vrpSet).toBe(43);
+      expect(f.vrpSet).toBe(51);
       expect(f.okH).toBe(true);
     }
     cerca(per[0].res15!, 152.21, 0.5);
@@ -384,53 +401,54 @@ describe('rowsModelRci2 · perfil de presiones (perfilTable + perfilSide)', () =
 });
 
 describe('rowsModelRci2 · nudos y detalle nudo a nudo', () => {
-  it('filasNudos: A 20.29, B 27.73 y la derivación C con 128.54 gpm @ 37.70 psi', () => {
+  it('filasNudos: A 19.70, B 26.89 y la derivación C con 311.17 gpm @ 45.08 psi', () => {
     const nds = filasNudos(R.red!);
     expect(nds.map((n) => n.nudo)).toEqual(['A', 'B', 'C']);
     const a = nds[0];
-    cerca(a.Preq, 20.29);
+    cerca(a.Preq, 19.7);
     expect(a.gobierna).toBe('R1');
     expect(a.esRaiz).toBe(false);
     expect(a.seAlimentaDe).toBe('B');
     expect(a.alimenta.map((x) => x.nombre)).toEqual(['R2', 'R1']);
-    cerca(a.alimenta[0].Q, 50.75);
-    cerca(a.alimenta[0].P, 16.36);
-    cerca(a.alimenta[0].Qb!, 56.51);
-    cerca(a.alimenta[1].Qb!, 50.75);
-    cerca(nds[1].Preq, 27.73);
+    cerca(a.alimenta[0].Q, 87.87);
+    cerca(a.alimenta[0].P, 13.84);
+    cerca(a.alimenta[0].Qb!, 104.83);
+    cerca(a.alimenta[1].Qb!, 87.87);
+    cerca(nds[1].Preq, 26.89);
     expect(nds[1].gobierna).toBe('T1 (A → B)');
     const c = nds[2];
     expect(c.esRaiz).toBe(true);
-    cerca(c.Preq, 37.7, 0.5);
-    cerca(c.Qtotal, 128.54);
-    cerca(c.Pequilibrada, 37.7, 0.5);
+    cerca(c.Preq, 45.08, 0.5);
+    cerca(c.Qtotal, 311.17);
+    cerca(c.Pequilibrada, 45.08, 0.5);
     expect(c.seAlimentaDe).toBe('Montante');
     expect(c.gobierna).toBe('T2 (B → C)');
   });
 
-  it('filasDetalleNudo: R2 primero (en orden de dibujo) con pasos q 16.34 → P 8.51 → 16.36', () => {
+  it('filasDetalleNudo: R2 primero (en orden de dibujo) con pasos q 16.34 → P 8.51 → 13.84', () => {
     const det = filasDetalleNudo(R.red!);
     expect(det.map((d) => d.nombre)).toEqual(['R2', 'R1', 'R3']);
     const r2 = det[0];
-    expect(r2.rociadores).toBe('1–3');
-    expect(r2.dn).toBe('1 1/4"');
+    expect(r2.rociadores).toBe('1–5');
+    expect(r2.dn).toBe('1 1/2"');
     expect(r2.C).toBe(120);
-    expect(r2.pasos).toHaveLength(3);
+    /* Los 5 rociadores que fluyen generan 5 pasos + el de llegada al nudo A. */
+    expect(r2.pasos).toHaveLength(5);
     const p0 = r2.pasos[0];
     cerca(p0.Pini!, 8.51);
     cerca(p0.q!, 16.34);
     cerca(p0.Q!, 16.34);
     cerca(p0.L!, 4.3);
-    cerca(p0.Pfin!, 8.84);
+    cerca(p0.Pfin!, 8.67);
     expect(p0.ni).toBe('1');
     expect(p0.nf).toBe('2');
-    const p2 = r2.pasos[2];
-    expect(p2.nf).toBe('A');
-    cerca(p2.Pfin!, 16.36);
-    cerca(p2.Q!, 50.75);
+    const pFin = r2.pasos[r2.pasos.length - 1];
+    expect(pFin.nf).toBe('A');
+    cerca(pFin.Pfin!, 13.84);
+    cerca(pFin.Q!, 87.87);
     expect(r2.pasos.every((p) => p.ok)).toBe(true);
     /* Cada ramal con res aparece una vez y con sus rociadores. */
-    expect(det[2].rociadores).toBe('7');
+    expect(det[2].rociadores).toBe('11–16');
   });
 });
 
@@ -468,11 +486,11 @@ describe('rowsModelRci2 · gabinetes', () => {
 });
 
 describe('rowsModelRci2 · cards de bomba y tanque (renderBomba)', () => {
-  it('kvDemandas: D1 228.5 gpm y D2 500 gpm @ 128.16 psi netos', () => {
+  it('kvDemandas: D1 411.2 gpm y D2 500 gpm @ 128.16 psi netos', () => {
     const dem = kvDemandas(R.bomba);
     const m = new Map(dem.map((k) => [k.l, k]));
-    expect(m.get('D1 · Rociadores + mangueras')!.v).toBe('228,5');
-    expect(m.get('D1 · Rociadores + mangueras')!.nota).toContain('59,34');
+    expect(m.get('D1 · Rociadores + mangueras')!.v).toBe('411,2');
+    expect(m.get('D1 · Rociadores + mangueras')!.nota).toContain('69,84');
     expect(m.get('D2 · Montantes (gabinetes)')!.v).toBe('500,0');
     expect(m.get('D2 · Montantes (gabinetes)')!.nota).toContain('128,16');
   });
@@ -489,11 +507,11 @@ describe('rowsModelRci2 · cards de bomba y tanque (renderBomba)', () => {
     expect(m.get('Succión / descarga mínimas')!.v).toBe('5" / 5"');
   });
 
-  it('kvCuarto: la brida exige 59.34 psi (D1) y 127.36 psi (D2)', () => {
+  it('kvCuarto: la brida exige 69.84 psi (D1) y 127.36 psi (D2)', () => {
     const cb = kvCuarto(R.edif, R.gab);
     const m = new Map(cb.map((k) => [k.l, k]));
-    expect(m.get('Presión exigida en la brida (CB) D1 / D2')!.v).toBe('59,3 / 127,4');
-    expect(m.get('Caudal D1 / D2')!.v).toBe('128,5 / 500,0');
+    expect(m.get('Presión exigida en la brida (CB) D1 / D2')!.v).toBe('69,8 / 127,4');
+    expect(m.get('Caudal D1 / D2')!.v).toBe('311,2 / 500,0');
     /* El cuarto trae accesorios: Leq 34.53 m en D2. */
     expect(m.get('Ø usado · Leq D1 / D2')!.v).toContain('34,53');
   });
@@ -576,10 +594,10 @@ describe('rowsModelRci2 · rectángulo de fuego y sismo', () => {
 });
 
 describe('rowsModelRci2 · strip de derivación', () => {
-  it('stripDerivacion: 128.54 gpm @ 37.70 psi; null sin red o con avisos', () => {
+  it('stripDerivacion: 311.17 gpm @ 45.08 psi; null sin red o con avisos', () => {
     const s = stripDerivacion(R.red);
-    cerca(s!.Q, 128.54);
-    cerca(s!.P, 37.7, 0.5);
+    cerca(s!.Q, 311.17);
+    cerca(s!.P, 45.08, 0.5);
     expect(stripDerivacion(null)).toBeNull();
     const est2 = ejemploVerificacion();
     est2.redes.A.ramales = [];

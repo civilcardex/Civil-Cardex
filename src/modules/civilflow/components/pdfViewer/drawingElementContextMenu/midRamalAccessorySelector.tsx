@@ -53,6 +53,12 @@ export function MidRamalAccessorySelector({
     };
   }, []);
 
+  /* Una acción realizada (elegir/quitar) mantiene la sección visible aunque el punto clicado
+   *  sea una punta y el campo haya quedado vacío (ped. usuario 2026-11-19: al borrar el
+   *  rociador el desplegable desaparecía — no se podía elegir otro). Se resetea al reabrir
+   *  (el menú remonta este componente). DEBE ir antes del return de abajo (hooks). */
+  const [actuado, setActuado] = useState(false);
+
   /* rci: al abrir el menú estampa el consecutivo ROC-N de los rociadores del piso (un
    *  'rociador' pelado de un guardado viejo se normaliza a 'rociador#N' al instante —
    *  ped. usuario: el desplegable muestra el tipo y el glifo su número). Idempotente. */
@@ -75,12 +81,17 @@ export function MidRamalAccessorySelector({
   );
   if (options.length === 0) return null;
 
-  // Clic sobre un EXTREMO (orig. usuario): el punto coincide con una punta del trazo — el
-  // menú de extremo ofrece SOLO aparatos; el accesorio de cuerpo (y su vértice accMed) es
-  // de clics a mitad del trazo.
+  // Clic sobre un EXTREMO (orig. usuario): el punto coincide con una PUNTA del trazo
+  // (pts[0] o la última) — el menú de extremo ofrece SOLO aparatos; el accesorio de cuerpo
+  // (y su vértice accMed) es de clics a mitad del trazo. Los VÉRTICES INTERIORES no cuentan:
+  // un rociador borrado deja el vértice huérfano y sin esto el desplegable no volvía a salir
+  // (ped. usuario 2026-11-19).
   const clicEnExtremo =
-    element.pts?.some((pt) => Math.hypot(pt[0] - midRamalHit.x, pt[1] - midRamalHit.y) < 0.5) ??
-    false;
+    element.pts && element.pts.length >= 2
+      ? [element.pts[0], element.pts[element.pts.length - 1]].some(
+          (pt) => Math.hypot(pt[0] - midRamalHit.x, pt[1] - midRamalHit.y) < 0.5,
+        )
+      : false;
 
   // Si ya existe un vértice accMed (casi) exactamente en el punto clicado, se edita ese
   // en lugar de insertar un vértice nuevo. Umbral 12 px = radio del glifo del rociador
@@ -97,19 +108,38 @@ export function MidRamalAccessorySelector({
       break;
     }
   }
+  // Rociador en EXTREMO (ped. usuario 2026-11-19: «a veces falla y a pesar que haya un
+  // rociador dibujado no sale el desplegable»): vive en accesorioInicio/Fin, no en accMed —
+  // el clic sobre la punta detecta cuál y el menú edita/elimina ESE campo.
+  const pts = element.pts || [];
+  const enInicio =
+    !existingKey &&
+    pts.length >= 2 &&
+    Math.hypot(pts[0][0] - midRamalHit.x, pts[0][1] - midRamalHit.y) < 12;
+  const enFin =
+    !existingKey && !enInicio && pts.length >= 2
+      ? Math.hypot(pts[pts.length - 1][0] - midRamalHit.x, pts[pts.length - 1][1] - midRamalHit.y) <
+        12
+      : false;
+  const campoExtremo: 'accesorioInicio' | 'accesorioFin' | null = enInicio
+    ? 'accesorioInicio'
+    : enFin
+      ? 'accesorioFin'
+      : null;
+  const valExtremo = campoExtremo ? element[campoExtremo] || '' : '';
+  // El valor «existente» para el desplegable: el del extremo si hay rociador allí.
+  const valExistente = existingKey ? (accMed[existingKey] ?? '') : valExtremo;
   // El valor guardado lleva el consecutivo ('rociador#3') y el flag NF ('rociadorMontanteNF#5')
   // que NO están en las opciones — el desplegable muestra el TIPO base sin NF (ped. usuario
   // 2026-11-13: desmarcar «Fluye en el cálculo» NO borra la opción elegida del desplegable).
-  const currentVal = existingKey
-    ? (accMed[existingKey].split('#')[0].replace(/NF$/, '') ?? '')
-    : '';
+  const currentVal = valExistente ? (valExistente.split('#')[0].replace(/NF$/, '') ?? '') : '';
 
   return (
     <div style={{ padding: '4px 8px', borderTop: '1px solid #3a494a', marginTop: 4 }}>
       {/* Bug (orig. usuario): al asignar, el vértice insertado cae EXACTO al clic → al reabrir,
           clicEnExtremo salía true y el desplegable desaparecía sin poder eliminar. Si hay un
-          accMed existente en el punto, el desplegable se muestra igual. */}
-      {element.net !== 'san' && (!clicEnExtremo || existingKey) && (
+          accMed/extremo existente en el punto, el desplegable se muestra igual. */}
+      {element.net !== 'san' && (!clicEnExtremo || valExistente || actuado) && (
         <>
           <div style={MENU_SECTION_LABEL_ROW_STYLE}>Accesorio en cuerpo del ramal</div>
           <select
@@ -120,6 +150,7 @@ export function MidRamalAccessorySelector({
               // Suelta el foco: si queda en el <select>, el Ctrl+Z del motor no llega (el
               // keydown se aborta sobre selects) y el usuario no puede deshacer la asignación.
               e.target.blur();
+              setActuado(true);
               const eng = engineRef.current;
               if (!eng) return;
               const fresh = ramalVivoDelPlanoCargado(eng, element.id);
@@ -169,7 +200,31 @@ export function MidRamalAccessorySelector({
               // primer Ctrl+Z restauraba el intermedio (con el accesorio ya puesto) y
               // parecía no hacer nada.
               eng.pauseHistory();
-              if (existingKey) {
+              if (campoExtremo) {
+                /* Rociador en EXTREMO (ped. usuario 2026-11-19): vive en accesorioInicio/Fin —
+                 *  elegir escribe ese campo, «Ninguno» lo quita. El vértice NO se toca. */
+                eng.updateElementById(element.id, { [campoExtremo]: accId });
+                let rechazadoS = false;
+                if (element.net === 'rci' && accId && /rociador/i.test(accId)) {
+                  renumeraRociadores(eng);
+                  const errS = verificaSRociadores(eng, element.id);
+                  if (errS) {
+                    // Rechazo (ped. usuario: el dibujo NO debe permitir violar S): se quita el
+                    // rociador recién puesto y queda el extremo como estaba.
+                    eng.updateElementById(element.id, { [campoExtremo]: valExtremo });
+                    eng.triggerAlert('Separación de rociadores', errS);
+                    rechazadoS = true;
+                  }
+                }
+                setSelElement(null);
+                // El panel debe mostrar lo que quedó en el engine, no el valor rechazado.
+                const extremoFinal = rechazadoS ? valExtremo : accId;
+                setContextMenuState((prev) =>
+                  prev
+                    ? { ...prev, element: { ...prev.element, [campoExtremo]: extremoFinal } }
+                    : null,
+                );
+              } else if (existingKey) {
                 const newAccMed = { ...(fresh.accMed || {}) };
                 if (accId) {
                   newAccMed[existingKey] = accId;
@@ -212,11 +267,27 @@ export function MidRamalAccessorySelector({
                 }
                 shiftedAccMed[`accMed${newIdx}`] = accId;
                 eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
+                // Rechazo de S (ped. usuario 2026-11-19: el dibujo NO debe permitir violar la
+                // separación exacta): si viola, se deshace — vértice y accMed vuelven a como
+                // estaban — y queda solo la alerta.
+                let rechazadoS = false;
+                if (element.net === 'rci' && /rociador/i.test(accId)) {
+                  renumeraRociadores(eng);
+                  const errS = verificaSRociadores(eng, element.id);
+                  if (errS) {
+                    eng.updateElementById(element.id, { pts: fresh.pts, accMed: fresh.accMed });
+                    eng.triggerAlert('Separación de rociadores', errS);
+                    rechazadoS = true;
+                  }
+                }
+                // Tras un rechazo, el panel y la selección vuelven a los pts/accMed del engine.
+                const ptsFinales = rechazadoS ? fresh.pts : newPts;
+                const accMedFinal = rechazadoS ? fresh.accMed : shiftedAccMed;
                 if (selElement?.id === element.id)
                   setSelElement({
                     ...(selElement as PlanoRamal),
-                    pts: newPts,
-                    accMed: shiftedAccMed,
+                    pts: ptsFinales,
+                    accMed: accMedFinal,
                   });
                 setContextMenuState((prev) =>
                   prev
@@ -224,8 +295,8 @@ export function MidRamalAccessorySelector({
                         ...prev,
                         element: {
                           ...(prev.element as PlanoRamal),
-                          pts: newPts,
-                          accMed: shiftedAccMed,
+                          pts: ptsFinales,
+                          accMed: accMedFinal,
                         },
                       }
                     : null,

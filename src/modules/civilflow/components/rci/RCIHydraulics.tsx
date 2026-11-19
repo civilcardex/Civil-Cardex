@@ -6,8 +6,16 @@
  *  conexión, rociadores dibujados, L con su desglose planta+bajada); AMARILLO = lo que el
  *  diseñador ajusta (fluyen, Ø, material si el dibujo no lo trae, S, material/cotas de la red).
  *  Los resultados (Q, P, pérdida, P final) los llena el compute. Ej: R1 del ejemplo cierra con
- *  50.75 gpm @ 20.29 psi y la derivación C pide 37.70 psi con 128.54 gpm. */
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+ *  87.87 gpm @ 19.70 psi y la derivación C pide 45.08 psi con 311.17 gpm (16 rociadores). */
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import {
   AvisosRci,
   EditTablaBtn,
@@ -158,9 +166,12 @@ export function RciHidraulica({
   const altDeriv = Number(estado.mont.hD) || 2.5;
   const redKey = planId || '';
 
-  const rams = filasRamales(red, rd);
-  const trams = filasTramos(red, rd, techo, altDeriv);
-  const fijosT = fijosPorId(grisRed?.tramos);
+  /* Filas y candados memoizados: la tabla de ramales tiene filas memoizadas, así que hay que
+   *  estabilizar también sus entradas (si no, cada render del padre las recrea y el memo
+   *  nunca alcanza). */
+  const rams = useMemo(() => filasRamales(red, rd), [red, rd]);
+  const trams = useMemo(() => filasTramos(red, rd, techo, altDeriv), [red, rd, techo, altDeriv]);
+  const fijosT = useMemo(() => fijosPorId(grisRed?.tramos), [grisRed]);
   const sProyecto = String(estado.roc.S ?? '');
   const raiz = String(red?.raiz || '').trim() || 'D';
   const nudosLista = nudosDeRed(red, raiz);
@@ -174,47 +185,58 @@ export function RciHidraulica({
       ? String(nodoRaiz.z)
       : '';
 
-  const setRamal = (i: number, k: 'fluyen' | 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => {
-    /* MATERIAL → DIBUJO (ped. usuario): lo digitado en la tabla se refleja en el trazo del
-     * visor (material + etiqueta del canvas). La fila sabe su trazo por id estable
-     * `planId|idTrazo`; se escribe el doc de trazos del piso con ts FRESCO + BD (regla del
-     * repo: la copia local solo gana a la BD por ts — sin ts, al reabrir el visor la BD
-     * revierte el material). Mismo gesto para 'dn' (Ø digitado → trazo.diametro). */
-    if (k === 'mat' || k === 'dn') {
-      const filaId = String(red?.ramales?.[i]?.id ?? red?.ramales?.[i]?.nombre ?? '');
-      const elId = filaId.includes('|') ? filaId.slice(filaId.indexOf('|') + 1) : '';
-      if (elId && redKey) {
-        const doc = loadFromStorage<DrawingData | null>(
-          TRAZOS_PREFIX + redKey,
-          null,
-        ) as unknown as {
-          ts?: number;
-          ramales?: Array<{ id?: string; material?: string; diametro?: string }>;
-        } | null;
-        const trazo = doc?.ramales?.find((r) => r.id === elId);
-        const campo = k === 'mat' ? 'material' : 'diametro';
-        const actual = trazo ? (trazo as Record<string, string | undefined>)[campo] : undefined;
-        if (doc && trazo && (actual || '') !== v) {
-          (trazo as Record<string, string | undefined>)[campo] = v;
-          doc.ts = Date.now();
-          const ok = saveToStorage(TRAZOS_PREFIX + redKey, doc, { sinDiario: true });
-          if (ok) saveTrazosToDB(String(redKey), doc);
-          emitTrazosSaved();
+  /* `red` cambia en cada edición, pero el handler debe ser estable para que las filas
+   *  memoizadas no se repinten todas al escribir en una sola celda: se lee del ref. */
+  const redRef = useRef(red);
+  useEffect(() => {
+    redRef.current = red;
+  }, [red]);
+  const setRamal = useCallback(
+    (i: number, k: 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => {
+      /* MATERIAL → DIBUJO (ped. usuario): lo digitado en la tabla se refleja en el trazo del
+       * visor (material + etiqueta del canvas). La fila sabe su trazo por id estable
+       * `planId|idTrazo`; se escribe el doc de trazos del piso con ts FRESCO + BD (regla del
+       * repo: la copia local solo gana a la BD por ts — sin ts, al reabrir el visor la BD
+       * revierte el material). Mismo gesto para 'dn' (Ø digitado → trazo.diametro). */
+      if (k === 'mat' || k === 'dn') {
+        const filaId = String(
+          redRef.current?.ramales?.[i]?.id ?? redRef.current?.ramales?.[i]?.nombre ?? '',
+        );
+        const elId = filaId.includes('|') ? filaId.slice(filaId.indexOf('|') + 1) : '';
+        if (elId && redKey) {
+          const doc = loadFromStorage<DrawingData | null>(
+            TRAZOS_PREFIX + redKey,
+            null,
+          ) as unknown as {
+            ts?: number;
+            ramales?: Array<{ id?: string; material?: string; diametro?: string }>;
+          } | null;
+          const trazo = doc?.ramales?.find((r) => r.id === elId);
+          const campo = k === 'mat' ? 'material' : 'diametro';
+          const actual = trazo ? (trazo as Record<string, string | undefined>)[campo] : undefined;
+          if (doc && trazo && (actual || '') !== v) {
+            (trazo as Record<string, string | undefined>)[campo] = v;
+            doc.ts = Date.now();
+            const ok = saveToStorage(TRAZOS_PREFIX + redKey, doc, { sinDiario: true });
+            if (ok) saveTrazosToDB(String(redKey), doc);
+            emitTrazosSaved();
+          }
         }
       }
-    }
-    editar((e) => {
-      const r = e.redes[redKey];
-      if (!r) return e;
-      return {
-        ...e,
-        redes: {
-          ...e.redes,
-          [redKey]: { ...r, ramales: r.ramales.map((x, j) => (j === i ? { ...x, [k]: v } : x)) },
-        },
-      };
-    });
-  };
+      editar((e) => {
+        const r = e.redes[redKey];
+        if (!r) return e;
+        return {
+          ...e,
+          redes: {
+            ...e.redes,
+            [redKey]: { ...r, ramales: r.ramales.map((x, j) => (j === i ? { ...x, [k]: v } : x)) },
+          },
+        };
+      });
+    },
+    [editar, redKey],
+  );
   const setTramo = (i: number, k: 'dn' | 'mat') => (v: string) =>
     editar((e) => {
       const r = e.redes[redKey];
@@ -301,7 +323,9 @@ export function RciHidraulica({
     navHid.sub && SUBS_HID.some((s) => s.id === navHid.sub) ? navHid.sub : 'ramales';
 
   /* Footer de totales: dibujados y con flujo contra lo que exige el área de diseño. */
-  const okN = rd ? rd.flTot === R.roc.Nreq : false;
+  /* Doctrina «fluyen todos los dibujados»: pasarse del mínimo CUMPLE, no es REVISAR (el
+   * motor y el resumen ya usan >=). Ej: 16 dibujados con flujo y 7 requeridos -> CUMPLE. */
+  const okN = rd ? rd.flTot >= R.roc.Nreq : false;
 
   return (
     <>

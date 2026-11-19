@@ -5,12 +5,13 @@ import type { Verificacion } from '../../../lib/rci/types.ts';
 
 const st = ejemploVerificacion();
 const R = compute(st);
-// Dmuro del ejemplo = 1.7 m (tabla Datos del rociador): la tolerancia del check es ESE valor.
+// DMR INALTERABLE (ped. 2026-11-18): se deriva del riesgo del piso activo = S máx./2
+// (riesgo leve → 4,6/2 = 2,30 m). El check JAMÁS queda PENDIENTE por dato faltante.
 
 const checkDe = (L: Verificacion[]) =>
-  L.find((v) => v.lab === 'Distancia de ramales a muros ≤ Dmuro');
+  L.find((v) => v.lab === 'Distancia de ramales a muros ≤ DMR');
 
-describe('verificación: distancia de ramales a muros (guías esMuro, tolerancia Dmuro)', () => {
+describe('verificación: distancia de ramales a muros (guías esMuro, DMR derivada = S máx./2)', () => {
   const checkMin = (L: Verificacion[]) =>
     L.find((v) => v.lab === 'Distancia mínima ramal–muro ≥ 0,10 m');
 
@@ -18,7 +19,7 @@ describe('verificación: distancia de ramales a muros (guías esMuro, tolerancia
     expect(checkDe(R.checks)).toBeUndefined();
   });
 
-  it('sin Dmuro definido → PENDIENTE', () => {
+  it('la DMR se DERIVA (riesgo leve → 2,30 m): sin columna DMR nunca queda PENDIENTE por dato', () => {
     const st2 = { ...st, roc: { ...st.roc, Dmuro: '' } };
     const L = checks(st2, R, {
       muros: [
@@ -34,8 +35,9 @@ describe('verificación: distancia de ramales a muros (guías esMuro, tolerancia
         ],
       ],
     });
-    expect(checkDe(L)?.st).toBe('PENDIENTE');
-    expect(checkDe(L)?.val).toBe('Sin Dmuro definido');
+    const v = checkDe(L);
+    expect(v?.st).toBe('CUMPLE'); // muro a 1 m ≤ 2,30 m derivados
+    expect(v?.nor).toContain('2,30');
   });
 
   it('sin muros marcados → PENDIENTE', () => {

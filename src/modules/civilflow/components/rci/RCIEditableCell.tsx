@@ -65,6 +65,15 @@ export function celdaEditable(on: boolean, control: ReactElement): ReactNode {
         ? { disabled: (props.disabled ?? false) || !on }
         : {
             readOnly: (props.readOnly ?? false) || !on,
+            // OFF = no interactuable (ped. usuario 2026-11-19: «no se deben dejar seleccionar
+            // ni nada»): sin foco por Tab y el blur mata el foco por click — la celda se ve
+            // idéntica (borde/fondo transparentes) pero no se puede seleccionar ni editar.
+            ...(on
+              ? {}
+              : {
+                  tabIndex: -1,
+                  onFocus: (e: { target: { blur: () => void } }) => e.target.blur(),
+                }),
             className: ((props as { className?: string }).className ?? '') + ' no-spin',
           }),
       style: {
@@ -92,6 +101,8 @@ export function celdaEditable(on: boolean, control: ReactElement): ReactNode {
               border: '1px solid transparent',
               backgroundColor: 'transparent',
               cursor: isSelect ? 'default' : 'text',
+              // Sin selección de texto del input en OFF (ped. usuario 2026-11-19).
+              userSelect: 'none',
             }),
       },
     },

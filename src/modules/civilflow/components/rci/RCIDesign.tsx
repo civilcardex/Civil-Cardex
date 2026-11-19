@@ -392,12 +392,13 @@ function RciDesign() {
   const ctx: RciCtx = { estado, R, tips, edit: false, editar, rectFuego: rectFuego ?? undefined };
   const avisosGris = gris.avisos.map((a) => `${a.piso}: ${a.msg}`);
   const noCumplen = R.count['NO CUMPLE'] || 0;
-  /* El selector de piso activo vive donde el contenido depende del piso: desde Rociadores en
-   * adelante (la tipología activa y el rectángulo de fuego se calculan sobre el piso activo).
-   * Entradas y Tipologías muestran TODOS los pisos en su tabla, ahí el desplegable sobra. */
+  /* El selector de piso activo vive donde el contenido depende del piso: desde Hidráulica en
+   * adelante (ped. usuario 2026-11-18 — en Tipologías la tabla ya muestra todos los pisos y
+   * el desplegable sobra allí; el rectángulo de fuego por piso se elige en su subpestaña).
+   * Entradas y Tipologías muestran TODOS los pisos, ahí el desplegable no aplica. */
   const idxTab = TABS_RCI.findIndex((t) => t.id === tab);
-  const idxRoc = TABS_RCI.findIndex((t) => t.id === 'tipologias');
-  const verPiso = idxTab >= idxRoc;
+  const idxHid = TABS_RCI.findIndex((t) => t.id === 'hidraulica');
+  const verPiso = idxTab >= idxHid;
 
   /** Conteo por estado para el chip resumen de la barra (clic → Verificaciones/Todas). */
   const conteo: { st: string; n: number }[] = ['CUMPLE', 'NO CUMPLE', 'REVISAR', 'PENDIENTE'].map(

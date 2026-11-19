@@ -5,34 +5,75 @@
  */
 import { fmtEs as f1 } from '../fmtEs.ts';
 import { num } from '../hydraulics';
+import { HZ } from '../tables';
 import type { ChecksCtx } from './helpers';
+
+/* S/L por FILA de Pisos del edificio (ped. usuario 2026-11-18): el chequeo lee las CELDAS
+ * de la tabla — cada piso con rociadores debe cumplir 1,8 ≤ S/L ≤ máximo de SU riesgo.
+ * Sin valor en la celda → PENDIENTE nombrando el piso (antes leía el agregado de
+ * tipologías y mostraba «0,00» cuando la fila del representante estaba vacía). */
+function chequearSl(ctx: ChecksCtx, k: 'S' | 'L'): void {
+  const { st, add, cita } = ctx;
+  const lab = `Separación entre ${k === 'S' ? 'rociadores' : 'ramales'} 1,8 m ≤ ${k} ≤ ${k} máx. (por piso)`;
+  /* Riesgo por fila: el propio de la celda; vacío hereda el GLOBAL de Entradas (ped.
+   *  usuario 2026-11-19: «ya está clasificado y aún aparece pendiente» — el filtro viejo
+   *  contaba como sin clasificar las filas cuyo riesgo vive solo en clas.riesgo). */
+  const riesgoG = st.clas.riesgo || 'Riesgo leve';
+  const filas = (st.pisos.rows || [])
+    .map((r, i) => ({ r, i, riesgo: r.riesgo || riesgoG }))
+    .filter(({ r }) => r.riesgo !== 'Sin rociadores');
+  if (!filas.length) {
+    add(
+      lab,
+      'PENDIENTE',
+      'Sin pisos con rociadores',
+      cita,
+      'Defina pisos en el plano o asigne riesgo en Pisos del edificio.',
+      ['tipologias', 'pisos'],
+    );
+    return;
+  }
+  const pend: string[] = [];
+  const mal: string[] = [];
+  filas.forEach(({ r, i, riesgo }) => {
+    const hz = HZ[riesgo] || HZ['Riesgo leve'];
+    const max = k === 'S' ? hz.s : hz.l;
+    const v = num(r[k]);
+    const nom = r.nombre || `Piso ${i + 1}`;
+    if (!v) pend.push(nom);
+    else if (v < 1.8 - 1e-9 || v > max + 1e-9)
+      mal.push(`${nom}: ${f1(v)} m (rango 1,8–${f1(max)} m)`);
+  });
+  if (mal.length) {
+    add(
+      lab,
+      'NO CUMPLE',
+      mal.slice(0, 4).join(' · ') + (mal.length > 4 ? ` · y ${mal.length - 4} más` : ''),
+      cita,
+      `Corrija la columna ${k} en Pisos del edificio: 1,80 m ≤ ${k} ≤ máximo del riesgo.`,
+      ['tipologias', 'pisos'],
+    );
+  } else if (pend.length) {
+    add(
+      lab,
+      'PENDIENTE',
+      `Sin dato: ${pend.slice(0, 4).join(', ')}${pend.length > 4 ? ` y ${pend.length - 4} más` : ''}`,
+      cita,
+      `Defina la columna ${k} en Pisos del edificio (1,80 m ≤ ${k} ≤ máximo del riesgo).`,
+      ['tipologias', 'pisos'],
+    );
+  } else {
+    add(lab, 'CUMPLE', `${k} en rango en los ${filas.length} piso(s)`, cita, '', undefined);
+  }
+}
 
 /** Separación entre rociadores y entre ramales, área por rociador y distancia a muro (por
  *  tipología); rociadores en operación y caudal ≥ densidad × área (con red calculada). */
 export function verificarRociadores(ctx: ChecksCtx): void {
   const { st, addT, cita, tpsRed } = ctx;
-  addT('Separación entre rociadores 1,8 m ≤ S ≤ S máx.', cita, ['tipologias', 'pisos'], (t) => {
-    const o = t.ro;
-    return {
-      st: o.S >= 1.8 && o.S <= o.hz.s ? 'CUMPLE' : 'NO CUMPLE',
-      val: `${f1(o.S)} ≤ ${f1(o.hz.s)} m`,
-      guide:
-        o.S > o.hz.s
-          ? `Reduzca S a ${f1(o.hz.s)} m o menos (añada rociadores en el ramal).`
-          : 'Aumente S a 1,80 m o más, o use pantallas entre rociadores.',
-    };
-  });
-  addT('Separación entre ramales 1,8 m ≤ L ≤ L máx.', cita, ['tipologias', 'pisos'], (t) => {
-    const o = t.ro;
-    return {
-      st: o.L >= 1.8 && o.L <= o.hz.l ? 'CUMPLE' : 'NO CUMPLE',
-      val: `${f1(o.L)} ≤ ${f1(o.hz.l)} m`,
-      guide:
-        o.L > o.hz.l
-          ? `Reduzca L a ${f1(o.hz.l)} m o menos (añada un ramal).`
-          : 'Aumente L a 1,80 m o más.',
-    };
-  });
+  /* S y L se verifican contra las CELDAS de la tabla Pisos del edificio (una fila por piso). */
+  chequearSl(ctx, 'S');
+  chequearSl(ctx, 'L');
   addT('Área por rociador ≤ cobertura máxima', cita, ['tipologias', 'pisos'], (t) => {
     const o = t.ro;
     return {
@@ -40,21 +81,6 @@ export function verificarRociadores(ctx: ChecksCtx): void {
       val: `${f1(o.Areal, 0)} ≤ ${o.Acmax} ft²`,
       guide: `Reduzca S × L a ${f1(o.Acmax * 0.092903)} m² o menos. Con S = ${f1(o.S)} m, L ≤ ${f1((o.Acmax * 0.092903) / o.S)} m.`,
     };
-  });
-  addT('Distancia a muro ≤ S máx./2', cita, ['tipologias', 'pisos'], (t) => {
-    /* DMR por piso (columna DMR de Pisos del edificio); sin valor propio cae a la global. */
-    const dm = t.ro.Dmuro > 0 ? t.ro.Dmuro : null;
-    return dm === null
-      ? {
-          st: 'PENDIENTE',
-          val: 'Sin dato',
-          guide: `Ingrese la distancia del último rociador al muro (columna DMR de Pisos del edificio): entre 0,10 m y ${f1(t.ro.hz.s / 2)} m.`,
-        }
-      : {
-          st: dm <= t.ro.hz.s / 2 && dm >= 0.1 ? 'CUMPLE' : 'NO CUMPLE',
-          val: `${f1(dm)} ≤ ${f1(t.ro.hz.s / 2)} m`,
-          guide: `Ubique el último rociador a no más de ${f1(t.ro.hz.s / 2)} m del muro y a no menos de 0,10 m.`,
-        };
   });
   const autoG = !!(st.auto && st.auto.on);
   addT(
@@ -65,7 +91,7 @@ export function verificarRociadores(ctx: ChecksCtx): void {
       st: t.Nop >= t.ro.Nreq ? 'CUMPLE' : 'NO CUMPLE',
       val: `${t.Nop} ≥ ${t.ro.Nreq}`,
       guide: autoG
-        ? `Faltan ${t.ro.Nreq - t.Nop} rociadores con flujo conectados a la red. Agregue ramales en PLANO (del más remoto hacia el montante), aumente "Fluyen" o revise las conexiones de los nudos.`
+        ? `Faltan ${t.ro.Nreq - t.Nop} rociadores con flujo conectados a la red. Agregue ramales en PLANO (del más remoto hacia el montante) o revise las conexiones de los nudos.`
         : `Faltan ${t.ro.Nreq - t.Nop} rociadores en el cálculo. Active la red automática o conecte más ramales (columna "Ramal conectado").`,
     }),
     tpsRed,

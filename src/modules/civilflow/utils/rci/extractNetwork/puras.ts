@@ -53,6 +53,17 @@ export function contarRociadores(el: RawElement): number {
   return n;
 }
 
+/** TODOS los rociadores dibujados en el trazo, INCLUYENDO los NF (ped. usuario 2026-11-19:
+ *  la columna DIBUJADOS cuenta todo lo dibujado — quitar el flujo a uno no lo borra). */
+export function contarRociadoresTotal(el: RawElement): number {
+  const esRoc = (v: unknown): boolean => !!v && RE_ROCIADOR.test(String(v));
+  let n = 0;
+  if (esRoc(el.accesorioInicio)) n++;
+  if (esRoc(el.accesorioFin)) n++;
+  for (const v of Object.values(el.accMed || {})) if (esRoc(v)) n++;
+  return n;
+}
+
 /** altDeriv del montante dibujado (m sobre el NPT); null si el elemento no la trae. */
 export function leerAltDeriv(el: RawElement): number | null {
   return num((el as { altDeriv?: unknown }).altDeriv);

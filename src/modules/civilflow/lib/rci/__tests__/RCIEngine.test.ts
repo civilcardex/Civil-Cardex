@@ -56,65 +56,69 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     cerca(Prem, 8.51);
     cerca(Qteo, 106.62);
     cerca(Llargo, 11.94);
-    /* Reparto desde el primer ramal de la tabla (el más remoto): R2, R1 y R3 */
+    /* Doctrina «fluyen = los dibujados con flujo» (ped. usuario 2026-11-19): el extractor
+     *  cuenta los rociadores de cada ramal (excluye los NF) y TODOS participan — el
+     *  reparto por área de diseño ya no recorta. Nop 16 ≥ Nreq 7 (chequeo lo vigila). */
     const rams = R.red!.rams;
     expect(rams.map((x) => x.nombre)).toEqual(['R2', 'R1', 'R3']);
-    expect(rams.map((x) => x.fl)).toEqual([3, 3, 1]);
-    expect(rams.map((x) => x.n0)).toEqual([1, 4, 7]);
-    expect(R.red!.Nop).toBe(7);
+    expect(rams.map((x) => x.fl)).toEqual([5, 5, 6]);
+    expect(rams.map((x) => x.n0)).toEqual([1, 6, 11]);
+    expect(R.red!.Nop).toBe(16);
   });
 
-  it('rociador más remoto y ramales: 16.34 gpm @ 8.51 psi; R1 gobierna el nudo A con 20.29 psi', () => {
+  it('rociador más remoto y ramales: 16.34 gpm @ 8.51 psi; R1 gobierna el nudo A con 19.70 psi', () => {
     const [r2c, r1c, r3c] = R.red!.rams;
-    /* Rociador más remoto (primer rociador de R2): q = K·√Prem = 16.34 gpm a 8.51 psi */
+    /* Rociador más remoto (primer rociador de R2): q = K·√Prem = 16.34 gpm a 8.51 psi
+       (no cambia: la presión de partida es la misma) */
     cerca(r2c.res!.rows[0].q, 16.34);
     cerca(r2c.res!.rows[0].Pini, 8.51);
-    /* Diámetros automáticos por velocidad: R2 y R1 de 1¼", R3 de 1" */
-    expect(r2c.res!.dn).toBe('1 1/4"');
-    expect(r1c.res!.dn).toBe('1 1/4"');
-    expect(r3c.res!.dn).toBe('1"');
-    /* R1: 50.75 gpm @ 20.29 psi en el nudo A; brazo = 22.20 − 2·4.30 = 13.60 m */
-    cerca(r1c.brazo, 13.6);
-    cerca(r1c.res!.Qend, 50.75);
-    cerca(r1c.res!.Pend, 20.29);
-    /* R2 llega a A pidiendo 16.36 psi con 50.75 gpm → se equilibra a la presión de A */
-    cerca(r2c.res!.Qend, 50.75);
-    cerca(r2c.res!.Pend, 16.36);
-    /* R3: 16.34 gpm @ 16.35 psi, K equivalente 4.040 */
-    cerca(r3c.res!.Qend, 16.34);
-    cerca(r3c.res!.Pend, 16.35);
-    cerca(r3c.res!.Keq, 4.04);
-    /* Nudo A: gobierna R1; caudal equilibrado 107.26 gpm */
+    /* Diámetros automáticos por velocidad con los caudales mayores: R2 y R1 de 1½" */
+    expect(r2c.res!.dn).toBe('1 1/2"');
+    expect(r1c.res!.dn).toBe('1 1/2"');
+    /* R1: 87.87 gpm @ 19.70 psi en el nudo A; brazo = 22.20 − 4·4.30 = 5.00 m (5 fluyen) */
+    cerca(r1c.brazo, 5.0);
+    cerca(r1c.res!.Qend, 87.87);
+    cerca(r1c.res!.Pend, 19.7);
+    /* R2 llega a A pidiendo 13.84 psi con 87.87 gpm → se equilibra a la presión de A */
+    cerca(r2c.res!.Qend, 87.87);
+    cerca(r2c.res!.Pend, 13.84);
+    /* R3: 110.37 gpm @ 23.34 psi, K equivalente 22.85 */
+    cerca(r3c.res!.Qend, 110.37);
+    cerca(r3c.res!.Pend, 23.34);
+    cerca(r3c.res!.Keq, 22.85);
+    /* Nudo A: gobierna R1; caudal equilibrado 192.70 gpm */
     const A = R.red!.nodes.A;
-    cerca(A.P!, 20.29);
-    cerca(A.Q!, 107.26);
+    cerca(A.P!, 19.7);
+    cerca(A.Q!, 192.7);
     expect(A.gov!.tipo).toBe('ramal');
     expect((A.gov as { x: { nombre: string } }).x.nombre).toBe('R1');
   });
 
-  it('tramos hasta la derivación C: T2 suma 4.72 m (1.92 planta + 2.80 bajada) y 2 codos; C = 128.54 gpm @ 37.70 psi', () => {
+  it('tramos hasta la derivación C: T2 suma 4.72 m (1.92 planta + 2.80 bajada) y 2 codos; C = 311.17 gpm @ 45.08 psi', () => {
     const [t1, t2] = R.red!.tramos;
-    /* T1 (A→B): 3.87 m + tee 2.44 m con 107.26 gpm → 7.44 psi; B queda en 27.73 psi */
+    /* T1 (A→B): 3.87 m + tee 2.44 m con 192.70 gpm → 7.19 psi; B queda en 26.89 psi */
     expect(t1.t.L).toBe(3.87);
     const f1 = t1.res!.rows[0] as PipeCalc;
-    cerca(f1.Lt, 6.31);
-    cerca(f1.Pf, 7.44);
-    cerca(t1.res!.Pend, 27.73);
+    cerca(f1.Lt, 6.92); // tee 2.44 m pasa a leq 3.05 con el DN 1½" del tramo (caudal mayor)
+    cerca(f1.Pf, 7.19);
+    cerca(t1.res!.Pend, 26.89);
     /* T2 (B→C): L de la fila = 4.72 m (1.92 de planta + 2.80 de bajada), 2 codos + tee +
-       mariposa + detector de flujo (DF del catálogo) = 10.29 m equivalentes */
+       mariposa + detector de flujo (DF del catálogo) = 13.65 m equivalentes con el DN 2½"
+       que elige el cálculo para los 311 gpm de los 16 rociadores que fluyen. */
     expect(t2.t.L).toBe(4.72);
     expect(t2.t.c90).toBe(2);
     expect(t2.t.mar).toBe(1);
     expect(t2.t.esp).toBe('DF');
+    expect(t2.res!.rows[0].dnUsed).toBe('2 1/2"');
     const f2 = t2.res!.rows[0] as PipeCalc;
-    cerca(f2.leq, 10.29);
-    cerca(f2.Lt, 15.01);
-    cerca(f2.Pf, 6.0, 0.05);
+    cerca(f2.leq, 13.65);
+    cerca(f2.Lt, 18.37);
+    cerca(f2.Pf, 14.21);
     /* Desnivel de la bajada: 2.80 m × 1.4206 = 3.98 psi */
     cerca(f2.Pe, 3.98);
-    /* Derivación C (raíz de la red): 128.54 gpm @ 37.70 psi */
-    cerca(R.red!.rt!.Q!, 128.54);
-    cerca(R.red!.rt!.P!, 37.7);
+    /* Derivación C (raíz de la red): 311.17 gpm @ 45.08 psi */
+    cerca(R.red!.rt!.Q!, 311.17);
+    cerca(R.red!.rt!.P!, 45.08);
     expect(R.red!.errs).toEqual([]);
   });
 
@@ -138,7 +142,7 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
 
   it('perfil de presiones: sin VRP, válvula reguladora en los 3 pisos, estática máx 174.2 psi', () => {
     const pf = R.edif.pf;
-    cerca(pf[0].Preq!, 37.7);
+    cerca(pf[0].Preq!, 45.08); // = P en la derivación C (45.08) con los 311 gpm de los 16 rociadores
     pf.forEach((o) => {
       expect(o.vrp).toBe(false);
       expect(o.reg).toBe(true);
@@ -154,9 +158,9 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
 
   it('bomba (NFPA 20): D2 128.16 psi netos → 500 gpm @ 141 psi, motor 75 HP, churn 169.2 psi', () => {
     const b = R.bomba;
-    /* D1 rociadores: 228.54 gpm (128.54 + 100 de mangueras) */
-    cerca(b.D1.Q, 228.54);
-    cerca(b.D1.P, 58.99, 0.5);
+    /* D1 rociadores: 411.17 gpm (311.17 de los 16 rociadores + 100 de mangueras) */
+    cerca(b.D1.Q, 411.17);
+    cerca(b.D1.P, 70.19, 0.5);
     /* D2 montantes gobierna: 127.36 − (−0.80) = 128.16 psi netos */
     cerca(b.D2!.Q, 500);
     cerca(b.D2!.Pdes, 127.36);
@@ -181,19 +185,31 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     cerca(b.D2!.disp!, 141);
   });
 
-  it('tanque (NFPA 22): 56.8 m³ útiles gobernados por los montantes (30 min)', () => {
+  it('tanque (NFPA 22): 56.8 m³ útiles gobernados por los montantes (30 min) · rociadores 46.7', () => {
     cerca(R.tanque.V, 56.78);
     cerca(R.tanque.Vsp, 56.78);
-    cerca(R.tanque.Vroc, 25.95);
+    cerca(R.tanque.Vroc, 46.69);
     expect(R.tanque.dur).toBe(30);
     expect(R.tanque.tip).toBe('T1');
   });
 
-  it('verificaciones: 44 de 44 en estado CUMPLE', () => {
-    expect(R.checks).toHaveLength(44);
-    expect(R.count).toEqual({ CUMPLE: 44 });
-    const noCumplen = R.checks.filter((v) => v.st !== 'CUMPLE');
-    expect(noCumplen.map((v) => `${v.lab}: ${v.st} ${v.val}`)).toEqual([]);
+  it('verificaciones: el ejemplo cierra 43 CUMPLE con T2 en 2½" (diámetro calculado)', () => {
+    expect(R.checks).toHaveLength(43);
+    expect(R.count).toEqual({ CUMPLE: 43 });
+    expect(R.checks.filter((v) => v.st !== 'CUMPLE')).toEqual([]);
+  });
+
+  it('verificaciones: forzar T2 a 2" con 311 gpm sí dispara el REVISAR de velocidad', () => {
+    /* El ejemplo trae T2 en 'auto' para que todo CUMPLE, pero el chequeo de velocidad debe
+       seguir cubierto: con el diámetro fijo en 2" el tramo pasa a 8,34 m/s. */
+    const stFijo = ejemploVerificacion();
+    stFijo.redes.A.tramos[1].dn = '2"';
+    const Rfijo = compute(stFijo, clasificar(stFijo));
+    expect(Rfijo.count).toEqual({ CUMPLE: 42, REVISAR: 1 });
+    const nc = Rfijo.checks.filter((v) => v.st !== 'CUMPLE');
+    expect(nc).toHaveLength(1);
+    expect(nc[0].lab).toContain('Velocidad');
+    expect(nc[0].guide).toContain('diámetro');
   });
 
   it('compute es determinista: dos corridas dan el mismo resultado (puro, sin estado global)', () => {

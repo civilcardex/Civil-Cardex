@@ -33,8 +33,10 @@ export interface TrazoDib {
   b: Punto;
   /** Longitud dibujada en m (totalL del motor de dibujo). */
   L: number;
-  /** Rociadores dibujados sobre el trazo. */
+  /** Rociadores que FLUYEN sobre el trazo (excluye los NF). */
   roci: number;
+  /** TODOS los rociadores dibujados (incluye NF) — columna DIBUJADOS. */
+  rociTot: number;
   acc: AccDib[];
   mat: string;
   dn: string;

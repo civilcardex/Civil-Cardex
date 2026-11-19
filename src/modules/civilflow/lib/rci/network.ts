@@ -109,16 +109,16 @@ export function computeRed(
     const v = red!.nodos && red!.nodos[nm] ? num(red!.nodos[nm].z) : null;
     return v !== null ? v : nm === root && num(ctx.hD) !== null ? (num(ctx.hD) as number) : zRam;
   };
-  /* Rociadores que fluyen: los indicados, o automáticamente desde el primer ramal (el más remoto) hasta completar el área */
-  let rem = ro.Nreq;
+  /* Rociadores que fluyen (ped. usuario 2026-11-19, doctrina final): TODOS los dibujados
+   *  que fluyen (el extractor ya excluye los NF). Sin reparto por área de diseño — el
+   *  chequeo «Rociadores en operación ≥ requeridos» sigue vigilando que alcancen para el
+   *  área. El override manual (r.fluyen) se retiró de la tabla y se ignora aquí. */
   const rams: RamalCalc[] = red.ramales.map((r, i) => {
     const dib = num(r.dib);
-    let fl = num(r.fluyen);
-    const auto = fl === null;
-    if (auto)
-      fl = Math.max(0, Math.min(Math.max(ro.Nramal, 1), dib === null ? Infinity : dib, rem));
-    fl = Math.max(0, Math.round(fl as number));
-    rem -= fl;
+    /* fluyen = los que fluyen DEL DIBUJO (rociadores con flujo; el extractor excluye los NF).
+     *  La columna DIBUJADOS (r.dib) cuenta TODOS los dibujados, incluidos los NF. */
+    const fl = Math.max(0, num(r.fluDib) ?? num(r.dib) ?? 0);
+    const auto = true;
     return {
       r,
       i,
