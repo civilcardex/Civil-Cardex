@@ -292,6 +292,7 @@ export async function saveRedesActivas(proyectoId: string, redes: string[]): Pro
  * Carga los datos generales de diseño de gas (gas_datos_proyecto, 1:1 con el proyecto).
  * Devuelve null cuando la fila no existe aún — el llamador decide si usar defaults.
  */
+
 export async function loadGasDatos(proyectoId: string): Promise<GasDatosGenerales | null> {
   try {
     const { data, error } = await supabase
