@@ -17,11 +17,13 @@ export const SITE_URL =
 
 /** Cabeceras CORS para llamadas desde el navegador: supabase-js (functions.invoke) envía
  *  Authorization + apikey + Content-Type (no safelisted) ⇒ el navegador exige preflight
- *  OPTIONS y cabeceras en CADA respuesta. Sin cookies ⇒ '*' seguro. ls-webhook es
- *  server-to-server: se las manda igual, inofensivas. */
+ *  OPTIONS y cabeceras en CADA respuesta. Origin restringido al sitio que las llama
+ *  (SITE_URL — el mismo secret del redirect): ls-webhook es server-to-server y las
+ *  recibe igual (el navegador no participa). */
 export const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': SITE_URL,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  Vary: 'Origin',
 };
 
 /** Respuesta a un preflight OPTIONS (204 sin cuerpo). */
