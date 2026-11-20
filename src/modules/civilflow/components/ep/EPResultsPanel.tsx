@@ -9,6 +9,8 @@ import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
 import { LazyInp, Param, type EPData } from './EPShared';
 import { fmtBar, fmtGpm, fmtL, fmtLps, fmtM3h, fmtMca, fmtMm, fmtMs } from './epCalcs.ts';
+import { svgSetpoint } from './epSvgSetpoint.ts';
+import { fmtUn, unS, type EpUn } from './epUnidades.ts';
 import { type EpCalc } from './epAdapter.ts';
 import { dec } from '../../utils/parseDecimal.ts';
 
@@ -19,6 +21,8 @@ interface EPResultsPanelProps {
   calc: EpCalc;
   editDiametros: boolean;
   setEditDiametros: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Unidad de presentación activa (solo convierte lo que se ve; el motor sigue en m.c.a.). */
+  unidad: EpUn;
 }
 
 export default function EPResultsPanel({
@@ -27,6 +31,7 @@ export default function EPResultsPanel({
   calc,
   editDiametros,
   setEditDiametros,
+  unidad,
 }: EPResultsPanelProps) {
   return (
     <div className="flex-row-10">
@@ -53,26 +58,26 @@ export default function EPResultsPanel({
             rows={[
               [
                 'P mínima en la descarga (arranque mín.)',
-                <span className="ep-m">{fmtMca(calc.pdesc)}</span>,
-                'm.c.a.',
+                <span className="ep-m">{fmtUn(calc.pdesc, unidad)}</span>,
+                unS(unidad),
                 'P mín. descarga = Hg + Hf_ac + Pmin',
               ],
               [
                 'Presión de arranque (≥ P mín. + margen)',
-                <span className="ep-m">{fmtMca(calc.Pon)}</span>,
-                'm.c.a.',
+                <span className="ep-m">{fmtUn(calc.Pon, unidad)}</span>,
+                unS(unidad),
                 'Arranque = P mín. descarga + margen, redondeado hacia arriba',
               ],
               [
                 'P objetivo del variador (setpoint)',
-                <span className="ep-m">{fmtMca(calc.pset)}</span>,
-                'm.c.a.',
+                <span className="ep-m">{fmtUn(calc.pset, unidad)}</span>,
+                unS(unidad),
                 'P objetivo = arranque + banda / 2',
               ],
               [
                 'Presión de parada',
-                <span className="ep-m">{fmtMca(calc.Poff)}</span>,
-                'm.c.a.',
+                <span className="ep-m">{fmtUn(calc.Poff, unidad)}</span>,
+                unS(unidad),
                 'Parada = arranque + banda de control',
               ],
               [
@@ -89,16 +94,18 @@ export default function EPResultsPanel({
               ],
               [
                 'P parada máxima admisible (Perfil)',
-                <span className="ep-m">{calc.poffmax != null ? fmtMca(calc.poffmax) : '—'}</span>,
-                'm.c.a.',
+                <span className="ep-m">
+                  {calc.poffmax != null ? fmtUn(calc.poffmax, unidad) : '—'}
+                </span>,
+                unS(unidad),
                 calc.poffmax != null && calc.poffMca > calc.poffmax
                   ? '⚠ La parada supera la admisible: VRP en los pisos bajos'
                   : 'Del Perfil de presiones: tubería y estática en aparatos',
               ],
               [
                 'Tarado sugerido de la válvula de alivio (PSV)',
-                <span className="ep-m">{fmtMca(calc.psv)}</span>,
-                'm.c.a.',
+                <span className="ep-m">{fmtUn(calc.psv, unidad)}</span>,
+                unS(unidad),
                 'PSV = máx(1,10 × parada · parada + 3); ≤ la admisible de la tubería',
               ],
               [
@@ -116,6 +123,18 @@ export default function EPResultsPanel({
                 'Vu = Qmín × Tc / 4',
               ],
               [
+                'Caudal mín. de parada · ciclo',
+                <span className="ep-m">{`${calc.qmin.toFixed(2)} · ${calc.tc.toFixed(0)}`}</span>,
+                'L/s · s',
+                'Qmín = %Qb × Qb · Tc = 3600 / arranques/h',
+              ],
+              [
+                'Factor de entrega β (Boyle, con precarga)',
+                <span className="ep-m">{calc.alfa.toFixed(4)}</span>,
+                'dec',
+                'β = (P₀+Patm)/(P_arr+Patm) − (P₀+Patm)/(P_par+Patm)',
+              ],
+              [
                 <span className="ep-strong-txt-700">
                   Volumen total tanque Vt = Vu / β (Boyle con precarga)
                 </span>,
@@ -130,6 +149,11 @@ export default function EPResultsPanel({
                 'Vt / 1000',
               ],
             ]}
+          />
+          {/* Barra de setpoint (ped. 2026-11-20): mín → arranque → objetivo → parada vs máx. */}
+          <div
+            style={{ padding: '2px 10px 8px' }}
+            dangerouslySetInnerHTML={{ __html: svgSetpoint(calc, unidad) }}
           />
         </Card>
         <Card

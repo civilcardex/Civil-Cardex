@@ -1,6 +1,8 @@
 /** Diámetros comerciales de tubería PVC (Policloruro de Vinilo) Sch 40 con su diámetro interior
  *  real (mm). La consume selectDN para dimensionar y la verificación del módulo ep (Equipo de
- *  Presión). */
+ *  Presión). VIVE AQUÍ para utils/equipmentRows.ts (memoria del Informe); el motor del módulo usa su
+ *  propia tabla con presión admisible en epEngine.ts (EP_MATS.pvc40) — mantener ambas si se
+ *  agrega un DN. */
 export const PVC_SCH40 = [
   { dn: 20, dInt: 20.93 },
   { dn: 25, dInt: 26.64 },

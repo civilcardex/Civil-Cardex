@@ -9,7 +9,8 @@ import Tbl from '../shared/Tbl';
 import EditButton from '../shared/EditButton.tsx';
 import { EP_HP2KW, EP_POT_COM_HP } from './epEngine.ts';
 import { LazyInp, type EPData } from './EPShared';
-import { fmtGpm, fmtHp, fmtLps, fmtM3h, fmtW } from './epCalcs.ts';
+import { fmtGpm, fmtHp, fmtLps, fmtM3h, fmtMca, fmtW } from './epCalcs.ts';
+import { fmtUn, unS, type EpUn } from './epUnidades.ts';
 import { type EpCalc } from './epAdapter.ts';
 
 interface EPParamsPanelProps {
@@ -21,6 +22,8 @@ interface EPParamsPanelProps {
   setEditParams: React.Dispatch<React.SetStateAction<boolean>>;
   editPComercial: boolean;
   setEditPComercial: React.Dispatch<React.SetStateAction<boolean>>;
+  /** Unidad de presentación activa (solo convierte lo que se ve; el motor sigue en m.c.a.). */
+  unidad: EpUn;
 }
 
 export default function EPParamsPanel({
@@ -31,10 +34,67 @@ export default function EPParamsPanel({
   setEditParams,
   editPComercial,
   setEditPComercial,
+  unidad,
 }: EPParamsPanelProps) {
   return (
-    <div className="flex-row-8">
-      <div className="flex-col-min">
+    <div className="flex-row-8" style={{ alignItems: 'flex-start' }}>
+      <div className="flex-col-min" style={{ gap: 5 }}>
+        {/* Bloque 7a (ped. 2026-11-20): el contrato con el proveedor — lo que el equipo
+         *  DEBE garantizar, con la nota de optimización del proveedor. */}
+        <Card
+          className="ep-card-col"
+          iconImg="/iconos_civilflow/diseno_redes/equipos/parametros_equipo.webp"
+          iconClassName="card-icon-20"
+          title="7. Parámetros de diseño a garantizar"
+          bodyClassName="card-b-p0"
+        >
+          <Tbl
+            tableClassName="tbl-calc-fixed"
+            caption="Parámetros de diseño a garantizar"
+            thClassName="tbl-th-s"
+            tdClassName="tbl-td-s"
+            cols={['Parámetro', 'Valor', 'Unidad']}
+            tips={['Nombre del parámetro.', 'Valor calculado.', 'Unidad del valor.']}
+            rows={[
+              ['Caudal de diseño Qd', <span className="ep-m">{fmtLps(calc.Qd)}</span>, 'L/s'],
+              [
+                'P mínima en la descarga (arranque mín.)',
+                <span className="ep-m">{fmtUn(calc.pdesc, unidad)}</span>,
+                unS(unidad),
+              ],
+              [
+                'P de parada máxima admisible',
+                <span className="ep-m">
+                  {calc.poffmax != null ? fmtUn(calc.poffmax, unidad) : '—'}
+                </span>,
+                unS(unidad),
+              ],
+              [
+                calc.isRed ? 'P mínima en la succión (Pred)' : 'Nivel mínimo de la cisterna (NAM)',
+                <span className="ep-m">
+                  {calc.isRed ? fmtUn(calc.pred, unidad) : fmtMca(calc.zcis)}
+                </span>,
+                calc.isRed ? unS(unidad) : 'm',
+              ],
+              ['NPSH disponible', <span className="ep-m">{fmtMca(calc.npshd)}</span>, 'm'],
+              [
+                'Presión máxima del sistema',
+                <span className="ep-m">{fmtUn(calc.pmax, unidad)}</span>,
+                unS(unidad),
+              ],
+              ['Cota de la descarga', <span className="ep-m">{fmtMca(calc.zbomba)}</span>, 'm'],
+              [
+                'Bombas de reserva',
+                <span className="ep-m">{`≥ ${Math.max(1, calc.nr)}`}</span>,
+                'ud',
+              ],
+            ]}
+          />
+          <p className="ep-comment" style={{ padding: '4px 10px 8px' }}>
+            El proveedor puede optimizar configuración, bombas, potencia, tanque y montaje, siempre
+            que garantice estos parámetros.
+          </p>
+        </Card>
         <Card
           className="ep-card-col"
           iconImg="/iconos_civilflow/diseno_redes/equipos/parametros_equipo.webp"
@@ -138,7 +198,9 @@ export default function EPParamsPanel({
             ]}
           />
         </Card>
-        {/* Tablas 6 y 7 debajo de la 5, subdividiendo su columna. */}
+      </div>
+      <div className="flex-col-min" style={{ gap: 5 }}>
+        {/* 9 y 10 una al lado de la otra, arriba de la 11 (ped. usuario 2026-11-20). */}
         <div className="flex-row-8">
           <Card
             className="ep-card-col-fill"
@@ -209,10 +271,6 @@ export default function EPParamsPanel({
             />
           </Card>
         </div>
-      </div>
-      <div className="flex-col-min">
-        {/* Boceto usuario: izquierda 5 + fila 6|7; derecha 8 arriba y 9 abajo. */}
-        {/* Derecha: 8 arriba y 9 abajo. */}
         <Card
           className="ep-card-col"
           iconImg="/iconos_civilflow/diseno_redes/equipos/altura_manometrica.webp"
@@ -233,9 +291,9 @@ export default function EPParamsPanel({
                 // RED: z_top − z_bomba · CISTERNA: z_top − z_cis (Excel CISTERNA C8).
                 calc.isRed ? 'Desnivel geométrico' : 'Desnivel total Hg (z_top − z_cis)',
                 <span className={calc.hgOk ? 'ep-ok-solid' : 'ep-err-solid'}>
-                  {calc.hgOk ? `✓ ${calc.Hg.toFixed(2)}` : `✗ ${calc.Hg.toFixed(2)}`}
+                  {calc.hgOk ? `✓ ${fmtUn(calc.Hg, unidad)}` : `✗ ${fmtUn(calc.Hg, unidad)}`}
                 </span>,
-                'm.c.a.',
+                unS(unidad),
               ]);
               r.push([
                 // Excel C73: "Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros" (incluye otros).
@@ -243,43 +301,45 @@ export default function EPParamsPanel({
                 calc.isRed ? 'Hf crítica = MAX(Hf_ac, Hf_acs) + Hf_otros' : 'Hf total',
                 <span className={calc.hfOk ? 'ep-ok-solid' : 'ep-err-solid'}>
                   {calc.hfOk
-                    ? `✓ ${(calc.isRed ? calc.HfCrit + calc.hfotros : calc.Hf).toFixed(2)}`
-                    : `✗ ${(calc.isRed ? calc.HfCrit + calc.hfotros : calc.Hf).toFixed(2)}`}
+                    ? `✓ ${fmtUn(calc.isRed ? calc.HfCrit + calc.hfotros : calc.Hf, unidad)}`
+                    : `✗ ${fmtUn(calc.isRed ? calc.HfCrit + calc.hfotros : calc.Hf, unidad)}`}
                 </span>,
-                'm.c.a.',
+                unS(unidad),
               ]);
               r.push([
                 'Presión mínima punto crítico',
                 <span className={calc.pminOk ? 'ep-ok-solid' : 'ep-err-solid'}>
-                  {calc.pminOk ? `✓ ${calc.pmin.toFixed(2)}` : `✗ ${calc.pmin.toFixed(2)}`}
+                  {calc.pminOk ? `✓ ${fmtUn(calc.pmin, unidad)}` : `✗ ${fmtUn(calc.pmin, unidad)}`}
                 </span>,
-                'm.c.a.',
+                unS(unidad),
               ]);
               if (calc.isRed)
                 r.push([
                   'Presión disponible acometida',
                   <span className={calc.predOk ? 'ep-ok-solid' : 'ep-err-solid'}>
-                    {calc.predOk ? `✓ ${calc.pred.toFixed(2)}` : `✗ ${calc.pred.toFixed(2)}`}
+                    {calc.predOk
+                      ? `✓ ${fmtUn(calc.pred, unidad)}`
+                      : `✗ ${fmtUn(calc.pred, unidad)}`}
                   </span>,
-                  'm.c.a.',
+                  unS(unidad),
                 ]);
               r.push([
                 <span className="ep-bold">Altura manométrica total HMT</span>,
                 <span className={calc.hmtOk ? 'ep-ok-solid' : 'ep-err-solid'}>
-                  {calc.hmtOk ? `✓ ${calc.HMT.toFixed(2)}` : `✗ ${calc.HMT.toFixed(2)}`}
+                  {calc.hmtOk ? `✓ ${fmtUn(calc.HMT, unidad)}` : `✗ ${fmtUn(calc.HMT, unidad)}`}
                 </span>,
-                'm.c.a.',
+                unS(unidad),
               ]);
               r.push([
                 'Verificación presión máxima del sistema',
                 calc.alertaPmax ? (
                   <span className="ep-err">
-                    ⚠ {calc.HMT.toFixed(2)} &gt; {calc.pmax.toFixed(2)}
+                    ⚠ {fmtUn(calc.HMT, unidad)} &gt; {fmtUn(calc.pmax, unidad)}
                   </span>
                 ) : (
                   <span className="ep-ok">✓ HMT dentro del límite</span>
                 ),
-                'm.c.a.',
+                unS(unidad),
               ]);
               return r;
             })()}

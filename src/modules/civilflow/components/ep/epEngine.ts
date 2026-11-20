@@ -147,7 +147,8 @@ export const EP_MATS: Record<string, MatEpc> = {
 };
 
 /** Potencias comerciales IEC/NEMA en HP con kW (port de POT_COM_HP/HP2KW del HTML — serie
- *  más completa que NEMA_HP del motor viejo: 0,25…150). */
+ *  más completa que NEMA_HP del motor viejo: 0,25…150; NEMA_HP de calcs.ts solo vive para
+ *  utils/equipmentRows.ts). */
 export const EP_POT_COM_HP = [
   0.25, 0.33, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 5.5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50,
   60, 75, 100, 125, 150,
@@ -196,6 +197,8 @@ export const EP_USO_CAT: Array<[string, string, number]> = [
   ['Otro consumo fijo', 'L/d', 1],
 ];
 
+/** Una fila de la tabla de usos de la cisterna: k = índice en EP_USO_CAT, c = cantidad y
+ *  d = dotación editable (L/unidad·d). Ej: {k:0, c:192, d:150} = 192 hab × 150 L/d. */
 export interface EpcUso {
   k: number;
   c: number;
@@ -247,6 +250,9 @@ export interface EpcIn {
   potSel: number;
 }
 
+/** Alerta del cálculo en 3 niveles: 'er' bloquea la emisión, 'wa' advierte y 'in' es una
+ *  recomendación PARA LA RED (el equipo cumple). h = cómo resolverlo (lista numerada);
+ *  go = campo a enfocar («Ir al dato»); fix = arreglo directo con un clic. */
 export interface EpcAlerta {
   tipo: 'er' | 'wa' | 'in';
   msg: string;
@@ -257,6 +263,9 @@ export interface EpcAlerta {
   fix?: { go: string; val: number; t: string };
 }
 
+/** Diámetro nominal elegido para un ramal: dn comercial, di interior (mm), pa presión
+ *  admisible del material (null = según la unión), vreal velocidad resultante (m/s);
+ *  fuera = true si el caudal supera la tabla completa. Ej: {dn:150, di:154.05, pa:98.4, vreal:0.69}. */
 export interface EpcDn {
   dn: number;
   di: number;
@@ -265,6 +274,10 @@ export interface EpcDn {
   fuera?: boolean;
 }
 
+/** Geometría y operación de la cisterna calculadas: alturas por banda (hs/hrci/subS/hu/hbl),
+ *  dimensiones internas (nC compartimentos de lC×bC), sumergencia ANSI/HI 9.8 (dS/vS/frS/subS),
+ *  volúmenes (vuR útil, vmuerto muerto, vgeo construido), cotas (zFondo/zToma/zNAV/zLosa) y
+ *  reposición (qrep necesario vs qa acometida; repOk veredicto; tLlen horas de llenado). */
 export interface EpcCis {
   hu: number;
   hs: number;
@@ -294,6 +307,11 @@ export interface EpcCis {
   tLlen: number | null;
 }
 
+/** RESULTADO COMPLETO del motor EPC (todo en m.c.a. — la unidad del proyecto convierte en
+ *  la UI). Incluye entradas ecoadas (qac/pmin/…), cadena de alturas (hg/pdesc/hsuc/hmt/hcero),
+ *  potencias (phid/pb/pbhp/pins/pinkw), control variador (ponMca/pset/poffMca/pn2Mca/vu/vtk/alfa),
+ *  diámetros (dnSuc/dnImp/dnB/dnBs), NPSH (npshd/patm/pvMca), presión admisible y PSV (paMin/psv),
+ *  potencia comercial (potComHp/potComKw), cisterna (cis), alertas y datos faltantes (incompleto). */
 export interface EpcR {
   qac: number;
   hfac: number;

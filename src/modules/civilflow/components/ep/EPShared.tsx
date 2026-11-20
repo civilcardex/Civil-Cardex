@@ -3,8 +3,12 @@
  *  entrada); lo comparten las 3 páginas del módulo (entrada, tanque, verificación). */
 import React from 'react';
 import { LazyDecimalInput } from '../shared/LazyDecimalInput.tsx';
+import { EP_UNI, aMca, esCampoPresion, type EpUn } from './epUnidades.ts';
 
 export interface EPData {
+  /** Nombre del proyecto y profesional responsable (bloque 1: alimentan memoria y cajetín). */
+  proyecto: string;
+  elaborado: string;
   qac: string;
   qasc: string;
   hfac: string;
@@ -75,6 +79,8 @@ export interface EPData {
  *  (presión mínima 5 m.c.a., eficiencia de bomba 0.65, factor de seguridad 1.15) y el resto
  *  vacío para que el usuario llene lo de SU proyecto. */
 export const EP_DEFAULTS: EPData = {
+  proyecto: 'Proyecto',
+  elaborado: '',
   qac: '',
   qasc: '',
   hfac: '',
@@ -129,8 +135,10 @@ export const EP_DEFAULTS: EPData = {
 };
 
 /** Entrada decimal ligada a un campo de EPData: solo commitea al perder el foco, así el
- *  recálculo del módulo ep (Equipo de Presión) no corre con cada tecla. Ej: el campo Presión
- *  mínima es <LazyInp field="pmin" className="ds-si" ariaLabel="..." />. */
+ *  recálculo del módulo ep (Equipo de Presión) no corre con cada tecla. Con `unidad`, los
+ *  campos de PRESIÓN (esCampoPresion) se muestran en la unidad activa y commitean de vuelta
+ *  a m.c.a.; el resto de campos pasa tal cual. Ej: el campo Presión mínima es
+ *  <LazyInp field="pmin" unidad={unidad} className="ds-si" ariaLabel="..." />. */
 export function LazyInp({
   field,
   className = '',
@@ -138,6 +146,7 @@ export function LazyInp({
   disabled,
   ep,
   updEP,
+  unidad,
 }: {
   field: keyof EPData;
   /** Clases extra (variantes .ds-si-*: tamaño, acento…). */
@@ -146,11 +155,30 @@ export function LazyInp({
   disabled?: boolean;
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
+  /** Unidad de presentación activa del módulo (el almacenamiento sigue en m.c.a.). */
+  unidad?: EpUn;
 }) {
+  const esP = !!unidad && esCampoPresion(field);
+  const f = esP ? EP_UNI[unidad!].f : 1;
+  const raw = String(ep[field] ?? '');
+  const nRaw = parseFloat(raw);
+  const mostrar =
+    raw === '' || isNaN(nRaw)
+      ? raw
+      : esP
+        ? String(+(nRaw * f).toFixed(EP_UNI[unidad!].d + 1))
+        : raw;
   return (
     <LazyDecimalInput
-      value={String(ep[field] ?? '')}
-      onCommit={(v) => updEP(field, v)}
+      value={mostrar}
+      onCommit={(v) => {
+        if (!esP || v === '') {
+          updEP(field, v);
+          return;
+        }
+        const n = parseFloat(v.replace(',', '.'));
+        updEP(field, isNaN(n) ? v : String(+aMca(n, unidad!).toFixed(6)));
+      }}
       ariaLabel={ariaLabel}
       disabled={disabled}
       className={`ds-si${disabled ? ' ds-si-off' : ''}${className ? ` ${className}` : ''}`}

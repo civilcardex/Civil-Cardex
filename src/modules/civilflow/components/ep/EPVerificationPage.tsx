@@ -8,17 +8,21 @@ import { type EPData } from './EPShared';
 import EPParamsPanel from './EPParamsPanel.tsx';
 import EPResultsPanel from './EPResultsPanel.tsx';
 import { calcEpc } from './epAdapter.ts';
+import { type EpUn } from './epUnidades.ts';
 
 interface EPVerificationPageProps {
   section?: 'params' | 'results';
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
+  /** Unidad de presentación (m.c.a./bar/psi/kPa) que viaja a los paneles. */
+  unidad: EpUn;
 }
 
 export default function EPVerificationPage({
   section = 'results',
   ep,
   updEP,
+  unidad,
 }: EPVerificationPageProps) {
   // Cadena de cálculo completa (caudales, HMT, potencias, setpoints, diámetros) — alimenta
   // ambos paneles, por eso se memoiza aquí y viaja por props (antes vivía inline con memos sueltos).
@@ -41,6 +45,7 @@ export default function EPVerificationPage({
         setEditParams={setEditParams}
         editPComercial={editPComercial}
         setEditPComercial={setEditPComercial}
+        unidad={unidad}
       />
     );
   }
@@ -51,6 +56,7 @@ export default function EPVerificationPage({
       calc={calc}
       editDiametros={editDiametros}
       setEditDiametros={setEditDiametros}
+      unidad={unidad}
     />
   );
 }

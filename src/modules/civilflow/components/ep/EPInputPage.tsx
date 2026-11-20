@@ -10,13 +10,21 @@ import { LazyInp, Param, Comment } from './EPShared';
 import { dec } from '../../utils/parseDecimal.ts';
 import { EP_APARATOS, apLim } from './epAparatos.ts';
 import { EP_MATS } from './epEngine.ts';
+import { EpProfileImportModal } from './EpProfileImportModal.tsx';
+import { EpAparatosModal, EpSimbologiaModal, EpCisternaModal } from './epModals.tsx';
+import { EpGuiaModal } from './EpGuidePanel.tsx';
+import { calcEpc } from './epAdapter.ts';
+import { EP_UNIDADES, EP_UNI, unS, type EpUn } from './epUnidades.ts';
 
 interface EPInputPageProps {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
+  /** Unidad de presentación activa (m.c.a./bar/psi/kPa) y su setter (persistido arriba). */
+  unidad: EpUn;
+  setUnidad: (u: EpUn) => void;
 }
 
-function EPInputPage({ ep, updEP }: EPInputPageProps) {
+function EPInputPage({ ep, updEP, unidad, setUnidad }: EPInputPageProps) {
   const qac = dec(ep.qac),
     qasc = dec(ep.qasc);
   const nt = dec(ep.nt) || 1,
@@ -41,6 +49,38 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
 
   const [editCaudales, setEditCaudales] = useState(false);
   const [editPresiones, setEditPresiones] = useState(false);
+  /* Importación del Perfil de presiones (F1.5): revisión todo-o-nada + marcas de origen. */
+  const [impAbierto, setImpAbierto] = useState(false);
+  /* Modales de referencia y guía flotante (ped. 2026-11-20): Aparatos carga el confort en
+   *  Pmin; Simbología filtra por montaje; Cisterna solo en modo cis; la Guía es toggle. */
+  const [apaAbierto, setApaAbierto] = useState(false);
+  const [simAbierto, setSimAbierto] = useState(false);
+  const [cisAbierto, setCisAbierto] = useState(false);
+  const [guiaAbierta, setGuiaAbierta] = useState(false);
+  const [focoGuia, setFocoGuia] = useState<string | null>(null);
+  const pickAparato = (i: number): void => {
+    updEP('apsel', String(i));
+    const lim = apLim(i);
+    if (lim) updEP('pmin', String(lim.confort));
+  };
+  const cargarPerfil = (doc: { ts: number; datos: Record<string, number | string> }): void => {
+    const d = doc.datos;
+    const set = (k: keyof EPData, v: number | string): void => {
+      updEP(k, typeof v === 'number' ? String(Math.round(Number(v) * 1000) / 1000) : String(v));
+    };
+    if (d.qac != null) set('qac', d.qac);
+    if (d.hfac != null) set('hfac', d.hfac);
+    if (d.pmin != null) set('pmin', d.pmin);
+    if (d.pmax != null) set('pmax', d.pmax);
+    if (d.zbomba != null) set('zbomba', d.zbomba);
+    if (d.ztop != null) set('ztop', d.ztop);
+    if (d.poffmax != null) set('poffmax', d.poffmax);
+    if (d.apcrit) {
+      set('apcrit', String(d.apcrit));
+      const i = EP_APARATOS.findIndex((a) => a.nombre === String(d.apcrit));
+      set('apsel', String(i));
+    }
+  };
   const [editPerdidas, setEditPerdidas] = useState(false);
   const [editBombas, setEditBombas] = useState(false);
 
@@ -81,6 +121,59 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
           />{' '}
           Succión cisterna
         </button>
+        <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          className="ep-modo-btn"
+          onClick={() => setGuiaAbierta(!guiaAbierta)}
+          title="Esquema guía flotante de cotas y presiones"
+        >
+          Guía
+        </button>
+        <button
+          type="button"
+          className="ep-modo-btn"
+          onClick={() => setApaAbierto(true)}
+          title="Presiones en aparatos: elige uno y carga su confort en Pmin"
+        >
+          Aparatos
+        </button>
+        <button
+          type="button"
+          className="ep-modo-btn"
+          onClick={() => setSimAbierto(true)}
+          title="Simbología del módulo EPC"
+        >
+          Simbología
+        </button>
+        {!isRed ? (
+          <button
+            type="button"
+            className="ep-btn-mini"
+            onClick={() => setCisAbierto(true)}
+            title="Usos, geometría y reposición de la cisterna"
+          >
+            Cisterna
+          </button>
+        ) : null}
+        <span style={{ flex: 1 }} />
+        <div
+          className="ep-un-seg"
+          role="group"
+          aria-label="Unidades de presión"
+          title="Unidades de presión: convierte la presentación de entradas y salidas en todas las páginas (el cálculo y el guardado siguen en m.c.a.)"
+        >
+          {EP_UNIDADES.map((u) => (
+            <button
+              key={u}
+              type="button"
+              data-on={unidad === u ? 'true' : 'false'}
+              onClick={() => setUnidad(u)}
+            >
+              {EP_UNI[u].s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Flujo de lectura: 1 arriba-izq, 2 debajo, 3 arriba-der, 4 debajo-der. */}
@@ -104,6 +197,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Caudal diseño AF" sub="Red agua fría" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editCaudales}
@@ -120,6 +214,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Caudal diseño ACS" sub="Red agua caliente" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editCaudales}
@@ -153,6 +248,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Pérdidas red AF" sub="Tramos + accesorios" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPerdidas}
@@ -160,7 +256,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     ariaLabel="Pérdidas red AF"
                     className="ni"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">Darcy-Weisbach</span> · Sumatoria pérdidas tramo
                     más desfavorable de la red AC.
@@ -169,13 +265,14 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Pérdidas red ACS" sub="Tramos + accesorios" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPerdidas}
                     field="hfacs"
                     ariaLabel="Pérdidas red ACS"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">Darcy-Weisbach</span> · El módulo usa MAX(Hf_ac,
                     Hf_acs) como pérdida crítica de diseño.
@@ -197,6 +294,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                       auto
                     </label>
                     <LazyInp
+                      unidad={unidad}
                       ep={ep}
                       updEP={updEP}
                       disabled={!editPerdidas || ep.hfauto !== 'false'}
@@ -204,7 +302,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                       ariaLabel="Pérdidas cuarto de bombas"
                     />
                   </span>,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">Método K</span> · Con «auto» se calculan con los
                     accesorios del esquema sugerido (VC 0,2 · cheque 2,5 · tee 1,0 · codo 0,75 ·
@@ -222,7 +320,19 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
             iconClassName="card-icon-22"
             title="3. Presiones y cotas"
             bodyClassName="card-b-p0"
-            headerRight={<EditButton edit={editPresiones} setEdit={setEditPresiones} />}
+            headerRight={
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="ep-btn-mini"
+                  onClick={() => setImpAbierto(true)}
+                  title="Importar los 7 datos del Perfil de presiones (revisión todo o nada)"
+                >
+                  ⇩ Importar Perfil
+                </button>
+                <EditButton edit={editPresiones} setEdit={setEditPresiones} />
+              </div>
+            }
           >
             <Tbl
               caption="Presiones y cotas"
@@ -236,13 +346,14 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                       [
                         <Param name="Presión acometida" sub="Red pública en entrega" />,
                         <LazyInp
+                          unidad={unidad}
                           ep={ep}
                           updEP={updEP}
                           disabled={!editPresiones}
                           field="pred"
                           ariaLabel="Presión acometida"
                         />,
-                        'm.c.a.',
+                        unS(unidad),
                         <Comment>
                           <span className="ep-note-600">Medida en campo</span> · Usar convertidor 1.
                           Ej: 200 kPa = 20.39 m.c.a.
@@ -251,39 +362,27 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     ] as React.ReactNode[][])
                   : []),
                 [
-                  <Param name="Aparato crítico" sub="Tipo y descripción o ubicación" />,
-                  <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <select
-                      className="ds-si"
-                      value={ep.apsel}
-                      onChange={(e) => {
-                        const i = parseInt(e.target.value, 10);
-                        const a = apLim(i);
-                        updEP('apsel', e.target.value);
-                        if (a) updEP('pmin', String(a.confort));
-                        updEP('apcrit', a ? a.nombre : '');
-                      }}
-                      aria-label="Tipo de aparato crítico"
-                      disabled={!editPresiones}
-                      style={{ minWidth: 90 }}
-                    >
-                      {EP_APARATOS.map((a, i) => (
-                        <option key={a.nombre} value={String(i)}>
-                          {a.nombre}
-                        </option>
-                      ))}
-                      <option value="-1">Otro (escribir)</option>
-                    </select>
-                    <input
-                      className="ds-si"
-                      value={ep.apcrit}
-                      onChange={(e) => updEP('apcrit', e.target.value)}
-                      placeholder="nombre o ubicación"
-                      aria-label="Descripción del aparato crítico"
-                      disabled={!editPresiones}
-                      style={{ maxWidth: 120 }}
-                    />
-                  </span>,
+                  <Param name="Aparato crítico" sub="Tipo de aparato más desfavorable" />,
+                  <select
+                    className="ds-si"
+                    value={ep.apsel}
+                    onChange={(e) => {
+                      const i = parseInt(e.target.value, 10);
+                      const a = apLim(i);
+                      updEP('apsel', e.target.value);
+                      if (a) updEP('pmin', String(a.confort));
+                      updEP('apcrit', a ? a.nombre : '');
+                    }}
+                    aria-label="Tipo de aparato crítico"
+                    disabled={!editPresiones}
+                  >
+                    {EP_APARATOS.map((a, i) => (
+                      <option key={a.nombre} value={String(i)}>
+                        {a.nombre}
+                      </option>
+                    ))}
+                    <option value="-1">Otro (escribir)</option>
+                  </select>,
                   '',
                   <Comment>
                     <span className="ep-note-600">Tabla de 3 niveles</span> · Al elegir el tipo se
@@ -294,6 +393,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Presión mínima punto crítico" sub="Aparato más desfavorable" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -301,7 +401,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     ariaLabel="Presión mínima punto crítico"
                     className="ni"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">IPC 604.3 · confort</span> · Entre la mínima y la
                     máxima del aparato elegido; por debajo del confort se acepta con alerta
@@ -311,6 +411,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="P parada máxima" sub="Del Perfil de presiones" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -318,7 +419,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     ariaLabel="P parada máxima admisible"
                     className="ni"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">Perfil</span> · Menor entre el límite de la
                     tubería y la estática en pisos sin VRP. Vacío = sin verificar.
@@ -327,6 +428,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Altitud" sub="Para la presión atmosférica (NPSH)" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -342,6 +444,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Temperatura del agua" sub="Para la presión de vapor (NPSH)" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -356,6 +459,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Presión máxima sistema" sub="Límite 500 kPa = 51.0 m.c.a." />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -363,7 +467,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     ariaLabel="Presión máxima sistema"
                     className="ni"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">NSR-10 H.4.2</span> · Instalar RRP si Pred supera
                     este valor.
@@ -372,6 +476,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Cota bomba" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -388,6 +493,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                     sub="Piso más alto o aparato más lejano"
                   />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editPresiones}
@@ -414,6 +520,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 <div className="ep-tiny-label">Bombas en trabajo</div>
                 <div className="ep-px-row">
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
@@ -428,6 +535,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 <div className="ep-tiny-label">Bombas en reserva</div>
                 <div className="ep-px-row">
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
@@ -449,13 +557,14 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Margen sobre P mín." sub="Para fijar el arranque" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
                     field="margen"
                     ariaLabel="Margen sobre presión mínima"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">0–3</span> · Arranque = P mín. descarga + margen,
                     redondeado hacia arriba.
@@ -464,13 +573,14 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Banda de control" sub="Arranque → parada" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
                     field="dif"
                     ariaLabel="Banda de control del variador"
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   <Comment>
                     <span className="ep-note-600">Típ. 3–10</span> · P objetivo (setpoint) =
                     arranque + banda / 2.
@@ -479,6 +589,7 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
                 [
                   <Param name="Caudal mín. de parada" sub="% de Qb" />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     disabled={!editBombas}
@@ -523,6 +634,43 @@ function EPInputPage({ ep, updEP }: EPInputPageProps) {
           </Card>
         </div>
       </div>
+      {impAbierto ? (
+        <EpProfileImportModal
+          ep={ep as unknown as Record<string, string>}
+          mrgDif={{ margen: ep.margen || '2', dif: ep.dif || '5' }}
+          cargar={cargarPerfil}
+          onIgnorar={() => undefined}
+          cerrar={() => setImpAbierto(false)}
+        />
+      ) : null}
+      {apaAbierto ? (
+        <EpAparatosModal
+          apIdx={parseInt(ep.apsel, 10) || 0}
+          onPick={pickAparato}
+          cerrar={() => setApaAbierto(false)}
+        />
+      ) : null}
+      {simAbierto ? (
+        <EpSimbologiaModal modo={isRed ? 'red' : 'cisterna'} cerrar={() => setSimAbierto(false)} />
+      ) : null}
+      {!isRed && cisAbierto ? (
+        <EpCisternaModal
+          calc={calcEpc(ep)}
+          ep={ep}
+          updEP={updEP as unknown as (field: string, val: string) => void}
+          cerrar={() => setCisAbierto(false)}
+        />
+      ) : null}
+      {guiaAbierta ? (
+        <EpGuiaModal
+          calc={calcEpc(ep)}
+          apcrit={EP_APARATOS[parseInt(ep.apsel, 10)]?.nombre || ''}
+          modo={isRed ? 'red' : 'cisterna'}
+          foco={focoGuia}
+          setFoco={setFocoGuia}
+          cerrar={() => setGuiaAbierta(false)}
+        />
+      ) : null}
     </div>
   );
 }

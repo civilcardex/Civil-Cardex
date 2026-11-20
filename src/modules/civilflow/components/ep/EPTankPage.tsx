@@ -12,15 +12,18 @@ import { LazyInp, Param, type EPData } from './EPShared';
 import { calcEpc } from './epAdapter.ts';
 import { EP_USO_CAT } from './epEngine.ts';
 import { svgCorteCis, svgPlantaCis } from './epSvgCis.ts';
+import { fmtUn, unS, type EpUn } from './epUnidades.ts';
 
 interface EPCisternaPageProps {
   ep: EPData;
   updEP: (field: keyof EPData, val: EPData[keyof EPData]) => void;
+  /** Unidad de presentación activa (solo convierte lo que se ve; el motor sigue en m.c.a.). */
+  unidad: EpUn;
 }
 
 const fmtMca = (v: number): string => (v !== 0 ? v.toFixed(2) : '—');
 
-export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
+export default function EPCisternaPage({ ep, updEP, unidad }: EPCisternaPageProps) {
   const isRed = ep.modo === 'red';
   const [editSuc, setEditSuc] = React.useState(false);
   const [editCis, setEditCis] = React.useState(false);
@@ -111,21 +114,22 @@ export default function EPCisternaPage({ ep, updEP }: EPCisternaPageProps) {
                     sub="Hf_suc — fondo de cisterna → bomba"
                   />,
                   <LazyInp
+                    unidad={unidad}
                     ep={ep}
                     updEP={updEP}
                     field="hfcis"
                     ariaLabel="Pérdidas tubería succión cisterna"
                     disabled={!editSuc}
                   />,
-                  'm.c.a.',
+                  unS(unidad),
                   'Incluye accesorios y pie de válvula',
                 ],
                 [
                   <span className="ep-bold">
                     HMT modo CISTERNA = P objetivo + Hf_otros + (z_bomba − z_cis) + Hf_suc
                   </span>,
-                  <span className="ep-mb">{fmtMca(calc.hmt)}</span>,
-                  'm.c.a.',
+                  <span className="ep-mb">{fmtUn(calc.hmt, unidad)}</span>,
+                  unS(unidad),
                   'Motor: a la P objetivo del variador',
                 ],
               ]}
