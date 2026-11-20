@@ -79,13 +79,16 @@ export function ModalShell(props: {
   minWidth?: number;
   ariaLabel?: string;
   children: React.ReactNode;
+  /** Opcional: al pasarla, click fuera y Escape cierran el modal (los informativos del EPC
+   *  la usan; checkout/confirmación la omiten para NO descartarse por un clic fuera). */
+  onClose?: () => void;
 }): React.ReactElement {
-  const { minWidth = 360, ariaLabel, children } = props;
-  // Sin onClose: el backdrop NO cierra — el checkout ni la confirmación se descartan por un
+  const { minWidth = 360, ariaLabel, children, onClose } = props;
+  // Sin onClose el backdrop NO cierra — el checkout ni la confirmación se descartan por un
   // clic fuera. El aria-label va sobre el <dialog> (su rol dialog es nativo, sin aria-modal
   // a mano: showModal ya la implica).
   return (
-    <ModalOverlay ariaLabel={ariaLabel}>
+    <ModalOverlay ariaLabel={ariaLabel} onClose={onClose}>
       {/* minWidth solo se pisa por estilo cuando el consumidor lo pide (360 es el default de la clase). */}
       <div className="modal-shell-card" style={{ minWidth }}>
         {children}

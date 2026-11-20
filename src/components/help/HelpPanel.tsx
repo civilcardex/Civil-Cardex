@@ -8,6 +8,7 @@ import { GUIA_MANAGER } from './helpGuideManager.tsx';
 import { GUIA_RECORTE } from './helpGuideCrop.tsx';
 import { repetirTour } from '../tour/useTour.tsx';
 import { tourDe } from '../tour/tourSteps.ts';
+import { tutorialDe, type Tutorial } from './helpTutorials.ts';
 import { ModalOverlay } from '../shared/ModalShell.tsx';
 
 /** Guía fusionada por clave de contexto: flow + manager + recorte (el editor de recorte publica su propia clave 'cf:recorte'). */
@@ -120,6 +121,54 @@ function FilaItem({ it }: { it: { nombre: string; desc: string } }): React.JSX.E
   );
 }
 
+/** Reproductor del tutorial de la sección (mapa TUTORIALES en helpTutorials.ts).
+ *  Embebido YouTube-nocookie/Vimeo — frame-src ya los permite (index.html + vercel.json). */
+function VideoTutorial({ t }: { t: Tutorial }) {
+  // Saneo antes de interpolar en la URL del iframe: solo [A-Za-z0-9_-] de 6-20 caracteres.
+  const idSeguro = (id?: string) => (id && /^[\w-]{6,20}$/.test(id) ? id : null);
+  const yt = idSeguro(t.yt);
+  const vimeo = idSeguro(t.vimeo);
+  const src = yt
+    ? `https://www.youtube-nocookie.com/embed/${yt}`
+    : vimeo
+      ? `https://player.vimeo.com/video/${vimeo}`
+      : null;
+  if (!src) return null;
+  return (
+    <div style={{ marginTop: 10, padding: '10px 14px 14px', borderTop: '1px solid var(--line)' }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+          color: 'var(--txt3)',
+          fontFamily: 'Geist, monospace',
+          marginBottom: 8,
+        }}
+      >
+        Video tutorial{t.titulo ? ` · ${t.titulo}` : ''}
+      </div>
+      {/* title dinámico abajo satisface jsx-a11y/iframe-has-title */}
+      <iframe
+        src={src}
+        title={t.titulo || 'Video tutorial de la sección'}
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        style={{
+          width: '100%',
+          aspectRatio: '16 / 9',
+          border: '1px solid var(--line)',
+          borderRadius: 6,
+          background: 'var(--bg2)',
+          display: 'block',
+        }}
+      />
+    </div>
+  );
+}
+
 /** Modal de AYUDA contextual: intro de la pestaña activa + guía (grupos colapsables de elementos) + botón REPETIR TOUR. Ej: en Sanitaria lista las herramientas de la tab sanitaria. */
 function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -130,6 +179,7 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
   // En isometría se combinan las 5 sub-guías y se muestran como LISTA PLANA (orig. usuario:
   // quitar los títulos «Redes/Aparatos/…» que duplican el nombre de la página).
   const esIso = ctx.key.startsWith('cf:iso:');
+  const tutorial = tutorialDe(ctx.key);
   const guia: GuiaGrupo[] = esIso
     ? [1, 2, 3, 4, 5].flatMap((sub) => GUIA[`cf:iso:${sub}`] || [])
     : GUIA[ctx.key] || [];
@@ -340,6 +390,7 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
               Aún no hay contenido de ayuda para esta pestaña.
             </div>
           )}
+          {tutorial && <VideoTutorial t={tutorial} />}
         </div>
 
         <div

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import AyudaPanel, { GUIA } from '../HelpPanel.tsx';
+import { tutorialDe } from '../helpTutorials.ts';
 
 // Regresión reportada: "la info de ayuda ya no está, solo está el video". El panel debe
 // renderizar los acordeones de GUIA además de la sección de video.
@@ -14,7 +15,7 @@ const ctx = {
 };
 
 describe('HelpPanel', () => {
-  it('GUIA tiene contenido para cf:visor y el panel renderiza acordeones', () => {
+  it('GUIA tiene contenido para cf:visor y el panel renderiza acordeones + video', () => {
     expect((GUIA['cf:visor'] || []).length).toBeGreaterThan(0);
     const html = renderToString(
       <MemoryRouter>
@@ -23,6 +24,16 @@ describe('HelpPanel', () => {
     );
     expect(html).not.toContain('Aún no hay contenido');
     expect((html.match(/<button/g) || []).length).toBeGreaterThan(3);
+    // Reproductor restaurado (commit d39292d7, había caído en el barrido SEO 27d23de5):
+    // en desarrollo el resolvedor cae al DEMO, así que el iframe SIEMPRE está en dev.
+    expect(html).toContain('<iframe');
+    expect(html).toContain('Video tutorial');
+    expect(tutorialDe('cf:visor')).not.toBeNull();
+  });
+
+  it('tutorialDe: clave exacta gana, prefijo como fallback, desconocida cae al DEMO en dev', () => {
+    expect(tutorialDe('cf:redes:san')).not.toBeNull(); // prefijo cf:redes o DEMO
+    expect(tutorialDe('clave:inventada:x')).not.toBeNull(); // DEMO solo-DEV
   });
 
   it('Carga de planos muestra el recorte como sección COLAPSABLE (no tarjeta fija)', () => {

@@ -136,14 +136,16 @@ Configure these in:
 - **Netlify**: Add via `_headers` file or `netlify.toml`
 - **Vercel**: Add via `vercel.json` `headers` config
 
-### Supabase RLS Policies (plano_trazos table)
-Row Level Security (RLS) is enabled on the `plano_trazos` table. The following policies are implemented to ensure IDOR mitigation:
-- **Insert Policy**: Users can only insert rows if the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
-- **Select Policy**: Users can only view rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
-- **Update Policy**: Users can only modify rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
-- **Delete Policy**: Users can only delete rows where the `user_id` matches their own authenticated ID (`auth.uid() = user_id`).
-
-These policies prevent unauthorized access or tampering with drawing data belonging to other users.
+### Supabase RLS — ownership por user_id en TODO el contenido
+La tabla `plano_trazos` de las notas históricas **ya NO existe**: los trazos/ramales viven como
+filas de `cf_planos_ramales` y demás `cf_planos_*` (migración 20261116000000 lo documenta).
+El patrón de IDOR es el mismo en todas las tablas de contenido (cf_*, cm_*, app_*):
+- Policies por fila: `auth.uid() = user_id` (Insert/Select/Update/Delete).
+- Escritura por RPCs SECURITY DEFINER con ownership check interno (`save_plano_data`,
+  `save_ep_datos`, `save_rci_datos`, `cm_save_state`, …).
+- Miembros de empresa: policies con `empresa_lectura/empresa_escritura` (familia 20261004/05).
+Esquema final recreable: `supabase/migrations/_consolidated/civilflow-schema-final.sql`
+(+ regla de `Migración nueva → node scripts/genDbTypes.mjs` en la sección Mapa).
 
 ## Secrets requeridos por el CI (.github/workflows/ci.yml)
 

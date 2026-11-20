@@ -1,5 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════
--- 20261005000002 — Hardening del linter (ronda 2026-10-03): search_path + revokes anon
+-- Hardening del linter (ronda 2026-10-03): search_path + revokes anon
+-- (cabecera histórica decía 20261005000002: colisión con cf_proyectos_slug)
 --
 --   1. uuid_seguro (lint 0011): solo hace un cast ::uuid — sin tablas → search_path = ''
 --      (vacío es el máximo hardening; nada que resolver).

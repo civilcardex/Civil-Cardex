@@ -1,9 +1,9 @@
-  -- =========================================================================
-  -- CivilFlow — persistencia del diseño RCI (rci_datos_proyecto)
-  --
-  -- Fase 5 del plan RCI: el estado del motor (RciState — gris extraído del
-  -- plano + amarillos digitados) vivía solo en localStorage/sesión y se
-  -- perdía entre sesiones. Tabla 1:1 con proyectos, patrón
+-- =========================================================================
+-- CivilFlow — persistencia del diseño RCI (rci_datos_proyecto)
+--
+-- Fase 5 del plan RCI: el estado del motor (RciState — gris extraído del
+-- plano + amarillos digitados) vivía solo en localStorage/sesión y se
+-- perdía entre sesiones. Tabla 1:1 con proyectos, patrón
   -- ep_datos_proyecto (20260807000001): proyecto_id como PK que también
   -- referencia a proyectos, sin PK sustituta, RLS owner y revoke anon.
   -- Diferencia clave: RciState es un estado anidado grande (redes por piso,

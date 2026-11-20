@@ -1,4 +1,7 @@
--- UP: remove tee salida bilateral columns from planos_ramales
+-- CivilFlow — elimina las columnas del tee de salida bilateral de planos_ramales
+-- (doctrina 2026-08-05: el cruce bilateral se calcula en vivo, no se persiste).
+-- UP:
+
 ALTER TABLE planos_ramales DROP COLUMN IF EXISTS bilateral_crossings;
 ALTER TABLE planos_ramales DROP COLUMN IF EXISTS bilateral_pair_ids;
 

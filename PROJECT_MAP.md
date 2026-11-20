@@ -117,7 +117,7 @@ civilmanager/
 
 | Carpeta | Contenido |
 |---|---|
-| `migrations/` | 113 SQL: esquemas `cf_*` (civilflow), `cm_*` (civilmanager), `app_*` (suscripciones), RPCs de guardado (save_plano_data, cm_save_state), RLS + policies de empresa, concurrencia optimistic |
+| `migrations/` | 109 SQL activos + `_retired/` (6 retirados como histórico) + `_consolidated/civilflow-schema-final.sql` (esquema recreable): esquemas `cf_*` (civilflow), `cm_*` (civilmanager), `app_*` (suscripciones), RPCs de guardado (save_plano_data, cm_save_state), RLS + policies de empresa, concurrencia optimistic |
 | `functions/` | 3 Edge Functions de pagos: `crear-checkout`, `verificar-pago`, `ls-webhook` (+ `_shared/`: lemon.ts, payment_utils.ts) |
 
 ## Otros

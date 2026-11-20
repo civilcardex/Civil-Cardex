@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════
--- 20261005000006 — Índice para FK asignado_por (lint 0001)
+-- Índice para FK asignado_por (lint 0001) — cabecera histórica decía 20261005000006:
 -- DELETE de auth.users hace cascade por esta columna; sin índice el cascade escanea.
 -- ═══════════════════════════════════════════════════════════════════════════════════════
 

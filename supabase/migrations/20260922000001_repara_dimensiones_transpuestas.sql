@@ -1,6 +1,7 @@
--- Reparación de COTAS transpuestas en cf_planos_dimensiones (incidente 2026-09-22).
+-- CivilFlow — REPARACIÓN de COTAS transpuestas en cf_planos_dimensiones (incidente
+-- 2026-09-22). UPDATE dirigido que endereza las filas ya guardadas con el swap.
 --
--- Contexto: entre la migración 20260914000000 y la aplicación de 20260922000000, el RPC
+-- Contexto (histórico): entre la migración 20260914000000 y la aplicación de 20260922000000, el RPC
 -- save_plano_data insertaba (x1,y1,x2,y2) ← (x1, x2, y1, y2): el bug era un SWAP entre
 -- y1 y x2 (x1 y y2 iban a su columna correcta). El fix del RPC corrige hacia adelante,
 -- pero las filas ya guardadas quedaron rotas: abrir el piso desde una sesión sin caché
