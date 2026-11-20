@@ -53,7 +53,7 @@ describe('RCIInputDefs — caracterización', () => {
     const counts = Object.fromEntries(CATEGORIAS.map((k) => [k, GRUPOS[k].length]));
     expect(counts).toEqual({
       normativa: 15,
-      clasificacion: 8,
+      clasificacion: 7,
       tuberia: 5,
       montantes: 11,
       siamesa: 14,
@@ -63,7 +63,7 @@ describe('RCIInputDefs — caracterización', () => {
       tanque: 1,
     });
     const total = Object.values(counts).reduce((a: number, b: number) => a + b, 0);
-    expect(total).toBe(77);
+    expect(total).toBe(76);
   });
 
   it('cada path aparece UNA vez en todo GRUPOS', () => {

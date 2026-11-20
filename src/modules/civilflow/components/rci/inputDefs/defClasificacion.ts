@@ -2,11 +2,7 @@
  *  construcción del techo — lo que decide el área de diseño. Ej: clas.almacen «Sí» bloquea
  *  el Riesgo leve. */
 import type { DefCampo } from '../RCIGroupTable.tsx';
-import { HZ } from '../../../lib/rci/tables.ts';
 import { CONSTR_OPCIONES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
-
-/** Clasificaciones de riesgo (las llaves de HZ, la tabla de densidades del motor). */
-const RIESGOS: string[] = Object.keys(HZ);
 
 /** Opciones de «Construcción del techo»: el select guarda el valor CORTO (la llave del motor,
  *  CONSTR_OPCIONES) y muestra la etiqueta LARGA del FORM del HTML. Ej: guarda 'Combustible
@@ -32,7 +28,9 @@ export const GRUPO_CLASIFICACION: DefCampo[] = [
     ayu: '> 3,66 m requiere NFPA 13 cap. 20–25',
     dep: 'clas.almacen',
   },
-  { path: 'clas.riesgo', lbl: 'Clasificación de riesgo', opts: RIESGOS, ayu: 'NFPA 13 cap. 4' },
+  /* La fila global «Clasificación de riesgo» se retiró (ped. usuario 2026-11-20): el riesgo
+   *  se define POR PISO en Tipologías → Pisos del edificio (columna Riesgo NFPA 13). El motor
+   *  cae a Riesgo leve cuando no hay ninguno (criteria.ts HZ[riesgo] || leve). */
   {
     path: 'clas.sistema',
     lbl: 'Tipo de sistema',

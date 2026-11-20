@@ -9,6 +9,7 @@ import tablas from './tables.tsx';
 import formulas from './formulas';
 import manual from './manual';
 import manager from './manager.tsx';
+import rci from './rci';
 import normas_pais from './countryStandards';
 
 /** Índice del contenido de la página /docs: cada clave es una categoría del menú (las secciones viven en cada archivo de data/). Ej: docData.gas trae las secciones de la red de gas. */
@@ -24,5 +25,6 @@ export const docData = {
   formulas,
   manual,
   manager,
+  rci,
   normas_pais,
 };

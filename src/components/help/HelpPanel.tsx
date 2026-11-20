@@ -390,6 +390,9 @@ function AyudaPanel({ ctx, onClose }: Props): React.JSX.Element {
               Aún no hay contenido de ayuda para esta pestaña.
             </div>
           )}
+          {/* Video SIEMPRE debajo del/los acordeones (ped. usuario 2026-11-20). En desarrollo
+              cae al DEMO; en producción solo se pinta si la clave tiene video en
+              helpTutorials.ts. */}
           {tutorial && <VideoTutorial t={tutorial} />}
         </div>
 

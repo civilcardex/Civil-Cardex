@@ -8,11 +8,13 @@ import { CF_TABLES } from '../constants/tableNames.ts';
 import { getActiveProyectoId } from './storageService.ts';
 import type { ApsItem, UdBaseItem } from '../context/ApparatusContext.tsx';
 
+/** Snapshot del catálogo de aparatos: lista UD (Unidades de Desague) base + catálogo APS (Aparatos del Proyecto) del usuario. */
 export interface AparatosUsuarioData {
   udBase: UdBaseItem[];
   aps: ApsItem[];
 }
 
+/** Fila bruta de cf_aparatos_usuario (snake_case en BD; el llamador la normaliza a ApsItem). */
 export interface AparatoUsuarioRow {
   client_id: string;
   s: string | null;
@@ -27,6 +29,7 @@ export interface AparatoUsuarioRow {
   ctrl: string | null;
   blk_ud: boolean;
 }
+/** Fila de cf_aparatos_ud_base_global (catálogo de fábrica). */
 export interface UdBaseGlobalRow {
   id: string;
   nombre: string;

@@ -3,7 +3,7 @@
  *  Ej: RIESGOS[0] = 'Riesgo leve' (la primera opción del select de riesgo). */
 
 import { HZ, NOM, PIPES } from '../../../lib/rci/tables.ts';
-import type { PisoRow, RciState, Red } from '../../../lib/rci/types.ts';
+import type { PisoRow, RciState } from '../../../lib/rci/types.ts';
 
 /* ============================ Catálogos de los desplegables ============================ */
 
@@ -61,18 +61,18 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
   const local = { ...est.local };
   const clas = {
     ...est.clas,
-    /* Categóricos con default de referencia (el cálculo necesita riesgo/sistema); los
-     * NUMÉRICOS y BOOLEANOS nacen VACÍOS (ped. usuario) — el motor los resuelve con sus
-     * defaults de norma al calcular y el diseñador los digita donde importa. */
+    /* TODO nace VACÍO (ped. usuario 2026-11-20: las celdas de Entradas no muestran ninguna
+     * opción hasta que el diseñador elija) — el motor resuelve con sus defaults de norma al
+     * calcular (HZ[riesgo]||leve, sistema ''≡Húmedo, mont.mat||Acero SCH 10…). */
     riesgo: graba(est.clas.riesgo, ''),
-    sistema: graba(est.clas.sistema, 'Húmedo'),
+    sistema: graba(est.clas.sistema, ''),
   };
   const roc = { ...est.roc };
   const tub = { ...est.tub };
   const mang = { ...est.mang };
   const sp = {
     ...est.sp,
-    clase: graba(est.sp.clase, 'Clase III'),
+    clase: graba(est.sp.clase, ''),
   };
   const sia = { ...est.sia };
   const bomba = { ...est.bomba };
@@ -99,35 +99,8 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
     return fila;
   });
 
-  /* Material de cada red (el selector "Material de los ramales" del HTML, amarillo): si el
-     dibujo no trae material en los trazos, el motor no encuentra diámetro para los tramos —
-     se siembra el de referencia y las filas vacías heredan el de su red. Si luego se dibuja
-     un material, el gris manda sobre el sembrado (mezclarOverrides). */
-  const redes: Record<string, Red> = {};
-  let redesCambio = false;
-  for (const [clave, red] of Object.entries(est.redes)) {
-    const matRed = vacio(red.mat) ? 'Acero SCH 40' : red.mat;
-    let nFilas = 0;
-    const ramales = red.ramales.map((r) => {
-      if (!vacio(r.mat)) return r;
-      nFilas++;
-      return { ...r, mat: matRed };
-    });
-    const tramos = red.tramos.map((t) => {
-      if (!vacio(t.mat)) return t;
-      nFilas++;
-      return { ...t, mat: matRed };
-    });
-    const cambioRed = vacio(red.mat) || nFilas > 0;
-    if (cambioRed) {
-      cambio = true;
-      redesCambio = true;
-      redes[clave] = { ...red, mat: matRed, ramales, tramos };
-    } else {
-      redes[clave] = red;
-    }
-  }
-
+  /* El material de cada red y de sus filas NO se siembra (ped. usuario 2026-11-20): nace
+     vacío y el diseñador elige (el motor cae a Acero SCH 40 al calcular). */
   if (!cambio) return est;
   return {
     ...est,
@@ -141,7 +114,6 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
     sia,
     bomba,
     mont,
-    ...(redesCambio ? { redes } : {}),
     pisos: { ...est.pisos, rows },
   };
 }

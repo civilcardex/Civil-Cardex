@@ -142,7 +142,7 @@ export function RciRamalesTable({
     <>
       <div style={{ overflowX: 'auto' }}>
         <table
-          className="tbl tbl-sep"
+          className="tbl tbl-sep tbl-hline"
           style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 0, width: '100%' }}
         >
           <caption
@@ -249,7 +249,7 @@ export function RciRamalesTable({
               <th
                 scope="col"
                 style={THW}
-                title="Separación entre rociadores del ramal (vacío = la del proyecto)"
+                title="Separación entre rociadores del ramal (vacío = la del proyecto). Si el ramal trae geometría dibujada, la separación hidráulica sale del dibujo y este campo queda informativo."
               >
                 S (m)
               </th>
@@ -262,7 +262,7 @@ export function RciRamalesTable({
               <th
                 scope="col"
                 style={THW}
-                title="L ramal − (fluyen − 1) × S: desde el último rociador que fluye hasta la conexión"
+                title="Distancia real del dibujo desde el último rociador que fluye hasta la conexión. Sin geometría dibujada = L ramal − (fluyen − 1) × S"
               >
                 Brazo (m)
               </th>

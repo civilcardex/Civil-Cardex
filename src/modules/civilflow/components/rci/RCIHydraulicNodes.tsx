@@ -30,7 +30,7 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
     <SecRci
       id="nudos"
       titulo="Nudos: equilibrio de presiones"
-      icono="/iconos/nudos_equilibrio_presiones.webp"
+      icono="/iconos/corte_esquematico.webp"
     >
       {!filas.length ? (
         <div style={VACIO}>
@@ -127,7 +127,9 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
                         </span>
                       ))}
                     </td>
-                    <td style={{ ...TDC, textAlign: 'left' }}>{f.gobierna}</td>
+                    <td className="c" style={TDC}>
+                      {f.gobierna}
+                    </td>
                     <td className="c" style={TDC}>
                       {n(f.Preq)}
                     </td>
@@ -239,7 +241,11 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
                       >
                         Pf (psi)
                       </th>
-                      <th scope="col" style={TH10} title="Pérdida por accesorios del tramo">
+                      <th
+                        scope="col"
+                        style={TH10}
+                        title="Pérdida (o ganancia) por elevación: la diferencia de cota entre los dos nudos del tramo"
+                      >
                         Pe (psi)
                       </th>
                       <th scope="col" style={TH10} title="Presión al final del tramo">

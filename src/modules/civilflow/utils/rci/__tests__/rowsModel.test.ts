@@ -226,7 +226,7 @@ describe('sembrarRci · amarillos del proyecto nuevo', () => {
     const est = sembrarRci(gris.estado, 'Torre Norte');
     expect(est.meta.proyecto).toBe('Torre Norte');
     expect(est.clas.riesgo).toBe('');
-    expect(est.clas.sistema).toBe('Húmedo');
+    expect(est.clas.sistema).toBe(''); // ped. usuario 2026-11-20: celdas vacías por defecto
     /* Numéricos y booleanos VACÍOS por defecto (ped. usuario) — el motor resuelve sus
        defaults de norma al calcular. */
     expect(est.clas.htecho).toBe('');
@@ -235,7 +235,7 @@ describe('sembrarRci · amarillos del proyecto nuevo', () => {
     expect(est.local.exigeRoc).toBe('');
     expect(est.tub.Vmax).toBe('');
     expect(est.mang.duracion).toBe('');
-    expect(est.sp.clase).toBe('Clase III');
+    expect(est.sp.clase).toBe(''); // ped. usuario 2026-11-20: celdas vacías por defecto
     /* El cuarto de bombas y los criterios por piso NO se siembran (ped. usuario: nada
        fabricado) — nacen vacíos hasta que el diseñador los llene. */
     expect(est.mont.cuarto).toEqual([]);

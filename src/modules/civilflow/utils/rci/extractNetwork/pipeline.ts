@@ -418,6 +418,23 @@ export function extraerRedDePiso(
     const idxCon = esB ? pts.length - 1 : 0;
     const esLlegada = con === letraDeriv;
     const bajada = esLlegada ? Math.max(0, techo - altDeriv) : 0;
+    /* Geometría REAL del dibujo (ped. usuario 2026-11-20): posición de arco (m) de cada
+     *  rociador que fluye medida desde la PUNTA (el extremo opuesto a la conexión). El walk
+     *  del motor usa estos tramos reales entre rociadores en vez de asumir S parejo. */
+    let posDib: number[] | undefined;
+    if (t.L > 0) {
+      const mPorPx = t.L / totalPxDe(pts);
+      const arcoDe0 = (idx: number): number => {
+        let acc = 0;
+        for (let i = 0; i < idx; i++) acc += lonSeg(pts, i);
+        return acc * mPorPx;
+      };
+      posDib = accesoriosDe(t.el)
+        .filter((a) => /rociador/i.test(a.tipo) && !/NF/.test(a.tipo))
+        .map((a) => (esB ? arcoDe0(a.idx) : t.L - arcoDe0(a.idx)))
+        .sort((x, y) => x - y);
+      if (t.roci < 1 || posDib.length !== t.roci) posDib = undefined;
+    }
     /* Tee: las dibujadas cuentan; si el flujo gira en el nudo y no hay tee dibujada ahí, 1 auto. */
     const dirEnt = esB
       ? {
@@ -453,6 +470,12 @@ export function extraerRedDePiso(
     if (esLlegada) {
       fila.desgPlanta = t.L;
       fila.desgBajada = bajada;
+    }
+    if (posDib) {
+      fila.posDib = posDib;
+      // El arco incluye la bajada: la conexión del ramal de llegada está al pie de la
+      // derivación (Lr = t.L + bajada), y el último tramo del walk transporta el caudal total.
+      fila.posConDib = t.L + bajada;
     }
     ramalesRows.push(fila);
   }

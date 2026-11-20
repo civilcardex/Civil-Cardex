@@ -39,7 +39,7 @@ import type {
   TuberiaRow,
 } from '../../lib/rci/types.ts';
 import type { DrawingData } from '../drawingSyncTypes.ts';
-import { extraerRedDePiso, ALT_DERIV_DEF, MAT_DEF, TECHO_DEF } from './ExtractNetwork.ts';
+import { extraerRedDePiso, TECHO_DEF } from './ExtractNetwork.ts';
 import type { AvisoRci } from './ExtractNetwork.ts';
 
 export type { AvisoRci } from './ExtractNetwork.ts';
@@ -148,12 +148,12 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
   const gabinetes: RciGabinete[] = [];
   const planesConGab = new Set<string>();
   let mont: MontCfg = {
-    mat: MAT_DEF,
-    dn: 'auto',
-    hS: 1.2,
-    hD: ALT_DERIV_DEF,
-    zBase: 0,
-    holgura: 0,
+    mat: '',
+    dn: '',
+    hS: '',
+    hD: '',
+    zBase: '',
+    holgura: '',
     cuarto: [],
   };
   let montDibujo: MontDibujo = { mat: null, dn: null, altDeriv: null };
@@ -173,12 +173,12 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
     });
     if (montantes.length === 1) {
       mont = {
-        mat: rdp.matMont || MAT_DEF,
-        dn: rdp.dnMont || 'auto',
-        hS: 1.2,
-        hD: rdp.altDeriv ?? ALT_DERIV_DEF,
-        zBase: 0,
-        holgura: 0,
+        mat: rdp.matMont || '',
+        dn: rdp.dnMont || '',
+        hS: '',
+        hD: rdp.altDeriv ?? '',
+        zBase: '',
+        holgura: '',
         cuarto: [],
       };
       montDibujo = { mat: rdp.matMont || null, dn: rdp.dnMont || null, altDeriv: rdp.altDeriv };
@@ -284,7 +284,7 @@ function estadoVacio(
     gabinetes,
     esp: ESP_DEF(),
     pisos: {
-      zBomba: 0,
+      zBomba: '',
       activa: '',
       rep: {},
       estado: {},
@@ -504,7 +504,7 @@ function mezclarFilas(
         ...grisFila,
         ini: siPrev(p?.ini, ''),
         fluyen: siPrev(p?.fluyen, ''),
-        dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, 'auto'),
+        dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, ''),
         mat: grisFila.mat || siPrev(p?.mat, ''),
         S: siPrev(p?.S, ''),
         esp: siPrev(p?.esp, ''),
@@ -519,7 +519,7 @@ function mezclarFilas(
     return {
       ...grisFila,
       mat: grisFila.mat || siPrev(p?.mat, ''),
-      dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, 'auto'),
+      dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, ''),
       esp: siPrev(p?.esp, ''),
       leqOtros: siPrev(p?.leqOtros, ''),
       mar: siPrev(p?.mar, ''),

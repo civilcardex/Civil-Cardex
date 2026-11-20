@@ -117,7 +117,7 @@ export default function RciGuiaModal({
   const acciones = (): ReactNode => {
     switch (paso) {
       case 0:
-        return <BotonIr txt="Ir a la clasificación" go={['entradas', 'clas.riesgo']} />;
+        return <BotonIr txt="Ir a la clasificación" go={['entradas', 'clas.almacen']} />;
       case 1:
         return <BotonIr txt="Ir a S, L y DMR" go={['tipologias', 'pisos']} />;
       case 3:

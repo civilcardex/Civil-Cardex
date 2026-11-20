@@ -24,7 +24,7 @@ const COLS: { l: string; tip?: string; ph?: string }[] = [
   { l: 'NPT (m)', tip: 'Nivel de Piso Terminado. Necesario para el perfil de presiones.' },
   { l: 'Uso', tip: 'Uso del piso (texto libre, informativo — siempre editable).' },
   {
-    l: 'Riesgo NFPA 13',
+    l: 'Riesgo',
     tip: 'Clasificación de riesgo (NFPA 13 cap. 4). "Sin rociadores" saca el piso del cálculo de red.',
   },
   { l: 'Sistema', tip: 'Húmedo o seco. Seco: área +30 %, C del acero 100, sin reducción QR.' },
@@ -287,6 +287,9 @@ function TablaPisos({
   const [borrador, setBorrador] = useState<{ i: number; k: string; val: string } | null>(null);
   const [err, setErr] = useState<{ i: number; k: string; msg: string } | null>(null);
   const hzDe = (riesgo: string): (typeof HZ)[string] => HZ[riesgo] || HZ['Riesgo leve'];
+  /* Con almacenamiento la ocupación NO admite Riesgo leve (NFPA 13, observación del campo
+   *  ¿La ocupación incluye almacenamiento?): la opción queda deshabilitada en el select. */
+  const conAlmacen = String(globalEstado?.clas?.almacen || '') === 'Sí';
   /** Valor GLOBAL del proyecto para un campo (placeholder de K/Pmin/S/L cuando la fila está vacía). */
   const sProy = (k: 'K' | 'Pmin' | 'S' | 'L' | 'Dmuro'): string => {
     const v = globalEstado?.roc?.[k];
@@ -324,7 +327,7 @@ function TablaPisos({
     setErr(null);
     setPiso(f.i, k)(v);
   };
-  const numCel = (f: FilaTipologia, k: 'S' | 'L'): ReactElement => (
+  const numCel = (f: FilaTipologia, k: 'S' | 'L', px = 60): ReactElement => (
     <input
       type="number"
       step="any"
@@ -335,7 +338,7 @@ function TablaPisos({
         setErr(null);
       }}
       title={err && err.i === f.i && err.k === k ? err.msg : undefined}
-      className={`ds-celda12 ds-px-60${err && err.i === f.i && err.k === k ? ' ds-err-border' : ''}`}
+      className={`ds-celda12 ds-px-${px}${err && err.i === f.i && err.k === k ? ' ds-err-border' : ''}`}
     />
   );
   const ayudaDe = (c: { l: string; ph?: string }): ReactNode =>
@@ -405,13 +408,44 @@ function TablaPisos({
                     edit,
                     <select
                       value={f.riesgo}
-                      onChange={(e) => setPiso(f.i, 'riesgo')(e.target.value)}
-                      className="ds-celda12 ds-px-116"
-                      title="Riesgo NFPA 13 (vacío = sin clasificar; el motor usa el default de norma)"
+                      onChange={(e) => {
+                        // Con almacenamiento NO se admite Riesgo leve (ped. usuario 2026-11-20,
+                        // observación del campo de Entradas): NO guarda y marca la celda en rojo.
+                        if (conAlmacen && e.target.value === 'Riesgo leve') {
+                          setErr({
+                            i: f.i,
+                            k: 'riesgo',
+                            msg: 'Con almacenamiento NO se admite Riesgo leve (NFPA 13). Elija Ordinario o superior.',
+                          });
+                          return;
+                        }
+                        setErr(null);
+                        setPiso(f.i, 'riesgo')(e.target.value);
+                      }}
+                      className={`ds-celda12 ds-px-144${
+                        err && err.i === f.i && err.k === 'riesgo'
+                          ? ' ds-err-border'
+                          : conAlmacen && f.riesgo === 'Riesgo leve'
+                            ? ' ds-err-border'
+                            : ''
+                      }`}
+                      title={
+                        err && err.i === f.i && err.k === 'riesgo'
+                          ? err.msg
+                          : conAlmacen && f.riesgo === 'Riesgo leve'
+                            ? 'Con almacenamiento NO se admite Riesgo leve (NFPA 13): cámbielo a Ordinario o superior.'
+                            : conAlmacen
+                              ? 'Riesgo NFPA 13 — con almacenamiento NO se admite Riesgo leve'
+                              : 'Riesgo NFPA 13 (vacío = sin clasificar; el motor usa el default de norma)'
+                      }
                     >
                       <option value="">—</option>
                       {RIESGOS.map((o) => (
-                        <option key={o} value={o}>
+                        <option
+                          key={o}
+                          value={o}
+                          disabled={conAlmacen && o === 'Riesgo leve' && f.riesgo !== 'Riesgo leve'}
+                        >
                           {o}
                         </option>
                       ))}
@@ -537,8 +571,8 @@ function TablaPisos({
                     />,
                   )}
                 </td>
-                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'S'))}</td>
-                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'L'))}</td>
+                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'S', 46))}</td>
+                <td className="ds-td-13 c">{celdaEditable(edit, numCel(f, 'L', 46))}</td>
 
                 <td className="ds-td-13 ds-td-nowrap c">
                   {celdaEditable(

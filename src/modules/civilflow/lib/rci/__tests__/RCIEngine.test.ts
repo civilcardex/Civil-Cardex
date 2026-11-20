@@ -241,3 +241,51 @@ describe('rciEngine · succión fuera del catálogo PIPES → verificaciones PEN
     }
   });
 });
+
+describe('rciEngine · geometría REAL del dibujo entre rociadores (posDib)', () => {
+  it('el walk usa las distancias del dibujo (posDib/posConDib) cuadrando Lr', () => {
+    const st2 = ejemploVerificacion();
+    const key = Object.keys(st2.redes)[0];
+    const r0 = st2.redes[key].ramales[0];
+    // Fixture CUADRADO con Lr: 4 separaciones de 4.3675 + brazo 1.2 = 18.67 = Lr de R2.
+    // (El fixture anterior ponía posConDib 9.2 con Lr 18.67 — incoherente, ocultaba H-01.)
+    r0.posDib = [0, 4.3675, 8.735, 13.1025, 17.47];
+    r0.posConDib = 18.67;
+    const R2 = compute(st2, clasificar(st2));
+    const ram = (R2.red as { rams: Array<{ rows: Array<{ L: unknown }>; brazo: number | null }> })
+      .rams[0];
+    expect(ram.rows.map((o) => Number(o.L).toFixed(2))).toEqual(
+      ['4.37', '4.37', '4.37', '4.37'].concat('1.20'),
+    );
+    expect(ram.brazo).toBeCloseTo(1.2);
+  });
+
+  it('sin posDib (ramal manual/proyecto viejo) el walk sigue usando S/brazo', () => {
+    const st3 = ejemploVerificacion();
+    const R3 = compute(st3, clasificar(st3));
+    const ram = R3.red as { rams: Array<{ rows: Array<{ L: unknown }>; brazo: number | null }> };
+    expect(ram.rams[0].rows.length).toBeGreaterThan(0);
+    expect(Number(ram.rams[0].rows[0].L)).toBeGreaterThan(0); // L = S del piso, no 0
+  });
+
+  it('posDib incoherente (desordenado / NaN / posConDib < último / longitud ≠ fluyen) → fallback S/brazo sin filas L=0', () => {
+    const casos: Array<{ posDib: number[]; posConDib: number }> = [
+      { posDib: [4, 0, 8.735, 13.1025, 17.47], posConDib: 18.67 }, // desordenado
+      { posDib: [0, 4.3675, NaN, 13.1025, 17.47], posConDib: 18.67 }, // NaN
+      { posDib: [0, 4.3675, 8.735, 13.1025, 17.47], posConDib: 16 }, // posConDib < último
+      { posDib: [0, 4.3675, 8.735], posConDib: 18.67 }, // longitud ≠ fluyen
+    ];
+    for (const iny of casos) {
+      const st = ejemploVerificacion();
+      const r0 = st.redes[Object.keys(st.redes)[0]].ramales[0];
+      r0.posDib = iny.posDib;
+      r0.posConDib = iny.posConDib;
+      const R = compute(st, clasificar(st));
+      const ram = (R.red as { rams: Array<{ rows: Array<{ L: unknown }>; brazo: number | null }> })
+        .rams[0];
+      // Fallback: las L del walk salen de S parejo (17.47/4 = 4.3675 → el walk de S), NO ceros.
+      expect(ram.rows.some((o) => Number(o.L) === 0)).toBe(false);
+      expect(ram.brazo).not.toBeNull();
+    }
+  });
+});

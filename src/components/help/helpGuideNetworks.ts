@@ -299,11 +299,11 @@ export const GUIA_NETWORKS: GUIA_TYPE = {
 
   'cf:redes:rci': [
     {
-      titulo: 'Red contra incendio (NFPA 13/14/20/22)',
+      titulo: 'Red contra incendio (NFPA)',
       items: [
         {
           nombre: 'De dónde sale cada dato',
-          desc: 'Lo que dibujaste en el visor (ramales con rociadores, tramos y el montante) llega como GRIS con candado 🔒: la geometría no se edita aquí, se corrige dibujando. Lo AMARILLO es del diseñador: criterios de rociadores, tipologías, bomba, tanque y siamesa.',
+          desc: 'Lo que dibujaste en el visor (ramales con rociadores, tramos y el montante) llega como GRIS con candado : la geometría no se edita aquí, se corrige dibujando. Lo AMARILLO es del diseñador: criterios de rociadores, tipologías, bomba, tanque y siamesa.',
         },
         {
           nombre: 'Pestañas y Guía de diseño',

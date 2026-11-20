@@ -226,6 +226,9 @@ export function edificio(
     { mat: 'Acero SCH 10', dn: 'auto', hS: 1.2, hD: 2.5, zBase: 0, holgura: 0, cuarto: [] },
     st.mont || {},
   );
+  /* Celdas vacías (ped. usuario 2026-11-20): los selects nacen sin opción — el montante cae a
+   *  su material de referencia al calcular (el Object.assign solo cubre claves AUSENTES). */
+  M.mat = M.mat || 'Acero SCH 10';
   const P = st.pisos || {
       zBomba: 0,
       activa: '',

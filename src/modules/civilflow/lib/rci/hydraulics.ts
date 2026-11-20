@@ -213,7 +213,8 @@ export function route(
       qFix += r.qExtra;
     }
     Q += q;
-    const dn = r.dn === 'auto' ? suggestDn(Q, r.mat, ctx.Vmax) : (r.dn as string);
+    /* dn vacío ≡ auto (ped. usuario 2026-11-20: las filas extraídas nacen sin diámetro). */
+    const dn = !r.dn || r.dn === 'auto' ? suggestDn(Q, r.mat, ctx.Vmax) : (r.dn as string);
     const pr = pipeRow(Object.assign({}, r, { dn }), P, Q, ctx);
     if (!pr.ok) {
       valid = false;

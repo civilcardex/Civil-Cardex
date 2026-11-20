@@ -42,6 +42,11 @@ export interface TuberiaRow {
   zr?: NumIn;
   zc?: NumIn;
   con?: string;
+  /* Geometría REAL del dibujo (ped. usuario 2026-11-20): posición de arco (m) de cada
+   *  rociador que fluye medida desde la punta remota del ramal y del punto de conexión.
+   *  calcRamal usa estos tramos reales entre rociadores; ausentes = fallback a S/brazo. */
+  posDib?: number[];
+  posConDib?: number;
   /** Tipo de rociador del ramal (v1.7.80): Colgante (default) | Montante | Oculto |
    *  'Colgante seco'. No cambia el cálculo; en sistema seco se exige montante/colgante seco. */
   troc?: string;

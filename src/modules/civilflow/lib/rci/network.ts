@@ -19,8 +19,10 @@ import type {
   TramoCalc,
 } from './types';
 
-/** Calcula un ramal: brazo = L (punta → conexión) − (fluyen − 1)·S, rociadores con q = K·√P y
- *  todos los accesorios del ramal en el brazo. Devuelve las filas y la ruta con su Keq. */
+/** Calcula un ramal: rociadores con q = K·√P y todos los accesorios del ramal en el brazo.
+ *  La L entre rociadores sale del DIBUJO (posDib/posConDib, ped. usuario 2026-11-20); sin
+ *  geometría dibujada (ramal manual/proyecto viejo) cae a S parejo y brazo = Lr − (n−1)·S.
+ *  Devuelve las filas y la ruta con su Keq. */
 export function calcRamal(
   x: RamalCalc,
   ro: Criterios,
@@ -35,7 +37,25 @@ export function calcRamal(
   /* Brazo = L del ramal (punta → conexión) − (fluyen − 1)·S. Proyectos antiguos traen el brazo directo. */
   const Lr = num(r.Lr),
     brazo = Lr !== null ? Lr - (n - 1) * S : num(r.brazo);
-  x.brazo = brazo;
+  /* Geometría REAL del dibujo: posición de arco (m) de cada rociador que fluye desde la punta
+   *  y del punto de conexión. Los L del walk = diferencias entre posiciones consecutivas. */
+  const posDib = Array.isArray((x.rEff || x.r).posDib)
+    ? ((x.rEff || x.r).posDib as number[])
+    : null;
+  const posConDib = (x.rEff || x.r).posConDib;
+  /* dibOk exige geometría FINITA y coherente: finita ≥ 0, ascendente, y la conexión al pie
+   *  (posConDib ≥ última posición). Datos inválidos → fallback S/brazo — Math.max(0,…) ya no
+   *  tapa incoherencias (convertirlas en tramos L=0 era un error silencioso). */
+  const dibOk =
+    !!posDib &&
+    posDib.length === n &&
+    n > 0 &&
+    posDib.every((v, i) => Number.isFinite(v) && v >= 0 && (i === 0 || v >= posDib[i - 1])) &&
+    typeof posConDib === 'number' &&
+    Number.isFinite(posConDib) &&
+    (posConDib as number) >= (posDib as number[])[n - 1];
+  const brazoDib = dibOk ? (posConDib as number) - (posDib as number[])[n - 1] : 0;
+  x.brazo = dibOk ? brazoDib : brazo;
   const con = String(r.con || '').trim() || '?';
   const build = (dn: string) => {
     const rows: TuberiaRow[] = [];
@@ -50,7 +70,7 @@ export function calcRamal(
               roc: true,
               mat,
               dn,
-              L: brazo === null ? '' : brazo,
+              L: dibOk ? brazoDib : brazo === null ? '' : brazo,
               c45: r.c45,
               c90: r.c90,
               clr: r.clr,
@@ -63,7 +83,16 @@ export function calcRamal(
               zi: zr,
               zf: zc,
             }
-          : { ni: String(a), nf: String(a + 1), roc: true, mat, dn, L: S, zi: zr, zf: zr },
+          : {
+              ni: String(a),
+              nf: String(a + 1),
+              roc: true,
+              mat,
+              dn,
+              L: dibOk ? Math.max(0, (posDib as number[])[j + 1] - (posDib as number[])[j]) : S,
+              zi: zr,
+              zf: zr,
+            },
       );
     }
     return rows;
@@ -232,6 +261,8 @@ export function computeRed(
         {},
         y.t,
         { ni: y.de, nf: y.a },
+        /* Material vacío → el de la red → el de referencia (los selects nacen vacíos). */
+        { mat: y.t.mat || red!.mat || 'Acero SCH 40' },
         porNudo ? { zi: zNode(y.de), zf: zNode(y.a) } : {},
       );
       y.res = route([row], nd.P!, nd.Q!, ctx, 'alim');

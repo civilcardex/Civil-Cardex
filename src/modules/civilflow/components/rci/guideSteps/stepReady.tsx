@@ -6,7 +6,7 @@ import { TXT, UL, type PropsPasoGuia } from './shared.ts';
 /* 7 · ¿Listo para dibujar? */
 export function PasoListo({ irGo }: PropsPasoGuia) {
   const items: [string, string[]][] = [
-    ['Riesgo clasificado y compatible con el uso', ['entradas', 'clas.riesgo']],
+    ['Riesgo clasificado y compatible con el uso', ['tipologias', 'pisos']],
     ['Altura de arrume definida (si hay almacenamiento)', ['entradas', 'clas.arrumeH']],
     ['Separación S dentro de límites', ['tipologias', 'pisos']],
     ['Separación L dentro de límites', ['tipologias', 'pisos']],

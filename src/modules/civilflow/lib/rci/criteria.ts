@@ -21,7 +21,8 @@ export function criterios(
   const HtFt = (num(c.htecho) || 0) * 3.28084;
   const FSeco = c.sistema === 'Seco' ? 1.3 : 1;
   const RedQR =
-    isSi(c.qr) && c.sistema === 'Húmedo' && hz.qr && HtFt <= 20
+    /* sistema vacío ≡ Húmedo (ped. usuario 2026-11-20: los selects nacen sin opción). */
+    isSi(c.qr) && c.sistema !== 'Seco' && hz.qr && HtFt <= 20
       ? HtFt <= 10
         ? 0.4
         : (55 - 1.5 * HtFt) / 100

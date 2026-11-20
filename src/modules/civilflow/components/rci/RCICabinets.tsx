@@ -204,7 +204,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                         style={TH10}
                         title="Gab = gabinete del piso; Base = base del montante; CB = cuarto de bombas"
                       >
-                        Tramo
+                        Gabinete
                       </th>
                       <th
                         scope="col"

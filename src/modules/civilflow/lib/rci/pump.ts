@@ -65,8 +65,9 @@ export function siamesaCalc(st: RciState, R: RciResult, ctx: CalcCtx): SiaResult
     salida: false,
     qFijo: '',
     qExtra: extra,
-    mat: S.mat,
-    dn: S.dn,
+    /* Siamesa vacía → materiales/diámetro de referencia al calcular (los selects nacen vacíos). */
+    mat: S.mat || 'Acero SCH 10',
+    dn: S.dn || '4"',
     L: num(S.L) ?? 0,
     c90: num(S.c90) || 0,
     tee: num(S.tee) || 0,

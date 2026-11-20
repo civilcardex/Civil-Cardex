@@ -331,9 +331,9 @@ describe('extraerGris — estructura contra el ejemplo de verificación', () => 
   it('montante presente con altDeriv por defecto (2.5) y material/diámetro por defecto', () => {
     expect(estado.montantes).toHaveLength(1);
     expect(estado.montantes[0]).toMatchObject({ id: 'p1|m1', nombre: 'MRCI1', pisos: [0] });
-    expect(Number(estado.mont.hD)).toBe(2.5);
-    expect(estado.mont.mat).toBe('Acero SCH 10');
-    expect(estado.mont.dn).toBe('auto');
+    expect(estado.mont.hD).toBe(''); // ped. usuario 2026-11-20: celdas vacías sin dibujo
+    expect(estado.mont.mat).toBe('');
+    expect(estado.mont.dn).toBe('');
     expect(montDibujo).toEqual({ mat: null, dn: null, altDeriv: null });
     expect(avisos).toEqual([]);
   });

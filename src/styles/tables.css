@@ -932,6 +932,10 @@ tr.rt-subrow-selected > td {
 /* Anchos de los inputs de la tabla de pisos (doctrina 2026-11-17: ceden bajo presión —
  * el px queda como MAX en vez de fijo; en pantallas anchas se ven igual y al estrechar
  * comprimen en vez de empujar scroll horizontal). */
+.ds-px-46 {
+  width: 100%;
+  max-width: 46px;
+}
 .ds-px-58 {
   width: 100%;
   max-width: 58px;
@@ -955,6 +959,10 @@ tr.rt-subrow-selected > td {
 .ds-px-116 {
   width: 100%;
   max-width: 116px;
+}
+.ds-px-144 {
+  width: 100%;
+  max-width: 144px;
 }
 
 .ds-scroll-x {
@@ -2377,4 +2385,21 @@ tr.rt-subrow-selected > td {
 }
 .ep-card-col .ep-comment {
   font-size: 11px;
+}
+
+/* ── Divisorias de las tablas RCI (ped. usuario 2026-11-20) ── */
+/* Verticales CLARAS en Ramales/Tramos del piso + borde izquierdo de la primera columna. */
+.tbl.tbl-sep th,
+.tbl.tbl-sep td {
+  /* Gris de la tabla (var(--line)), como estaban antes — !important para ganarle al inline. */
+  border-right: 1px solid var(--line, #3a3a44) !important;
+}
+.tbl.tbl-sep th:first-child,
+.tbl.tbl-sep td:first-child {
+  border-left: 1px solid var(--line, #3a3a44);
+}
+/* Horizontales de las celdas de RAMALES del piso: el borderBottom inline de las celdas es
+ *  var(--line), casi invisible — !important para ganarle al estilo en línea. */
+.tbl.tbl-hline td {
+  border-bottom: 1px solid var(--line, #3a3a44) !important;
 }
