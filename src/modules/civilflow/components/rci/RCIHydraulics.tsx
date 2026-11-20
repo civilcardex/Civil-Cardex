@@ -8,6 +8,8 @@
  *  Los resultados (Q, P, pérdida, P final) los llena el compute. Ej: R1 del ejemplo cierra con
  *  87.87 gpm @ 19.70 psi y la derivación C pide 45.08 psi con 311.17 gpm (16 rociadores). */
 import {
+  Children,
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -60,23 +62,38 @@ const BTN_INL: CSSProperties = {
   cursor: 'pointer',
 };
 
-/** Barra .hbar del HTML: controles + nota reparten el ancho en columnas uniformes (4: los
- *  3 controles y la nota a la misma altura, ped. usuario). Ambos call sites traen 3 hijos. */
+/* Barra .hbar del HTML (ped. usuario 2026-11-20): controles EMPAQUETADOS A LA IZQUIERDA,
+ *  separados por una LÍNEA DIVISORIA vertical entre cada uno, y la nota también a la
+ *  izquierda tras una divisoria más. Ej: <Hbar nota={…}>3 controles</Hbar>. */
 function Hbar({ children, nota }: { children: ReactNode; nota: ReactNode }) {
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-        gap: 18,
+        display: 'flex',
         alignItems: 'end',
+        gap: 16,
         padding: '6px 10px',
         background: 'var(--bg3)',
         borderRadius: 6,
         marginBottom: 6,
       }}
     >
-      {children}
+      {Children.toArray(children).map((c, i) => (
+        <Fragment key={i}>
+          {i > 0 ? (
+            <div style={{ width: 1, alignSelf: 'stretch', background: 'var(--line)' }} />
+          ) : null}
+          {c}
+        </Fragment>
+      ))}
+      {/* La nota TAMBIÉN a la izquierda (ped. usuario 2026-11-20), tras una divisoria más. */}
+      <div
+        style={{
+          width: 1,
+          alignSelf: 'stretch',
+          background: 'var(--line)',
+        }}
+      />
       <div style={{ fontSize: 12, color: 'var(--txt3)', lineHeight: 1.45 }}>{nota}</div>
     </div>
   );
@@ -141,6 +158,7 @@ const SUBS_HID: SubItemRci[] = [
 export function RciHidraulica({
   ctx,
   planId,
+  pisoLbl,
   tip,
   red,
   grisRed,
@@ -148,6 +166,8 @@ export function RciHidraulica({
   ctx: RciCtx;
   /** Clave de la red del piso activo (= planId del plano). */
   planId: string | null;
+  /** Etiqueta del piso activo (P1…): sufijo de la columna Ramal en Ramales del piso. */
+  pisoLbl: string;
   /** Tipología que cubre el piso activo (su rd tiene el resultado de la red). */
   tip: TipCalc | null;
   /** Red del piso activo ya mezclada (la que se pinta y edita). */
@@ -401,6 +421,7 @@ export function RciHidraulica({
             </Hbar>
             <RciRamalesTable
               rams={rams}
+              piso={pisoLbl}
               red={red}
               rd={rd}
               editRam={editRam}

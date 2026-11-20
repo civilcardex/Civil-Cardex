@@ -1637,12 +1637,12 @@ tr.rt-subrow-selected > td {
 }
 
 .tbl th.tbl-th-s {
-  font-size: 10px;
-  padding: 2px 4px;
+  font-size: 11px;
+  padding: 1px 4px;
 }
 .tbl td.tbl-td-s {
-  font-size: 10px;
-  padding: 2px 4px;
+  font-size: 12px;
+  padding: 1px 4px;
 }
 
 .tbl th.tbl-th-ar {
@@ -2033,7 +2033,7 @@ tr.rt-subrow-selected > td {
 }
 /* Marca de origen de los campos importados: azul = del Perfil · ámbar = editado después. */
 
-/* ── EPC · Cisterna V24 (F2): tabla de usos y SVGs ── */
+/* ── EPC · Cisterna (F2): tabla de usos y SVGs ── */
 .ep-usos {
   width: 100%;
   border-collapse: collapse;
@@ -2112,4 +2112,269 @@ tr.rt-subrow-selected > td {
   width: 100%;
   height: auto;
   display: block;
+}
+
+/* ── EPC · Esquema guía flotante y bloques del formulario (F, ped. 2026-11-20) ── */
+.ep-guia-b {
+  overflow: hidden;
+  padding: 6px;
+}
+/* La hoja mide ALTO disponible × proporción del dibujo (600:470 ≈ 1.277): el SVG siempre
+ *  llena la hoja de lado a lado (nada de bandas blancas). La reserva de 240px (título + pie
+ *  + aire del dialog) garantiza que el modal entre COMPLETO en la ventana: sin scroll. */
+.ep-guia-sheet {
+  width: min(100%, calc((100vh - 240px) * 1.277));
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--line, #3a3a44);
+  border-radius: 6px;
+  padding: 6px;
+  overflow: hidden;
+}
+.ep-guia-b svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.ep-guia-b svg text {
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+.ep-guia-b .gg {
+  transition: opacity 0.15s;
+}
+.ep-guia-b.foc .gg {
+  opacity: 0.35;
+}
+.ep-guia-b.foc .gg.hl,
+.ep-guia-b[data-foco='g-hf'] #g-hf,
+.ep-guia-b[data-foco='g-hfo'] #g-hfo,
+.ep-guia-b[data-foco='g-pred'] #g-pred,
+.ep-guia-b[data-foco='g-zcis'] #g-zcis,
+.ep-guia-b[data-foco='g-hfs'] #g-hfs,
+.ep-guia-b[data-foco='g-pm'] #g-pm,
+.ep-guia-b[data-foco='g-zb'] #g-zb,
+.ep-guia-b[data-foco='g-zt'] #g-zt,
+.ep-guia-b[data-foco='g-hg'] #g-hg,
+.ep-guia-b[data-foco='g-lift'] #g-lift {
+  opacity: 1;
+}
+.ep-guia-b[data-foco] .gg.hl line,
+.ep-guia-b[data-foco] .gg.hl path,
+.ep-guia-b[data-foco] .gg.hl rect {
+  stroke: #e85d04 !important;
+  stroke-width: 2.6px;
+}
+.ep-guia-b[data-foco] .gg.hl text {
+  fill: #e85d04 !important;
+  font-weight: 700;
+}
+.ep-gi {
+  display: inline-block;
+  margin-left: 5px;
+  color: var(--az2, #2e6da4);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+.ep-gi:hover {
+  color: #e85d04;
+}
+
+/* Selector segmentado de unidades del EPC (m.c.a./bar/psi/kPa): tarjetas en línea, la
+ *  activa en azul sólido — mismo lenguaje que los botones de montaje. */
+.ep-un-seg {
+  display: inline-flex;
+  border: 1px solid var(--line, #3a3a44);
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--bg3, #1e1e24);
+}
+.ep-un-seg button {
+  border: 0;
+  border-right: 1px solid var(--line, #3a3a44);
+  background: transparent;
+  color: var(--txt2, #ddd);
+  font: 700 11px var(--ff, sans-serif);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.ep-un-seg button:last-child {
+  border-right: 0;
+}
+.ep-un-seg button[data-on='true'] {
+  background: var(--acc, #2e6da4);
+  color: #fff;
+  cursor: default;
+}
+.ep-un-seg button:not([data-on='true']):hover {
+  background: var(--bg4, #2a2a33);
+}
+/* ── EPC · barra de mini-botones (Guía/Aparatos/Simbología/Cisterna/Importar) ──
+.ep-btn-mini {
+  border: 1px solid var(--brd, #d0d0d0);
+  background: var(--az4, #d6e4f0);
+  color: var(--az1, #1a3a5c);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font: 700 11px var(--ff, sans-serif);
+  cursor: pointer;
+}
+.ep-btn-mini:hover {
+  background: #c4d8ec;
+}
+/* ── EPC · modales sobre la card oscura del dialog: tokens del tema ── */
+.civ-modal .ep-imp-h {
+  color: var(--txt, #fff);
+  font-size: 14px;
+}
+.civ-modal .ep-dim {
+  color: var(--txt3, #b0b8b9);
+}
+.civ-modal .ep-rev-tab th {
+  background: var(--bg4, #2a2a33);
+  color: var(--txt3, #b0b8b9);
+  font-family: var(--mono, monospace);
+  border-bottom: 1px solid var(--line, #3a3a44);
+}
+.civ-modal .ep-rev-tab td {
+  border-bottom: 1px solid var(--line, #3a3a44);
+  color: var(--txt2, #ddd);
+}
+.civ-modal .ep-rev-tab td.n {
+  color: var(--txt, #fff);
+}
+.civ-modal .ep-ok {
+  color: #7cc7a1;
+}
+.civ-modal .ep-wa {
+  color: #e2b45a;
+}
+.civ-modal .ep-er {
+  color: #e57a7a;
+}
+/* Fila de aparato: hover sutil + seleccionado en verde del tema */
+.ep-ap-row {
+  cursor: pointer;
+}
+.civ-modal .ep-ap-row:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+.civ-modal .ep-ap-row.sel {
+  background: rgba(45, 106, 79, 0.28);
+  font-weight: 700;
+}
+/* Simbología: grupos como tarjetas en grid (sin scroll vertical) */
+.ep-sb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+.ep-sb-card {
+  border: 1px solid var(--line, #3a3a44);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ep-sb-h {
+  background: var(--az2, #2e6da4);
+  color: #fff;
+  font: 700 10.5px var(--ff, sans-serif);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+}
+.ep-sb-r {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 1fr auto;
+  gap: 8px;
+  padding: 4px 10px;
+  font-size: 11px;
+  line-height: 1.35;
+  border-bottom: 1px solid var(--line, #3a3a44);
+  color: var(--txt2, #ddd);
+}
+.ep-sb-r:last-child {
+  border-bottom: 0;
+}
+.ep-sb-r b {
+  color: #fff;
+  font-weight: 700;
+  font-family: var(--mono, monospace);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.ep-sb-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* Tabla de aparatos del modal: letra más grande */
+.ep-ap-tab {
+  font-size: 12.5px;
+}
+.ep-ap-tab th {
+  font-size: 10.5px;
+}
+.ep-ap-tab td {
+  padding: 4px 10px;
+}
+/* X de esquina de los modales informativos del EPC (reemplaza el botón Cerrar) */
+.civ-modal .ep-imp {
+  position: relative;
+}
+.ep-modal-x {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: 0;
+  color: var(--txt3, #b0b8b9);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.ep-modal-x:hover {
+  color: var(--txt, #fff);
+}
+.civ-modal .ep-imp-h {
+  padding-right: 30px;
+}
+.ep-sb-r em {
+  color: var(--txt3, #b0b8b9);
+  font-style: normal;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* ── EPC · densidad vertical: filas de tablas más compactas para que la página quepa sin
+ *  scroll (ped. usuario 2026-11-20). Solo dentro de .ep-card-col, no toca otras tablas. */
+.ep-card-col .tbl-calc td.tbl-l {
+  font-size: 12.5px;
+  line-height: 1.25;
+  min-width: 0;
+}
+.ep-card-col .tbl td {
+  font-size: 11px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.ep-card-col .tbl th {
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+.ep-card-col .ep-param-name {
+  font-size: 12px;
+  line-height: 1.25;
+}
+.ep-card-col .ep-param-sub {
+  font-size: 10.5px;
+  line-height: 1.2;
+}
+.ep-card-col .ep-comment {
+  font-size: 11px;
 }

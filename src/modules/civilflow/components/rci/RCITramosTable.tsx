@@ -46,7 +46,7 @@ export function RciTramosTable({
   return (
     <div style={{ overflowX: 'auto' }}>
       <table
-        className="tbl"
+        className="tbl tbl-sep"
         style={{
           fontSize: 12,
           borderCollapse: 'collapse',
@@ -177,7 +177,7 @@ export function RciTramosTable({
                   className="c"
                   style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
                 >
-                  🔒 {f.nombre}
+                  {f.nombre}
                 </td>
                 <td
                   className="c"

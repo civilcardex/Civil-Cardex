@@ -218,14 +218,14 @@ describe('rowsModel · verificaciones agrupadas', () => {
 });
 
 describe('sembrarRci · amarillos del proyecto nuevo', () => {
-  it('estado recién extraído: riesgo leve y húmedo de referencia; numéricos/booleanos VACÍOS y cada piso apuntando a la red de su plano', () => {
+  it('estado recién extraído: riesgo VACÍO (ped. usuario 2026-11-20) y húmedo de referencia; numéricos/booleanos VACÍOS y cada piso apuntando a la red de su plano', () => {
     const gris = extraerGris([
       { planId: 'p1', label: 'P1', npt: 0, doc: null },
       { planId: 'p2', label: 'P2', npt: 6.1, doc: null },
     ]);
     const est = sembrarRci(gris.estado, 'Torre Norte');
     expect(est.meta.proyecto).toBe('Torre Norte');
-    expect(est.clas.riesgo).toBe('Riesgo leve');
+    expect(est.clas.riesgo).toBe('');
     expect(est.clas.sistema).toBe('Húmedo');
     /* Numéricos y booleanos VACÍOS por defecto (ped. usuario) — el motor resuelve sus
        defaults de norma al calcular. */

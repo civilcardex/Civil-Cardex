@@ -22,15 +22,16 @@ export const IN_CELDA: CSSProperties = {
   margin: 0,
 };
 
-/** Celda de SOLO LECTURA de las tablas de Hidráulica (Ramales/Tramos): 14 px compacta.
+/** Celda de SOLO LECTURA de las tablas de Hidráulica (Ramales/Tramos): 12.5 px compacta
+ *  (ped. usuario 2026-11-20: tablas compactadas para que entren sin scroll).
  *  Ej: <td style={TDC}>128,54</td>. */
-export const TDC = { ...TD, fontSize: 14, padding: '1px 3px' } as const;
+export const TDC = { ...TD, fontSize: 12.5, padding: '1px 3px' } as const;
 
 /** Celda EDITABLE de las tablas de Hidráulica: control centrado que no ensancha al activar
  *  EDITAR (el width lo pone cada celda sobre esta base). Ej: {...CELDA, width: 56}. */
 export const CELDA: CSSProperties = {
   ...IN_CELDA,
-  fontSize: 14,
+  fontSize: 12.5,
   boxSizing: 'border-box',
   textAlign: 'center',
 };
@@ -69,7 +70,11 @@ export function celdaEditable(on: boolean, control: ReactElement): ReactNode {
             // ni nada»): sin foco por Tab y el blur mata el foco por click — la celda se ve
             // idéntica (borde/fondo transparentes) pero no se puede seleccionar ni editar.
             ...(on
-              ? {}
+              ? {
+                  // Selección horizontal (ped. usuario 2026-11-20): click en la celda activa
+                  // selecciona TODO su contenido de una, listo para sobreescribirlo.
+                  onFocus: (e: { target: { select: () => void } }) => e.target.select(),
+                }
               : {
                   tabIndex: -1,
                   onFocus: (e: { target: { blur: () => void } }) => e.target.blur(),

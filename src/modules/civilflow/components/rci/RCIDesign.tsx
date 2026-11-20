@@ -332,6 +332,16 @@ function RciDesign() {
   }, [estado]);
 
   const idxActivo = planIdActivo ? idxPorPlanId.get(planIdActivo) : undefined;
+  /* Sufijo del piso activo (ped. usuario 2026-11-20): «RRCI5» → «RRCI5-P1». El nombre de la
+   *  fila de piso es «Piso 1»/«Sótano 1»/«Cubierta» → se abrevia a P1/S1/C. */
+  const pisoSufijo = (() => {
+    const nom = idxActivo != null ? String(estado?.pisos.rows[idxActivo]?.nombre ?? '') : '';
+    const m = /^Piso (\d+)$/.exec(nom);
+    if (m) return `P${m[1]}`;
+    const so = /^Sótano (\d+)$/.exec(nom);
+    if (so) return `S${so[1]}`;
+    return nom === 'Cubierta' ? 'C' : nom;
+  })();
   const tipIdActivo = tips && idxActivo !== undefined ? (tips.tipOf[idxActivo] ?? null) : null;
   const tipActivo: TipCalc | null = R && tipIdActivo ? (R.edif.typ[tipIdActivo] ?? null) : null;
   const redActiva = planIdActivo && estado ? estado.redes[planIdActivo] : undefined;
@@ -541,6 +551,7 @@ function RciDesign() {
             <RciHidraulica
               ctx={ctx}
               planId={planIdActivo}
+              pisoLbl={pisoSufijo}
               tip={tipActivo}
               red={redActiva}
               grisRed={grisRed}

@@ -1,7 +1,7 @@
-/** Tabla de RAMALES del piso (sub Hidráulica): 23 columnas del HTML — recorrido del ramal,
- *  rociadores (dibujados/fluyen), tubería (Ø/material/S/L/cota), resultados del cálculo
- *  (n.º de rociadores, brazo, Ø usado, pérdidas, Pe, Q, P req, Keq, Vmax, Q/P equilibrados,
- *  estado) y los botones de orden. Extraída de RCIHydraulics por el guard de líneas (F9).
+/** Tabla de RAMALES del piso (sub Hidráulica): recorrido (ramal+cota, inicio, fin), rociadores
+ *  (dibujados/fluyen), tubería (Ø/S/L), resultados del cálculo (n.º de rociadores, brazo,
+ *  pérdidas, Pe, Q, P req, Keq, Vmax, Q/P equilibrados, estado) y los botones de orden.
+ *  Extraída de RCIHydraulics por el guard de líneas (F9).
  *  El estado y los handlers viven en el padre; esta tabla es markup + handlers recibidos.
  *  Ej: <RciRamalesTable rams={rams} ... /> pinta «Ramales del piso». */
 import { useState, type CSSProperties } from 'react';
@@ -108,6 +108,7 @@ const FIN_AYUDA = (
  *  del padre vía ctx.editar; los fijos vienen de la red GRIS (candados 🔒 de dibujo). */
 export function RciRamalesTable({
   rams,
+  piso,
   red,
   rd,
   editRam,
@@ -119,6 +120,8 @@ export function RciRamalesTable({
 }: {
   /** Filas ya calculadas (filasRamales del padre). */
   rams: FilaRamalRci[];
+  /** Etiqueta del piso activo (P1…): sufijo de la columna Ramal (ped. usuario 2026-11-20). */
+  piso: string;
   /** Red mezclada del piso (de ahí salen la S digitada y la cota por ramal). */
   red: Red | undefined;
   /** Resultado de la red (totales del footer); null = red sin calcular. */
@@ -139,7 +142,7 @@ export function RciRamalesTable({
     <>
       <div style={{ overflowX: 'auto' }}>
         <table
-          className="tbl"
+          className="tbl tbl-sep"
           style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 0, width: '100%' }}
         >
           <caption
@@ -157,7 +160,7 @@ export function RciRamalesTable({
             {/* Grupos del HTML (tr.grp): Recorrido / Rociadores / Tubería del ramal (Ø único) /
               Cota / Resultados / Orden. */}
             <tr>
-              <th scope="col" colSpan={3} style={THW}>
+              <th scope="col" colSpan={4} style={THW}>
                 Recorrido
               </th>
               <th scope="col" colSpan={3} style={THW}>
@@ -169,13 +172,20 @@ export function RciRamalesTable({
               <th scope="col" style={THW}>
                 Cota
               </th>
-              <th scope="col" colSpan={12} style={THW}>
+              <th scope="col" colSpan={11} style={THW}>
                 Resultados
               </th>
             </tr>
             <tr>
               <th scope="col" style={THW}>
                 Ramal
+              </th>
+              <th
+                scope="col"
+                style={THW}
+                title="Altura del ramal sobre el NPT. Vacío = la cota de los ramales"
+              >
+                Cota (m)
               </th>
               <th
                 scope="col"
@@ -246,13 +256,6 @@ export function RciRamalesTable({
               <th scope="col" style={THW} title="Longitud del ramal punta → conexión, del dibujo">
                 L ramal (m)
               </th>
-              <th
-                scope="col"
-                style={THW}
-                title="Altura del ramal sobre el NPT. Vacío = la cota de los ramales"
-              >
-                Cota (m)
-              </th>
               <th scope="col" style={THW} title="Numeración global de rociadores del ramal">
                 Rociadores n.º
               </th>
@@ -262,9 +265,6 @@ export function RciRamalesTable({
                 title="L ramal − (fluyen − 1) × S: desde el último rociador que fluye hasta la conexión"
               >
                 Brazo (m)
-              </th>
-              <th scope="col" style={THW} title="Diámetro con el que se calculó">
-                Ø usado
               </th>
               <th
                 scope="col"
@@ -309,6 +309,7 @@ export function RciRamalesTable({
                 key={f.id || i}
                 f={f}
                 i={i}
+                piso={piso}
                 red={red}
                 editRam={editRam}
                 setRamal={setRamal}

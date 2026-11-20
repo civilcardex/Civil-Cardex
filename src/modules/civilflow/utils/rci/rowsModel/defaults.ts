@@ -64,7 +64,7 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
     /* Categóricos con default de referencia (el cálculo necesita riesgo/sistema); los
      * NUMÉRICOS y BOOLEANOS nacen VACÍOS (ped. usuario) — el motor los resuelve con sus
      * defaults de norma al calcular y el diseñador los digita donde importa. */
-    riesgo: graba(est.clas.riesgo, 'Riesgo leve'),
+    riesgo: graba(est.clas.riesgo, ''),
     sistema: graba(est.clas.sistema, 'Húmedo'),
   };
   const roc = { ...est.roc };

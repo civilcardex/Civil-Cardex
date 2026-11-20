@@ -407,7 +407,9 @@ function TablaPisos({
                       value={f.riesgo}
                       onChange={(e) => setPiso(f.i, 'riesgo')(e.target.value)}
                       className="ds-celda12 ds-px-116"
+                      title="Riesgo NFPA 13 (vacío = sin clasificar; el motor usa el default de norma)"
                     >
+                      <option value="">—</option>
                       {RIESGOS.map((o) => (
                         <option key={o} value={o}>
                           {o}
