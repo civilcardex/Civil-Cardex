@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { confirmarMarquee } from '../drags/marqueeSelect.ts';
 import {
@@ -8,6 +8,7 @@ import {
 } from '../drags/dragValidation.ts';
 import { dragUpGhost, dragUpBajante } from '../drags/dragUpBajante.ts';
 import { dragUpVertex } from '../drags/dragUpVertex.ts';
+import { dragVertex } from '../drags/dragVertex.ts';
 import { dragUpRamalBody, checkAccesorioTrigger } from '../drags/dragUpRamalBody.ts';
 
 /**
@@ -215,6 +216,177 @@ describe('dragUpBajante.dragUpGhost', () => {
 describe('dragUpVertex / dragUpRamalBody / checkAccesorioTrigger', () => {
   it('dragUpVertex sin ptDrag es no-op', () => {
     expect(() => dragUpVertex(makeEngine())).not.toThrow();
+  });
+
+  it('rociador ÚNICO desliza más allá de las posiciones de los extremos borrados', () => {
+    // Escenario del usuario: 3 rociadores, borra los 2 extremos (vértices huérfanos quedan en
+    // pts) y arrastra el del medio más allá de donde estaban los extremos — la proyección al
+    // cuerpo COMPLETO del ramal lo permite (el clamp a los 2 segmentos adyacentes lo
+    // bloqueaba en x≤300) y sin par rociador-rociador no hay verificación de S.
+    const eng = makeEngine();
+    eng.ramales = [
+      {
+        id: 'R1',
+        net: 'rci',
+        pts: [
+          [0, 0],
+          [100, 0],
+          [200, 0],
+          [300, 0],
+          [400, 0],
+        ],
+        accMed: { accMed2: 'rociador#2' },
+      },
+    ] as never;
+    eng.ptDrag = { id: 'R1', ptIdx: 2, linkedPts: null } as never;
+    eng._dragBackupPts = [
+      [0, 0],
+      [100, 0],
+      [200, 0],
+      [300, 0],
+      [400, 0],
+    ];
+    eng.ramales[0].pts[2] = [350, 0]; // posición arrastrada, más allá del extremo viejo (300)
+    dragUpVertex(eng);
+    expect(eng.ramales[0].pts[2][0]).toBeCloseTo(350);
+    expect(eng.ramales[0].pts).toHaveLength(5); // vértices intactos (borrar rociador no hace splice)
+    expect(eng.ptDrag).toBeNull();
+  });
+
+  it('con 2+ rociadores el arrastre que rompe la S exacta se REVIERTE con alerta', () => {
+    // La decisión del usuario: la alerta sale y el rociador vuelve a su punto original — la
+    // S exacta solo la siembran «Dibujar rociadores» y el desplegable del cuerpo.
+    const raw = JSON.stringify({ pisos: { rows: [] }, roc: { S: 2.5 } });
+    const original = (globalThis as unknown as { localStorage?: unknown }).localStorage;
+    (globalThis as unknown as { localStorage?: unknown }).localStorage = { getItem: () => raw };
+    try {
+      const eng = makeEngine();
+      eng.scaleM = 0.5;
+      eng.pxToM = (px: number) => (px / 96) * 2.54 * 0.5;
+      eng.triggerAlert = vi.fn();
+      eng.ramales = [
+        {
+          id: 'R2',
+          net: 'rci',
+          pts: [
+            [0, 0],
+            [100, 0],
+            [200, 0],
+            [300, 0],
+            [400, 0],
+          ],
+          accMed: { accMed1: 'rociador#1', accMed2: 'rociador#2', accMed3: 'rociador#3' },
+        },
+      ] as never;
+      eng.ptDrag = { id: 'R2', ptIdx: 2, linkedPts: null } as never;
+      eng._dragBackupPts = [
+        [0, 0],
+        [100, 0],
+        [200, 0],
+        [300, 0],
+        [400, 0],
+      ];
+      eng.ramales[0].pts[2] = [350, 0];
+      dragUpVertex(eng);
+      expect(eng.ramales[0].pts[2][0]).toBeCloseTo(200); // volvió al punto original
+      expect(eng.triggerAlert).toHaveBeenCalledWith('Separación de rociadores', expect.any(String));
+    } finally {
+      (globalThis as unknown as { localStorage?: unknown }).localStorage = original;
+    }
+  });
+
+  it('revert por S restaura TAMBIÉN el accMed remapeado por el MOVE', () => {
+    const raw = JSON.stringify({ pisos: { rows: [] }, roc: { S: 2.5 } });
+    const original = (globalThis as unknown as { localStorage?: unknown }).localStorage;
+    (globalThis as unknown as { localStorage?: unknown }).localStorage = { getItem: () => raw };
+    try {
+      const eng = makeEngine();
+      eng.scaleM = 0.5;
+      eng.pxToM = (px: number) => (px / 96) * 2.54 * 0.5;
+      eng.triggerAlert = vi.fn();
+      eng.ramales = [
+        {
+          id: 'R3',
+          net: 'rci',
+          pts: [
+            [0, 0],
+            [100, 0],
+            [200, 0],
+            [300, 0],
+            [400, 0],
+          ],
+          // El MOVE dejó el rociador del medio reinsertado al final (clave remapeada).
+          accMed: { accMed1: 'rociador#1', accMed3: 'rociador#2', accMed4: 'rociador#3' },
+        },
+      ] as never;
+      eng.ptDrag = { id: 'R3', ptIdx: 3, linkedPts: null } as never;
+      eng._dragBackupPts = [
+        [0, 0],
+        [100, 0],
+        [200, 0],
+        [300, 0],
+        [400, 0],
+      ];
+      eng._dragBackupAccMed = {
+        accMed1: 'rociador#1',
+        accMed2: 'rociador#2',
+        accMed3: 'rociador#3',
+      };
+      eng.ramales[0].pts[3] = [350, 0];
+      dragUpVertex(eng);
+      expect(eng.ramales[0].pts[2][0]).toBeCloseTo(200);
+      expect(eng.ramales[0].accMed).toEqual({
+        accMed1: 'rociador#1',
+        accMed2: 'rociador#2',
+        accMed3: 'rociador#3',
+      });
+    } finally {
+      (globalThis as unknown as { localStorage?: unknown }).localStorage = original;
+    }
+  });
+
+  it('MOVE: el rociador cruza el vértice huérfano sin doblar el ramal (reordena con remap)', () => {
+    // 3 rociadores (1,2,3), se borran los extremos (huérfanos en 1 y 3) y el del medio (idx 2)
+    // se arrastra a x=350, MÁS ALLÁ del huérfano de la derecha: el ramal NO se dobla — la
+    // polilínea queda collinear en el MISMO orden y el accMed se remapea a la nueva posición.
+    const eng = makeEngine();
+    (eng as unknown as { toPlane: unknown }).toPlane = (x: number, y: number) => ({ x, y });
+    (eng as unknown as { scheduleRender: () => void }).scheduleRender = () => {};
+    const ram = {
+      id: 'R4',
+      net: 'rci',
+      pts: [
+        [0, 0],
+        [100, 0],
+        [200, 0],
+        [300, 0],
+        [400, 0],
+      ],
+      accMed: { accMed2: 'rociador#2' },
+    } as never;
+    eng.ramales = [ram];
+    eng.ptDrag = { id: 'R4', ptIdx: 2, accMedSlide: { ax: 100, ay: 0, bx: 300, by: 0 } } as never;
+    eng._dragBackupPts = [
+      [0, 0],
+      [100, 0],
+      [200, 0],
+      [300, 0],
+      [400, 0],
+    ];
+    eng._dragBackupAccMed = { accMed2: 'rociador#2' };
+    dragVertex(eng, 350, 0, {
+      ramalesPorId: new Map([['R4', ram]]),
+      bajantesQueReciben: new Map(),
+    } as never);
+    const xs = eng.ramales[0].pts.map((pt: number[]) => pt[0]);
+    expect(xs).toEqual([0, 100, 300, 350, 400]); // mismo trazo, SIN retroceso ni "V"
+    expect(eng.ramales[0].pts.every((pt: number[]) => pt[1] === 0)).toBe(true);
+    expect(eng.ramales[0].accMed).toEqual({ accMed3: 'rociador#2' }); // remap de clave por índice
+    expect((eng.ptDrag as unknown as { ptIdx: number }).ptIdx).toBe(3);
+  });
+
+  afterEach(() => {
+    (globalThis as unknown as { localStorage?: unknown }).localStorage = undefined;
   });
 
   it('dragUpRamalBody sin ramalDrag es no-op', () => {

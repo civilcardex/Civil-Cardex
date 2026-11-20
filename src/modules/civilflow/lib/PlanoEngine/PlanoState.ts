@@ -438,6 +438,10 @@ export interface IPlanoEngineCore {
   _bajDragBackupPts?: Record<string, number[][]> | null;
   _lblDragIsParent?: boolean;
   _dragBackupPts?: number[][] | null;
+  /** accMed capturado al iniciar el arrastre de un vértice con accesorio: el MOVE reordena
+   *  el vértice (remap de claves accMed${k} por índice) y este backup restaura si el UP
+   *  rechaza (S de rociadores). Fuente ESTABLE del remap en cada frame. */
+  _dragBackupAccMed?: Record<string, string> | null;
   _dragLinkedBackupPts?: Record<string, number[][]> | null;
   _netCounts: Record<string, import('./planoNets.ts').PlanoNetCounts>;
   _ramalDefaults: PlanoRamalDefaults | null;

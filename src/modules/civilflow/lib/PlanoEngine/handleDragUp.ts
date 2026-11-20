@@ -11,9 +11,10 @@ import { dragUpVertex } from './drags/dragUpVertex.ts';
 import { dragUpRamalBody } from './drags/dragUpRamalBody.ts';
 
 /**
- * CONTRATO move→up: los backups `_dragBackupPts`, `_dragLinkedBackupPts`, `_bajDragBackupPts`
- * y `_bajDragBackupXY` los ESCRIBE el move (handleDragMove.ts / drags/*) y SOLO los módulos
- * dragUp* los consumen y limpian. Los 15 flags de arrastre (marqueeRect, guideDrag, multiDrag,
+ * CONTRATO down→up: los backups `_dragBackupPts`, `_dragLinkedBackupPts`, `_bajDragBackupPts`
+ * y `_bajDragBackupXY` los ESCRIBE el MOUSE DOWN (mouseDownHits.ts / mouseDownDrags.ts, con
+ * structuredClone de los pts al iniciar el gesto) y SOLO los módulos dragUp* los consumen y
+ * limpian — handleDragMove no escribe ninguno, solo los usa para revertir en vuelo. Los 15 flags de arrastre (marqueeRect, guideDrag, multiDrag,
  * ghostDrag, lblDrag, txtDrag, txtResize, canalResizeDrag, dimLblDrag, bajDrag, areaDrag,
  * areaPtDrag, dimDrag, ptDrag, ramalDrag) se limpian aquí, en ESTE orden — cada bloque
  * corresponde a un gesto que handleDragMove pudo iniciar.

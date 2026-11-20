@@ -372,6 +372,7 @@ export function _trySelRamalDrag(
     const a = sel.pts[accIdx - 1],
       b = sel.pts[accIdx + 1];
     engine._dragBackupPts = structuredClone(sel.pts);
+    engine._dragBackupAccMed = sel.accMed ? structuredClone(sel.accMed) : null;
     engine.ptDrag = {
       id: sel.id,
       ptIdx: accIdx,
@@ -402,6 +403,7 @@ export function _trySelRamalDrag(
         const a = sel.pts[i - 1],
           b = sel.pts[i + 1];
         engine._dragBackupPts = structuredClone(sel.pts);
+        engine._dragBackupAccMed = sel.accMed ? structuredClone(sel.accMed) : null;
         engine.ptDrag = {
           id: sel.id,
           ptIdx: i,

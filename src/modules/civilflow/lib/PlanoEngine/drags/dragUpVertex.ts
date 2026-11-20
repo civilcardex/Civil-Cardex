@@ -1,9 +1,9 @@
 /**
  * Soltar el arrastre de un VÉRTICE de ramal (dragVertex lo movió): valida ángulos (con
  * rotación de rescate al pegar sobre bajante), padre correcto, dirección de flujo, split en T
- * y asociación a bajantes — cada rechazo revierte con los backups del move (contrato
- * move→up: _dragBackupPts/_dragLinkedBackupPts los escribe handleDragMove y SOLO aquí se
- * consumen). Extraído verbatim de handleDragUp.ts.
+ * y asociación a bajantes — cada rechazo revierte con los backups (contrato down→up:
+ * _dragBackupPts/_dragLinkedBackupPts los escribe el MOUSE DOWN con structuredClone y aquí
+ * solo se consumen). Extraído verbatim de handleDragUp.ts.
  * Ej: soltar el extremo dentro de un bajante escribe recibeDeIds/alimentaIds con rollback.
  */
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
@@ -41,11 +41,12 @@ export function dragUpVertex(engine: IPlanoEngineCore): void {
     idxV < ram.pts.length - 1 &&
     engine._dragBackupPts
   ) {
-    // Proyectar al punto más cercano del propio ramal SIN el vértice (clamp al segmento).
+    // Proyectar al punto más cercano del cuerpo COMPLETO del ramal (ped. usuario 2026-11-20:
+    // el clamp a los 2 segmentos adyacentes bloqueaba pasar las posiciones de rociadores ya
+    // borrados — sus vértices quedan huérfanos en pts).
     let mejor: number[] | null = null;
     let mejorD = Infinity;
     for (let i = 0; i < ram.pts.length - 1; i++) {
-      if (i !== idxV - 1 && i !== idxV) continue;
       const ax = ram.pts[i][0];
       const ay = ram.pts[i][1];
       const bx = ram.pts[i + 1][0];
@@ -64,19 +65,23 @@ export function dragUpVertex(engine: IPlanoEngineCore): void {
       }
     }
     if (mejor) ram.pts[idxV] = mejor;
-    // S EXACTA (ped. usuario 2026-11-19: «no debe permitir... si se desplaza el rociador»):
-    // el hueco debe seguir coincidiendo con S — si el movimiento la rompe, el arrastre SE
-    // REVIERTE a la posición previa (backups del move) con la alerta. Antes se alertaba y
-    // conservaba la posición nueva, dejando el ramal con separaciones fuera de doctrina.
+    /* ARRastre BLOQUEADO si rompe S (ped. usuario 2026-11-20, tras ver la alerta): la
+     * separación fuera de S revierte el arrastre a los backups del move — el rociador
+     * vuelve a su punto original. Mover a mano jamás coincide con S al 1e-6 px, así que
+     * con 2+ rociadores todo arrastre se deshace: la S exacta solo la siembra «Dibujar
+     * rociadores» y el desplegable del cuerpo. Con UN solo rociador huecoMaxS da null y
+     * el deslizamiento por todo el ramal es libre (pasa las posiciones de borrados). */
     const errS = verificaSRociadores(engine, ram.id);
-    if (errS) {
-      // El backup es directamente number[][] (lo llena mouseDown con structuredClone(pts)).
-      const bk = engine._dragBackupPts;
-      if (bk?.[idxV]) ram.pts[idxV] = [...bk[idxV]];
+    if (errS && engine._dragBackupPts) {
+      ram.pts = engine._dragBackupPts;
+      /* El MOVE reordenó el vértice y remapeó accMed${k}: restaurar TAMBIÉN el accMed del
+       * mouse-down, o las claves quedarían apuntando a vértices equivocados tras el revert. */
+      if (engine._dragBackupAccMed) ram.accMed = engine._dragBackupAccMed;
       engine.triggerAlert('Separación de rociadores', errS);
     }
-    renumeraRociadores(engine);
     engine._dragBackupPts = null;
+    engine._dragBackupAccMed = null;
+    renumeraRociadores(engine);
     engine._markDirty();
     engine.render();
     return;

@@ -41,11 +41,14 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     ctx.rect(c.x - side, c.y - side, side * 2, side * 2);
     ctx.fill();
     ctx.stroke();
-    // Etiqueta ROC-N (numeración consecutiva del piso, ped. usuario): SIEMPRE a la derecha del
-    // glifo con espacio extra cuando el ramal es VERTICAL; encima del glifo cuando es
-    // HORIZONTAL — la orientación la da la dirección del trazo (dx,dy en pantalla).
-    // La etiqueta usa el grupo 2 (el N del '#'); sin número no dibuja — igual que los demás
-    // tipos en accRCI. El grupo 1 es el TIPO ('rociador'): usarlo pintaba «ROC-rociador».
+    // Etiqueta ROC-N del COLGANTE (numeración consecutiva del piso, ped. usuario): derecha
+    // del glifo si el ramal es VERTICAL, encima si es HORIZONTAL — la orientación la da el
+    // trazo (dx,dy). Usa el grupo 2 del regex (el N del '#'); el grupo 1 es el TIPO
+    // ('rociador'): usarlo pintaba «ROC-rociador».
+    // COEXISTE con drawEtiquetaRoc de accRCI (los 4 rociadores especiales) con radios de
+    // etiqueta distintos a propósito: aquí circR×1.35 anclado al glifo grande (rad×1.25×1.2);
+    // allá ×0.9 anclado al anillo de los especiales (rad×0.9). No unificar sin revisar los
+    // dos glifos juntos.
     if (mRoc[2]) {
       /* Proporcional al glifo (que escala con el zoom): SIN piso en px — antes el piso 11
        * mantenía el texto grande al alejar y "crecía" respecto del dibujo (ped. usuario). */

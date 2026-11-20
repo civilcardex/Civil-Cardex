@@ -16,13 +16,16 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   // Mismo tamaño que las válvulas (rad × 1.25): la familia se lee pareja sobre el trazo.
   const r = a.rad * 1.25;
 
+  /* Tamaño PAREJO (ped. usuario 2026-11-20): anillo principal ×1.2 = el circR del colgante
+   *  (rad×1.25×1.2) — los 4 especiales miden LO MISMO que el colgante; sus internos guardan
+   *  proporción (×4/3 sobre los factores viejos de 0.9). */
   if (tipo === 'rociadorMontante') {
     estilo(ctx, engine);
-    anillo(ctx, c.x, c.y, r * 0.9);
-    cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    anillo(ctx, c.x, c.y, r * 1.2);
+    cruzDiagonal(ctx, c.x, c.y, r * 1.2);
     ctx.fillStyle = '#000000';
     ctx.beginPath();
-    ctx.arc(c.x, c.y, r * 0.34, 0, Math.PI * 2);
+    ctx.arc(c.x, c.y, r * 0.45, 0, Math.PI * 2);
     ctx.fill();
     drawEtiquetaRoc(a);
     return true;
@@ -30,11 +33,11 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
 
   if (tipo === 'rociadorSeco') {
     estilo(ctx, engine);
-    anillo(ctx, c.x, c.y, r * 1.15);
-    anillo(ctx, c.x, c.y, r * 0.9);
-    anillo(ctx, c.x, c.y, r * 0.32);
+    anillo(ctx, c.x, c.y, r * 1.53);
+    anillo(ctx, c.x, c.y, r * 1.2);
+    anillo(ctx, c.x, c.y, r * 0.43);
     // La X va AL FINAL: cruza por encima del circulito central, como en el PDF.
-    cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    cruzDiagonal(ctx, c.x, c.y, r * 1.2);
     drawEtiquetaRoc(a);
     return true;
   }
@@ -43,24 +46,24 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
     estilo(ctx, engine);
     // Anillo discontinuo: el rociador queda escondido bajo el cielorraso.
     ctx.save();
-    ctx.setLineDash([r * 0.28, r * 0.22]);
-    anillo(ctx, c.x, c.y, r * 0.9);
+    ctx.setLineDash([r * 0.37, r * 0.29]);
+    anillo(ctx, c.x, c.y, r * 1.2);
     ctx.setLineDash([]);
     ctx.restore();
-    anillo(ctx, c.x, c.y, r * 0.34);
+    anillo(ctx, c.x, c.y, r * 0.45);
     // La X cruza por encima del circulito central (PDF).
-    cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    cruzDiagonal(ctx, c.x, c.y, r * 1.2);
     drawEtiquetaRoc(a);
     return true;
   }
 
   if (tipo === 'rociadorArea') {
     estilo(ctx, engine);
-    anillo(ctx, c.x, c.y, r * 0.9);
-    anillo(ctx, c.x, c.y, r * 0.32);
+    anillo(ctx, c.x, c.y, r * 1.2);
+    anillo(ctx, c.x, c.y, r * 0.43);
     // La X va AL FINAL y cruza por encima del circulito central, como en el PDF de
     // simbología (sin cuadradito ni hatch en los cuartos).
-    cruzDiagonal(ctx, c.x, c.y, r * 0.9);
+    cruzDiagonal(ctx, c.x, c.y, r * 1.2);
     drawEtiquetaRoc(a);
     return true;
   }
@@ -178,7 +181,8 @@ function nudo(ctx: CanvasRenderingContext2D, cx: number, cy: number, mitad: numb
  *  2026-11-13): INDEPENDIENTE del tipo — todos los rociadores la llevan. N = el consecutivo
  *  del `#` en el valor del accesorio ('rociadorMontante#7' → «ROC-7»); sin `#` no dibuja.
  *  Orientación: a la derecha del glifo si el ramal es vertical, arriba si es horizontal.
- *  Ej: drawEtiquetaRoc(a) tras el símbolo del montante. true = dibujó etiqueta. */
+ *  Ej: drawEtiquetaRoc(a) tras el símbolo del montante. true = dibujó etiqueta.
+ *  El ancla usa el MISMO radio del anillo (×1.2, tamaño parejo con el colgante). */
 export function drawEtiquetaRoc(a: {
   ctx: CanvasRenderingContext2D;
   engine: { zoom: number };
@@ -195,7 +199,7 @@ export function drawEtiquetaRoc(a: {
   const num = m[2];
   if (!num) return false;
   const { ctx, engine, accType, c, dx, dy } = a;
-  const circR = a.rad * 1.25 * 0.9;
+  const circR = a.rad * 1.25 * 1.2;
   const fs = Math.max(8, circR * 1.35);
   // NO fluye → etiqueta azul-gris (mismo código que el glifo del colgante en accValves).
   ctx.fillStyle = /NF(?:#|$)/.test(accType) ? '#8ab4d6' : '#000000';

@@ -16,18 +16,61 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
     const idx = engine.ptDrag!.ptIdx;
     const isEndpoint = idx === 0 || idx === r.pts.length - 1;
 
-    // Accesorio a mitad de ramal: deslizarse solo por la línea recta entre sus vecinos,
-    // recortado entre ellos, para que el recorrido real del ramal nunca se doble por este
-    // arrastre.
-    const accSlide = engine.ptDrag!.accMedSlide;
-    if (accSlide) {
-      const sDx = accSlide.bx - accSlide.ax,
-        sDy = accSlide.by - accSlide.ay;
-      const sLen2 = sDx * sDx + sDy * sDy;
-      let t = sLen2 > 0.0001 ? ((p.x - accSlide.ax) * sDx + (p.y - accSlide.ay) * sDy) / sLen2 : 0;
-      t = Math.max(0.02, Math.min(0.98, t));
-      r.pts[idx][0] = accSlide.ax + t * sDx;
-      r.pts[idx][1] = accSlide.ay + t * sDy;
+    // Accesorio a mitad de ramal (rociador rci): REORDENAR, no arrastrar la geometría (ped.
+    // usuario 2026-11-20). Proyectar el cursor sobre el ramal ORIGINAL (backup del mouse-down)
+    // SIN el vértice arrastrado y re-insertarlo en el segmento donde cayó: la polilínea nunca
+    // se dobla (antes el vértice se proyectaba sobre segmentos con él mismo de extremo y
+    // perseguía al cursor, formando la "V") ni retrocede al cruzar otro vértice, y la etiqueta
+    // del ramal (anclada a mitad del largo) no se arrastra. Las claves accMed${k} son ÍNDICE
+    // de vértice → remap con la fuente ESTABLE del backup; ptDrag.ptIdx sigue al vértice.
+    if (engine.ptDrag!.accMedSlide) {
+      const orig = engine._dragBackupPts ?? r.pts;
+      const accFuente = engine._dragBackupAccMed ?? r.accMed;
+      const resto = orig.filter((_, j) => j !== idx);
+      let mejorD = Infinity;
+      let mejor: [number, number] | null = null;
+      let ins = 1;
+      for (let i = 0; i < resto.length - 1; i++) {
+        const ax = resto[i][0];
+        const ay = resto[i][1];
+        const bx = resto[i + 1][0];
+        const by = resto[i + 1][1];
+        const sDx = bx - ax;
+        const sDy = by - ay;
+        const sLen2 = sDx * sDx + sDy * sDy;
+        if (sLen2 < 0.0001) continue;
+        const t = Math.max(0.02, Math.min(0.98, ((p.x - ax) * sDx + (p.y - ay) * sDy) / sLen2));
+        const qx = ax + t * sDx;
+        const qy = ay + t * sDy;
+        const d = Math.hypot(p.x - qx, p.y - qy);
+        if (d < mejorD) {
+          mejorD = d;
+          mejor = [qx, qy];
+          ins = i + 1;
+        }
+      }
+      if (mejor) {
+        // Índice nuevo de cada vértice original: los que quedan antes de la inserción no
+        // cambian; los que quedan después avanzan 1. El arrastrado aterriza en ins.
+        const nuevoIdx: number[] = new Array(orig.length);
+        let ri = 0;
+        for (let j = 0; j < orig.length; j++) {
+          if (j === idx) continue;
+          nuevoIdx[j] = ri >= ins ? ri + 1 : ri;
+          ri++;
+        }
+        const nuevoAcc: Record<string, string> = {};
+        if (accFuente) {
+          for (let j = 0; j < orig.length; j++) {
+            const v = accFuente[`accMed${j}`];
+            if (v === undefined) continue;
+            nuevoAcc[`accMed${j === idx ? ins : nuevoIdx[j]}`] = v;
+          }
+        }
+        r.accMed = nuevoAcc;
+        r.pts = [...resto.slice(0, ins), mejor, ...resto.slice(ins)] as number[][];
+        engine.ptDrag!.ptIdx = ins;
+      }
       engine.scheduleRender();
       return;
     }
