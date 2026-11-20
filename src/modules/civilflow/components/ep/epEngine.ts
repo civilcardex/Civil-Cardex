@@ -30,6 +30,7 @@ const S40: Array<[number, number]> = [
 ];
 const PA_PVC40 = [480, 450, 370, 330, 280, 300, 260, 220, 180, 160, 140, 130];
 
+/** Material de tubería del cuarto de bombas: velocidades máximas (vs suction/vi impulsión, m/s), referencia normativa y diámetros comerciales con su presión admisible. Ej: EP_MATS.pvc40.d trae los DN Sch 40. */
 export interface MatEpc {
   clave: string;
   corto: string;
@@ -153,6 +154,7 @@ export const EP_POT_COM_HP = [
   0.25, 0.33, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 5.5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50,
   60, 75, 100, 125, 150,
 ];
+/** Conversión HP (potencia comercial NEMA) → kW eléctricos aproximados. Ej: EP_HP2KW[7.5] → 5.5 kW. */
 export const EP_HP2KW: Record<number, number> = {
   0.25: 0.18,
   0.33: 0.25,

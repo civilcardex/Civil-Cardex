@@ -12,6 +12,7 @@ export type SimbFila = [
   montaje: '' | 'red' | 'cis',
 ];
 
+/** Leyenda del esquema del cuarto de bombas: grupo del símbolo y su significado (los 'id' conectan el SVG con la guía). Ej: ['Caudales', 'Qac', …] agrupa las etiquetas de caudal. */
 export const EP_SIMB: SimbFila[] = [
   [
     'Caudales',

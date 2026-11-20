@@ -21,6 +21,7 @@ const CAMPOS: Array<{ k: string; lbl: string; tipo: 'q' | 'p' | 'z' }> = [
   { k: 'poffmax', lbl: 'P parada máxima admisible', tipo: 'p' },
 ];
 
+/** Documento del Perfil de presiones publicado (localStorage): de dónde salió, cuándo (ts) y los 7 datos. Ej: {fuente:'perfil', ts:1731800000000, datos:{qac:1.8, …}}. */
 export interface PerfilDoc {
   fuente: 'perfil' | 'pegado';
   ts: number;
@@ -104,6 +105,7 @@ export function revisarPegado(texto: string): {
   return { datos, errores, reconocidos };
 }
 
+/** Fila de la tabla de revisión todo-o-nada: valor actual vs nuevo y su estado (ok/aviso/error). */
 export interface FilaRev {
   k: string;
   lbl: string;
@@ -114,6 +116,7 @@ export interface FilaRev {
   m: string;
 }
 
+/** Resultado de la revisión: las filas + conteos por estado y si la importación es segura. */
 export interface RevRes {
   rows: FilaRev[];
   nEr: number;

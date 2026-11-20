@@ -61,6 +61,7 @@ const ROWS: Array<[string, number, number, number, RegExp, string?]> = [
   ['Orinal de válvula', 1.53, ps(25), PX, /orinal|urinari/],
 ];
 
+/** Catálogo de aparatos sanitarios con su rango de presión admisible (m.c.a.): min/confort/max alimentan el chequeo de Pmin del módulo ep (Equipo de Presión). Ej: Ducha → 1.02 / 5.62 / 56.25 (ps(8) = 8 psi en m.c.a.). */
 export const EP_APARATOS: AparatoRow[] = ROWS.map(([nombre, min, confort, max, re, nota]) => ({
   nombre,
   min,

@@ -5,6 +5,7 @@
  *  Ej: fmtUn(51, 'bar') → '5.00' (51 m.c.a. ≈ 5 bar). */
 export type EpUn = 'mca' | 'bar' | 'psi' | 'kpa';
 
+/** Factor de conversión desde m.c.a. + sufijo + decimales por unidad de presión. Ej: EP_UNI.bar.f = 0.0980665 → 51 m.c.a. ≈ 5 bar. */
 export const EP_UNI: Record<EpUn, { f: number; s: string; d: number }> = {
   mca: { f: 1, s: 'm.c.a.', d: 1 },
   bar: { f: 0.0980665, s: 'bar', d: 2 },
@@ -12,6 +13,7 @@ export const EP_UNI: Record<EpUn, { f: number; s: string; d: number }> = {
   kpa: { f: 9.80665, s: 'kPa', d: 0 },
 };
 
+/** Orden de las unidades en el selector de presión del módulo ep (Equipo de Presión). */
 export const EP_UNIDADES: EpUn[] = ['mca', 'bar', 'psi', 'kpa'];
 
 /** Campos de EPData que son PRESIÓN en m.c.a. y participan de la conversión (los data-p="1"
