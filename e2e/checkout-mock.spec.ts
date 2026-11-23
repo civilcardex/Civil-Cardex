@@ -4,7 +4,7 @@ import { aceptarBannerCookies, textoEstable } from './helpers';
 /**
  * Camino crítico 3: la calculadora de /pricing responde — el toggle INDIVIDUAL/EMPRESARIAL
  * y el selector de período cambian lo que se muestra. Interacción 100% local (estado de React):
- * NUNCA se pulsa "Pagar ahora", no hay cobro ni navegación al checkout externo de Lemon Squeezy.
+ * NUNCA se pulsa "Pagar ahora", no hay cobro ni navegación al checkout externo de Paddle.
  */
 
 test('el tipo de plan y el período cambian los precios mostrados en /pricing', async ({ page }) => {

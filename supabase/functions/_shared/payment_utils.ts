@@ -1,4 +1,4 @@
-// Helpers compartidos de las 3 funciones de pago (Lemon Squeezy).
+// Helpers compartidos de las 3 funciones de pago (Paddle Billing).
 // Deno: import con ruta relativa '../_shared/payment_utils.ts'.
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -7,9 +7,10 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-export const LS_API_KEY = Deno.env.get('LS_API_KEY') ?? '';
-export const LS_STORE = Deno.env.get('LS_STORE') ?? '';
-export const LS_WEBHOOK_KEY = Deno.env.get('LS_WEBHOOK_KEY') ?? '';
+export const PADDLE_API_KEY = Deno.env.get('PADDLE_API_KEY') ?? '';
+export const PADDLE_WEBHOOK_SECRET = Deno.env.get('PADDLE_WEBHOOK_SECRET') ?? '';
+// Sandbox = https://sandbox-api.paddle.com con SU propia API key y webhook secret.
+export const PADDLE_API_BASE = Deno.env.get('PADDLE_API_BASE') ?? 'https://api.paddle.com';
 
 /** URL base del sitio para el redirect del checkout (setear como secret SITE_URL). */
 export const SITE_URL =
@@ -18,7 +19,7 @@ export const SITE_URL =
 /** Cabeceras CORS para llamadas desde el navegador: supabase-js (functions.invoke) envía
  *  Authorization + apikey + Content-Type (no safelisted) ⇒ el navegador exige preflight
  *  OPTIONS y cabeceras en CADA respuesta. Origin restringido al sitio que las llama
- *  (SITE_URL — el mismo secret del redirect): ls-webhook es server-to-server y las
+ *  (SITE_URL): paddle-webhook es server-to-server y las
  *  recibe igual (el navegador no participa). */
 export const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': SITE_URL,
@@ -72,4 +73,20 @@ export function comparacionConstante(a: string, b: string): boolean {
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
   return diff === 0;
+}
+
+/** Verifica el header Paddle-Signature ("ts=…;h1=…") sobre el body CRUDO:
+ *  firma = HMAC-SHA256("{ts}:{raw}", PADDLE_WEBHOOK_SECRET). Rechaza timestamps
+ *  con más de 5 minutos (anti-replay). Ej: "ts=1671552777;h1=0b3c…". */
+export async function verificarFirmaPaddle(header: string, raw: string): Promise<boolean> {
+  const partes = Object.fromEntries(header.split(';').map((p) => p.trim().split('='))) as {
+    ts?: string;
+    h1?: string;
+  };
+  const { ts, h1 } = partes;
+  if (!ts || !h1) return false;
+  const edad = Math.abs(Date.now() / 1000 - Number(ts));
+  if (!Number.isFinite(edad) || edad > 300) return false;
+  const firma = await hmacHex(PADDLE_WEBHOOK_SECRET, `${ts}:${raw}`);
+  return comparacionConstante(firma, h1);
 }

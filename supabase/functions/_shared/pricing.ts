@@ -1,8 +1,7 @@
-// ESPEJO de src/lib/subscriptions/catalog.ts — la copia CANÓNICA de precios y descuentos
-// vive en el cliente. Deno no puede importar de src/, así que las constantes que el edge
-// NECESITA para cobrar se duplican aquí a mano.
-// ESPEJO de catalog.ts — test de paridad eliminado, revisar a mano si cambian precios
-// (y recordar el UPDATE en app_precios, la verdad en BD).
+// Matemática de precios server-side (gateway-agnóstica: la usó Lemon Squeezy y hoy Paddle).
+// ESPEJO de src/lib/subscriptions/catalog.ts — Deno no puede importar de src/, así que las
+// constantes se duplican aquí a mano. Test de paridad eliminado: revisar a mano si cambian
+// precios (y recordar el UPDATE en app_precios, la verdad en BD).
 export type ModuloId = 'flow' | 'manage';
 export type Periodo = 'mensual' | 'semestral' | 'anual';
 

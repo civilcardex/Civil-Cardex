@@ -142,7 +142,7 @@ export async function cambiarPermisoMiembro(
   });
 }
 
-// ─── Pago: edge functions de Lemon Squeezy ───
+// ─── Pago: edge functions de Paddle ───
 
 /** Timeout de los invokes de pago: un edge colgado no puede dejar la UI eterna en
  *  «verificando». El race devuelve el mismo shape {data:null, error:{message:'timeout'}}:
@@ -176,7 +176,7 @@ export async function verificarPago(referencia: string) {
   );
 }
 
-/** Pide la URL del checkout hosteado de Lemon Squeezy (edge function crear-checkout: calcula el total server-side desde app_precios e inserta la fila pendiente). Ej: crearCheckout(['flow'], 'anual', {flow:3}) -> {data:{checkoutUrl}, error}. */
+/** Pide la URL del checkout hosteado de Paddle (edge function crear-checkout: calcula el total server-side desde app_precios e inserta la fila pendiente). Ej: crearCheckout(['flow'], 'anual', {flow:3}) -> {data:{checkoutUrl}, error}. */
 export async function crearCheckout(
   modulos: ModuloId[],
   periodo: Periodo,

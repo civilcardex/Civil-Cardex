@@ -1,4 +1,4 @@
-// crear-checkout — edge function Lemon Squeezy (Supabase Edge).
+// crear-checkout — edge function Paddle Billing (Supabase Edge).
 //
 // Contrato con el cliente (CheckoutModal.tsx):
 //   body:  { modulos: ('flow'|'manage')[], periodo: 'mensual'|'semestral'|'anual',
@@ -8,10 +8,12 @@
 //                    'venta_manual' | 'demasiados_intentos' | 'parametros_invalidos' }
 //
 // Flujo: JWT del caller → gate suscripciones_habilitadas → precio SIEMPRE server-side
-// (app_precios, la verdad en BD; _shared/lemon.ts como fallback — jamás del cliente) →
+// (app_precios, la verdad en BD; _shared/pricing.ts como fallback — jamás del cliente) →
 // fila app_pagos 'pendiente' (service-role vía RPC atómica; la tabla rechaza INSERT de
-// clientes) → checkout hosteado LS con custom_price y checkout_data.custom =
-// { referencia, user_id } (el webhook lo recibe de vuelta). Preflight CORS + cabeceras
+// clientes) → transacción Paddle con ÍTEM NO-CATÁLOGO (precio inline: la venta es
+// multi-módulo con descuentos compuestos — no hay producto por combinación) y
+// custom_data = { referencia, user_id } (el webhook lo recibe de vuelta). El checkout
+// hosteado sale del campo checkout.url de la respuesta. Preflight CORS + cabeceras
 // en toda respuesta (functions.invoke manda Authorization/apikey).
 
 import {
@@ -21,15 +23,14 @@ import {
   type ModuloId,
   type Periodo,
   type PreciosBd,
-} from '../_shared/lemon.ts';
+} from '../_shared/pricing.ts';
 import {
   clienteAdmin,
   clienteUsuario,
   json,
-  LS_API_KEY,
-  LS_STORE,
+  PADDLE_API_BASE,
+  PADDLE_API_KEY,
   preflight,
-  SITE_URL,
 } from '../_shared/payment_utils.ts';
 
 /** Rol del payload de un JWT de Supabase (los 3 segmentos son base64url: alfabeto '-'/'_' sin
@@ -78,7 +79,7 @@ Deno.serve(async (req: Request) => {
   if (habilitadas !== true) return json({ error: 'suscripciones_deshabilitadas' }, 400);
 
   // 3 · Secrets de la pasarela.
-  if (LS_API_KEY === '' || LS_STORE === '') return json({ error: 'pasarela_no_configurada' }, 400);
+  if (!PADDLE_API_KEY) return json({ error: 'pasarela_no_configurada' }, 400);
 
   // 4 · Payload saneado.
   let body: { modulos?: unknown; periodo?: unknown; puestosPorModulo?: unknown };
@@ -103,7 +104,7 @@ Deno.serve(async (req: Request) => {
       : undefined;
 
   // 5 · Precio SIEMPRE server-side, desde app_precios (la verdad en BD — cambiar precio
-  //     = UPDATE en SQL Editor, sin deploy); lemon.ts queda como fallback si la fila del
+  //     = UPDATE en SQL Editor, sin deploy); pricing.ts queda como fallback si la fila del
   //     módulo falta o trae un valor no positivo. ≥25 puestos = venta manual (negociado).
   // FAIL-CLOSED: si la lectura de la verdad (app_precios) falla, NO se cobra con
   // literales viejos — el cliente podría estar mostrando precios de BD distintos.
@@ -116,12 +117,13 @@ Deno.serve(async (req: Request) => {
   }
   const preciosBd: Partial<Record<ModuloId, PreciosBd>> = {};
   for (const r of preciosRows ?? []) {
-    if (r.modulo !== 'flow' && r.modulo !== 'manage') continue;
+    const modulo: unknown = r.modulo;
+    if (modulo !== 'flow' && modulo !== 'manage') continue;
     const mensual = Number(r.precio_mensual_centavos);
     const semestral = Number(r.precio_semestral_centavos);
     const anual = Number(r.precio_anual_centavos);
     if ([mensual, semestral, anual].every((n) => Number.isFinite(n) && n > 0)) {
-      preciosBd[r.modulo] = { mensual, semestral, anual };
+      preciosBd[modulo] = { mensual, semestral, anual };
     }
   }
   const total = calcularTotalCentavos(modulos, periodo, puestos, preciosBd);
@@ -150,8 +152,10 @@ Deno.serve(async (req: Request) => {
   }
   if (agendado === false) return json({ error: 'demasiados_intentos' }, 429);
 
-  // 8 · Checkout hosteado LS (precio custom: la venta es multi-módulo con descuentos
-  //     compuestos — no hay producto/variante por combinación).
+  // 8 · Transacción Paddle con ítem NO-CATÁLOGO (precio inline: la venta es multi-módulo
+  //     con descuentos compuestos — no hay producto por combinación). tax_mode 'internal':
+  //     el impuesto va INCLUIDO en el precio anunciado (el usuario paga exactamente el
+  //     total de /pricing). unit_price.amount = STRING en centavos (formato Paddle).
   const descripcion = `CivilCardex ${modulos.join(' + ')} (${periodo})`;
   let checkoutUrl = '';
   // Sin checkout no hay acuerdo posible: la fila pendiente se elimina (el check de
@@ -162,45 +166,50 @@ Deno.serve(async (req: Request) => {
     await admin.from('app_pagos').delete().eq('referencia', referencia);
   };
   try {
-    const resp = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
+    const resp = await fetch(`${PADDLE_API_BASE}/transactions`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${LS_API_KEY}`,
+        Authorization: `Bearer ${PADDLE_API_KEY}`,
       },
       body: JSON.stringify({
-        data: {
-          type: 'checkouts',
-          attributes: {
-            custom_price: { amount: total, currency: 'USD' },
-            product_options: {
-              name: 'CivilCardex',
-              description: descripcion,
-              redirect_url: `${SITE_URL}/pricing?ref=${referencia}`,
-              receipt_button_text: 'Volver a CivilCardex',
-            },
-            checkout_options: { embed: false, dark: true },
-            checkout_data: {
-              email: user.email ?? undefined,
-              custom: { referencia, user_id: user.id },
+        items: [
+          {
+            quantity: 1,
+            price: {
+              description: `Suscripción ${descripcion}`,
+              name: descripcion,
+              unit_price: { amount: String(total), currency_code: 'USD' },
+              tax_mode: 'internal',
+              product: {
+                name: 'CivilCardex',
+                tax_category: 'standard',
+                description: 'Suscripción por módulo al suite de ingeniería CivilCardex.',
+              },
             },
           },
-          relationships: {
-            store: { data: { type: 'stores', id: LS_STORE } },
-          },
-        },
+        ],
+        custom_data: { referencia, user_id: user.id },
+        // LIMITACIÓN (H-03, verificado en developer.paddle.com 2026-11-23): la API de
+        // transacciones NO admite checkout.settings.success_url — Paddle muestra su página
+        // de confirmación genérica y el comprador vuelve a la app por su cuenta. La
+        // activación NO depende de la vuelta: la hace el webhook (transaction.paid →
+        // activar_suscripciones). El banner «Pago aprobado» de /pricing?ref= solo se ve si
+        // el usuario regresa manualmente al sitio; el acceso al módulo aparece igual al
+        // navegar (RequireModule evalúa la fecha en cada render).
+        ...(user.email ? { customer: { email: user.email } } : {}),
       }),
     });
     const data = await resp.json();
     if (!resp.ok) {
-      console.error('crear-checkout: LS', resp.status, JSON.stringify(data).slice(0, 400));
+      console.error('crear-checkout: Paddle', resp.status, JSON.stringify(data).slice(0, 400));
       await cancelarPago();
       return json({ error: 'pasarela_no_configurada' }, 502);
     }
-    checkoutUrl = data?.data?.attributes?.url ?? '';
+    checkoutUrl = data?.data?.checkout?.url ?? '';
   } catch (e) {
-    console.error('crear-checkout: fetch LS:', e instanceof Error ? e.message : e);
+    console.error('crear-checkout: fetch Paddle:', e instanceof Error ? e.message : e);
     await cancelarPago();
     return json({ error: 'pasarela_no_configurada' }, 502);
   }

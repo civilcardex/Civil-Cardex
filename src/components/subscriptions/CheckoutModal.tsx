@@ -18,7 +18,7 @@ interface Props {
   puestos?: PuestosPorModulo;
 }
 
-/** Checkout Lemon Squeezy: pide la URL a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). Ej: puestos {flow:3} con periodo anual -> total con descuentos server-side. */
+/** Checkout Paddle: pide la URL a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). Ej: puestos {flow:3} con periodo anual -> total con descuentos server-side. */
 export default function CheckoutModal({ open, onClose, modulos, periodo, puestos }: Props) {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState(false);
@@ -42,8 +42,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
         // el modal quedaba clavado en «Redirigiendo…» sin feedback y pedidoRef bloqueado.
         try {
           const url = new URL(data.checkoutUrl as string);
-          if (!/(^|\.)lemonsqueezy\.com$/.test(url.hostname))
-            throw new Error('checkout_url_invalida');
+          if (!/(^|\.)paddle\.com$/.test(url.hostname)) throw new Error('checkout_url_invalida');
           marcarNavInterna();
           window.location.assign(url.toString());
         } catch (e) {
@@ -54,7 +53,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
         return;
       }
       devError('crear-checkout:', err?.message ?? data);
-      // Edges Lemon pendientes de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falten,
+      // Edges de pago pendientes de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falten,
       // el guard evita el error crudo del relay ("Function not found" / 404).
       setError(true);
       if (edgePagoNoDesplegada(err)) {
@@ -111,7 +110,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
         Finalizar compra
       </h3>
       <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}>
-        {error ? mensaje : 'Redirigiendo a la pasarela de pago (Lemon Squeezy)...'}
+        {error ? mensaje : 'Redirigiendo a la pasarela de pago (Paddle)...'}
       </p>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button

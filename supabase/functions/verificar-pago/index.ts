@@ -1,11 +1,11 @@
-// verificar-pago — edge function Lemon Squeezy (Supabase Edge).
+// verificar-pago — edge function Paddle Billing (Supabase Edge).
 //
 // Contrato con el cliente (PricingPage.tsx, vuelta del checkout ?ref=X):
 //   body:  { referencia: string }
 //   200:   { aprobado: boolean }
 //   error: { error: 'no_autenticado' | 'parametros_invalidos' } (401/400)
 //
-// La VERDAD de activación es ls-webhook (order_created → activar_suscripciones).
+// La VERDAD de activación es paddle-webhook (transaction.paid → activar_suscripciones).
 // Esta función es la consulta idempotente del cliente: mira la fila app_pagos
 // PROPIA (referencia + user_id — defensa IDOR) y reporta su estado. Si el
 // webhook aún no llegó, responde { aprobado: false } y el cliente muestra

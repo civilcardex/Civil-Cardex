@@ -1,8 +1,8 @@
 # Config de despliegue de las edge functions (supabase CLI la lee en `supabase functions deploy`).
-# El webhook de Lemon Squeezy POSTea SIN Authorization header: con el default
+# El webhook de Paddle POSTea SIN Authorization header: con el default
 # verify_jwt = true Supabase lo rechazaría. La función valida su propia firma
-# HMAC (X-Signature con LS_WEBHOOK_KEY) — ver supabase/functions/ls-webhook.
-[functions.ls-webhook]
+# HMAC (Paddle-Signature con PADDLE_WEBHOOK_SECRET) — ver supabase/functions/paddle-webhook.
+[functions.paddle-webhook]
 verify_jwt = false
 
 
