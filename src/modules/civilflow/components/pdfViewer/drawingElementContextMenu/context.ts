@@ -129,22 +129,6 @@ export const MENU_SELECT_STYLE: React.CSSProperties = {
 // ponytail: mismo estilo de fila-checkbox que tramoEditor — una sola definición.
 export { CHECK_ROW_STYLE as MENU_CHECK_ROW_STYLE } from '../tramoEditor/context.ts';
 /** La caja flotante del menú contextual: se posiciona donde cae el clic derecho (ancho 170-320 px) y contiene todas las secciones. */
-export const MENU_PANEL_STYLE: React.CSSProperties = {
-  position: 'absolute',
-  zIndex: 101,
-  background: '#1a1c20',
-  border: '1px solid #3a494a',
-  borderRadius: 6,
-  boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-  padding: '4px',
-  minWidth: 170,
-  maxWidth: 320,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 2,
-  overflow: 'hidden',
-};
-
 /** Variante más ancha solo para menús de bajante/montante (más filas y selects largos). */
 
 /** Título de sección del menú en MAYÚSCULAS (12 px, gris). Ej: 'MATERIAL' sobre el selector de material. */

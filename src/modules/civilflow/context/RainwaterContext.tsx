@@ -21,7 +21,6 @@ import {
   unirOverrides,
   claveBajante,
   claveCanal,
-  baseDeChip,
   agregarTumba,
   quitarTumba,
 } from '../utils/rainwaterOverrideStore.ts';
@@ -192,7 +191,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       ...p,
       {
         // ponytail: sin colisión tras deletes (antes length+1 re-usaba ids)
-        id: `CLL-${Date.now().toString(36)}`,
+        id: `CLL-${crypto.randomUUID()}`,
         sector: '',
         areaParcial: 0,
         areaOtras: 0,
@@ -241,7 +240,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
         ...p,
         {
           // ponytail: sin colisión tras deletes (antes length+1 re-usaba ids)
-          id: `CLL-${Date.now().toString(36)}`,
+          id: `CLL-${crypto.randomUUID()}`,
           sector,
           areaParcial: 0,
           areaOtras: 0,
@@ -369,7 +368,7 @@ export function RainwaterProvider({ children }: { children?: ReactNode }) {
       if (field === 'materialCubierta' && row.drawId) {
         const asoc = canalBajantes[row.drawId] || [];
         if (asoc.length > 0) {
-          for (const chip of asoc) updBajanteLL(baseDeChip(chip), 'materialCubierta', mat);
+          for (const chip of asoc) updBajanteLL(sectorDe(chip), 'materialCubierta', mat);
           return;
         }
       }
@@ -425,10 +424,10 @@ export function useMaterialesLl() {
       `${sectorDe(String(codeBase))}-${pisoCortoLoose(nivel)}`;
     /** Clave del override: CÓDIGO BASE sin piso — las tablas, el caudal y el canal leen
      *  por code/id base. Con fallback a huérfanas con sufijo (formato viejo del panel). */
-    const claveDe = (chip: string): string => baseDeChip(chip);
+    const claveDe = (chip: string): string => sectorDe(chip);
     const huerfanaDe = (base: string): string | null => {
       const h = ctx.bajantesLl.find(
-        (m) => m.bajante != null && m.bajante !== base && baseDeChip(m.bajante) === base,
+        (m) => m.bajante != null && m.bajante !== base && sectorDe(m.bajante) === base,
       );
       return h ? h.id : null;
     };

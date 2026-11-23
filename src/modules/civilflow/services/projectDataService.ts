@@ -1,5 +1,6 @@
 import { supabase } from '../../../lib/supabase';
-import { emitBdSaveError } from './storageService.ts';
+import {} from './storageService.ts';
+import { emitErrorGuardado } from '../../../utils/saveEvents.ts';
 import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
 import { normalizarMatsRci } from '../constants/engineeringDataMaterials.ts';
@@ -187,12 +188,12 @@ async function conSesion(
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      emitErrorGuardado('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
     const { error } = await fn();
     if (error) {
-      emitBdSaveError(etiqueta, error.message);
+      emitErrorGuardado(etiqueta, error.message);
       return false;
     }
     return true;
@@ -217,7 +218,7 @@ export async function saveProyectoCoreData(
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      emitErrorGuardado('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
 
@@ -264,7 +265,7 @@ export async function saveProyectoCoreData(
       },
     });
     if (error) {
-      emitBdSaveError('save-core', error.message);
+      emitErrorGuardado('save-core', error.message);
       return false;
     }
     return true;
@@ -425,7 +426,7 @@ export async function saveRciDatos(
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
-      emitBdSaveError('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
+      emitErrorGuardado('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
     const tsArbitro = clienteTs ?? ultimoTsRci.get(proyectoId) ?? new Date().toISOString();
@@ -449,7 +450,7 @@ export async function saveRciDatos(
         );
         return false;
       }
-      emitBdSaveError('save-rci', error.message);
+      emitErrorGuardado('save-rci', error.message);
       return false;
     }
     // El RPC nuevo devuelve el updated_at efectivo: queda como ts del próximo guardado.

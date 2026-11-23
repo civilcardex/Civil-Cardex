@@ -40,15 +40,6 @@ export function canalMarco(
   return { x: ox, y: oy, w: w0, h: h0, angRad: 0 };
 }
 
-/** OBB puro (sin engine) desde un doc de storage + px por cm: lo usan las tablas de
- *  lluvias que leen pisos no cargados. */
-export function canalOBBDe(
-  pxPerCm: number,
-  c: { x?: number; y?: number; longitud?: number; base?: number; angulo?: number },
-): CanalOBB {
-  return canalMarco(pxPerCm, c);
-}
-
 /** Pasa un punto del plano al "mundo del canal": como si el canal fuera horizontal desde su
  *  origen, midiendo a lo largo (lx) y a lo ancho (ly). Es la base de todos los tests de
  *  dentro/fuera. */
@@ -339,7 +330,7 @@ export function sanearEsCanalIdFaltante(
 ): number {
   const obbs = canales
     .filter((c) => c.id != null && c.x != null && c.y != null)
-    .map((c) => ({ id: String(c.id), obb: canalOBBDe(pxPerCm, c as { x: number; y: number }) }));
+    .map((c) => ({ id: String(c.id), obb: canalMarco(pxPerCm, c as { x: number; y: number }) }));
   if (obbs.length === 0) return 0;
   let n = 0;
   for (const r of ramales || []) {

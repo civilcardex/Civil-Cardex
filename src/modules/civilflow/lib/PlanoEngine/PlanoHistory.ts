@@ -130,6 +130,14 @@ const SNAPSHOT_KEYS = [
   'crossFloorGhosts',
 ] as const;
 
+/** Guarda la geometría de un arrastre para poder revertirlo sin registrar un deshacer. */
+export function captureDragGeometry(engine: IPlanoEngineCore): () => void {
+  const geometry = SNAPSHOT_KEYS.map((key) => [key, structuredClone(engine[key])] as const);
+  return () => {
+    for (const [key, value] of geometry) Object.assign(engine, { [key]: value });
+  };
+}
+
 function captureSnapshot(e: IPlanoEngineCore): HistorySnapshot {
   const snap: Omit<HistorySnapshot, 'hash'> = {
     counts: readCounts(),

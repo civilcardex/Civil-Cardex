@@ -15,6 +15,7 @@ import { distToPolyline } from '../lib/shared/geometry';
 import { isContador, isAC1, isAC2, type BajanteRaw } from './waterRowsShared.ts';
 import { perfilDe } from '../constants/countryStandards';
 import { tramoKeyOf } from './keys.ts';
+import { calcFila } from './waterRows/acometidaCalc.ts';
 /** Resumen de la acometida: tramos red→contador y contador→montante, con presiones y validez. */
 export interface AcometidaSummary {
   tr1: {
@@ -258,32 +259,6 @@ export function computeAcometidaSummary(
     }
     return hunterQ(ucTotal);
   })();
-  const calcFila = (
-    nominal: string,
-    h: number,
-    v: number,
-    le: number,
-    pIn: number,
-    cHW: number,
-  ) => {
-    const opt = nominal ? diamTable.find((d) => d.nominal === nominal) : null;
-    const dInt = opt ? opt.dInt : 0;
-    const V =
-      Qaco > 0 && dInt > 0
-        ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
-        : 0;
-    const Lt = (h || 0) + (v || 0) + (le || 0);
-    // Misma física que rowPhysics/acometidaCalc: hfPct en m/km → metros = ·Lt/1000, con guard.
-    const hfPct =
-      V > 0 && dInt > 0
-        ? Math.round(
-            ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
-          ) / 100
-        : 0;
-    const hfM = Lt > 0 && hfPct > 0 ? Math.round((hfPct / 1000) * Lt * 100) / 100 : 0;
-    const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
-    return { dInt, V, Lt, hfPct, hfM, Pfin };
-  };
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
   const cHW2 = matHazenC(tr2?.material || '') ?? 150;
   const acoPini = 20.0;
@@ -296,6 +271,8 @@ export function computeAcometidaSummary(
     acoL1LeTotal,
     acoPini,
     cHW1,
+    diamTable,
+    Qaco,
   );
   const f2 = calcFila(
     resolvedContMonDiam || '',
@@ -304,6 +281,8 @@ export function computeAcometidaSummary(
     resolvedL2.le,
     f1.Pfin,
     cHW2,
+    diamTable,
+    Qaco,
   );
   // ── Selección de contador: dinámica desde el diámetro de un bajante, espejando WaterNetworkDesign.tsx ──
   let acoContIx = 2;

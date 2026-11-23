@@ -19,11 +19,6 @@ export function isAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
   return Math.abs(ax - bx) < 0.5 && Math.abs(ay - by) < 0.5;
 }
 
-/** Igual que isAligned pero exportada para pruebas (misma comparación origen-relativa, sin duplicarla). */
-export function areEndpointsAligned(a: AssocEndpoint, b: AssocEndpoint): boolean {
-  return isAligned(a, b);
-}
-
 /** Diámetro entre pisos (ped. usuario): el asociado toma el dNominal del SUPERIOR en cada pase — no solo al asociar. Devuelve true si cambió. */
 export function adoptarDiametroDelSuperior(
   asociado: { dNominal?: string },

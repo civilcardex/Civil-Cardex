@@ -73,7 +73,8 @@ const ghost = {
 beforeEach(() => {
   resetStorage();
   mockRpc.mockReset();
-  mockRpc.mockResolvedValue({ data: null, error: null });
+  mockRpc.mockResolvedValue({ data: '2026-02-01T00:00:00Z', error: null });
+  setLS('civilflow_plano_version_u1:501', '2026-01-01T00:00:00Z');
 });
 
 describe('trazosDocHasContent', () => {
@@ -144,7 +145,7 @@ describe('tumba anti-vacío en saveTrazosToDB', () => {
     setLS('civilflow_trazos_501', { ramales: [{ id: 'R1' }] });
     await saveTrazosToDB('501', { ramales: [{ id: 'R1' }], bajantes: [], ts: Date.now() });
     expect(mockRpc).toHaveBeenCalledWith(
-      'save_plano_data',
+      'save_plano_data_versioned',
       expect.objectContaining({ p_plano_id: 501 }),
     );
   });

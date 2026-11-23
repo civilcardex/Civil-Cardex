@@ -1,156 +1,119 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+// @vitest-environment jsdom
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { loadTrazosFromDB, saveTrazosToDB, setActiveProyectoId } from '../storageService.ts';
+import {
+  aceptarVersionDePlano,
+  arbitrarCarga,
+  resetConcurrenciaParaTest,
+} from '../storage/strokesDb.ts';
 
-// Concurrencia optimistic del guardado de trazos (quick-win 2026-11-17, fixes H-01/H-02/H-04):
-// 1. El reloj updated_at es POR PLANO (la cola serializa por plano pero los planos distintos
-//    se guardan en paralelo — una global mezclaba relojes entre saves concurrentes).
-// 2. Firma vieja en BD (PGRST202, migración 20261118000001 sin aplicar) → un solo retry sin
-//    reloj degrada la sesión entera en vez de tumbar cada autosave.
-// 3. conflicto_concurrencia → reloj fuera + aviso UNA sola vez por plano/sesión.
-const { mockRpc } = vi.hoisted(() => ({ mockRpc: vi.fn() }));
-
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock('../../../../lib/supabase', () => ({
-  supabase: {
-    auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) },
-    rpc: mockRpc,
-  },
+  supabase: { auth: { getUser: async () => ({ data: { user: { id: 'u1' } } }) }, rpc },
 }));
+const base = '2026-01-01T00:00:00Z';
+const newer = '2026-01-01T00:00:01Z';
+const draft = { ramales: [{ id: 'r1', net: 'san' }], bajantes: [], areas: [] };
+const plana = (updated_at: string) => ({ data: { plano: { updated_at } }, error: null });
 
-import { saveTrazosToDB, loadTrazosFromDB, setActiveProyectoId } from '../storageService.ts';
-import { resetConcurrenciaParaTest } from '../storage/strokesDb.ts';
-
-const UUID = '11111111-1111-4111-8111-111111111111';
-
-function resetStorage() {
-  const m = new Map<string, string>();
-  (globalThis as unknown as { localStorage: Storage }).localStorage = {
-    getItem: (k: string) => m.get(k) ?? null,
-    setItem: (k: string, v: string) => m.set(k, String(v)),
-    removeItem: (k: string) => m.delete(k),
-    clear: () => m.clear(),
-    key: (i: number) => [...m.keys()][i] ?? null,
-    get length() {
-      return m.size;
-    },
-  };
-  (globalThis as unknown as { window: unknown }).window = globalThis;
-}
-
-const docA = { ramales: [{ id: 'r1', net: 'san' }], bajantes: [], areas: [] };
-
-describe('reloj de concurrencia por plano en save_plano_data', () => {
+describe('el guardado liga el reloj al plano y a su borrador', () => {
   beforeEach(() => {
-    resetStorage();
-    mockRpc.mockReset();
-    // El save exige proyecto activo (guard 'sin-proyecto'); setActiveProyectoId fija la
-    // sesión en memoria (getActiveProyectoId cachea la 1.ª lectura de LS).
-    setActiveProyectoId(UUID);
+    localStorage.clear();
+    setActiveProyectoId('11111111-1111-4111-8111-111111111111');
     resetConcurrenciaParaTest();
+    rpc.mockReset();
   });
 
-  it('el save de un plano viaja con el reloj LEÍDO de ese plano (no del último cargado)', async () => {
-    mockRpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
-      if (fn === 'get_plano_data') {
-        // Plano 1 con reloj viejo; plano 2 con reloj más nuevo (se carga DESPUÉS).
-        return {
-          data: {
-            plano: {
-              updated_at: args.p_plano_id === 1 ? '2026-01-01T00:00:00Z' : '2026-06-01T00:00:00Z',
-            },
-            ramales: [],
-            bajantes: [],
-          },
-          error: null,
-        };
-      }
-      return { data: null, error: null };
-    });
-    await loadTrazosFromDB('1');
-    await loadTrazosFromDB('2');
-    // Guardar el plano 1: su reloj es el de ENERO, no el de junio del plano 2.
-    await saveTrazosToDB('1', docA);
-    const save1 = mockRpc.mock.calls.find((c) => c[0] === 'save_plano_data')!;
-    expect(save1[1].p_updated_at).toBe('2026-01-01T00:00:00Z');
+  async function load(plan: string, token: string) {
+    rpc.mockResolvedValueOnce(plana(token));
+    const remote = await loadTrazosFromDB(plan);
+    expect(remote).not.toBeNull();
+    return remote!;
+  }
+
+  it('dos guardados propios consecutivos usan el reloj comprometido, sin cruzar planos', async () => {
+    aceptarVersionDePlano(await load('1', base), null);
+    aceptarVersionDePlano(await load('2', newer), null);
+    rpc.mockResolvedValue({ data: newer, error: null });
+    await saveTrazosToDB('1', draft);
+    await saveTrazosToDB('1', draft);
+    expect(rpc.mock.calls.slice(2).map(([fn, args]) => [fn, args.p_updated_at])).toEqual([
+      ['save_plano_data_versioned', base],
+      ['save_plano_data_versioned', newer],
+    ]);
   });
 
-  it('tras un save OK el reloj del plano se limpia (el próximo autosave no choca consigo mismo)', async () => {
-    mockRpc.mockImplementation(async (fn: string) =>
-      fn === 'get_plano_data'
-        ? {
-            data: { plano: { updated_at: '2026-01-01T00:00:00Z' }, ramales: [], bajantes: [] },
-            error: null,
-          }
-        : { data: null, error: null },
+  it.each(['conflicto_concurrencia', 'PGRST202'])(
+    'no degrada ante %s ni ante una lectura de fondo',
+    async (message) => {
+      aceptarVersionDePlano(await load('1', base), null);
+      rpc.mockResolvedValue({ data: null, error: { message } });
+      await saveTrazosToDB('1', draft);
+      const remote = await load('1', newer);
+      await saveTrazosToDB('1', draft);
+      const saves = rpc.mock.calls.filter(([name]) => name.startsWith('save'));
+      expect(saves.map(([fn, args]) => [fn, args.p_updated_at])).toEqual([
+        ['save_plano_data_versioned', base],
+        ['save_plano_data_versioned', base],
+      ]);
+      expect(aceptarVersionDePlano(remote, draft)).toBe('nueva');
+      expect(JSON.parse(localStorage.getItem('civilflow_plano_borrador_rescate_u1:1')!)).toEqual(
+        draft,
+      );
+    },
+  );
+
+  // H-01: el caso exacto del usuario existente — caché local con contenido, BD con la MISMA
+  // ts y SIN clave de versión persistida (navegador fresco / storage limpiado). La aceptación
+  // corre SIEMPRE (antes del arbitraje): sin base persistida declara 'nueva', archiva el
+  // borrador y fija el reloj → el autosave ya sube (antes: nada fijaba el reloj jamás).
+  it('carga sin reloj persistido acepta la versión y el autosave sube', async () => {
+    const localDoc = { ...draft, ts: 1000 };
+    const remote = await load('1', base);
+    expect(aceptarVersionDePlano(remote, localDoc)).toBe('nueva');
+    expect(JSON.parse(localStorage.getItem('civilflow_plano_borrador_rescate_u1:1')!)).toEqual(
+      localDoc,
     );
-    await loadTrazosFromDB('1');
-    await saveTrazosToDB('1', docA);
-    await saveTrazosToDB('1', docA);
-    const saves = mockRpc.mock.calls.filter((c) => c[0] === 'save_plano_data');
-    expect(saves[0][1].p_updated_at).toBe('2026-01-01T00:00:00Z');
-    expect(saves[1][1].p_updated_at).toBeNull();
+    rpc.mockResolvedValueOnce({ data: newer, error: null });
+    await saveTrazosToDB('1', draft);
+    const save = rpc.mock.calls.find(([name]) => name === 'save_plano_data_versioned');
+    expect(save?.[1].p_updated_at).toBe(base);
   });
 
-  it('PGRST202 (firma sin migrar) → un solo retry sin reloj y el resto de la sesión sin check', async () => {
-    mockRpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
-      if (fn === 'get_plano_data')
-        return {
-          data: { plano: { updated_at: '2026-01-01T00:00:00Z' }, ramales: [], bajantes: [] },
-          error: null,
-        };
-      if ('p_updated_at' in args)
-        return {
-          data: null,
-          error: {
-            code: 'PGRST202',
-            message:
-              'Could not find the function public.save_plano_data(bigint, jsonb, timestamptz) in the schema cache',
-          },
-        };
-      return { data: null, error: null };
-    });
-    await loadTrazosFromDB('1');
-    await saveTrazosToDB('1', docA); // choca con la firma vieja → retry → OK
-    await saveTrazosToDB('1', docA); // sesión ya degradada: directo sin reloj, sin error
-    const saves = mockRpc.mock.calls.filter((c) => c[0] === 'save_plano_data');
-    expect(saves).toHaveLength(3);
-    expect('p_updated_at' in saves[0][1]).toBe(true);
-    expect('p_updated_at' in saves[1][1]).toBe(false);
-    expect('p_updated_at' in saves[2][1]).toBe(false);
+  // Variante con reloj persistido coherente (recarga en el MISMO equipo): 'misma' y el
+  // autosave sube con la versión base sin chocar.
+  it('carga con reloj persistido coherente queda en misma y el autosave sube', async () => {
+    // saveToStorage escribe JSON: la clave persistida viaja entrecomillada.
+    localStorage.setItem('civilflow_plano_version_u1:1', JSON.stringify(base));
+    const remote = await load('1', base);
+    expect(aceptarVersionDePlano(remote, { ...draft, ts: 1000 })).toBe('misma');
+    rpc.mockResolvedValueOnce({ data: newer, error: null });
+    await saveTrazosToDB('1', draft);
+    const save = rpc.mock.calls.find(([name]) => name === 'save_plano_data_versioned');
+    expect(save?.[1].p_updated_at).toBe(base);
+  });
+});
+
+describe('arbitrarCarga (con la versión ya aceptada)', () => {
+  const bd = { ...draft, ts: 2000 };
+  const local = { ...draft, ts: 1000 };
+
+  it('una nube NUEVA con contenido local fuerza BD (el borrador ya quedó archivado)', () => {
+    expect(arbitrarCarga('nueva', local, bd, 1000, 2000)).toBe('bd');
+    expect(arbitrarCarga('nueva', local, { ...bd, ts: 1000 }, 1000, 1000)).toBe('bd');
   });
 
-  it('conflicto_concurrencia: reloj fuera y aviso emitido UNA sola vez por plano', async () => {
-    mockRpc.mockImplementation(async (fn: string, args: Record<string, unknown>) => {
-      if (fn === 'get_plano_data')
-        return {
-          data: { plano: { updated_at: '2026-01-01T00:00:00Z' }, ramales: [], bajantes: [] },
-          error: null,
-        };
-      if ('p_updated_at' in args)
-        return { data: null, error: { code: 'P0001', message: 'conflicto_concurrencia' } };
-      return { data: null, error: null };
-    });
-    await loadTrazosFromDB('1');
-    await saveTrazosToDB('1', docA); // conflicto → aviso
-    await saveTrazosToDB('1', docA); // sin reloj → pasa (no vuelve a avisar)
-    const saves = mockRpc.mock.calls.filter((c) => c[0] === 'save_plano_data');
-    expect(saves).toHaveLength(2);
-    expect(saves[1][1].p_updated_at).toBeNull();
-  });
-
-  it('carga fallida limpia el reloj previo del plano (sin conflicto espurio)', async () => {
-    mockRpc.mockImplementation(async (fn: string) =>
-      fn === 'get_plano_data'
-        ? {
-            data: { plano: { updated_at: '2026-01-01T00:00:00Z' }, ramales: [], bajantes: [] },
-            error: null,
-          }
-        : { data: null, error: null },
-    );
-    await loadTrazosFromDB('1');
-    // Segunda carga falla (RPC error): el reloj del intento anterior debe desaparecer.
-    mockRpc.mockImplementationOnce(async () => ({ data: null, error: { message: 'boom' } }));
-    await loadTrazosFromDB('1');
-    await saveTrazosToDB('1', docA);
-    const save = mockRpc.mock.calls.find((c) => c[0] === 'save_plano_data')!;
-    expect(save[1].p_updated_at).toBeNull();
+  it('misma versión conserva las reglas anti-vacío y el ts', () => {
+    expect(arbitrarCarga('misma', local, { ramales: [] }, 1000, 9999)).toBe('local-contenido');
+    expect(arbitrarCarga('misma', null, bd, null, 2000)).toBe('bd');
+    // ts de BD MAYOR → BD (la regla de ts solo la voltea la local MÁS nueva).
+    expect(arbitrarCarga('misma', local, bd, 1000, 2000)).toBe('bd');
+    // ts IGUAL → nadie gana ('nada'): el reloj ya quedó fijado por la aceptación y el
+    // autosave de la siguiente edición sube sin chocar.
+    expect(arbitrarCarga('misma', local, { ...bd, ts: 1000 }, 1000, 1000)).toBe('nada');
+    expect(arbitrarCarga('misma', local, { ...bd, ts: 500 }, 1000, 500)).toBe('local-ts');
+    // Sin doc local la BD manda (nada que perder); dos vacíos → nada que hacer.
+    expect(arbitrarCarga('misma', null, bd, null, 2000)).toBe('bd');
+    expect(arbitrarCarga('misma', { ramales: [] }, { ramales: [] }, 0, 0)).toBe('nada');
   });
 });

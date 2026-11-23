@@ -281,18 +281,21 @@ export function EpProfileImportModal({
     });
   };
 
-  const srcTxt = !doc
-    ? 'No hay datos del Perfil en este navegador: abra el Perfil de presiones y calcule (Resumen). Si usa otro navegador u otro equipo, pegue la tabla abajo.'
-    : `<b>${doc.fuente === 'pegado' ? 'Texto pegado' : 'Perfil de presiones'}</b> · ${new Date(doc.ts).toLocaleString('es-CO')}${doc.datos?.apcrit ? ` · punto crítico: ${String(doc.datos.apcrit)}` : ''}`;
-
   return (
     <ModalShell ariaLabel="Importar datos del Perfil de presiones" minWidth={640}>
       <div className="ep-imp">
         <h3 className="ep-imp-h">Datos del Perfil de presiones · revisar y cargar</h3>
-        <div
-          className={`ep-rev-src${!doc ? ' ep-rev-no' : ''}`}
-          dangerouslySetInnerHTML={{ __html: srcTxt }}
-        />
+        <div className={`ep-rev-src${!doc ? ' ep-rev-no' : ''}`}>
+          {doc ? (
+            <>
+              <b>{doc.fuente === 'pegado' ? 'Texto pegado' : 'Perfil de presiones'}</b> ·{' '}
+              {new Date(doc.ts).toLocaleString('es-CO')}
+              {doc.datos?.apcrit ? <> · punto crítico: {String(doc.datos.apcrit)}</> : null}
+            </>
+          ) : (
+            'No hay datos del Perfil en este navegador: abra el Perfil de presiones y calcule (Resumen). Si usa otro navegador u otro equipo, pegue la tabla abajo.'
+          )}
+        </div>
         {doc && rev ? (
           <>
             <table className="ep-rev-tab">

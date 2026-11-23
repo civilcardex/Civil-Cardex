@@ -7,7 +7,7 @@ export type {
   InheritPoolBajante,
   CollectedAgg,
 } from './types.ts';
-export { isAligned, areEndpointsAligned, adoptarDiametroDelSuperior } from './puras.ts';
+export { isAligned, adoptarDiametroDelSuperior } from './puras.ts';
 export {
   trazaDeUltimoGrupo,
   GEO_TOL_BAJANTE,

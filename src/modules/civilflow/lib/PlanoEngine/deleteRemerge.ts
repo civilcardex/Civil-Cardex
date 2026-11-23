@@ -301,8 +301,8 @@ export function mergeTribPairAt(engine: IPlanoEngineCore, pt: number[]): void {
   const bF = b.pts![b.pts!.length - 1];
   const aS = a.pts![0];
   if (near(aF, bS)) merged = [...a.pts!, ...b.pts!.slice(1)];
-  else if (near(aF, bF)) merged = [...a.pts!, ...[...b.pts!].reverse().slice(1)];
-  else if (near(aS, bS)) merged = [...[...b.pts!].reverse(), ...a.pts!.slice(1)];
+  else if (near(aF, bF)) merged = [...a.pts!, ...b.pts!.toReversed().slice(1)];
+  else if (near(aS, bS)) merged = [...b.pts!.toReversed(), ...a.pts!.slice(1)];
   else if (near(aS, bF)) merged = [...a.pts!, ...b.pts!.slice(1)];
   if (!merged || merged.length < 2) return;
   a.pts = merged;

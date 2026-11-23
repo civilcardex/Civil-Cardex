@@ -13,14 +13,13 @@ import { ChipEstado } from './RCIUI.tsx';
 import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
 import type { RedResult } from '../../lib/rci/types.ts';
-import type { Red } from '../../lib/rci/types.ts';
 import { RciHelpModal } from './RCIHelpModal.tsx';
 
 const THW: CSSProperties = {
   ...TH,
   fontSize: 12,
   whiteSpace: 'normal',
-  verticalAlign: 'bottom',
+  verticalAlign: 'top',
   padding: '4px 3px',
   lineHeight: 1.15,
 };
@@ -109,11 +108,9 @@ const FIN_AYUDA = (
 export function RciRamalesTable({
   rams,
   piso,
-  red,
   rd,
   editRam,
   setRamal,
-  sProyecto,
   zRamTxt,
   okN,
   roc,
@@ -122,28 +119,30 @@ export function RciRamalesTable({
   rams: FilaRamalRci[];
   /** Etiqueta del piso activo (P1…): sufijo de la columna Ramal (ped. usuario 2026-11-20). */
   piso: string;
-  /** Red mezclada del piso (de ahí salen la S digitada y la cota por ramal). */
-  red: Red | undefined;
   /** Resultado de la red (totales del footer); null = red sin calcular. */
-  rd: RedResult | null;
+  rd: Pick<RedResult, 'dibTot' | 'flTot'> | null;
   editRam: boolean;
-  setRamal: (i: number, k: 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => void;
-  /** Separación S del proyecto (placeholder de la celda S). */
-  sProyecto: string;
+  setRamal: (i: number, k: 'dn' | 'troc') => (v: string) => void;
   /** Cota de los ramales (placeholder de la cota por ramal). */
   zRamTxt: string;
   /** ¿Los rociadores con flujo igualan lo que exige el área? (color del chip). */
   okN: boolean;
   /** Criterios del área de diseño (Nreq/Nramal/Llargo del footer). */
-  roc: Criterios;
+  roc: Pick<Criterios, 'Nreq' | 'Nramal' | 'Llargo'>;
 }) {
   const [finAyuda, setFinAyuda] = useState(false);
   return (
     <>
-      <div style={{ overflowX: 'auto' }}>
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- el foco permite desplazar la tabla con teclado */}
+      <div
+        role="region"
+        aria-label="Tabla de ramales del piso"
+        tabIndex={0}
+        style={{ minWidth: 0, maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}
+      >
         <table
           className="tbl tbl-sep tbl-hline"
-          style={{ fontSize: 12, borderCollapse: 'collapse', minWidth: 0, width: '100%' }}
+          style={{ fontSize: 12, minWidth: 0, width: '100%' }}
         >
           <caption
             style={{
@@ -156,37 +155,39 @@ export function RciRamalesTable({
           >
             Ramales del piso
           </caption>
+          <colgroup span={1} />
+          <colgroup span={2} />
+          <colgroup span={4} />
+          <colgroup span={2} />
+          <colgroup span={1} />
+          <colgroup span={10} />
           <thead>
-            {/* Grupos del HTML (tr.grp): Recorrido / Rociadores / Tubería del ramal (Ø único) /
-              Cota / Resultados / Orden. */}
             <tr>
-              <th scope="col" colSpan={4} style={THW}>
+              <th scope="col" rowSpan={2} style={{ ...THW, minWidth: 110 }}>
+                Ramal
+              </th>
+              <th scope="colgroup" colSpan={2} style={THW}>
                 Recorrido
               </th>
-              <th scope="col" colSpan={3} style={THW}>
+              <th scope="colgroup" colSpan={4} style={THW}>
                 Rociadores
               </th>
-              <th scope="col" colSpan={3} style={THW}>
+              <th scope="colgroup" colSpan={2} style={THW}>
                 Tubería del ramal (Ø único)
               </th>
-              <th scope="col" style={THW}>
-                Cota
+              <th
+                scope="col"
+                rowSpan={2}
+                style={THW}
+                title="Cota de los ramales (m sobre el NPT) — se define en el panel superior (solo lectura)"
+              >
+                Cota (m)
               </th>
-              <th scope="col" colSpan={11} style={THW}>
+              <th scope="colgroup" colSpan={10} style={THW}>
                 Resultados
               </th>
             </tr>
             <tr>
-              <th scope="col" style={THW}>
-                Ramal
-              </th>
-              <th
-                scope="col"
-                style={THW}
-                title="Altura del ramal sobre el NPT. Vacío = la cota de los ramales"
-              >
-                Cota (m)
-              </th>
               <th
                 scope="col"
                 style={THW}
@@ -239,6 +240,9 @@ export function RciRamalesTable({
               >
                 Tipo
               </th>
+              <th scope="col" style={THW} title="Numeración global de rociadores del ramal">
+                Rociadores n.º
+              </th>
               <th
                 scope="col"
                 style={THW}
@@ -246,18 +250,8 @@ export function RciRamalesTable({
               >
                 Ø
               </th>
-              <th
-                scope="col"
-                style={THW}
-                title="Separación entre rociadores del ramal (vacío = la del proyecto). Si el ramal trae geometría dibujada, la separación hidráulica sale del dibujo y este campo queda informativo."
-              >
-                S (m)
-              </th>
               <th scope="col" style={THW} title="Longitud del ramal punta → conexión, del dibujo">
                 L ramal (m)
-              </th>
-              <th scope="col" style={THW} title="Numeración global de rociadores del ramal">
-                Rociadores n.º
               </th>
               <th
                 scope="col"
@@ -310,17 +304,14 @@ export function RciRamalesTable({
                 f={f}
                 i={i}
                 piso={piso}
-                red={red}
                 editRam={editRam}
                 setRamal={setRamal}
-                sProyecto={sProyecto}
                 zRamTxt={zRamTxt}
               />
             ))}
             {rams.length === 0 && (
               <tr>
-                {/* 22 columnas: 3+2+3+1+13 del grupo (sin Orden ni Material, ped. usuario). */}
-                <td colSpan={22} style={TDC}>
+                <td colSpan={20} style={TDC}>
                   Sin ramales extraídos: dibuje trazos en el plano y confírmelo.
                 </td>
               </tr>
@@ -336,7 +327,7 @@ export function RciRamalesTable({
               <td className="c" style={{ ...TDC, fontWeight: 700 }}>
                 {rd ? rd.flTot : '—'}
               </td>
-              <td colSpan={17} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
+              <td colSpan={15} className="c" style={{ ...TDC, color: 'var(--txt2)' }}>
                 {rd ? (
                   <>
                     <ChipEstado

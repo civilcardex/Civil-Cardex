@@ -131,7 +131,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     const det = detectarCanalEnExtremos(engine, engine.activeRamal!.pts);
     if (det.canal) {
       canalOrigenId = det.canal.id;
-      if (det.voltear) engine.activeRamal!.pts = engine.activeRamal!.pts.slice().reverse();
+      if (det.voltear) engine.activeRamal!.pts = engine.activeRamal!.pts.toReversed();
     }
   }
   const firstAngle = angleAtHalfLength(engine.activeRamal.pts);

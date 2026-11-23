@@ -59,7 +59,11 @@ export function ensureCanvasSize(engine: EngineFull): void {
     visW: engine.cw.clientWidth || 0,
     visH: engine.cw.clientHeight || 0,
   });
-  if (t.w === engine._canvasW && t.h === engine._canvasH) return;
+  /* El dpr también manda: si el raster del PDF actualizó engine.dpr y el backing store sigue
+   *  con el viejo, los trazos se pintan y se LEEN (getPos) en la escala equivocada — el
+   *  "desplazamiento al hacer zoom" de pantallas con escala de Windows. */
+  if (t.w === engine._canvasW && t.h === engine._canvasH && engine._canvasDpr === (engine.dpr || 1))
+    return;
   engine._canvasW = t.w;
   engine._canvasH = t.h;
   engine.resizeCanvas(t.w, t.h);

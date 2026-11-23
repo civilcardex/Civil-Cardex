@@ -31,6 +31,7 @@ import {
 } from '../utils/drawingSync.ts';
 import { useActiveNetState } from './pdfViewer/useActiveNetState.ts';
 import { useDmuroRciInjection } from './pdfViewer/useDmuroRciInjection.ts';
+import { useMaterialRciInjection } from './pdfViewer/useMaterialRciInjection.ts';
 import { ScaleText, PlanoAsocInfo } from './pdfViewer/viewerInfoPanels.tsx';
 import { useCloseViewer } from './pdfViewer/useCloseViewer.ts';
 
@@ -303,6 +304,8 @@ function PdfViewer_({
   /* Dmuro (RCI) INYECTADO al motor (hook useDmuroRciInjection — prefiere la DMR del piso
    * activo, cae a la global): al montar, al reescribir RCI, al cambiar piso/pestaña. null = off. */
   useDmuroRciInjection(engineRef, currentId);
+  /* Material/Ø de ramales rci desde Hidráulica → canvas vivo (ped. usuario 2026-11-21). */
+  useMaterialRciInjection(engineRef, currentId);
 
   useEffect(() => {
     if (currentId == null) return;

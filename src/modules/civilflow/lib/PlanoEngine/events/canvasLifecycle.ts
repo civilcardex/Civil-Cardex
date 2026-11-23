@@ -42,6 +42,10 @@ export function resizeCanvas(engine: EngineFull, w: number, h: number): void {
   engine.canv.style.width = w + 'px';
   engine.canv.style.height = h + 'px';
   engine.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Registrar el dpr del backing store: ensureCanvasSize fuerza un resize si el dpr real
+  // cambió después (raster del PDF lo actualiza) — sin esto el guard de tamaño saltaba el
+  // re-backing y los trazos vivían con coordenadas del dpr viejo.
+  (engine as EngineLifecycleView)._canvasDpr = dpr;
   engine.render();
 }
 

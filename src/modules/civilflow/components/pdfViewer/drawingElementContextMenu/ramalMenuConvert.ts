@@ -125,7 +125,7 @@ export function convertirARamal(
   // deja la flecha apuntando igual que antes de la conversión.
   const net = fresh.net;
   if ((net === 'san' || net === 'll' || net === 'vent') && fresh._tribReversed) {
-    fresh.pts = [...(fresh.pts || [])].reverse();
+    fresh.pts = (fresh.pts || []).toReversed();
     fresh._tribReversed = undefined;
   }
   const pfx =

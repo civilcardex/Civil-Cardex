@@ -2,7 +2,7 @@ import { leerDocDePlan } from './readPlanDrawing';
 import type { Tramo } from '../context/tramosReducer';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords.ts';
-import { canalOBBDe, puntoEnCanalOBB } from '../lib/PlanoEngine/channelAssociation';
+import { canalMarco, puntoEnCanalOBB } from '../lib/PlanoEngine/channelAssociation';
 import type { PlanItem } from '../context/PlansContext.tsx';
 import { diametroManning } from './calcSanitaryCore.ts';
 import { chequeoBajanteLluvia } from './calcRainwater.ts';
@@ -54,7 +54,7 @@ export function computeCanalBajanteRamalKeys(plans: PlanItem[]): Set<string> {
       canales.some((c) => {
         if (c.x == null || c.y == null) return false;
         // OBB (válido en diagonal): misma regla efectiva que el motor (canalMarco).
-        return puntoEnCanalOBB(canalOBBDe(pxPerCm, c), p[0], p[1], 4);
+        return puntoEnCanalOBB(canalMarco(pxPerCm, c), p[0], p[1], 4);
       });
 
     for (const r of (data.ramales || []) as Array<RawElement & { esCanalId?: string | null }>) {

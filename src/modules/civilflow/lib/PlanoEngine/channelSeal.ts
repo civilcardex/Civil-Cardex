@@ -1,5 +1,5 @@
 import type { IPlanoEngineCore } from './PlanoState.ts';
-import { canalOBBDe, puntoEnCanalOBB, pxPerCmDe } from './channelGeometry';
+import { canalMarco, puntoEnCanalOBB, pxPerCmDe } from './channelGeometry';
 
 /** Sello automático canal↔bajante de lluvias (ll, Red de Lluvias): al cargar el plano marca los puentes canal-bajante y recuerda qué desmarcó el usuario (vetos) para no volver a marcarlo. */
 
@@ -124,7 +124,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
     const puentes: Puente[] = [];
     for (const c of canales) {
       if (c.x == null || c.y == null || c.id == null) continue;
-      const obb = canalOBBDe(pxPerCm, c);
+      const obb = canalMarco(pxPerCm, c);
       const enCanal = (pt: number[]): boolean =>
         puntoEnCanalOBB(obb, pt[0], pt[1], CANAL_PUENTE_PAD);
       for (const r of engine.ramales) {
@@ -178,7 +178,7 @@ export function sellarAsociacionesCanalBajante(engine: IPlanoEngineCore): void {
       const c = canales.find((cc) => String(cc.id) === canalPart);
       if (r && c && r.pts && r.pts.length >= 2 && c.x != null && c.y != null) {
         try {
-          const obbC = canalOBBDe(pxPerCm, c);
+          const obbC = canalMarco(pxPerCm, c);
           const pS = r.pts[0];
           const pE = r.pts[r.pts.length - 1];
           if (puntoEnCanalOBB(obbC, pS[0], pS[1], 4) || puntoEnCanalOBB(obbC, pE[0], pE[1], 4)) {

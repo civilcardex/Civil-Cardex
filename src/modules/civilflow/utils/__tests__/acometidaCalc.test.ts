@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calcFila } from '../../components/waterNetworkDesign/acometidaCalc.ts';
+import { calcFila } from '../waterRows/acometidaCalc.ts';
 
 // Spec: la pérdida de la acometida usa la MISMA escala m/km que la red (÷1000 en
 // rowPhysics). hfPct = 60.1·V^1.852/(C^1.852·d^1.167) es m/km — verificado contra

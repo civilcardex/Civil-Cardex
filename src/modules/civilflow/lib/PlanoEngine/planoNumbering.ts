@@ -1,9 +1,9 @@
 // Numeración de ids/etiquetas de ramales y tributarios. Extraído de PlanoState (que
 // re-exporta todo). Funciones puras sobre arrays estructurales — sin imports del motor.
 
-/** Id unico de ramal (milisegundo mas azar, evita choques en splits). */
+/** Id unico de ramal (uuid nativo, evita choques en splits). */
 export function uniqRamalId(): string {
-  return 'T' + Date.now() + Math.random().toString(36).slice(2, 7);
+  return 'T' + crypto.randomUUID();
 }
 
 /** Siguiente numero libre T{n} del padre (numeracion por padre desde 1: los ramales que cuelgan de

@@ -197,7 +197,10 @@ export function filasRamales(red: Red | undefined, rd: RedResult | null): FilaRa
       fluyen: x ? x.fl : null,
       auto: x ? x.auto : true,
       dn: txtDe(r.dn) || 'auto',
-      mat: txtDe(r.mat),
+      /* Material: la fila hereda el de la RED (panel «Material de los ramales») cuando ella
+       *  no trae propio (ped. usuario 2026-11-21): cambiar el material del piso rellena TODOS
+       *  los ramales, creados antes o después del cambio, y el desplegable Ø ofrece sus DN. */
+      mat: txtDe(r.mat) || txtDe(red?.mat),
       troc: txtDe((r as { troc?: unknown }).troc) || 'Colgante',
       Lr: num(r.Lr),
       dnUsado: res?.valid ? (res.dn ?? null) : null,

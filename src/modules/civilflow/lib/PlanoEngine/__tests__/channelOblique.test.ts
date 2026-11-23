@@ -5,7 +5,7 @@ import {
   normalizarCanal,
   sanearCanalLegacy,
   sanearEsCanalIdFaltante,
-  canalOBBDe,
+  canalMarco,
   puntoEnCanalOBB,
   distPuntoACanalOBB,
   esquinasCanalOBB,
@@ -177,12 +177,12 @@ describe('normalizarCanal (ítem 5: base = lado corto)', () => {
       base: 300,
       angulo: 0,
     };
-    const antes = cornersKey(canalOBBDe(1, c));
+    const antes = cornersKey(canalMarco(1, c));
     expect(normalizarCanal(1, c)).toBe(true);
     expect(c.longitud).toBe(300);
     expect(c.base).toBe(40);
     expect(c.angulo).toBe(-90);
-    expect(cornersKey(canalOBBDe(1, c))).toBe(antes);
+    expect(cornersKey(canalMarco(1, c))).toBe(antes);
   });
 
   it('ya normal = no toca', () => {
@@ -203,13 +203,13 @@ describe('sanearCanalLegacy + canalMarco (mismo mundo que el AABB clásico)', ()
   };
   it('vertical legacy (base>longitud) → base-corta + 90°, mundo idéntico', () => {
     const legacy: CCanal = { x: 0, y: 0, longitud: 50, base: 200 };
-    const antes = cornersKey(canalOBBDe(1, legacy));
+    const antes = cornersKey(canalMarco(1, legacy));
     const c = { ...legacy };
     expect(sanearCanalLegacy(1, c)).toBe(true);
     expect(c.angulo).toBe(90);
     expect(c.longitud).toBe(200);
     expect(c.base).toBe(50);
-    expect(cornersKey(canalOBBDe(1, c))).toBe(antes);
+    expect(cornersKey(canalMarco(1, c))).toBe(antes);
   });
 
   it('izquierda legacy inconsistente (base>longitud) → 90°, mundo idéntico al AABB', () => {
@@ -222,13 +222,13 @@ describe('sanearCanalLegacy + canalMarco (mismo mundo que el AABB clásico)', ()
       base: 200,
       _canalFlowDir: 'izquierda',
     };
-    const antes = cornersKey(canalOBBDe(1, legacy));
+    const antes = cornersKey(canalMarco(1, legacy));
     const c = { ...legacy };
     expect(sanearCanalLegacy(1, c)).toBe(true);
     expect(c.angulo).toBe(90);
     expect(c.longitud).toBe(200);
     expect(c.base).toBe(50);
-    expect(cornersKey(canalOBBDe(1, c))).toBe(antes);
+    expect(cornersKey(canalMarco(1, c))).toBe(antes);
   });
 
   it('horizontal legacy → angulo 0 sin mover nada', () => {
@@ -241,11 +241,11 @@ describe('sanearCanalLegacy + canalMarco (mismo mundo que el AABB clásico)', ()
 
   it('izquierda legacy → 180° con el mismo AABB', () => {
     const legacy: CCanal = { x: 0, y: 0, longitud: 200, base: 50, _canalFlowDir: 'izquierda' };
-    const antes = cornersKey(canalOBBDe(1, legacy));
+    const antes = cornersKey(canalMarco(1, legacy));
     const c = { ...legacy };
     sanearCanalLegacy(1, c);
     expect(c.angulo).toBe(180);
-    expect(cornersKey(canalOBBDe(1, c))).toBe(antes);
+    expect(cornersKey(canalMarco(1, c))).toBe(antes);
   });
 
   it('idempotente: segunda pasada no toca', () => {
@@ -256,7 +256,7 @@ describe('sanearCanalLegacy + canalMarco (mismo mundo que el AABB clásico)', ()
 
 describe('OBB diagonal: punto dentro/fuera y distancia', () => {
   // Canal diagonal 45°: origen (0,0), 200 x 40.
-  const obb = canalOBBDe(1, { x: 0, y: 0, longitud: 200, base: 40, angulo: 45 });
+  const obb = canalMarco(1, { x: 0, y: 0, longitud: 200, base: 40, angulo: 45 });
   it('centro del eje dentro, esquinas AABB fuera', () => {
     const c = Math.SQRT1_2;
     expect(puntoEnCanalOBB(obb, 100 * c, 100 * c)).toBe(true);
@@ -348,7 +348,7 @@ describe('fase de ancho diagonal — 3er clic (ancho libre)', () => {
     // Lado +Y: origen intacto, clic sobre el borde lejano.
     expect(g.x).toBe(0);
     expect(g.y).toBe(0);
-    const obb = canalOBBDe(1, { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm });
+    const obb = canalMarco(1, { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm });
     expect(puntoEnCanalOBB(obb, 150, 50)).toBe(true);
   });
   it('lado −Y: origen desplazado, mismo ángulo, clic sobre el borde', () => {
@@ -356,7 +356,7 @@ describe('fase de ancho diagonal — 3er clic (ancho libre)', () => {
     expect(g.baseCm).toBeCloseTo(50, 0);
     expect(g.angulo).toBe(0);
     expect(g.y).toBeCloseTo(-50, 6);
-    const obb = canalOBBDe(1, { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm });
+    const obb = canalMarco(1, { x: g.x, y: g.y, longitud: g.longitudCm, base: g.baseCm });
     expect(puntoEnCanalOBB(obb, 150, -50)).toBe(true);
   });
   it('clic sobre el eje = ancho mínimo 1cm (no degenera)', () => {

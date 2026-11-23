@@ -4,7 +4,8 @@
  *  Además el shell de navegación: TabBarRci (pestañas horizontales), SubTabsRci (nav vertical
  *  de sub-pestañas, patrón .entr del HTML) y el contexto de navegación que usan «Ir al dato»
  *  y los botones «Ir a» de la guía para saltar a (pestaña, sub-pestaña, campo). */
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 import type { RciResult, RciState, Tips } from '../../lib/rci/types.ts';
 import type { KvRci } from '../../utils/rci/RCIRowsModel.ts';
 
@@ -116,7 +117,9 @@ export function useNavRci(): NavRci {
 }
 
 /** Pestañas principales del diseño RCI, mismo estilo de botones-pill de las páginas de las
- *  otras redes (PageNav de gas/af: borde, activo con acento). Ej: clic en «Hidráulica». */
+ *  otras redes (PageNav de gas/af: borde, activo con acento). Una sola FILA (ped. usuario
+ *  2026-11-23, guía tabs): en pantallas angostas scrollean horizontal en vez de envolver a
+ *  dos filas — el envuelve era lo que amontonaba los chips de verificaciones encima. Ej: clic en «Hidráulica». */
 export function TabBarRci({
   tab,
   setTab,
@@ -126,59 +129,85 @@ export function TabBarRci({
   setTab: (t: TabRci) => void;
   noCumplen: number;
 }) {
+  /** Scroll del pill activo a la vista al cambiar (la fila scrollea en pantallas angostas). */
+  const activoRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    // container:'nearest' frena el scroll de ancestros (la guía de tabs); el cast es porque
+    // la lib de TS aún no tipa la propiedad (los navegadores la ignoran si no la soportan).
+    activoRef.current?.scrollIntoView({
+      inline: 'nearest',
+      block: 'nearest',
+      container: 'nearest',
+    } as ScrollIntoViewOptions);
+  }, [tab]);
   return (
+    /* El scroller exterior + el inner `width:max-content; margin:0 auto`: centrado cuando
+     *  las pills caben y scrolleable cuando no (justify-content:center con overflow CLIPea
+     *  el inicio — no se puede llegar a las primeras pestañas). Sin scrollbar visible:
+     *  la franja de Windows se comería el alto ganado en portátil; las flechas/rueda y el
+     *  auto-scroll del activo cubren el acceso a las pestañas ocultas. */
     <div
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
         flexShrink: 0,
-        justifyContent: 'center',
+        overflowX: 'auto',
         padding: '6px 0',
+        minWidth: 0,
+        scrollbarWidth: 'none',
       }}
     >
-      {TABS_RCI.map((t) => {
-        // La pestaña «Guía de diseño» abre el MODAL (nunca queda activa): color de la RED
-        // (--rci) pero MÁS BRILLANTE (mezcla con blanco, ped. usuario 2026-11-17), con
-        // RELLENO de ese color y letra NEGRA — el borde lo acompaña. Los demás tabs: patrón
-        // activo/inactivo de siempre.
-        const esGuia = t.id === 'guia';
-        const activa = !esGuia && tab === t.id;
-        const rciBrillo = 'color-mix(in oklab, var(--rci) 75%, white)';
-        return (
-          <button
-            type="button"
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            aria-current={tab === t.id ? 'page' : undefined}
-            style={{
-              padding: '6px 16px',
-              border: `1.5px solid ${esGuia ? rciBrillo : activa ? 'var(--rci)' : 'var(--line)'}`,
-              borderRadius: 'var(--r)',
-              background: esGuia ? rciBrillo : activa ? 'rgba(179,19,27,0.10)' : 'var(--bg3)',
-              color: esGuia ? '#000' : activa ? 'var(--rci)' : 'var(--txt2)',
-              cursor: 'pointer',
-              fontSize: 12,
-              fontFamily: 'var(--body)',
-              fontWeight: activa ? 700 : 500,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {t.lbl}
-            {t.id === 'verificaciones' ? (
-              <span
-                style={{
-                  ...CHIP_CNT,
-                  background: noCumplen > 0 ? 'var(--err)' : 'var(--succ)',
-                }}
-              >
-                {noCumplen}
-              </span>
-            ) : null}
-          </button>
-        );
-      })}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: 'max-content',
+          margin: '0 auto',
+        }}
+      >
+        {TABS_RCI.map((t) => {
+          // La pestaña «Guía de diseño» abre el MODAL (nunca queda activa): color de la RED
+          // (--rci) pero MÁS BRILLANTE (mezcla con blanco, ped. usuario 2026-11-17), con
+          // RELLENO de ese color y letra NEGRA — el borde lo acompaña. Los demás tabs: patrón
+          // activo/inactivo de siempre.
+          const esGuia = t.id === 'guia';
+          const activa = !esGuia && tab === t.id;
+          const rciBrillo = 'color-mix(in oklab, var(--rci) 75%, white)';
+          return (
+            <button
+              type="button"
+              key={t.id}
+              ref={activa ? activoRef : undefined}
+              onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? 'page' : undefined}
+              style={{
+                flexShrink: 0,
+                padding: '6px 16px',
+                border: `1.5px solid ${esGuia ? rciBrillo : activa ? 'var(--rci)' : 'var(--line)'}`,
+                borderRadius: 'var(--r)',
+                background: esGuia ? rciBrillo : activa ? 'rgba(179,19,27,0.10)' : 'var(--bg3)',
+                color: esGuia ? '#000' : activa ? 'var(--rci)' : 'var(--txt2)',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontFamily: 'var(--body)',
+                fontWeight: activa ? 700 : 500,
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {t.lbl}
+              {t.id === 'verificaciones' ? (
+                <span
+                  style={{
+                    ...CHIP_CNT,
+                    background: noCumplen > 0 ? 'var(--err)' : 'var(--succ)',
+                  }}
+                >
+                  {noCumplen}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -216,10 +245,14 @@ export function SubTabsRci({
   ancho?: number;
 }) {
   const visibles = subs.filter((s) => !s.oculto);
+  /* Densidad por PANTALLA (H-06, ped. 2026-11-23 + 2026-11-17): compacta SOLO en ventanas
+   *  bajas (portátil 14-15", ≤860 px de alto — ahí las 15 filas de Normativa caben sin
+   *  scroll); en monitor se conserva la letra mayor del ped. 2026-11-17. */
+  const portatil = useMediaQuery('(max-height: 860px)');
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, minHeight: 0, flex: 1 }}>
       {/* Sub-pestañas HORIZONTALES (ped. usuario): una fila de chips en la banda superior de
-       *  la página — pegada ARRIBA (ped. 2026-11-17: «sube un poco») y con letra mayor. */}
+       *  la página — pegada ARRIBA (ped. 2026-11-17: «sube un poco»). */}
       <nav
         style={{
           position: 'sticky',
@@ -229,7 +262,7 @@ export function SubTabsRci({
           display: 'flex',
           flexWrap: 'wrap',
           gap: 4,
-          padding: '2px 2px 4px',
+          padding: portatil ? '2px 2px 3px' : '2px 2px 4px',
           borderBottom: '1px solid var(--line)',
         }}
       >
@@ -240,20 +273,28 @@ export function SubTabsRci({
             aria-current={sub === s.id ? 'true' : undefined}
             style={{
               display: 'flex',
-              gap: 6,
+              gap: portatil ? 5 : 6,
               alignItems: 'center',
               border: 0,
               background: 'none',
-              padding: '4px 10px',
+              padding: portatil ? '3px 8px' : '4px 10px',
               borderRadius: 5,
               cursor: 'pointer',
               color: sub === s.id ? 'var(--txt)' : 'var(--txt2)',
               fontWeight: sub === s.id ? 600 : 400,
               borderBottom: `2px solid ${sub === s.id ? 'var(--rci)' : 'transparent'}`,
-              fontSize: 14,
+              fontSize: portatil ? 12.5 : 14,
             }}
           >
-            <span style={{ fontWeight: 700, color: 'var(--txt3)', fontSize: 11 }}>{i + 1}</span>
+            <span
+              style={{
+                fontWeight: 700,
+                color: 'var(--txt3)',
+                fontSize: portatil ? 10 : 11,
+              }}
+            >
+              {i + 1}
+            </span>
             <span>{s.titulo}</span>
           </button>
         ))}

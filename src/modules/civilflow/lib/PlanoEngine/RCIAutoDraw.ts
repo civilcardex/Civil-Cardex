@@ -136,7 +136,7 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
   let pts = r.pts.slice();
   let accMed = { ...(r.accMed || {}) };
   let offset = 0;
-  for (const ins of [...inserciones].sort((a, b) => a.dist - b.dist)) {
+  for (const ins of inserciones.toSorted((a, b) => a.dist - b.dist)) {
     const idx = ins.idx + offset;
     pts = [...pts.slice(0, idx), [ins.x, ins.y], ...pts.slice(idx)];
     accMed = shiftAccMed(accMed, idx, 1);

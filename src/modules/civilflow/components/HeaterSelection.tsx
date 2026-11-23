@@ -1,14 +1,13 @@
 /** Selección de calentadores para ac (Agua Caliente): elige modelo del catálogo, lo estampa en el dibujo y recalcula el total de la red. Ej: 2 duchas + 1 lavadero -> el Q (Caudal) ac define el calentador de paso necesario. */
 import { useMemo } from 'react';
 import { useTramos } from '../context/TramosContext.tsx';
-import { APARATOS_DEF } from '../constants';
-import { CAT_APS } from '../constants/engineeringDataFixtures.ts';
 import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from '../utils/formatUtils.ts';
 import { hunterCurva } from '../utils/hunterCurve.ts';
+import { resumenCalentador } from '../utils/heaterSelectionRows.ts';
 import { usePlans } from '../context/PlansContext.tsx';
 import { writeBajantePropToDrawing } from '../utils/writeDiameterToDrawing.ts';
-import { computeHeaterNetworkTotal } from '../utils/waterNetworkRows.ts';
+
 const HeaterSelection_S1: React.CSSProperties = {
   width: '100%',
   minWidth: 150,
@@ -37,37 +36,7 @@ export default function HeaterSelection() {
   // Agrupar aparatos de TODA la red AC (el calentador alimenta cada ramal aguas abajo, no solo
   // el ramal-stub AC-01-{calId}) y tomar el total UC real del nodo raíz tal como lo calcula la
   // tabla de diseño — antes solo sumaba los aparatos asignados directamente al stub.
-  const { summary, totalUC } = useMemo(() => {
-    const counts: Record<string, { cant: number; uc: number }> = {};
-    for (const t of tramosAc) {
-      if (!t.fixtures) continue;
-      for (const [k, v] of Object.entries(t.fixtures)) {
-        if (v && v > 0) {
-          const apCat = CAT_APS.find((a) => a.id === k);
-          if (!counts[k]) counts[k] = { cant: 0, uc: apCat ? apCat.ac : 0 };
-          counts[k].cant += v;
-        }
-      }
-    }
-
-    const summary = Object.keys(counts)
-      .map((k) => {
-        const apCat = CAT_APS.find((a) => a.id === k);
-        const nombre = apCat
-          ? apCat.n
-          : (APARATOS_DEF as unknown as Record<string, { nombre?: string }>)[k]?.nombre || k;
-        const cant = counts[k].cant;
-        const uc = counts[k].uc;
-        return { id: k, nombre, cant, uc, total: cant * uc };
-      })
-      .filter((x) => x.cant > 0);
-
-    const sumRows = summary.reduce((sum, item) => sum + item.total, 0);
-    const { udTotal } = computeHeaterNetworkTotal(tramosAc, plans);
-    const totalUC = udTotal > 0 ? udTotal : sumRows;
-
-    return { summary, totalUC };
-  }, [tramosAc, plans]);
+  const { summary, totalUC } = useMemo(() => resumenCalentador(tramosAc, plans), [tramosAc, plans]);
 
   // Caudal por la curva de Hunter (ÚNICA copia en utils/hunterCurve.ts) — sin factor de
   // simultaneidad (doctrina 2026-11: curva pura; el factor editable del método viejo salió).

@@ -25,7 +25,7 @@ import { leerLibrosPresion, propagarAparatosPresion } from '../utils/propagation
 import { avisarDiametroInvalido } from '../utils/diameterValidation.ts';
 import Acometida from './SupplyConnection.tsx';
 import { useWaterNetworkGraph } from './waterNetworkDesign/useWaterNetworkGraph.ts';
-import { calcFila } from './waterNetworkDesign/acometidaCalc.ts';
+import { calcFila } from '../utils/waterRows/acometidaCalc.ts';
 import { resolvePressures } from './waterNetworkDesign/pressureResolver.ts';
 import { hunterQ, computeDesignRow } from './waterNetworkDesign/rowPhysics.ts';
 import { DesignTableHeader } from './waterNetworkDesign/designTableHeader.tsx';

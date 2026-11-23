@@ -10,7 +10,6 @@ import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 import type PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import { guardarPaginaDeDoc, type RenderReq } from '../../../utils/planScale.ts';
 import { registraCarga } from '../../../utils/loadDiagnostics.ts';
-import { marcarPrimerPisoCargado } from '../pdfCache.ts';
 import { devError } from '../../../../../utils/devError.ts';
 import { crearColaRender, type ColaRender } from './colaRender.ts';
 
@@ -195,8 +194,15 @@ export function useRenderLamina({
         const reDimensionado = pdfCanvas.width !== nuevoW || pdfCanvas.height !== nuevoH;
         if (pdfCanvas.width !== nuevoW) pdfCanvas.width = nuevoW;
         if (pdfCanvas.height !== nuevoH) pdfCanvas.height = nuevoH;
-        pdfCanvas.style.width = viewport.width + 'px';
-        pdfCanvas.style.height = viewport.height + 'px';
+        /* El tamaño CSS SOLO lo escribe el render FULL (que sincroniza setPageSize del motor
+         *  en el mismo paso): el re-raster bgOnly re-densifica el bitmap y NADA más — si
+         *  tocara el CSS con una `sc` distinta a la del último FULL (escala en corrección,
+         *  doble escritor), la lámina cambiaba de tamaño SIN actualizar el motor y los
+         *  trazos quedaban corridos respecto al fondo (el "desplazamiento al hacer zoom"). */
+        if (!opts.bgOnly) {
+          pdfCanvas.style.width = viewport.width + 'px';
+          pdfCanvas.style.height = viewport.height + 'px';
+        }
         const ctx = pdfCanvas.getContext('2d')!;
         // Fondo del plano: suavizado de alta calidad (texto/líneas finas); el FALSE queda
         // para la capa de trazos (crisp).
@@ -232,12 +238,8 @@ export function useRenderLamina({
         // no se mueve un píxel entre el primer paint y aquí (salto residual, orig. usuario).
         if (!opts.bgOnly) engineRef.current?.reEncuadrarContenido();
 
-        // Repintar tras el raster (el lienzo pudo re-dimensionarse y quedó vacío) + marcar
-        // el primer piso SOLO al completar el ÚLTIMO raster completo: la corrección de
-        // escala dispara uno después de la carga de trazos y marcar antes dejaba ver el
-        // re-encuadre («salto residual»). Idempotente.
+        // Repintar tras el raster: el lienzo puede quedar vacío al cambiar de tamaño.
         engineRef.current?.render();
-        marcarPrimerPisoCargado();
 
         if (opts.bgOnly) {
           cola.liberar();

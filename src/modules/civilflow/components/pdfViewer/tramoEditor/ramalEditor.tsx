@@ -244,9 +244,9 @@ export function RamalEditor({
                   const fresh = engineRef.current
                     ? selElement
                       ? engineRef.current.ramales.find((r) => r.id === selElement.id)
-                      : [...engineRef.current.ramales]
-                          .reverse()
-                          .find((r) => r.net === activeNet && !r.mergesFrom)
+                      : engineRef.current.ramales.findLast(
+                          (r) => r.net === activeNet && !r.mergesFrom,
+                        )
                     : null;
                   const aI = (fresh?.diametroInicio as string) || '';
                   const aF = (fresh?.diametroFin as string) || '';
@@ -276,9 +276,9 @@ export function RamalEditor({
                     setSelElement({ ...selElement, diametro: dn });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales]
-                      .reverse()
-                      .find((r) => r.net === activeNet && !r.mergesFrom);
+                    const lastRamal = eng.ramales.findLast(
+                      (r) => r.net === activeNet && !r.mergesFrom,
+                    );
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
                       eng.updateSelected({ diametro: dn });
@@ -311,9 +311,9 @@ export function RamalEditor({
                   const targetRamal =
                     selElement ||
                     (engineRef.current &&
-                      [...engineRef.current.ramales]
-                        .reverse()
-                        .find((r) => r.net === activeNet && !r.mergesFrom));
+                      engineRef.current.ramales.findLast(
+                        (r) => r.net === activeNet && !r.mergesFrom,
+                      ));
                   // Ítem 6/7/8: regla central (inodoro → 4" mínimo)
                   if (
                     activeNet === 'san' &&
@@ -361,9 +361,9 @@ export function RamalEditor({
                     const fresh = engineRef.current
                       ? selElement
                         ? engineRef.current.ramales.find((r) => r.id === selElement.id)
-                        : [...engineRef.current.ramales]
-                            .reverse()
-                            .find((r) => r.net === activeNet && !r.mergesFrom)
+                        : engineRef.current.ramales.findLast(
+                            (r) => r.net === activeNet && !r.mergesFrom,
+                          )
                       : null;
                     const aI = (fresh?.diametroInicio as string) || '';
                     const aF = (fresh?.diametroFin as string) || '';
@@ -390,9 +390,9 @@ export function RamalEditor({
                     setSelElement({ ...selElement, diametro: v });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales]
-                      .reverse()
-                      .find((r) => r.net === activeNet && !r.mergesFrom);
+                    const lastRamal = eng.ramales.findLast(
+                      (r) => r.net === activeNet && !r.mergesFrom,
+                    );
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
                       eng.updateSelected({ diametro: v });
@@ -464,9 +464,9 @@ export function RamalEditor({
                     setSelElement({ ...selElement, pendiente: v });
                   } else if (engineRef.current && !selElement) {
                     const eng = engineRef.current;
-                    const lastRamal = [...eng.ramales]
-                      .reverse()
-                      .find((r) => r.net === activeNet && !r.mergesFrom);
+                    const lastRamal = eng.ramales.findLast(
+                      (r) => r.net === activeNet && !r.mergesFrom,
+                    );
                     if (lastRamal) {
                       eng.selId = lastRamal.id;
                       eng.updateSelected({ pendiente: v });

@@ -773,6 +773,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   }
   _canvasW = 0;
   _canvasH = 0;
+  /** DPR del backing store vigente (lo escribe resizeCanvas; ensureCanvasSize lo compara). */
+  _canvasDpr = 0;
 
   /** Re-mide el lienzo cuando cambia el ÁREA VISIBLE (plegar una barra, redimensionar la
    *  ventana): sin esto el trazo se cortaba antes que el PDF de fondo (CSS) — orig. usuario. */

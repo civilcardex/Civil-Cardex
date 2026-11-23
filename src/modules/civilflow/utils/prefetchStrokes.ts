@@ -54,8 +54,8 @@ async function runPrefetch(
     await Promise.all(
       missing.map(async (p) => {
         const data = await loadTrazosFromDB(String(p.id));
-        if (data) {
-          saveToStorage(TRAZOS_PREFIX + p.id, data);
+        if (data && leerDocDePlan(p.id) == null && saveToStorage(TRAZOS_PREFIX + p.id, data)) {
+          aceptarVersionDePlano(data, null);
           markPlanTrazosFresh(p.id);
         }
       }),
@@ -95,3 +95,4 @@ async function runPrefetch(
     devError('[PREFETCH] trazos:', e);
   }
 }
+import { aceptarVersionDePlano } from '../services/storage/strokesDb.ts';

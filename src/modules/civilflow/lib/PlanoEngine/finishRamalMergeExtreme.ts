@@ -121,10 +121,10 @@ export function tryMergeExtensionPorExtremo(engine: IPlanoEngineCore): boolean {
         let effInc = incomingPts;
         let effMode: 'nStart-eEnd' | 'nEnd-eStart' = mode as 'nStart-eEnd' | 'nEnd-eStart';
         if (mode === 'nStart-eStart') {
-          effInc = [...incomingPts].reverse();
+          effInc = incomingPts.toReversed();
           effMode = 'nEnd-eStart';
         } else if (mode === 'nEnd-eEnd') {
-          effInc = [...incomingPts].reverse();
+          effInc = incomingPts.toReversed();
           effMode = 'nStart-eEnd';
         }
         let mergedPts: number[][] | null = null;

@@ -64,6 +64,8 @@ export interface EngineFull extends IPlanoEngineCore {
   /** Tamaño actual del lienzo de dibujo (lo fija ensureCanvasSize). */
   _canvasW: number;
   _canvasH: number;
+  /** DPR con el que se creó el backing store actual (ensureCanvasSize fuerza resize si cambió). */
+  _canvasDpr: number;
   /** ResizeObserver del contenedor visible (watchContainerSize/stop). */
   _observarResize: ResizeObserver | null;
 }

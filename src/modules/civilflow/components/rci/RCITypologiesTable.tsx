@@ -154,7 +154,7 @@ function TablaTipologias({
                       aria-label={`Representativo de ${g.id}`}
                       style={{ ...CELDA12, width: 120 }}
                     >
-                      {[...g.pisos].reverse().map((i) => (
+                      {g.pisos.toReversed().map((i) => (
                         <option key={i} value={String(rows[i].nombre || '')}>
                           {rows[i].nombre || '(sin nombre)'}
                           {i === g.highest ? ' (más alto)' : ''}
@@ -168,8 +168,8 @@ function TablaTipologias({
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     <ChipRed
                       t={t}
-                      nombresPisos={[...g.pisos]
-                        .reverse()
+                      nombresPisos={g.pisos
+                        .toReversed()
                         .map((i) => rows[i].nombre || '(sin nombre)')
                         .join(' + ')}
                     />

@@ -382,7 +382,8 @@ export function resolveRamalEndsFromGuide(
   const atStart =
     Math.hypot(main[0][0] - snapped[0], main[0][1] - snapped[1]) <
     Math.hypot(main[main.length - 1][0] - snapped[0], main[main.length - 1][1] - snapped[1]);
-  const ordered = atStart ? [...main].reverse() : [...main];
+  /* La copia del else QUEDA: `ordered` se muta abajo (toReversed también copia). */
+  const ordered = atStart ? main.toReversed() : [...main];
   ordered[ordered.length - 1] = [snapped[0], snapped[1]];
   return { pts: ordered };
 }

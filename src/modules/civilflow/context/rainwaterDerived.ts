@@ -3,7 +3,7 @@
 // los llama dentro de useMemo con las mismas deps de siempre — cero cambio de lógica.
 import { cmToPlanePx } from '../lib/PlanoEngine/planoCoords.ts';
 import {
-  canalOBBDe,
+  canalMarco,
   puntoEnCanalOBB,
   distPuntoACanalOBB,
 } from '../lib/PlanoEngine/channelAssociation';
@@ -120,7 +120,7 @@ export function asociarCanalesPorOBB(plans: Pick<PlanItem, 'id' | 'nivel'>[]): A
     };
     for (const c of canales) {
       if (c.x == null || c.y == null) continue;
-      const obb = canalOBBDe(pxPerCm, c);
+      const obb = canalMarco(pxPerCm, c);
       const enCanal = (pt: number[]): boolean => puntoEnCanalOBB(obb, pt[0], pt[1], 4);
       // SET de bajantes alimentadores (un bajante con VARIOS ramales al canal cuenta UNA vez).
       // Semilla = asociaciones manuales; la geometría agrega las dibujadas.

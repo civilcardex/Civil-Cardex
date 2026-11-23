@@ -17,7 +17,7 @@ import { writeBajantePropToDrawing } from '../../../../utils/writeDiameterToDraw
 import {
   applyBajanteAssociation,
   clearBajanteAssociation,
-  areEndpointsAligned,
+  isAligned,
   type AssocEndpoint,
 } from '../../../../utils/bajanteAssociation';
 import { splitPtr } from '../../../../utils/keys.ts';
@@ -180,7 +180,7 @@ export function OriginSection({
       if (selElement?.id === element.id) setSelElement({ ...selElement, origenId: v });
     };
 
-    if (areEndpointsAligned(source, target)) {
+    if (isAligned(source, target)) {
       commit();
       return;
     }
@@ -215,9 +215,9 @@ export function OriginSection({
             (pl) => (pl.id as unknown as string) === upperFloorGroup.planId,
           );
           const pLabel = plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
-          const bajantesToShow = (freshUpperBajantes ?? (upperFloorGroup.bajantes || []))
-            .slice()
-            .sort((a, b) => compararPorCodigo(a, b));
+          const bajantesToShow = (freshUpperBajantes ?? (upperFloorGroup.bajantes || [])).toSorted(
+            (a, b) => compararPorCodigo(a, b),
+          );
           const hasBajantes = bajantesToShow.length > 0;
           return (
             <optgroup label={pLabel}>

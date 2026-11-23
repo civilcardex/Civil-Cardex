@@ -1,7 +1,8 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
-import { emitBdSaveError } from './storageService.ts';
+import {} from './storageService.ts';
+import { emitErrorGuardado } from '../../../utils/saveEvents.ts';
 
 export interface ProyectoRow {
   /** Identificador único universal (uuid) del proyecto (cf_proyectos.id); mismo formato que cm_proyectos, para deep-links. */
@@ -159,7 +160,7 @@ export async function deleteProyecto(id: string): Promise<boolean> {
 
     if (error) {
       devError('proyectosService delete rpc:', error.message);
-      emitBdSaveError('delete-proyecto', error.message);
+      emitErrorGuardado('delete-proyecto', error.message);
       return false;
     }
 

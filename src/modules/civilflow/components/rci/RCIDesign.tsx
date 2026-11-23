@@ -425,37 +425,38 @@ function RciDesign() {
         style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0 }}
       >
         {/* Fila superior: las PÁGINAS centradas (mismo patrón que las otras redes); los CHIPS
-         *  de verificaciones al MISMO NIVEL (ped. usuario 2026-11-17) — anclados a la derecha
-         *  de la banda de pestañas. */}
+         *  de verificaciones al MISMO NIVEL a la derecha (ped. usuario 2026-11-17). Ya NO
+         *  absolute (2026-11-23): con la banda partida en dos filas quedaban ENCIMA de las
+         *  pestañas (captura portátil) — ahora viven en el flujo flex y nunca tapan nada. */}
         {/* Guía de diseño: la PESTAÑA abre el MODAL (ped. usuario: se comporta como modal,
          *  no como página) — la pestaña activa NO cambia. */}
-        <div style={{ position: 'relative' }}>
-          <TabBarRci
-            tab={tab}
-            setTab={(t) => {
-              if (t === 'guia') {
-                setGuiaOpen(true);
-                return;
-              }
-              irA(t);
-            }}
-            noCumplen={noCumplen}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <TabBarRci
+              tab={tab}
+              setTab={(t) => {
+                if (t === 'guia') {
+                  setGuiaOpen(true);
+                  return;
+                }
+                irA(t);
+              }}
+              noCumplen={noCumplen}
+            />
+          </div>
           <button
             type="button"
             onClick={() => irA('verificaciones', 'todas')}
             title="Estado de las verificaciones — clic para verlas"
             style={{
-              position: 'absolute',
-              right: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
+              flexShrink: 0,
               display: 'flex',
               gap: 5,
               alignItems: 'center',
               border: 0,
               background: 'none',
               cursor: 'pointer',
+              padding: '0 4px',
             }}
           >
             {conteo
@@ -511,8 +512,8 @@ function RciDesign() {
                     cursor: 'pointer',
                   }}
                 >
-                  {[...fuentes]
-                    .sort((x, y) => y.npt - x.npt)
+                  {fuentes
+                    .toSorted((x, y) => y.npt - x.npt)
                     .map((f) => (
                       <option key={f.planId} value={f.planId}>
                         {f.label}

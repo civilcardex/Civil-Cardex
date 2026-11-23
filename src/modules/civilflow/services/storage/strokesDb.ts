@@ -15,6 +15,7 @@ import { claveBajante, dedupPorClave } from '../../utils/bajanteLocal.ts';
 import {
   getActiveProyectoId,
   loadFromStorage,
+  localGanaABdPorTs,
   saveToStorage,
   type PlanTrazos,
 } from './localStorage.ts';
@@ -47,11 +48,6 @@ import {
   ghostToRow,
   rowToGhost,
 } from './planRowMappers.ts';
-/** Avisa de un fallo de guardado a BD. Delega en el contrato compartido (utils/guardaEnNube)
- *  para que el proveedor global de alertas lo escuche desde cualquier ruta. */
-export function emitBdSaveError(reason: string, message: string): void {
-  emitErrorGuardado(reason, message);
-}
 
 /** Guardado a BD OK — apaga la alerta roja del visor (franja vuelve al estado normal). */
 function emitBdSaveOk(): void {
@@ -97,6 +93,36 @@ export function trazosLocalGanaABdVacia(local: unknown, db: unknown): boolean {
  *  local ya está vacía); si ese push falló, la copia de BD revive el piso. */
 export function trazosBdGanaALocalVacia(local: unknown, db: unknown): boolean {
   return trazosDocHasContent(db) && !trazosDocHasContent(local);
+}
+
+/** Resultado del árbitro de carga CON versión (H-01): la etiqueta coincide con el diario. */
+export type DecisionCarga = 'bd' | 'local-contenido' | 'local-ts' | 'nada';
+
+/** Árbitro de carga por contenido+ts con la versión YA aceptada (aceptarVersionDePlano):
+ *  la aceptación corre SIEMPRE antes (con caché local ya sincronizada ninguna rama previa
+ *  fijaba el reloj y todo autosave quedaba bloqueado). Una versión 'nueva' con contenido
+ *  local FUERZA a BD — el borrador local ya quedó archivado por la aceptación y aplicar la
+ *  regla de ts aquí lo pisaría. Ej: misma versión, ts local ≥ bd → 'local-ts' (la caché
+ *  manda y se re-sube con el reloj ya fijado). */
+export function arbitrarCarga(
+  version: 'misma' | 'nueva' | 'error',
+  localData: unknown,
+  dbData: unknown,
+  localTs: number | null | undefined,
+  dbTs: number | null | undefined,
+): DecisionCarga {
+  const nubeCambio = version === 'nueva' && trazosDocHasContent(localData);
+  const ganaLocal = !nubeCambio && trazosLocalGanaABdVacia(localData, dbData);
+  const ganaBd =
+    !ganaLocal &&
+    (nubeCambio ||
+      Number(dbTs ?? 0) > Number(localTs ?? 0) ||
+      !localData ||
+      trazosBdGanaALocalVacia(localData, dbData));
+  if (ganaLocal) return 'local-contenido';
+  if (ganaBd) return 'bd';
+  if (localGanaABdPorTs(localTs, dbTs) && localData) return 'local-ts';
+  return 'nada';
 }
 
 // Cola por plano: el RPC es destructivo (borra y reinserta colecciones) y hay decenas de
@@ -145,7 +171,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
           'storageService saveTrazosToDB: push vacío bloqueado sobre caché con contenido',
           planoId,
         );
-        emitBdSaveError(
+        emitErrorGuardado(
           'vacio',
           'Guardado a BD abortado: el trabajo está vacío pero el plano tiene datos guardados.',
         );
@@ -156,14 +182,14 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
 
     const user = await cachedSupabaseUser();
     if (!user) {
-      emitBdSaveError('sin-sesion', 'No hay sesión activa en Supabase.');
+      emitErrorGuardado('sin-sesion', 'No hay sesión activa en Supabase.');
       journalTrazos('db-block', planoId, data, 'sin-sesion');
       return;
     }
 
     const proyectoId = getActiveProyectoId();
     if (!proyectoId) {
-      emitBdSaveError(
+      emitErrorGuardado(
         'sin-proyecto',
         'No hay proyecto activo seleccionado (clave ' + 'de proyecto ausente).',
       );
@@ -173,7 +199,7 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
 
     const id = Number(planoId);
     if (!Number.isFinite(id)) {
-      emitBdSaveError('plano-invalido', `Id de plano no numérico: ${planoId}`);
+      emitErrorGuardado('plano-invalido', `Id de plano no numérico: ${planoId}`);
       return;
     }
 
@@ -308,45 +334,46 @@ async function doSaveTrazosToDB(planoId: string, data: unknown): Promise<void> {
       fantasmas_entrepisos: crossFloorGhosts.map((g) => ghostToRow(id, user.id, g)),
     };
 
-    // Concurrencia optimistic: el updated_at LEÍDO de ESTE plano (no de otro). Si la BD
-    // aún tiene la firma de 2 args, se manda sin reloj (retry abajo degrada la sesión).
-    const reloj = relojesPorPlano.get(planoId) ?? null;
-    const argsBase = { p_plano_id: id, p_data: payload };
-    let { error } = savePlanoConReloj
-      ? await supabase.rpc('save_plano_data', { ...argsBase, p_updated_at: reloj })
-      : await supabase.rpc('save_plano_data', argsBase);
-    // Firma vieja en BD (migración sin aplicar): degradar a 2 args por el resto de la
-    // sesión en vez de fallar cada autosave — el check vuelve al recargar tras migrar.
-    if (error && savePlanoConReloj && rpcFirmaNoDesplegada(error)) {
-      savePlanoConReloj = false;
-      ({ error } = await supabase.rpc('save_plano_data', argsBase));
+    const scope = `${user.id}:${planoId}`;
+    const versionKey = `plano_version_${scope}`;
+    const reloj = relojesPorPlano.get(scope) ?? loadFromStorage<string | null>(versionKey, null);
+    if (!reloj) {
+      emitErrorGuardado(
+        'rpc',
+        'Falta cargar la versión del plano. Los cambios siguen guardados en este dispositivo.',
+      );
+      return;
     }
-    if (error) {
+    relojesPorPlano.set(scope, reloj);
+    const { data: version, error } = await supabase.rpc('save_plano_data_versioned', {
+      p_plano_id: id,
+      p_data: payload,
+      p_updated_at: reloj,
+    });
+    if (!error && typeof version !== 'string') {
+      emitErrorGuardado('rpc', 'El servidor no devolvió la versión guardada del plano.');
+    } else if (error) {
       devError('storageService saveTrazosToDB rpc:', error.message);
       if (/conflicto_concurrencia/i.test(error.message)) {
-        // El reloj quedó desarmado por definición (otro save es más nuevo): sin él el
-        // siguiente intento pasa sin check en vez de chocar en cada tecla.
-        relojesPorPlano.delete(planoId);
-        if (!conflictoAvisados.has(planoId)) {
-          conflictoAvisados.add(planoId);
-          emitBdSaveError(
+        if (!conflictoAvisados.has(scope)) {
+          conflictoAvisados.add(scope);
+          emitErrorGuardado(
             'rpc',
-            'Este plano fue guardado desde otro dispositivo hace un momento. Recargue la página para traer la versión más reciente antes de seguir editando.',
+            'Hay una versión más reciente en la nube. El borrador sigue en este dispositivo; no se sobrescribió el otro guardado.',
           );
         }
       } else {
-        emitBdSaveError('rpc', error.message);
+        emitErrorGuardado('rpc', error.message);
       }
       journalTrazos('db-block', planoId, data, `rpc: ${error.message}`);
-    } else {
+    } else if (typeof version === 'string') {
+      relojesPorPlano.set(scope, version);
+      saveToStorage(versionKey, version);
       emitBdSaveOk();
-      // El propio save subió el reloj de la BD: el valor cargado quedó VIEJO y haría
-      // conflicto con el siguiente autosave. Sin check hasta la próxima carga del plano.
-      relojesPorPlano.delete(planoId);
     }
   } catch (e) {
     devError('storageService saveTrazosToDB exception:', e);
-    emitBdSaveError('excepcion', e instanceof Error ? e.message : String(e));
+    emitErrorGuardado('excepcion', e instanceof Error ? e.message : String(e));
     journalTrazos(
       'db-block',
       planoId,
@@ -383,31 +410,37 @@ supabase.auth.onAuthStateChange?.(() => {
   _cachedUserPromise = null;
 });
 
-// Reloj de concurrencia POR PLANO: loadTrazosFromDB fija el updated_at leído de cada plano
-// y cada save_plano_data viaja con el SUYO (la cola serializa por plano pero los planos
-// DISTINTOS se guardan en paralelo — una global mezclaría relojes). El wrapper lo compara
-// contra cf_planos.updated_at. Ausente = sin check (plano nuevo, carga fallida o tras un
-// guardado propio).
+// El reloj pertenece a la copia editable, no a la última lectura de fondo.
 const relojesPorPlano = new Map<string, string>();
 // Avisos de conflicto ya emitidos por plano (uno por sesión de plano — el autosave seguiría
 // chocando en cada tecla hasta que el usuario recargue).
 const conflictoAvisados = new Set<string>();
-// ¿La BD ya tiene la firma de 3 args de save_plano_data? false = migración 20261118000001
-// sin aplicar → se manda el rpc de 2 args (sin check) hasta recargar, como siempre funcionó.
-let savePlanoConReloj = true;
+const versionesLeidas = new WeakMap<PlanTrazos, { scope: string; version: string }>();
 
-/** Detecta firma-no-desplegada (PGRST202/404) — misma heurística que rpcSaveStateNoDesplegada de civilmanager. */
-function rpcFirmaNoDesplegada(
-  err: { code?: string; message?: string } | null | undefined,
-): boolean {
-  return err?.code === 'PGRST202' || /not found|not find|404/i.test(err?.message ?? '');
+/** Vincula el reloj a la copia realmente cargada. Conserva una copia recuperable si cambia la base. */
+export function aceptarVersionDePlano(
+  data: PlanTrazos,
+  borrador: unknown,
+): 'misma' | 'nueva' | 'error' {
+  const lectura = versionesLeidas.get(data);
+  if (!lectura) return 'misma';
+  const { scope, version } = lectura;
+  const key = `plano_version_${scope}`;
+  const base = relojesPorPlano.get(scope) ?? loadFromStorage<string | null>(key, null);
+  if (base === version) {
+    relojesPorPlano.set(scope, version);
+    return 'misma';
+  }
+  if (borrador && !saveToStorage(`plano_borrador_rescate_${scope}`, borrador)) return 'error';
+  relojesPorPlano.set(scope, version);
+  saveToStorage(key, version);
+  conflictoAvisados.delete(scope);
+  return 'nueva';
 }
-
-/** Reset del estado de concurrencia de sesión (relojes, avisos, degradación de firma). Solo tests: en la app el estado vive hasta recargar, que es su semántica. */
+/** Reinicia el estado en memoria para aislar pruebas de guardado por plano. */
 export function resetConcurrenciaParaTest(): void {
   relojesPorPlano.clear();
   conflictoAvisados.clear();
-  savePlanoConReloj = true;
 }
 
 /** Añade un enlace a una lista sin repetirlo (recibeDeIds / alimentaIds). */
@@ -428,17 +461,16 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
 
     const id = Number(planoId);
     if (!Number.isFinite(id)) return null;
+    const scope = `${user.id}:${planoId}`;
+    const persisted = loadFromStorage<string | null>(`plano_version_${scope}`, null);
+    if (persisted && !relojesPorPlano.has(scope)) relojesPorPlano.set(scope, persisted);
 
     const { data, error } = await supabase.rpc('get_plano_data', { p_plano_id: id });
     if (error) {
       devError('storageService loadTrazosFromDB:', error.message);
-      // Sin lectura fresca el reloj anterior quedaría VIEJO y fabricaría un conflicto
-      // espurio en el siguiente save de este plano.
-      relojesPorPlano.delete(planoId);
       return null;
     }
     if (!data || !data.plano) {
-      relojesPorPlano.delete(planoId);
       return null;
     }
 
@@ -472,8 +504,6 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
     // updated_at. El guardado lo manda de vuelta y el wrapper save_plano_data rechaza si
     // la BD tiene uno mayor (otro dispositivo guardó después) — conflicto_concurrencia.
     const updLeido = (result.plano as { updated_at?: string } | undefined)?.updated_at;
-    if (updLeido) relojesPorPlano.set(planoId, updLeido);
-    else relojesPorPlano.delete(planoId);
 
     const bajantes = (result.bajantes ?? []).map(rowToBajante);
     const conexiones = (result.bajante_conexiones ?? []) as {
@@ -515,6 +545,7 @@ export async function loadTrazosFromDB(planoId: string): Promise<PlanTrazos | nu
       nptLevels: [],
       nets: [],
     };
+    if (updLeido) versionesLeidas.set(work, { scope, version: updLeido });
     // Devolvemos los fixtures y accesorios hidro/gas que viajan en la BD por cada ramal a los
     // mapas de localStorage que FixturesPanel.tsx / GasDesign.tsx realmente leen
     // (APARATOS_BY_TRAMO_KEY / HYDRO_DATA_STORAGE_KEY / GAS_ACC_KEY) — si no, un plano cargado

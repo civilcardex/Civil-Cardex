@@ -187,6 +187,7 @@ function PdfCanvas({
             position: 'absolute',
             top: 0,
             left: 0,
+            touchAction: 'none',
             cursor: tool === 'pan' ? 'grab' : tool === 'sel' ? 'default' : 'crosshair',
           }}
         />

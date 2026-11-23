@@ -347,7 +347,7 @@ export function extraerRedDePiso(
     const totalPx = totalPxDe(pts);
     let lon = 0;
     let iV = 0;
-    const ordenados = [...x.t.acc].sort((p, q) => p.idx - q.idx);
+    const ordenados = x.t.acc.toSorted((p, q) => p.idx - q.idx);
     for (const a of ordenados) {
       while (iV < a.idx && iV < pts.length - 1) {
         lon += lonSeg(pts, iV);

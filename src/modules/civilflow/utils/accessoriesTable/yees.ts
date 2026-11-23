@@ -218,11 +218,10 @@ export function detectarYees(
     // caen en el MISMO punto (mismo glifo, 2 ramas). Dos uniones separadas —aunque estén
     // pegadas— son SIEMPRE yees simples: la cercanía ya no crea dobles (orig. usuario: 3
     // simples contadas 2 + doble fantasma).
+    /* Bucle simple en vez de Object.groupBy (Safari/iPadOS 16.4-17.3 no lo trae): misma
+     *  agrupación por hostKey en 3 líneas (piso del repo: Safari 16.4+). */
     const byHost: Record<string, (typeof yeeJunctions)[number][]> = {};
-    for (const j of yeeJunctions) {
-      if (!byHost[j.hostKey]) byHost[j.hostKey] = [];
-      byHost[j.hostKey].push(j);
-    }
+    for (const j of yeeJunctions) (byHost[j.hostKey] ??= []).push(j);
     for (const [hostKey, js] of Object.entries(byHost)) {
       const yd = (yeeDiams[hostKey] = yeeDiams[hostKey] || { simple: [], doble: [] });
       const used = new Set<number>();

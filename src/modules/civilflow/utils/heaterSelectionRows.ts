@@ -13,12 +13,17 @@ import { hunterCurva } from './hunterCurve.ts';
 // 50 %, persistido en el bajante CALENTn) salió del método viejo; los bajantes viejos con
 // factorSim guardado lo IGNORAN (campo huérfano, mismo patrón que n_salidas).
 
-/** Tablas de la memoria para la selección de calentador de ac (Agua Caliente): aparatos con su UC (Unidades de Consumo), caudal probable (curva de Hunter, LPS/LPM) y qué equipo del catálogo cumple. */
-export function computeHeaterSelectionTables(tramosAc: Tramo[], plans: PlanItem[]): MemoriaTable[] {
-  const selectedHeaterTram = tramosAc.find((t) => t.calCapacidad !== undefined);
-  const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
-  const selectedHeater = CAT_GAS.find((g) => g.id === selectedHeaterId);
-
+/** Resumen de aparatos AC del calentador (cant + UC (Unidades de Consumo) por aparato) y el
+ *  totalUC del nodo raíz — udTotal del grafo manda; sin red dibujada cae a la suma de filas.
+ *  ÚNICO lugar del conteo: lo usa la memoria (computeHeaterSelectionTables) y el panel vivo
+ *  (HeaterSelection), que antes lo duplicaban. */
+export function resumenCalentador(
+  tramosAc: Tramo[],
+  plans: PlanItem[],
+): {
+  summary: Array<{ id: string; nombre: string; cant: number; uc: number; total: number }>;
+  totalUC: number;
+} {
   const counts: Record<string, { cant: number; uc: number }> = {};
   for (const t of tramosAc) {
     if (!t.fixtures) continue;
@@ -41,10 +46,18 @@ export function computeHeaterSelectionTables(tramosAc: Tramo[], plans: PlanItem[
       return { id: k, nombre, cant, uc, total: cant * uc };
     })
     .filter((x) => x.cant > 0);
-
   const sumRows = summary.reduce((sum, item) => sum + item.total, 0);
   const { udTotal } = computeHeaterNetworkTotal(tramosAc, plans);
-  const totalUC = udTotal > 0 ? udTotal : sumRows;
+  return { summary, totalUC: udTotal > 0 ? udTotal : sumRows };
+}
+
+/** Tablas de la memoria para la selección de calentador de ac (Agua Caliente): aparatos con su UC (Unidades de Consumo), caudal probable (curva de Hunter, LPS/LPM) y qué equipo del catálogo cumple. */
+export function computeHeaterSelectionTables(tramosAc: Tramo[], plans: PlanItem[]): MemoriaTable[] {
+  const selectedHeaterTram = tramosAc.find((t) => t.calCapacidad !== undefined);
+  const selectedHeaterId = selectedHeaterTram ? selectedHeaterTram.calCapacidad : '';
+  const selectedHeater = CAT_GAS.find((g) => g.id === selectedHeaterId);
+
+  const { summary, totalUC } = resumenCalentador(tramosAc, plans);
 
   // Curva de Hunter (ÚNICA copia en utils/hunterCurve.ts) — sin factor de simultaneidad.
   const caudalProbableLps = hunterCurva(totalUC);

@@ -13,7 +13,7 @@ import { writeBajantePropToDrawing } from '../../../../utils/writeDiameterToDraw
 import {
   applyBajanteAssociation,
   clearBajanteAssociation,
-  areEndpointsAligned,
+  isAligned,
   type AssocEndpoint,
 } from '../../../../utils/bajanteAssociation';
 import { splitPtr } from '../../../../utils/keys.ts';
@@ -143,7 +143,7 @@ export function DestinationSection({
             }
           };
 
-          if (areEndpointsAligned(source, target)) {
+          if (isAligned(source, target)) {
             commit();
             return;
           }
@@ -174,9 +174,7 @@ export function DestinationSection({
             group.isCurrent
               ? (group.bajantes || []).filter((b) => b.id !== element.id)
               : group.bajantes || []
-          )
-            .slice()
-            .sort((a, b) => compararPorCodigo(a, b));
+          ).toSorted((a, b) => compararPorCodigo(a, b));
           const hasBajantes = bajantesToShow.length > 0;
           return (
             <optgroup key={group.planId} label={pLabel}>

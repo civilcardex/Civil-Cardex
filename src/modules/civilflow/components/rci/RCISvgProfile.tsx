@@ -167,14 +167,11 @@ export function PerfilSvg({
       </g>
     );
   };
-  const srt = pf.slice().sort((a, b) => a.zT - b.zT);
+  const srt = pf.toSorted((a, b) => a.zT - b.zT);
   const jockeyPts = hasJ
     ? {
         a: srt.map((o) => `${X((js ?? 0) - PSIM * o.zT)},${Y(o.zT)}`),
-        b: srt
-          .slice()
-          .reverse()
-          .map((o) => `${X((jp ?? 0) - PSIM * o.zT)},${Y(o.zT)}`),
+        b: srt.toReversed().map((o) => `${X((jp ?? 0) - PSIM * o.zT)},${Y(o.zT)}`),
       }
     : null;
   return (

@@ -132,7 +132,7 @@ export function calculaFilasGas(entrada: EntradaCalculoGas): FilaGasCalc[] {
     return d;
   };
   for (const t of tramos) depth(claveGas(t.planId, t.id));
-  const orden = [...tramos].sort(
+  const orden = tramos.toSorted(
     (a, b) =>
       (prof.get(claveGas(a.planId, a.id)) ?? 0) - (prof.get(claveGas(b.planId, b.id)) ?? 0) ||
       b.piso - a.piso,

@@ -1,6 +1,6 @@
 /** Diálogo de creación de proyecto (nombre, datos básicos): comparte lógica con el gating de
  *  suscripciones — sin módulo activo muestra el aviso pero la BD es el candado real. */
-import { useState, useRef, useEffect, useContext } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlansContext } from '../../context/PlansContext.tsx';
 import { ProjectContext } from '../../context/ProjectContext.tsx';
@@ -10,7 +10,7 @@ import { clearLocalWorkspace } from '../../services/workspaceReset.ts';
 import { saveToStorage, setActiveProyectoId } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';
-import { ModalShell } from '../../../../components/shared/ModalShell.tsx';
+import { NombreProyectoDialog } from '../../../../components/shared/NombreProyectoDialog.tsx';
 import SuscripcionInactivaModal, {
   codigoProyecto,
 } from '../../../../components/shared/SubscriptionInactiveModal';
@@ -21,20 +21,13 @@ interface Props {
 }
 
 export default function ProjectCreateDialog({ open, onClose }: Props) {
-  const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const plansCtx = useContext(PlansContext);
   const projectCtx = useContext(ProjectContext);
   const navigate = useNavigate();
   const { activos, loading: subsLoading, bloqueando: subsBloqueando } = useSuscripciones();
 
-  useEffect(() => {
-    if (open) requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
-  }, [open]);
-
-  async function handleCreate() {
-    const trimmed = name.trim();
+  async function handleCreate(trimmed: string) {
     if (!trimmed || creating) return;
     setCreating(true);
     try {
@@ -100,47 +93,12 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
   }
 
   return (
-    <ModalShell ariaLabel="Nuevo proyecto">
-      <h3 className="dialog-title">Nuevo proyecto</h3>
-      <p className="dialog-lead">
-        Ingresa el nombre del proyecto. Se generará un código automático.
-      </p>
-      <input
-        ref={inputRef}
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleCreate();
-          if (e.key === 'Escape') {
-            onClose();
-            setName('');
-          }
-        }}
-        placeholder="Nombre del proyecto"
-        aria-label="Nombre del proyecto"
-        className="project-create-dialog-input"
-      />
-      <div className="dialog-actions">
-        <button
-          type="button"
-          onClick={() => {
-            onClose();
-            setName('');
-          }}
-          className="dialog-btn dialog-btn-ghost"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          onClick={handleCreate}
-          disabled={!name.trim() || creating}
-          className="dialog-btn dialog-btn-primary"
-        >
-          {creating ? 'Creando...' : 'Crear Proyecto'}
-        </button>
-      </div>
-    </ModalShell>
+    <NombreProyectoDialog
+      open={open}
+      titulo="Nuevo proyecto"
+      creating={creating}
+      onCreate={(n) => void handleCreate(n)}
+      onClose={onClose}
+    />
   );
 }

@@ -3,13 +3,13 @@ import {
   unirOverrides,
   claveBajante,
   claveCanal,
-  baseDeChip,
   agregarTumba,
   quitarTumba,
   leerEspejo,
   guardarEspejo,
   claveEspejo,
 } from '../rainwaterOverrideStore.ts';
+import { sectorDe } from '../formatUtils.ts';
 import { setActiveProyectoId } from '../../services/storageService.ts';
 import type { BajanteLL, CanalLL } from '../../context/RainwaterContext.tsx';
 
@@ -115,10 +115,10 @@ describe('espejo por proyecto', () => {
 });
 
 describe('claves', () => {
-  it('baseDeChip no caza BALL11 con base BALL1', () => {
-    expect(baseDeChip('BALL11-P1')).toBe('BALL11');
-    expect(baseDeChip('BALL11-P1')).not.toBe('BALL1');
-    expect(baseDeChip('BALL1-P1')).toBe('BALL1');
+  it('sectorDe no caza BALL11 con base BALL1', () => {
+    expect(sectorDe('BALL11-P1')).toBe('BALL11');
+    expect(sectorDe('BALL11-P1')).not.toBe('BALL1');
+    expect(sectorDe('BALL1-P1')).toBe('BALL1');
   });
 
   it('claveCanal usa sector o id', () => {

@@ -10,6 +10,7 @@ import { calcLeAcces } from '../fittingsUtils.ts';
 import { hunterQ } from '../../components/waterNetworkDesign/rowPhysics.ts';
 import { tramoKeyOf } from '../keys.ts';
 import { isAf, isAC1, isAC2 } from '../waterRowsShared.ts';
+import { calcFila } from './acometidaCalc.ts';
 import type { Tramo } from '../../context/tramosReducer';
 import type { LoadsResult } from './loads.ts';
 
@@ -98,30 +99,6 @@ export function resolveAcometida(
     return hunterQ(ucTotal);
   })();
 
-  const calcFila = (
-    nominal: string,
-    h: number,
-    v: number,
-    le: number,
-    pIn: number,
-    cHW: number,
-  ) => {
-    const opt = nominal ? diamTable.find((d) => d.nominal === nominal) : null;
-    const dInt = opt ? opt.dInt : 0;
-    const V =
-      Qaco > 0 && dInt > 0
-        ? Math.round(((1000000 * Qaco) / ((Math.PI / 4) * dInt * dInt)) * 10) / 10
-        : 0;
-    const Lt = (h || 0) + (v || 0) + (le || 0);
-    const hfPct =
-      Math.round(
-        ((60.1 * Math.pow(V, 1.852)) / (Math.pow(cHW, 1.852) * Math.pow(dInt, 1.167))) * 100,
-      ) / 100;
-    const hfM = Math.round((hfPct / 100) * Lt * 100) / 100;
-    const Pfin = +(pIn - (v || 0) - hfM).toFixed(2);
-    return { dInt, V, Lt, hfPct, hfM, Pfin };
-  };
-
   const cHW1 = matHazenC(tr1?.material || '') ?? 150;
   const acoL1LeTotal = resolvedL1.le + acoLeMed;
   const f1 = calcFila(
@@ -131,6 +108,8 @@ export function resolveAcometida(
     acoL1LeTotal,
     acoPini,
     cHW1,
+    diamTable,
+    Qaco,
   );
 
   // AC no tiene acometida propia — se alimenta del calentador de agua, que a su vez se alimenta

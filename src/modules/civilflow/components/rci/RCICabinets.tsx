@@ -223,12 +223,9 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                       <th
                         scope="col"
                         style={TH10}
-                        title="Diámetro nominal del tramo según el plano"
+                        title="Diámetro con el que se calculó el tramo. Si no hay cálculo, muestra el diámetro definido en el plano."
                       >
-                        Ø
-                      </th>
-                      <th scope="col" style={TH10} title="Diámetro con el que se calculó">
-                        Ø usado
+                        Diámetro
                       </th>
                       <th scope="col" style={TH10} title="Longitud del tramo en metros">
                         L (m)
@@ -306,10 +303,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                           {f.qSalida !== null ? fmt(f.qSalida, 0) : ''}
                         </td>
                         <td className="c" style={TDC}>
-                          {f.dn || '—'}
-                        </td>
-                        <td className="c" style={TDC}>
-                          {f.dnUsado || '—'}
+                          {f.dnUsado || (f.dn !== 'auto' && f.dn) || '—'}
                         </td>
                         <td className="c" style={TDC}>
                           {f.L !== null ? fmt(f.L) : '—'}

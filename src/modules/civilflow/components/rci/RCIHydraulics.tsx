@@ -192,7 +192,6 @@ export function RciHidraulica({
   const rams = useMemo(() => filasRamales(red, rd), [red, rd]);
   const trams = useMemo(() => filasTramos(red, rd, techo, altDeriv), [red, rd, techo, altDeriv]);
   const fijosT = useMemo(() => fijosPorId(grisRed?.tramos), [grisRed]);
-  const sProyecto = String(estado.roc.S ?? '');
   const raiz = String(red?.raiz || '').trim() || 'D';
   const nudosLista = nudosDeRed(red, raiz);
   const C = cOf(red?.mat || 'Acero SCH 40', estado.clas.sistema, estado.cmat);
@@ -422,11 +421,9 @@ export function RciHidraulica({
             <RciRamalesTable
               rams={rams}
               piso={pisoLbl}
-              red={red}
               rd={rd}
               editRam={editRam}
               setRamal={setRamal}
-              sProyecto={sProyecto}
               zRamTxt={zRamTxt}
               okN={okN}
               roc={R.roc}

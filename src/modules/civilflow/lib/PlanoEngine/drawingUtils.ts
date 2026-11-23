@@ -254,7 +254,7 @@ export function ramalContinuesPast(
 ): boolean {
   if (!r.pts || r.pts.length < 2) return false;
   const reversed = (r.net === 'san' || r.net === 'll' || r.net === 'vent') && r._tribReversed;
-  const seq = reversed ? [...r.pts].reverse() : r.pts;
+  const seq = reversed ? r.pts.toReversed() : r.pts;
   let total = 0;
   const segLens: number[] = [];
   for (let i = 0; i < seq.length - 1; i++) {
@@ -300,7 +300,7 @@ export function recomputeDownstreamDiameters(
   // Pares hermanos de un mismo split: no son alimentador/receptor entre sí.
   const mergeSiblingPairs = new Set<string>();
   for (const r of ramales) {
-    if (r.mergesFrom) mergeSiblingPairs.add([...r.mergesFrom].sort().join('|'));
+    if (r.mergesFrom) mergeSiblingPairs.add(r.mergesFrom.toSorted().join('|'));
   }
   const dischargeEnd = (r: (typeof ramales)[number]): number[] | null => ramalDischargeEnd(r);
   // ¿R continúa aguas abajo del punto Q (en su dirección de flujo)? Sin esto, un tributario

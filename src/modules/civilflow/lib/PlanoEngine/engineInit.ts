@@ -56,7 +56,11 @@ export function initEngineState(
   engine.offX = 0;
   engine.offY = 0;
   engine.lineWidthScale = 1;
-  engine.dpr = 1;
+  /* DPR real desde el arranque: el backing store del canvas se crea CON este factor (el primer
+   *  resizeCanvas lo usa). Antes nacía en 1 y el dpr real solo llegaba tras el primer raster
+   *  del PDF — en pantallas con escala de Windows (125%/150%, típico de portátiles) los
+   *  trazos quedaban con coordenadas de plano equivocadas y "se desplazaban" al zoom/paneo. */
+  engine.dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
   engine.tool = 'sel';
   engine.activeNet = 'af';
   engine.tipoTramo = 'ramal';

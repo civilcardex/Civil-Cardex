@@ -293,7 +293,7 @@ export function calcularAristas(
         const colaEnCluster = (k: string): boolean => setSalidas.has(k);
         // Orden por profundidad (extremo lejano más bajo = más abajo en la cadena) y aristas
         // SOLO entre eslabones consecutivos: cada pieza acumula lo de arriba sin dobles.
-        const orden = [...tribEnCluster].sort((a, b) => {
+        const orden = tribEnCluster.toSorted((a, b) => {
           const fa = farYDe(a);
           const fb = farYDe(b);
           if (Math.abs(fa - fb) > 0.5) return fa - fb;

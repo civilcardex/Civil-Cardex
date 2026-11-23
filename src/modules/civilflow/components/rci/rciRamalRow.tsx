@@ -7,7 +7,6 @@ import { memo } from 'react';
 import { anchoValor, celdaEditable, TDC, CELDA } from './RCIEditableCell.tsx';
 import type { FilaRamalRci } from '../../utils/rci/RCIRowsModel.ts';
 import { DIAM_BY_MAT, diamListPorMaterial } from '../../constants/engineeringDataMaterials.ts';
-import type { Red } from '../../lib/rci/types.ts';
 
 /** Nombre EXACTO de la etiqueta del trazo en el dibujo (RRCI1…): vive en f.id tras el «|»
  *  (planId|idTrazo). Sin id estable (fila de ejemplo) cae al nombre calculado R1… */
@@ -35,64 +34,27 @@ const TROC_C: Record<string, string> = {
   'Colgante seco': 'C. seco',
 };
 
-/** S digitada del ramal (vacío = usa la del proyecto). */
-function sDeRamal(red: Red | undefined, i: number): string {
-  const r = red?.ramales[i];
-  return r && r.S !== undefined && r.S !== null ? String(r.S) : '';
-}
-
-/** Cota propia digitada del ramal (vacío = la cota de los ramales). */
-function zrDeRamal(red: Red | undefined, i: number): string {
-  const r = red?.ramales[i];
-  return r && r.zr !== undefined && r.zr !== null ? String(r.zr) : '';
-}
-
-export interface RciRamalRowProps {
+interface RciRamalRowProps {
   f: FilaRamalRci;
   i: number;
   /** Etiqueta del piso activo (P1…): sufijo de la columna Ramal. */
   piso: string;
-  red: Red | undefined;
   editRam: boolean;
-  setRamal: (i: number, k: 'dn' | 'mat' | 'S' | 'zr' | 'troc') => (v: string) => void;
-  sProyecto: string;
+  setRamal: (i: number, k: 'dn' | 'troc') => (v: string) => void;
   zRamTxt: string;
 }
 
-function RciRamalRow_({
-  f,
-  i,
-  piso,
-  red,
-  editRam,
-  setRamal,
-  sProyecto,
-  zRamTxt,
-}: RciRamalRowProps) {
-  const zrTxt = zrDeRamal(red, i);
+function RciRamalRow_({ f, i, piso, editRam, setRamal, zRamTxt }: RciRamalRowProps) {
   return (
     <tr key={f.id || i}>
-      <td
+      <th
+        scope="row"
         className="c"
         style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
         title="Etiqueta del trazo en el dibujo"
       >
         {nombreDibujoDe(f, piso)}
-      </td>
-      <td className="c" style={{ padding: '1px 2px' }}>
-        {celdaEditable(
-          editRam,
-          <input
-            type="number"
-            step="any"
-            value={zrTxt}
-            placeholder={zRamTxt || '0'}
-            onChange={(e) => setRamal(i, 'zr')(e.target.value)}
-            aria-label={`Cota de ${f.nombre}`}
-            style={{ ...CELDA, width: 56 }}
-          />,
-        )}
-      </td>
+      </th>
       <td className="c" style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}>
         {f.rocIni !== null ? `Roc ${f.rocIni}` : '—'}
       </td>
@@ -125,12 +87,20 @@ function RciRamalRow_({
           </select>,
         )}
       </td>
+      <td className="c" style={TDC}>
+        {f.rocIni !== null
+          ? f.rocIni === f.rocFin
+            ? `${f.rocIni}`
+            : `${f.rocIni}–${f.rocFin}`
+          : '—'}
+      </td>
       <td className="c" style={{ padding: '1px 2px' }}>
         {celdaEditable(
           editRam,
           <select
             value={f.dn}
             onChange={(e) => setRamal(i, 'dn')(e.target.value)}
+            aria-label={`Diámetro del ramal ${f.nombre}`}
             title="Diámetro único del ramal. Auto: el menor que cumple la velocidad máxima. Mismas opciones que el desplegable del dibujo"
             style={{ ...CELDA, width: anchoValor(f.dn) }}
           >
@@ -142,20 +112,6 @@ function RciRamalRow_({
           </select>,
         )}
       </td>
-      <td className="c" style={{ padding: '1px 2px' }}>
-        {celdaEditable(
-          editRam,
-          <input
-            type="number"
-            step="any"
-            value={sDeRamal(red, i)}
-            placeholder={sProyecto}
-            onChange={(e) => setRamal(i, 'S')(e.target.value)}
-            aria-label={`Separación S de ${f.nombre}`}
-            style={{ ...CELDA, width: 52 }}
-          />,
-        )}
-      </td>
       <td
         className="c"
         style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
@@ -163,12 +119,12 @@ function RciRamalRow_({
       >
         {f.Lr !== null ? f.Lr.toFixed(2) : '—'}
       </td>
-      <td className="c" style={TDC}>
-        {f.rocIni !== null
-          ? f.rocIni === f.rocFin
-            ? `${f.rocIni}`
-            : `${f.rocIni}–${f.rocFin}`
-          : '—'}
+      <td
+        className="c"
+        style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}
+        title="Cota de los ramales (m sobre el NPT) — se define en el panel superior"
+      >
+        {zRamTxt || '—'}
       </td>
       <td className="c" style={TDC}>
         {f.brazo !== null ? f.brazo.toFixed(2) : '—'}

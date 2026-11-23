@@ -4,7 +4,7 @@
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
-import { emitBdSaveError } from './storageService.ts';
+import { emitErrorGuardado } from '../../../utils/saveEvents.ts';
 import { EP_DEFAULTS, type EPData } from '../components/ep/EPShared';
 
 // ─── Equipo de Presión (ep_datos_proyecto, 1:1 con el proyecto) ────────────────────────
@@ -149,7 +149,7 @@ export async function saveEpDatos(proyectoId: string, ep: EPData): Promise<void>
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) {
-    emitBdSaveError('sin-sesion', 'epService: sin sesión, EP no guardado.');
+    emitErrorGuardado('sin-sesion', 'epService: sin sesión, EP no guardado.');
     return;
   }
   const { error } = await supabase.rpc('save_ep_datos', {

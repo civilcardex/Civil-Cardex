@@ -1,10 +1,5 @@
 import { LL_OVERRIDES_MIRROR_KEY } from '../constants/storage-keys.ts';
-import { sectorDe } from './formatUtils.ts';
-import {
-  loadFromStorage,
-  saveToStorage,
-  getActiveProyectoId,
-} from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, getActiveProyectoId } from '../services/storageService.ts';
 import type { BajanteLL, CanalLL } from '../context/RainwaterContext.tsx';
 
 /** Espejo local de overrides ll (Lluvias) (puente entre instancias del provider). */
@@ -24,11 +19,6 @@ export function claveBajante(t: { id: string; bajante?: string }): string {
 /** Clave estable de un override de canal: sector o id. */
 export function claveCanal(t: { id: string; sector?: string }): string {
   return t.sector || t.id;
-}
-
-/** Base de un chip "CODE-PISO" (BALL11-P1 → BALL11, nunca caza BALL1). */
-export function baseDeChip(chip: string): string {
-  return sectorDe(chip);
 }
 
 /** Agrega una clave a las tumbas (sin duplicados). */

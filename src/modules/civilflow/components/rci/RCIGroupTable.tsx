@@ -208,6 +208,9 @@ interface PropsGrupo {
   /** Modo compacto (sub Tubería y mangueras: caben 3 tablas sin scroll vertical): fuentes
    *  un paso menores en título, celdas y controles. */
   compacta?: boolean;
+  /** Ventana baja (≤860 px de alto, portátil 14-15"): con `compacta` libera el tope de la
+   *  Observación para que las filas queden más bajas. Sin efecto fuera del modo compacto. */
+  portatil?: boolean;
   /** Abre el modal pedido por un campo con `abreModal` (la clave llega como parámetro).
    *  Ej: (clave) => clave === 'clases' && setModalClases(true). */
   onAbrirModal?: (clave: string) => void;
@@ -233,6 +236,7 @@ export function GrupoTabla({
   minAncho,
   depNota,
   compacta,
+  portatil,
 }: PropsGrupo) {
   const [edit, toggleEdit] = useEditarTabla();
   /* Gate de rango (ped. usuario): el input es un BORRADOR mientras se teclea; el valor solo se
@@ -301,7 +305,10 @@ export function GrupoTabla({
    * quepa sin el ligero scroll vertical global (ped. usuario 2026-11-13). */
   const ancha = !!minAncho && minAncho >= 1600;
   const obsS: CSSProperties = compacta
-    ? { ...OBS_TD, fontSize: 11.5 }
+    ? /* Portátil (≤860 px de alto): la Observación absorbe el ancho — menos envuelto = filas
+       *  más bajas = la sub cabe sin scroll. En monitor se conserva el tope de 520 (ped.
+       *  2026-11-17: la columna no desborda la tarjeta). */
+      { ...OBS_TD, fontSize: 11.5, maxWidth: portatil ? undefined : OBS_TD.maxWidth }
     : ancha
       ? { ...OBS_TD, maxWidth: undefined }
       : OBS_TD;

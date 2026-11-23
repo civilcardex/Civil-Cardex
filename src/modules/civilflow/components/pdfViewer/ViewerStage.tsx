@@ -7,6 +7,8 @@ import type {
   SetStateAction,
 } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
+import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
+import { ViewerDrawingActions } from './ViewerDrawingActions.tsx';
 import type { ElementItem } from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoNet } from '../../lib/PlanoEngine/PlanoState.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
@@ -36,7 +38,7 @@ import { PdfViewerRightSidebar } from './PdfViewerRightSidebar.tsx';
  * Ejemplo: el clic en "◀" del borde derecho llama a setRightCollapsed(true) del orquestador,
  * que recomputa dynamicRightStyle y la sidebar se pliega igual que siempre.
  */
-export interface ViewerStageProps {
+interface ViewerStageProps {
   // ── Barra de redes ──
   finalVisibleNets: PlanoNet[];
   activeNet: string;
@@ -185,6 +187,7 @@ export const LEFT_COLLAPSED_WIDTH = 44;
 
 /** El escenario en sí: pinta el visor completo pieza por pieza con las props de arriba, sin lógica propia (cada clic delega en el handler que trae el orquestador). */
 export function ViewerStage(props: ViewerStageProps) {
+  const coarsePointer = useMediaQuery('(any-pointer: coarse)');
   const {
     finalVisibleNets,
     activeNet,
@@ -409,9 +412,33 @@ export function ViewerStage(props: ViewerStageProps) {
           style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
         >
           <h2 className="sr-only">Visor de planos</h2>
+          {!isMobile && currentFile && (
+            <ViewerDrawingActions
+              engineRef={engineRef}
+              drawing={tool === 'line'}
+              disabled={loading || cambioPiso}
+              onSave={handleSave}
+              onUndo={handleUndo}
+              onOptions={
+                selElement
+                  ? (button) => {
+                      const element = engineRef.current?.getSelected();
+                      if (!element) return;
+                      const rect = button.getBoundingClientRect();
+                      setContextMenuState({
+                        visible: true,
+                        x: rect.left,
+                        y: rect.bottom,
+                        element: element as PlanoElement,
+                      });
+                    }
+                  : undefined
+              }
+            />
+          )}
           <ViewerMobileChrome
             isMobile={isMobile}
-            isNarrow={isNarrow}
+            isNarrow={isNarrow || coarsePointer}
             currentFile={currentFile ?? null}
             onFit={handleFit}
             onZoomStep={(f: number) => engineRef.current?.zoomStep(f)}

@@ -8,6 +8,7 @@
  *  muestra los 5 campos de tubería/mangueras junto a la tabla de C por material, con el catálogo
  *  de accesorios especiales debajo. */
 import { useEffect, useState } from 'react';
+import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 import { SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { GrupoTabla } from './RCIGroupTable.tsx';
 import { GRUPOS, ICONO_SUB, NOTA_SUB, notaDeps } from './RCIInputDefs.ts';
@@ -26,6 +27,10 @@ const SUB_POR_ID = new Map(SUBS_POR_TAB.entradas.map((s) => [s.id, s]));
 export default function RciInputs({ ctx }: { ctx: RciCtx }) {
   const { estado, R, editar } = ctx;
   const nav = useNavRci();
+  /* Portátil / ventana baja (ped. 2026-11-23: sin scroll vertical en 14-15"): la densidad
+   *  compacta (la de Tubería) aplica a TODAS las subs — fuentes 12/11 y paddings mínimos
+   *  caben Normativa (15 filas) en ~420 px. En pantallas altas no cambia nada. */
+  const portatil = useMediaQuery('(max-height: 860px)');
   /** Preferencia local; la sub efectiva es la del contexto de navegación si «Ir al dato» o la
    *  guía la fijaron (nav.sub manda), y si no, la última que el usuario abrió aquí. */
   const [preferida, setPreferida] = useState('normativa');
@@ -81,6 +86,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                   onAbrirModal={abrirModal}
                   depNota={notaDeps(GRUPOS[sub] || [])}
                   compacta
+                  portatil={portatil}
                 />
                 <TablaCmat estado={estado} editar={editar} />
               </div>
@@ -102,6 +108,8 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 editar={editar}
                 onAbrirModal={abrirModal}
                 depNota={notaDeps(GRUPOS[sub] || [])}
+                compacta={portatil}
+                portatil={portatil}
               />
             </div>
           ) : sub === 'seleccion' ? null : (
@@ -125,6 +133,8 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 editar={editar}
                 onAbrirModal={abrirModal}
                 depNota={notaDeps(GRUPOS[sub] || [])}
+                compacta={portatil}
+                portatil={portatil}
               />
             </div>
           )}
@@ -148,6 +158,8 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 editar={editar}
                 onAbrirModal={abrirModal}
                 depNota={notaDeps(GRUPOS[sub] || [])}
+                compacta={portatil}
+                portatil={portatil}
               />
               <div style={{ marginTop: 16 }}>
                 <TablaCuarto estado={estado} editar={editar} />

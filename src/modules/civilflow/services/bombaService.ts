@@ -4,7 +4,7 @@
  *  core/gas/EP/bomba/RCI. Ej: loadBombaDatos('uuid') -> {salSim, hz, …} o null. */
 import { supabase } from '../../../lib/supabase';
 import { devError } from '../../../utils/devError.ts';
-import { emitBdSaveError } from './storageService.ts';
+import { emitErrorGuardado } from '../../../utils/saveEvents.ts';
 import { CF_TABLES } from '../constants/tableNames.ts';
 
 // ─── Bomba sumergible AR (bomba_datos_proyecto, 1:1 con el proyecto) ───────────────────
@@ -102,7 +102,7 @@ export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<
       data: { session },
     } = await supabase.auth.getSession();
     if (!session) {
-      emitBdSaveError('sin-sesion', 'bombaService: sin sesión, respaldo no guardado.');
+      emitErrorGuardado('sin-sesion', 'bombaService: sin sesión, respaldo no guardado.');
       return false;
     }
     const { error } = await supabase.rpc('save_bomba_datos', {
@@ -110,7 +110,7 @@ export async function saveBombaDatos(proyectoId: string, b: BombaData): Promise<
       p_datos: Object.fromEntries(CAMPOS_BOMBA.map(([col, clave]) => [col, b[clave]])),
     });
     if (error) {
-      emitBdSaveError('save-bomba', error.message);
+      emitErrorGuardado('save-bomba', error.message);
       return false;
     }
     return true;

@@ -29,8 +29,8 @@ vi.mock('../../../../lib/supabase', () => ({
   },
 }));
 
-vi.mock('../storageService.ts', () => ({
-  emitBdSaveError: alertas,
+vi.mock('../../../../utils/saveEvents.ts', () => ({
+  emitErrorGuardado: alertas,
 }));
 
 import { loadRciDatos, saveRciDatos } from '../projectDataService.ts';

@@ -38,7 +38,6 @@ import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
 import { useTour } from '../../../components/tour/useTour.tsx';
-import { suscribirCalentamiento, calentamientoListo } from '../components/pdfViewer/pdfCache.ts';
 import {
   ViewerPage_S2,
   ViewerPage_S3,
@@ -47,6 +46,7 @@ import {
   ViewerPage_S6,
   VIEWER_JSONLD,
 } from './viewerStyles.ts';
+import { ViewerPlanSteps } from '../components/pdfViewer/ViewerDrawingActions.tsx';
 
 const ES_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -286,10 +286,6 @@ export default function ViewerPage() {
 
   // Datos globales: gate compartido con el workarea (planos+trazos+sync+tramos).
   const { listo } = useProyectoCargado();
-  // Calentamiento de los PDFs de TODOS los pisos (ped. usuario: "antes de que se abra
-  // totalmente el visor que se cargue todo"): el overlay de primera entrada no se levanta
-  // hasta que cada plano esté parseado en memoria — los cambios de piso quedan instantáneos.
-  const calentamiento = useSyncExternalStore(suscribirCalentamiento, calentamientoListo);
   const hasFilesReady = files.length > 0 && files.every((f) => !!f.file);
 
   // --- Loading overlay via useSyncExternalStore (avoids refs-in-render + setState-in-effect) ---
@@ -328,13 +324,7 @@ export default function ViewerPage() {
     return () => window.clearTimeout(t);
   }, []);
   const isDrawingLoading =
-    !listo ||
-    pdfPendiente ||
-    switchPendiente ||
-    switching ||
-    visorLoading ||
-    minHoldCarga ||
-    !calentamiento;
+    !listo || pdfPendiente || switchPendiente || switching || visorLoading || minHoldCarga;
   // Hook ANTES de cualquier early return (reglas-de-hooks); arranca al bajar la carga.
   const tourVisor = useTour('cf:visor', !isDrawingLoading);
   // El overlay grande SOLO en la primera carga de la sesión (ped. usuario: entre cambio de
@@ -423,7 +413,7 @@ export default function ViewerPage() {
       <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50 }}>
         <Navbar />
         <h1 className="sr-only">Visor de planos</h1>
-        <div style={ViewerPage_S2}>
+        <div className="viewer-plan-bar" style={ViewerPage_S2}>
           <span
             style={{
               fontFamily: 'Geist, monospace',
@@ -443,6 +433,7 @@ export default function ViewerPage() {
           >
             <button
               type="button"
+              className="viewer-plan-control"
               onClick={() => setDropdownOpen((p) => !p)}
               aria-expanded={dropdownOpen}
               aria-haspopup="listbox"
@@ -479,6 +470,7 @@ export default function ViewerPage() {
                 {plans.map((p, i) => (
                   <div
                     key={p.id}
+                    className="viewer-plan-control"
                     role="option"
                     aria-selected={i === activeIndex}
                     tabIndex={0}
@@ -557,6 +549,7 @@ export default function ViewerPage() {
               </div>
             )}
           </nav>
+          <ViewerPlanSteps index={activeIndex} count={plans.length} onSelect={handleSelectPlan} />
           <div style={{ flex: 1 }} />
           {plans.length > 0 && (
             <span style={{ fontFamily: 'Geist, monospace', fontSize: 12, color: '#8AB4D6' }}>

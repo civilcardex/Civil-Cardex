@@ -17,14 +17,13 @@ import {
   saveToStorage,
   saveTrazosToDB,
   loadTrazosFromDB,
-  trazosLocalGanaABdVacia,
-  trazosBdGanaALocalVacia,
+  arbitrarCarga,
   saveTrazosLocales,
-  localGanaABdPorTs,
 } from '../../services/storageService.ts';
 import type { PlanTrazos } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { validaDocTrazos } from '../../services/storage/validateDocStrokes.ts';
+import { aceptarVersionDePlano } from '../../services/storage/strokesDb.ts';
 import { PLANS_META_KEY } from '../../constants/storage-keys.ts';
 import {
   migrateAssocLayoutOnLoad,
@@ -136,6 +135,7 @@ export function useTrazosLoader({
       }
       try {
         const dbData = await loadTrazosFromDB(String(resolvedId));
+        if (!pisoVigente()) return initiallyLoaded;
         // El usuario dibujó durante el await de red: el engine tiene ediciones que aún no
         // llegaron a caché/BD — aplicar dbData (loadWork reemplaza TODO) las destruiría y el
         // autosave siguiente consolidaría el vaciado. La caché local (ya escrita por el
@@ -157,33 +157,28 @@ export function useTrazosLoader({
           bdInfo = escalaTsDe(dbData);
           const dbTs = Number(dbData.ts || 0);
           const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
-          // Regla de contenido (las DOS direcciones): una BD SIN contenido nunca gana a una
-          // caché local CON contenido, y una caché local VACÍA nunca gana a una BD con
-          // contenido — el ts fresco de un vaciado accidental no puede borrar el piso (el RPC
-          // de guardado es destructivo y el mayor-ts mandaba). La local con contenido manda y
-          // se re-sube para sanear la fila BD; el vacío local se descarta y se reemplaza por la
-          // copia buena. La segunda dirección es obligatoria desde que la caché sobrevive a la
-          // apertura del proyecto (clearLocalWorkspace): un doc vacío de la era del bug ya no
-          // muere al abrir y, con su ts fresco, bloquearía la BD para siempre.
-          const ganaLocal = trazosLocalGanaABdVacia(localData, dbData);
-          const ganaBd =
-            !ganaLocal &&
-            (dbTs > localTs || !localData || trazosBdGanaALocalVacia(localData, dbData));
+          /* Versión ANTES del arbitraje, SIEMPRE (H-01): con caché local ya sincronizada
+           *  ninguna rama previa fijaba el reloj y TODO autosave quedaba bloqueado («Falta
+           *  cargar la versión del plano»). 'nueva' archiva el borrador local bajo la clave
+           *  de rescate (lo hace la aceptación) → la nube manda. */
+          const version = aceptarVersionDePlano(dbData, localData);
+          if (version === 'error') return initiallyLoaded;
+          const decision = arbitrarCarga(version, localData, dbData, localTs, dbTs);
           // Caja negra (DEV): la decisión del árbitro con los conteos de AMBOS lados. Es la
           // firma que nombra al culpable cuando un piso aparece vacío al reabrir: si aquí se
           // ve `local=vacio bd=vacio`, el borrado ocurrió ANTES (buscar el push vacío en el
-          // diario); si se ve `gana=local-ts` con local vacío, el árbitro no protegió.
+          // diario); si se ve `gana=local-contenido` con local vacío, el árbitro no protegió.
           journalTrazos(
             'load',
             resolvedId,
-            ganaBd ? dbData : (localData ?? undefined),
+            decision === 'bd' ? dbData : (localData ?? undefined),
             `local=${resumenTrazos(localData)} bd=${resumenTrazos(dbData)} gana=${
-              ganaBd ? 'BD' : ganaLocal ? 'local-contenido' : 'local-ts'
+              decision === 'bd' ? 'BD' : decision
             }`,
           );
-          if (ganaLocal) {
+          if (decision === 'local-contenido') {
             saveTrazosToDB(String(resolvedId), localData);
-          } else if (ganaBd) {
+          } else if (decision === 'bd') {
             const merged = typeof dbData === 'string' ? (JSON.parse(dbData) as PlanTrazos) : dbData;
             // Misma validación de forma que la caché local: un doc BD de era vieja con
             // 'ramales' como objeto (o sin 'bajantes') NO debe entrar al motor — metía
@@ -192,7 +187,6 @@ export function useTrazosLoader({
               devError('useTrazosCargador: doc BD con forma inválida en', String(resolvedId));
               return initiallyLoaded;
             }
-            if (!pisoVigente()) return initiallyLoaded;
             // Asociación entre pisos (orig. usuario): unión SIEMPRE cuando BD gana — fantasma
             // XFG / Ldesvio / anillo presentes en la caché local y ausentes en el doc BD se
             // restauran. Sin gates: el gate dbSinAsocs/reciente era CIEGO para layout-2 (en el
@@ -200,8 +194,10 @@ export function useTrazosLoader({
             // gap ≥1 h la restauración se saltaba → loadWork pisaba engine+caché buenas con el
             // doc BD sin anillo/LD_ — causa raíz del borrado persistente). Seguro porque la
             // desasociación legítima borra en AMBOS lados: la caché local sin piezas no aporta
-            // nada a la unión.
-            const restauradas = restaurarAsociacionesDesdeLocal(localData, merged);
+            // nada a la unión. SOLO con 'misma': tras aceptar una nube nueva el borrador está
+            // archivado — mezclar sus asociaciones reanimaría lo descartado.
+            const restauradas =
+              version === 'misma' && restaurarAsociacionesDesdeLocal(localData, merged);
             if (restauradas) {
               saveTrazosToDB(String(resolvedId), merged);
               eng.loadWork(JSON.stringify(merged));
@@ -227,7 +223,7 @@ export function useTrazosLoader({
             window.dispatchEvent(new Event(EV_STORAGE));
             emitSanSync();
             emitHidroSync();
-          } else if (localGanaABdPorTs(localTs, dbTs) && localData) {
+          } else if (decision === 'local-ts') {
             saveTrazosToDB(String(resolvedId), localData);
           }
         } else if (localData) {

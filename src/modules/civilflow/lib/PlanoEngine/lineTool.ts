@@ -171,7 +171,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
           // Tributario: invertir solo el orden de pts para que la herramienta extienda desde el
           // lado clicado. La bandera _tribReversed deja que el renderer corrija la flecha de
           // dirección de flujo.
-          continueRamal.pts = [...continueRamal.pts].reverse();
+          continueRamal.pts = continueRamal.pts.toReversed();
           continueRamal._tribReversed = !continueRamal._tribReversed;
         } else {
           if (continueRamal.accesorioInicio === 'sifon') {

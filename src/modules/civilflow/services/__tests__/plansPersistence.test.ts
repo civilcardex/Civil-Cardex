@@ -27,6 +27,7 @@ vi.mock('../../../../lib/supabase', () => ({
 }));
 
 import { saveTrazosToDB, loadTrazosFromDB } from '../storageService.ts';
+import { resetConcurrenciaParaTest } from '../storage/strokesDb.ts';
 import { persistTrazosSnapshot } from '../../components/pdfViewer/persistStrokes.ts';
 import { markPlanContentLoaded } from '../../utils/drawingSync.ts';
 import { aplicarEnDocDePlan } from '../../utils/writePlanDoc.ts';
@@ -76,10 +77,14 @@ function filaDeBajante(b: Row): Row {
 
 beforeEach(() => {
   resetStorage();
+  resetConcurrenciaParaTest();
+  for (const id of [5, 501, 502, 601, 602, 701, 702, 801, 901, 902, 903]) {
+    setLS(`civilflow_plano_version_u1:${id}`, '2026-01-01T00:00:00Z');
+  }
   for (const k of Object.keys(db)) delete db[k];
   mockRpc.mockReset();
   mockRpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
-    if (name === 'save_plano_data') {
+    if (name === 'save_plano_data_versioned') {
       const payload = args.p_data as {
         header: Row;
         bajantes: Row[];
@@ -91,7 +96,7 @@ beforeEach(() => {
         ramales: (payload.ramales ?? []).map(filaDeBajante),
         fantasmas: ((payload as Row).fantasmas_entrepisos ?? []) as Row[],
       };
-      return { data: null, error: null };
+      return { data: '2026-02-01T00:00:00Z', error: null };
     }
     if (name === 'get_plano_data') {
       const planId = String(args.p_plano_id);
@@ -364,7 +369,7 @@ describe('D) el cambio de piso deja el doc con ts fresco y lo sube a BD', () => 
     // Y el push a BD se pidió (el RPC corre en microtask → se espera un turno).
     await new Promise((r) => setTimeout(r, 0));
     expect(mockRpc).toHaveBeenCalledWith(
-      'save_plano_data',
+      'save_plano_data_versioned',
       expect.objectContaining({ p_plano_id: 801 }),
     );
   });

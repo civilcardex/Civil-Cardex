@@ -14,10 +14,10 @@ export {
   type PlanTrazos,
 } from './storage/localStorage.ts';
 export {
-  emitBdSaveError,
   trazosDocHasContent,
   trazosLocalGanaABdVacia,
   trazosBdGanaALocalVacia,
+  arbitrarCarga,
   saveTrazosToDB,
   loadTrazosFromDB,
 } from './storage/strokesDb';

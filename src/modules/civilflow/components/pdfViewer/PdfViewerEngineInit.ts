@@ -1,6 +1,6 @@
 /**
  * Motor de render del visor (hook): parsea el PDF con pdfjs, rasteriza la lámina a la escala del doc (scaleM = metros por pixel), encola los re-rasters (filaRender: el que llega en vuelo corre al cerrar el actual — última gana) y monta el PlanoEngine sobre el canvas de dibujo.
- * Ej: cambiar de piso no re-parsea nada — calentarPdfs ya parseó todos los planos tras la 1ª entrada.
+ * Ej: volver a un piso recientemente visitado reutiliza su PDF.
  * Piezas extraídas (extracción verbatim, en engineInit/): parsePdf (carga/parseo), renderLamina (raster) y colaRender (cola última-gana). Aquí quedan los refs compartidos, el montaje del engine y su vínculo con el visor.
  */
 import { useState, useRef, useEffect } from 'react';
@@ -53,7 +53,6 @@ interface UsePdfViewerEngineParams {
 
 export function usePdfViewerEngine({
   currentFile,
-  files,
   currentId,
   currentIdRef,
   activeNetRef,
@@ -191,7 +190,11 @@ export function usePdfViewerEngine({
         }
         lastBgAt = Date.now();
         const z = lastZoomRaster;
-        void renderPage(1, scaleRef.current, mountId.current, {
+        /* La densidad del fondo se rasteriza a la ESCALA DEL DOC (la misma del último FULL),
+         *  no a la del prop: rasterizar a otra `sc` con el CSS congelado (bgOnly nunca toca
+         *  el tamaño) estiraría el bitmap 1/scaleM y el fondo se vería borroso/corrido. */
+        const scDoc = escalaDeDoc(currentIdRef.current) ?? scaleRef.current;
+        void renderPage(1, scDoc, mountId.current, {
           bgOnly: true,
           extraScale: z,
         }).then(() => {
@@ -388,7 +391,6 @@ export function usePdfViewerEngine({
   // Carga/parseo del PDF (extracción: engineInit/parsePdf.ts).
   useParsePdf({
     currentFile,
-    files,
     currentId,
     pdfDocRef,
     mountIdRef: mountId,

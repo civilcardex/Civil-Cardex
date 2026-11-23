@@ -3,7 +3,7 @@
 // re-exporta la superficie pública (los tests y consumidores importan de aquí).
 export {
   setBajanteDesplazamientoInStorage,
-  areEndpointsAligned,
+  isAligned,
   upstreamRamalIdsForBajante,
   collectSourceAgg,
   trazaDeUltimoGrupo,

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { computeAcometidaSummary } from '../waterRowsAcometida.ts';
+import { resolveAcometida } from '../waterRows/acometida.ts';
 import { matHazenC } from '../../constants/engineeringDataMaterials.ts';
 import type { Tramo } from '../../context/tramosReducer.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
@@ -19,6 +20,29 @@ const DIAMS = [
   { pulg: 1.25, nominal: '1 1/4" RDE 10', dInt: 35.05 },
   { pulg: 2, nominal: '2" RDE 10', dInt: 51.42 },
 ];
+
+describe('resolveAcometida · presión de entrada a la red', () => {
+  const ramal: Tramo = { id: 'R1', piso: 1, tipo: 'ramal', fixtures: { lvm: 40 } };
+  const loads = { propiaMap: { R1: 20 }, componentTotalMap: {} };
+
+  it('convierte de metros por kilómetro a metros como el resumen', () => {
+    const diamTable = [{ pulg: 1.25, nominal: '1 1/4"', dInt: 32 }];
+    const result = resolveAcometida('af', [ramal], [], diamTable, loads);
+    const summary = computeAcometidaSummary([ramal], [], diamTable)!;
+
+    expect(result.Qaco).toBeCloseTo(0.912, 3);
+    expect(result.f1).toMatchObject({ hfPct: 44.61, hfM: 0.47, Pfin: 19.53 });
+    expect(result.Qaco).toBe(summary.Qaco);
+    expect(result.f1.Pfin).toBe(summary.p1Fin);
+  });
+
+  it('si no se encuentra el diámetro, conserva una presión finita aun con caudal', () => {
+    const result = resolveAcometida('af', [ramal], [], [], loads);
+
+    expect(result.Qaco).toBeGreaterThan(0);
+    expect(result.f1).toMatchObject({ dInt: 0, V: 0, hfM: 0, Pfin: 20 });
+  });
+});
 
 describe('computeAcometidaSummary', () => {
   it('sin tramos AC dibujados: defaults de la pantalla, presión entra en 20 y sale en 20 (Q=0)', () => {

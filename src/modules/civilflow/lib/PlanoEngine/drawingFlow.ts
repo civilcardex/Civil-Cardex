@@ -117,7 +117,7 @@ export function sanReceptorDiametroPermitido(
   const TOL = 2.0;
   const mergeSiblingPairs = new Set<string>();
   for (const q of ramales) {
-    if (q.mergesFrom) mergeSiblingPairs.add([...q.mergesFrom].sort().join('|'));
+    if (q.mergesFrom) mergeSiblingPairs.add(q.mergesFrom.toSorted().join('|'));
   }
   let maxFeeder = 0;
   let feederLbl = '';
@@ -167,7 +167,7 @@ export function sanDiametroPermitido(
  *  diámetros, aparatos, ini/fin y reindexa accMed (los vértices interiores cambian de orden).
  *  Ej: un ramal dibujado bajante→aparato queda aparato→bajante con SU accesorio de inicio. */
 export function flipRamalFlow(ram: PlanoRamal): void {
-  ram.pts = [...ram.pts].reverse();
+  ram.pts = ram.pts.toReversed();
   const tmpAcc = ram.accesorioInicio;
   ram.accesorioInicio = ram.accesorioFin;
   ram.accesorioFin = tmpAcc;
@@ -323,7 +323,7 @@ export function propagarSanDiametroAguasAbajo(
     rec.tipo === 'ramal' || feeder.tipo === 'tributario';
   const mergeSiblingPairs = new Set<string>();
   for (const q of ramales) {
-    if (q.mergesFrom) mergeSiblingPairs.add([...q.mergesFrom].sort().join('|'));
+    if (q.mergesFrom) mergeSiblingPairs.add(q.mergesFrom.toSorted().join('|'));
   }
   // Pares co-sumidero: comparten bajante (ambos en recibeDeIds o ambos en alimentaIds).
   const coSumidero = new Set<string>();

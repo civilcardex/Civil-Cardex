@@ -5,7 +5,7 @@ import { writeBajantePropToDrawing } from '../../utils/writeDiameterToDrawing.ts
 import {
   applyBajanteAssociation,
   clearBajanteAssociation,
-  areEndpointsAligned,
+  isAligned,
   type AssocEndpoint,
 } from '../../utils/bajanteAssociation';
 import { pisoCorto, buildBajanteVisualLabel, compararPorCodigo } from '../../constants';
@@ -157,7 +157,7 @@ export default function BajanteAsociacion({
       });
     };
 
-    if (areEndpointsAligned(source, target)) {
+    if (isAligned(source, target)) {
       commit();
       return;
     }
@@ -257,7 +257,7 @@ export default function BajanteAsociacion({
       setSelElement({ ...selElement, origenId: v });
     };
 
-    if (areEndpointsAligned(source, target)) {
+    if (isAligned(source, target)) {
       commit();
       return;
     }
@@ -360,9 +360,7 @@ export default function BajanteAsociacion({
                   group.isCurrent
                     ? (group.bajantes || []).filter((b) => b.id !== selElement.id)
                     : group.bajantes || []
-                )
-                  .slice()
-                  .sort((a, b) => compararPorCodigo(a, b));
+                ).toSorted((a, b) => compararPorCodigo(a, b));
                 const hasBajantes = bajantesToShow.length > 0;
                 return (
                   <optgroup key={group.planId} label={pLabel}>
@@ -438,9 +436,9 @@ export default function BajanteAsociacion({
                   const pLabel =
                     plano?.nivel != null ? pisoLbl(plano.nivel) : upperFloorGroup.planName;
                   // Ascendente por código (orig. usuario).
-                  const bajantesToShow = (upperFloorGroup.bajantes || [])
-                    .slice()
-                    .sort((a, b) => compararPorCodigo(a, b));
+                  const bajantesToShow = (upperFloorGroup.bajantes || []).toSorted((a, b) =>
+                    compararPorCodigo(a, b),
+                  );
                   const hasBajantes = bajantesToShow.length > 0;
                   return (
                     <optgroup label={pLabel}>

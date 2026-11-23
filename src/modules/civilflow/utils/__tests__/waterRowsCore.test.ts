@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeWaterNetworkRows, computeHeaterNetworkTotal } from '../waterRowsCore.ts';
+import { computeWaterNetworkRows, computeHeaterNetworkTotal } from '../waterRows/index.ts';
 import { HEATER_LOSS_FACTOR } from '../waterRowsShared.ts';
 import type { Tramo } from '../../context/tramosReducer.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
@@ -8,8 +8,8 @@ import type { PlanItem } from '../../context/PlansContext.tsx';
  * Caracterización del snapshot de filas de diseño af (Agua Fria)/ac (Agua Caliente) que usan las
  * memorias (computeWaterNetworkRows): UC (Unidades de Consumo)/Q (Caudal) Hunter (metodo de
  * probabilidad de uso simultaneo), grafo de conectividad leído de los planos y presiones por
- * Hazen-Williams. Valores CONGELADOS contra el código vigente ANTES del split a waterRows/ —
- * si un número cambia sin cambio de física, el split rompió algo.
+ * Hazen-Williams. Los valores fijan el contrato del cálculo, incluida la conversión
+ * de la pérdida de acometida de metros por kilómetro a metros.
  * Ej: RS1 con 2 lavamanos (1 UC) y Q=0.116 L/s → diámetro estimado √Q ≈ 0.34.
  */
 
@@ -121,11 +121,11 @@ describe('computeWaterNetworkRows · caracterización', () => {
     expect(rows[0]).toMatchObject({ id: 'M1', udPropia: 2, udTotal: 2 });
     expect(rows[1]).toMatchObject({ id: 'RS1', udPropia: 1, udTotal: 1 });
     // Raíz por grado (sin CALENT ni isAC2 en af): el primer tramo de mayor grado — M1.
-    // Su Pin viene de la acometida f1 (Pfin de la fila Contador→Montante); RS1 hereda Pfin de M1.
+    // M1 entra con 20 − redondeo(2.6 m/km × 10.47 m / 1000) = 19.97 m; RS1 hereda su salida.
     expect(rows[1].Pin).toBe(rows[0].Pfin);
-    expect(rows[0].Pin).toBe(19.73);
-    expect(rows[0].Pfin).toBe(19.71);
-    expect(rows[1].Pfin).toBeCloseTo(19.65, 2);
+    expect(rows[0].Pin).toBe(19.97);
+    expect(rows[0].Pfin).toBe(19.95);
+    expect(rows[1].Pfin).toBeCloseTo(19.89, 2);
   });
 
   it('ac con calentador: raíz CALENT toma pFin×0.9 del tramo af fuente; heater total = tabla', () => {
@@ -198,9 +198,9 @@ describe('computeWaterNetworkRows · caracterización', () => {
     // Qaco = hunterQ(UC de AC-02 = 6×0.5 = 3, 2 descargas) = 0.248 — NO la fórmula del ucTotal.
     expect(rows[0].Qprob).toBe(0.248);
     expect(rows[0].diamEst).toBe(0.5);
-    // La fila 1 usa la longitud real de AC-01 (8 m, sin accesorios) y su Pfin alimenta la raíz.
-    expect(rows[0].Pin).toBe(19.79);
-    expect(rows[0].Pfin).toBe(19.77);
+    // Los 8 m de la primera fila pierden 0.02 m; esa presión alimenta a la raíz.
+    expect(rows[0].Pin).toBe(19.98);
+    expect(rows[0].Pfin).toBe(19.96);
     expect(rows[0].Vmms).toBe(257);
   });
 });
