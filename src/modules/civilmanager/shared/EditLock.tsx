@@ -61,14 +61,14 @@ export function DimEnLectura({ children }: { children: ReactNode }) {
   );
 }
 
-/** Header de tabla con icono (patrón civilflow) + EDITAR/LISTO a la derecha — un botón por tabla. */
+/** Encabezado de tabla con icono y botón Editar/Listo. Ej.: `proyectos.svg` usa el recurso vectorial existente. */
 export function TableHeader({ title, icon }: { title: string; icon?: string }) {
   return (
     <div className="cm-modal-head cm-head-row">
       <span className="cm-head-title">
         {icon && (
           <img
-            src={'/iconos_civilmanager/' + icon + '.webp'}
+            src={`/iconos_civilmanager/${icon.endsWith('.svg') ? icon : `${icon}.webp`}`}
             alt=""
             width={30}
             height={30}

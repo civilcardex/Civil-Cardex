@@ -28,6 +28,7 @@ export interface ContextMenuState {
   x: number;
   y: number;
   element: PlanoElement;
+  opener?: HTMLButtonElement;
   /** El clic fue sobre la PROYECCIÓN fantasma de un bajante de otro piso (XFG). */
   isGhostClick?: boolean;
   /** El clic fue sobre un EXTREMO del ramal (p. ej. para conectar/desconectar). */

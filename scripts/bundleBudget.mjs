@@ -12,7 +12,7 @@ const TOPE_ENTRY_KB = 550;
 // Chunks lazy: hoy el mayor es pdf.worker ~1.26 MB. +10% de margen.
 const TOPE_CHUNK_KB = 1400;
 
-const esJs = (n) => n.endsWith('.js');
+const esJs = (n) => /\.m?js$/.test(n);
 const kbDe = (n) => Math.round(readFileSync(join(DIST, 'assets', n)).length / KB);
 
 const index = readFileSync(join(DIST, 'index.html'), 'utf8');

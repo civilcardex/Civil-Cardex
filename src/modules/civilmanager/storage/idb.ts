@@ -65,26 +65,6 @@ export async function borradorPendiente(scope: CmStorageScope): Promise<boolean>
   }
 }
 
-/** Archiva el borrador pendiente bajo una clave de rescate y borra la entrada activa:
- *  la nube vuelve a mandar y el trabajo local queda recuperable en este navegador. */
-export async function archivarBorradorPendiente(scope: CmStorageScope): Promise<void> {
-  try {
-    const db = await openIdb(DB_NAME, DB_VERSION, STORE_NAME, 'k');
-    const key = cmScopeKey(scope);
-    const record = await idbTx<StoredSnapshot | undefined>(db, STORE_NAME, 'readonly', (store) =>
-      store.get(key),
-    );
-    if (!record) return;
-    await idbTx<void>(db, STORE_NAME, 'readwrite', (store) => {
-      store.put({ ...record, k: `rescate_${key}`, pending: true });
-      // El request de VUELTA (el delete de la entrada activa): el tipo de idbTx lo exige.
-      return store.delete(key);
-    });
-  } catch (e) {
-    devError('civilManagerStorage archivar borrador:', e);
-  }
-}
-
 /** ¿Existe el respaldo LEGADO (registro 'civilmanager' de la era sin proyecto)? La app
  *  nunca lo lee para trabajar (aviso H-08): solo señala su existencia para recuperación
  *  manual (docs/save-rollout.md paso 4). */

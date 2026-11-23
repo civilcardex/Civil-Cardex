@@ -6,3 +6,8 @@
 4. Recuperación manual del registro CivilManager anterior: en el navegador donde se creó, abrir el inspector de almacenamiento y exportar el campo `d` de la entrada histórica `civilmanager` (misma base y almacén). El registro no incluye cuenta ni proyecto fiables. Verificar localmente a quién pertenece antes de copiar datos al proyecto correcto, usando los importadores de los catálogos donde apliquen. La app no lo lee de forma automática ni lo sube al iniciar sesión.
 
 No activar pagos sin una prueba integral en el sandbox de Paddle. Dejar por separado el resultado de Chromium emulado y el de Safari de iPadOS y Chrome de Android en dispositivos reales.
+
+## Comprobaciones antes de publicar esta ronda
+
+- Solicitar al responsable del entorno destino evidencia de solo lectura del historial de migraciones, políticas por fila, permisos de funciones de guardado y políticas del bucket privado de planos. No copiar credenciales, datos de proyectos ni tokens. El fixture local prueba las políticas PDF, pero simula la resolución de membresías; no certifica el despliegue.
+- CivilManager solo avisa al detectar un conflicto: no sustituye la versión de la nube ni mueve el borrador local.

@@ -53,14 +53,8 @@ const AYUDA_INTROS_CM: Record<MainSection, string> = {
 };
 
 function CivilManagerShell() {
-  const {
-    loaded,
-    loadError,
-    conflictoBorrador,
-    resolverConflicto,
-    avisoLegado,
-    descartarAvisoLegado,
-  } = useCivilManager();
+  const { loaded, loadError, conflictoBorrador, avisoLegado, descartarAvisoLegado } =
+    useCivilManager();
   const navigate = useNavigate();
   const { '*': splat } = useParams<{ '*': string }>();
   const url = parseManagerSplat(splat);
@@ -145,27 +139,12 @@ function CivilManagerShell() {
   return (
     <div className="cm-shell">
       {tour}
-      {/* Banner de conflicto de versiones (H-02): el borrador pendiente ganó al cargar y cada
-       *  guardado vuelve a chocar — aquí el usuario ELIGE qué versión manda. Nada se pierde:
-       *  'nube' archiva el borrador bajo clave de rescate en IDB. */}
       {conflictoBorrador ? (
         <div className="cm-conflicto" role="alert">
           <p>
             Otro dispositivo guardó una versión más reciente de este proyecto. Tu borrador está a
-            salvo en este navegador: elige qué versión manda.
+            salvo en este navegador. No se sobrescribió la versión de la nube.
           </p>
-          <div className="cm-conflicto-acciones">
-            <button
-              type="button"
-              className="cm-btn cm-btn-primary"
-              onClick={() => void resolverConflicto('borrador')}
-            >
-              Subir mi borrador (reemplaza la nube)
-            </button>
-            <button type="button" className="cm-btn" onClick={() => void resolverConflicto('nube')}>
-              Usar la versión de la nube (archiva mi borrador)
-            </button>
-          </div>
         </div>
       ) : null}
       {/* Respaldo legado detectado (H-08): aviso informativo, el registro IDB no se toca. */}

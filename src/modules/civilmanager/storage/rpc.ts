@@ -72,7 +72,7 @@ function payloadCmDeEstado(
   };
 }
 
-/** Guard mis-usuario/mis-proyecto compartido por ambos caminos de guardado. */
+/** Rechaza el guardado si la pestaña cambió de proyecto o cuenta. */
 async function verificarScopeActual(scope: CmStorageScope): Promise<void> {
   const { userId, proyectoId: proyectoUid } = scope;
   const actual = await captureCmScope();
@@ -102,23 +102,4 @@ export async function saveToSupabase(
   if (error || !data)
     throw new Error(`cm_save_state_versioned: ${error?.message ?? 'sin versión confirmada'}`);
   return data;
-}
-
-/** Guardado FORZADO (H-02, resolución «mi borrador gana»): usa la firma antigua cm_save_state
- *  (p_updated_at default null = sin check de versión, migración 20261123000002 la conserva)
- *  y devuelve la versión vigente releyendo el proyecto para re-armar el reloj del cliente. */
-export async function saveForzadoSupabase(
-  state: CivilManagerState,
-  scope: CmStorageScope,
-): Promise<string> {
-  const { userId, proyectoId: proyectoUid } = scope;
-  await verificarScopeActual(scope);
-  const { error } = await supabase.rpc('cm_save_state', {
-    p_proyecto_id: proyectoUid,
-    p_state: payloadCmDeEstado(state, userId, proyectoUid),
-  });
-  if (error) throw new Error(`cm_save_state: ${error.message}`);
-  const relectura = await loadFromSupabase(scope);
-  if (!relectura) throw new Error('cm_save_state: sin versión confirmada tras el guardado.');
-  return relectura.version;
 }

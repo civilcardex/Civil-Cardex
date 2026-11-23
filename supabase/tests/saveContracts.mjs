@@ -7,6 +7,7 @@ const db = new PGlite();
 const owner = '10000000-0000-4000-8000-000000000001';
 const reader = '10000000-0000-4000-8000-000000000002';
 const stranger = '10000000-0000-4000-8000-000000000003';
+const editor = '10000000-0000-4000-8000-000000000004';
 const project = '20000000-0000-4000-8000-000000000001';
 const otherProject = '20000000-0000-4000-8000-000000000002';
 const state = {
@@ -56,29 +57,48 @@ try {
     create table auth.users(id uuid primary key);
     create function auth.uid() returns uuid stable language sql as
       $$ select nullif(current_setting('request.jwt.claim.sub', true),'')::uuid $$;
-    grant usage on schema auth to authenticated;
+    grant usage on schema auth to authenticated, anon;
+    create schema storage;
+    create table storage.buckets(id text primary key, name text, public boolean);
+    create table storage.objects(bucket_id text, name text primary key);
+    alter table storage.objects enable row level security;
+    create function storage.foldername(text) returns text[] language sql immutable as
+      $$ select string_to_array($1, '/') $$;
+    grant usage on schema storage to authenticated, anon;
+    grant select, insert, update, delete on storage.objects to authenticated, anon;
     create function public.acceso_modulo(uuid, text) returns boolean language sql as $$ select true $$;
-    create function public.empresa_escritura(uuid, text) returns boolean language sql as $$ select false $$;
+    create function public.empresa_escritura(uuid, text) returns boolean language sql as
+      $$ select $1 = '${owner}' and auth.uid() = '${editor}' $$;
+    create function public.empresa_lectura(uuid, text) returns boolean language sql as
+      $$ select $1 = '${owner}' and auth.uid() in ('${reader}', '${editor}') $$;
     create table public.cf_planos(id bigint primary key, user_id uuid, updated_at timestamptz, payload jsonb);
     create function public.save_plano_data_impl(bigint, jsonb) returns void language sql as
       $$ update public.cf_planos set payload = $2 where id = $1 $$;
-    insert into auth.users values ('${owner}'), ('${reader}'), ('${stranger}');
+    insert into auth.users values ('${owner}'), ('${reader}'), ('${stranger}'), ('${editor}');
   `);
+  await apply('20260730000002_civilflow_storage');
+  // Aplicar el bloque real de Storage; empresa_* es el contrato simulado de membresía.
+  const company = await readFile(new URL('../migrations/20261005000000_empresa_escritura.sql', import.meta.url), 'utf8');
+  const storage = company.match(/create or replace function public\.uuid_seguro[\s\S]*?(?=-- ═══ VERIFICACIÓN)/);
+  assert.ok(storage, 'bloque de políticas PDF');
+  await db.exec(storage[0]);
   await apply('20260814000001_cm_schema');
   // Las policies de empresa reales se despliegan por separado. El fixture representa un miembro con lectura.
   await db.exec(`
     alter table public.cm_config add column if not exists config_listas jsonb default '{}'::jsonb;
     alter table public.cm_config add column if not exists categorias_apu jsonb default '[]'::jsonb;
     grant select on all tables in schema public to authenticated;
+    grant update on public.cm_proyectos to authenticated;
     create policy cm_fixture_shared on public.cm_proyectos for select to authenticated
-      using (auth.uid() = '${reader}' and user_id = '${owner}');
+      using (public.empresa_lectura(user_id, 'manage'));
     create policy cm_fixture_shared on public.cm_proveedores for select to authenticated
-      using (auth.uid() = '${reader}' and user_id = '${owner}');
+      using (public.empresa_lectura(user_id, 'manage'));
     insert into public.cm_proyectos(id,user_id,codigo,nombre) values
       ('${project}','${owner}','P1','Prueba'), ('${otherProject}','${stranger}','P2','Otro');
     insert into public.cm_proveedores(id,user_id,proyecto_id,codigo)
       values ('otro','${stranger}','${otherProject}','otro');
     insert into public.cf_planos values (1,'${owner}','2026-01-01T00:00:00Z','{}');
+    insert into storage.objects values ('plan_pdfs', '${owner}/plano.pdf');
   `);
   await apply('20260903000000_cm_presupuesto_snaps');
   await apply('20261118000000_cm_doctrina_fixes');
@@ -87,6 +107,8 @@ try {
   await apply('20261123000002_save_versions');
   await db.exec('set role authenticated');
   await as(owner);
+  const rename = () => db.query('update public.cm_proyectos set nombre = nombre where id = $1 returning id', [project]);
+  assert.equal((await rename()).rows.length, 1);
   const start = await version();
   const first = await save(
     {
@@ -139,8 +161,27 @@ try {
   await as(reader);
   assert.equal((await read(project)).proveedores.length, 1);
   await assert.rejects(save({}, third), /no_autorizado/);
+  assert.equal((await rename()).rows.length, 0);
+  await assert.rejects(savePlan(plan2), /plano_no_encontrado_o_sin_acceso/);
+  const pdfs = () => db.query("select name from storage.objects where bucket_id = 'plan_pdfs'");
+  assert.equal((await pdfs()).rows.length, 1);
+  const addPdf = () => db.query("insert into storage.objects values ('plan_pdfs', $1)", [`${owner}/nuevo.pdf`]);
+  await assert.rejects(addPdf(), /row-level security/i);
+  await as(editor);
+  const edited = await save({}, third);
+  assert.notEqual(edited, third);
+  assert.notEqual(await savePlan(plan2), plan2);
+  assert.equal((await rename()).rows.length, 0);
+  await addPdf();
+  assert.equal((await pdfs()).rows.length, 2);
   await as(stranger);
   assert.equal(await read(project), null);
+  assert.equal((await rename()).rows.length, 0);
+  assert.equal((await pdfs()).rows.length, 0);
+  await db.exec('set role anon');
+  await as('');
+  assert.equal((await pdfs()).rows.length, 0);
+  await assert.rejects(read(project), /permission denied/i);
   console.log('Contratos SQL: omisión, nulos, rollback, lectura por rol y versiones OK');
 } finally {
   await db.close();

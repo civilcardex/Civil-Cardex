@@ -79,6 +79,10 @@ function ProfilePage() {
   const [proyectosOpen, setProyectosOpen] = useState(false);
   const [proyectos, setProyectos] = useState<ProyectoRow[]>([]);
   const [cmProyectos, setCmProyectos] = useState<CmProyectoRow[]>([]);
+  const [cmNext, setCmNext] = useState<CmProyectoRow | null>(null);
+  const [cmLoadingMore, setCmLoadingMore] = useState(false);
+  const [cmMoreError, setCmMoreError] = useState(false);
+  const cmPageScope = useRef<AbortController | null>(null);
   const [cmListError, setCmListError] = useState(false);
   const [proyRetry, setProyRetry] = useState(0);
   const [filtroModulo, setFiltroModulo] = useState<'todos' | 'cf' | 'cm'>('todos');
@@ -182,14 +186,22 @@ function ProfilePage() {
 
   useEffect(() => {
     let ignore = false;
+    const scope = new AbortController();
+    cmPageScope.current = scope;
     async function loadProyectos() {
       setProyLoading(true);
+      setCmLoadingMore(false);
+      setCmMoreError(false);
+      setCmNext(null);
+      setCmProyectos([]);
       try {
         const [cf, cm] = await Promise.allSettled([fetchProyectos(), fetchCmProyectos()]);
         if (!ignore) {
           if (cf.status === 'fulfilled') setProyectos(cf.value);
-          if (cm.status === 'fulfilled') setCmProyectos(cm.value);
-          else devError('No se pudieron cargar los proyectos de CivilManager:', cm.reason);
+          if (cm.status === 'fulfilled') {
+            setCmProyectos(cm.value.rows);
+            setCmNext(cm.value.next);
+          } else devError('No se pudieron cargar los proyectos de CivilManager:', cm.reason);
           setCmListError(cm.status === 'rejected');
         }
       } finally {
@@ -199,8 +211,29 @@ function ProfilePage() {
     loadProyectos();
     return () => {
       ignore = true;
+      scope.abort();
     };
-  }, [proyRetry]);
+  }, [proyRetry, user?.id]);
+
+  async function loadMoreCm() {
+    const scope = cmPageScope.current;
+    if (!cmNext || cmLoadingMore || !scope || scope.signal.aborted) return;
+    setCmLoadingMore(true);
+    setCmMoreError(false);
+    try {
+      const page = await fetchCmProyectos(cmNext);
+      if (scope.signal.aborted) return;
+      setCmProyectos((prev) => {
+        const existing = new Set(prev.map((project) => project.id));
+        return [...prev, ...page.rows.filter((project) => !existing.has(project.id))];
+      });
+      setCmNext(page.next);
+    } catch {
+      if (!scope.signal.aborted) setCmMoreError(true);
+    } finally {
+      if (!scope.signal.aborted) setCmLoadingMore(false);
+    }
+  }
 
   function handleEditStart(field: string) {
     setEditField(field);
@@ -514,6 +547,10 @@ function ProfilePage() {
             onToggleOpen={() => setProyectosOpen((prev) => !prev)}
             proyectos={proyectos}
             cmProyectos={cmProyectos}
+            cmHasMore={cmNext !== null}
+            cmLoadingMore={cmLoadingMore}
+            cmMoreError={cmMoreError}
+            onLoadMoreCm={() => void loadMoreCm()}
             cmListError={cmListError}
             onRetryList={() => setProyRetry((attempt) => attempt + 1)}
             proyLoading={proyLoading}

@@ -6,6 +6,10 @@ import type { CmProyectoRow } from '../../modules/civilmanager/services/cmProjec
 import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
 
 interface ProjectsSectionProps {
+  cmHasMore?: boolean;
+  cmLoadingMore?: boolean;
+  cmMoreError?: boolean;
+  onLoadMoreCm?: () => void;
   proyectosOpen: boolean;
   onToggleOpen: () => void;
   proyectos: ProyectoRow[];
@@ -38,6 +42,10 @@ export function ProjectsSection({
   onToggleOpen,
   proyectos,
   cmProyectos,
+  cmHasMore,
+  cmLoadingMore,
+  cmMoreError,
+  onLoadMoreCm,
   cmListError,
   onRetryList,
   proyLoading,
@@ -79,7 +87,7 @@ export function ProjectsSection({
               Proyectos
             </h2>
             <span className="text-[13px] text-on-surface font-medium">
-              {proyectos.length + cmProyectos.length} proyectos
+              {proyectos.length + cmProyectos.length} proyectos{cmHasMore ? ' cargados' : ''}
             </span>
           </div>
         </div>
@@ -219,6 +227,21 @@ export function ProjectsSection({
                     />
                   ))}
               </div>
+              {filtroModulo !== 'cf' && cmHasMore && (
+                <div className="px-4 pb-4">
+                  {cmMoreError && (
+                    <p role="alert">No se pudieron cargar más proyectos de CivilManager.</p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={cmLoadingMore}
+                    onClick={onLoadMoreCm}
+                    className="rounded border border-outline-variant px-3 py-2"
+                  >
+                    {cmLoadingMore ? 'Cargando…' : 'Cargar más proyectos de CivilManager'}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

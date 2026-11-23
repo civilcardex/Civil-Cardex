@@ -16,6 +16,7 @@ import AparatosPanel from '../FixturesPanel.tsx';
 import PdfViewerDrawnElements from './PdfViewerDrawnElements.tsx';
 
 interface PdfViewerRightSidebarProps {
+  collapsed: boolean;
   style: CSSProperties;
   selectStyle: CSSProperties;
   rightSidebarOpacity: CSSProperties;
@@ -52,12 +53,15 @@ interface PdfViewerRightSidebarProps {
   upperFloorGroup: LowerFloorRamales | null;
   setConfirmState: Dispatch<SetStateAction<ConfirmState>>;
   loadingPlanRef: React.MutableRefObject<boolean>;
-  drawnElements: Array<{ id?: string }>;
+  drawnElements: import('../../lib/PlanoEngine/PlanoState.ts').ElementItem[];
+  onEditElement: (button: HTMLButtonElement) => void;
+  onDeleteElement: (id: string, label: string, onDeleted: () => void) => void;
 }
 
 /** Contenedor presentacional (todo por props): monta cada panel según la selección y el nivel (el 🟢 marca plano confirmado). */
 export function PdfViewerRightSidebar({
   style,
+  collapsed,
   selectStyle,
   rightSidebarOpacity,
   tool,
@@ -94,9 +98,17 @@ export function PdfViewerRightSidebar({
   setConfirmState,
   loadingPlanRef,
   drawnElements,
+  onEditElement,
+  onDeleteElement,
 }: PdfViewerRightSidebarProps) {
   return (
-    <div className="visor-sidebar-right" role="region" aria-label="Panel de edición" style={style}>
+    <div
+      className="visor-sidebar-right"
+      role="region"
+      aria-label="Panel de edición"
+      style={style}
+      inert={collapsed}
+    >
       <h2 className="sr-only">Panel de edición</h2>
       <div
         data-tour="visor-nivel"
@@ -235,10 +247,12 @@ export function PdfViewerRightSidebar({
 
           {!esCotaSel && (
             <PdfViewerDrawnElements
-              drawnElements={drawnElements as never}
+              drawnElements={drawnElements}
               activeNet={activeNet}
-              selElement={selElement}
+              selectedId={selElement?.id}
               engineRef={engineRef}
+              onEdit={onEditElement}
+              onDelete={onDeleteElement}
             />
           )}
 

@@ -1,11 +1,5 @@
-import {
-  archivarBorradorPendiente,
-  borradorPendiente,
-  hayRespaldoLegado,
-  loadFromIdb,
-  saveToIdb,
-} from './storage/idb.ts';
-import { loadFromSupabase, saveForzadoSupabase, saveToSupabase } from './storage/rpc.ts';
+import { borradorPendiente, hayRespaldoLegado, loadFromIdb, saveToIdb } from './storage/idb.ts';
+import { loadFromSupabase, saveToSupabase } from './storage/rpc.ts';
 import { captureCmScope, cmScopeKey, type CmStorageScope } from './storage/session.ts';
 import type { CivilManagerState } from './types.ts';
 
@@ -96,34 +90,4 @@ export async function civilManagerSave(
   } finally {
     if (saveQueues.get(key) === job) saveQueues.delete(key);
   }
-}
-
-/** Resolución EXPLÍCITA del conflicto de versiones (H-02): hasta hoy un borrador pendiente
- *  ganaba siempre al cargar y cada guardado volvía a chocar sin salida dentro de la app.
- *  · 'nube'    → archiva el borrador (clave de rescate en IDB) y recarga desde Supabase.
- *  · 'borrador' → fuerza el guardado sin reloj (cm_save_state, firma conservada por la
- *                 migración 20261123000002) y confirma su nueva versión como base.
- * Devuelve el estado que debe montar el provider (null = nada que montar). */
-export async function civilManagerResolverConflicto(
-  scope: CmStorageScope,
-  modo: 'nube' | 'borrador',
-): Promise<CivilManagerState | null> {
-  const key = cmScopeKey(scope);
-  if (modo === 'nube') {
-    await archivarBorradorPendiente(scope);
-    versions.delete(key);
-    latestDrafts.delete(key);
-    const remote = await loadFromSupabase(scope);
-    if (!remote) throw new Error('Proyecto no encontrado o sin acceso.');
-    versions.set(key, remote.version);
-    await saveToIdb(scope, remote.state, remote.version, false);
-    return remote.state;
-  }
-  const draft = latestDrafts.get(key) ?? (await loadFromIdb(scope))?.state;
-  if (!draft) return null;
-  const committed = await saveForzadoSupabase(draft, scope);
-  versions.set(key, committed);
-  await saveToIdb(scope, draft, committed, false);
-  latestDrafts.delete(key);
-  return draft;
 }

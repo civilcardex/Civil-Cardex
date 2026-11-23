@@ -11,20 +11,23 @@ export interface CmProyectoRow {
 }
 
 /** Lista los proyectos CM del usuario (más nuevo primero). Ej: 3 proyectos -> los 3 con su código para el selector. @returns filas o [] si falla la consulta. */
-export async function fetchCmProyectos(): Promise<CmProyectoRow[]> {
-  const pageSize = 200;
-  const rows: CmProyectoRow[] = [];
-  for (;;) {
-    const { data, error } = await supabase
-      .from('cm_proyectos')
-      .select('id, user_id, codigo, nombre, created_at')
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .range(rows.length, rows.length + pageSize - 1);
-    if (error) throw new Error(error.message);
-    for (const row of data) if (row.id) rows.push({ ...row, id: row.id });
-    if (data.length < pageSize) return rows;
-  }
+export async function fetchCmProyectos(cursor?: Pick<CmProyectoRow, 'created_at' | 'id'>) {
+  const pageSize = 50;
+  const query = supabase.from('cm_proyectos').select('id, user_id, codigo, nombre, created_at');
+  const filtered = cursor
+    ? query.or(
+        `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`,
+      )
+    : query;
+  const { data, error } = await filtered
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(pageSize + 1);
+  if (error) throw new Error(error.message);
+  const page = data.slice(0, pageSize);
+  const rows = page.flatMap((row) => (row.id ? [{ ...row, id: row.id }] : []));
+  const last = rows.at(-1);
+  return { rows, next: data.length > pageSize ? (last ?? null) : null };
 }
 
 /** Busca el proyecto por su ID (identificador) bajo las reglas de acceso de la base de datos. */

@@ -112,7 +112,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
 
   return (
     <XlWrap>
-      <TableHeader title="Proyectos" icon="proyectos" />
+      <TableHeader title="Proyectos" icon="proyectos.svg" />
       <DimEnLectura>
         <XlScroll>
           <fieldset disabled={!editable} className="cm-fieldset-flush">

@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { fmtMoneda, parseNumInput } from '../calc.ts';
 import { NumInput } from './NumInput.tsx';
+import { useEditable } from './EditLock.tsx';
 
 /** Qué control monta la celda al editar: 'texto' input libre, 'numero' NumInput, 'moneda' NumInput con formato y símbolo de la moneda, 'select' lista de opciones. */
 export type TipoCelda = 'texto' | 'numero' | 'select' | 'moneda';
@@ -22,7 +23,7 @@ interface EditableCellProps {
   align?: 'left' | 'center' | 'right';
   /** Campo de solo lectura: el control se muestra pero no admite cambios. */
   readOnly?: boolean;
-  /** Doble clic en la celda sin editar: abre la edición de la fila (setEditIdx del tab). Ej: ctx.editRow de CrudTable. */
+  /** Acción para editar la fila con toque, clic o teclado. Ej.: ctx.editRow de CrudTable. */
   onOpenEdit?: () => void;
   /** Enter/Escape de navegación de la fila (handleKeyDown de useCrudTable ya enlazado al índice visible); se llama después de confirmar/cancelar la celda. */
   onKeyDown?: (e: KeyboardEvent<HTMLElement>) => void;
@@ -30,7 +31,7 @@ interface EditableCellProps {
 
 /** Celda editable declarativa del CRUD (crear, leer, actualizar y borrar) de civilmanager: sin editar muestra el valor como texto y al editar monta el control según tipo — texto, número, moneda o select. El borrador local confirma con Enter o al salir del campo (blur), y Escape lo devuelve al valor guardado, así el dato cambia al terminar de escribir y no en cada tecla. Ej: <EditableCell editing={edit} value={p.nombre} onCommit={(v) => ctx.upd(p.id, 'nombre', v)} onOpenEdit={ctx.editRow} onKeyDown={ctx.handleKeyDown} title="Nombre" />. */
 export function EditableCell({
-  editing,
+  editing: rowEditing,
   value,
   onCommit,
   tipo = 'texto',
@@ -42,7 +43,17 @@ export function EditableCell({
   onOpenEdit,
   onKeyDown,
 }: EditableCellProps) {
+  const editable = useEditable() && !readOnly;
+  const editing = rowEditing && editable;
   const [draft, setDraft] = useState(value);
+  const focusAfterOpen = useRef(false);
+  const canceled = useRef(false);
+  function focusEditor(el: HTMLElement | null) {
+    if (!el || !focusAfterOpen.current) return;
+    focusAfterOpen.current = false;
+    el.focus();
+    el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }
   // Al (re)entrar en edición el borrador parte del valor guardado, no del que quedó de una
   // sesión anterior de la misma celda (ajuste en render, mismo patrón de useCrudTable).
   const [prevEditing, setPrevEditing] = useState(editing);
@@ -53,7 +64,7 @@ export function EditableCell({
 
   /** Confirma el borrador solo si cambió respecto al valor guardado (evita upd con el mismo dato). */
   function commitDraft() {
-    if (draft !== value) onCommit(draft);
+    if (!canceled.current && draft !== value) onCommit(draft);
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLElement>) {
@@ -62,6 +73,7 @@ export function EditableCell({
       if ((e.target as HTMLElement).getAttribute('aria-invalid') === 'true') return;
       commitDraft();
     } else if (e.key === 'Escape') {
+      canceled.current = true;
       setDraft(value);
     }
     onKeyDown?.(e);
@@ -72,16 +84,30 @@ export function EditableCell({
   const a11y = { title, 'aria-label': title };
 
   if (!editing) {
-    return (
-      <span onDoubleClick={onOpenEdit} title={title}>
-        {tipo === 'moneda' ? fmtMoneda(Number(value) || 0) : value}
-      </span>
-    );
+    const text = tipo === 'moneda' ? fmtMoneda(Number(value) || 0) : value;
+    if (onOpenEdit && editable) {
+      return (
+        <button
+          type="button"
+          className="cm-cell-edit"
+          onClick={() => {
+            focusAfterOpen.current = true;
+            canceled.current = false;
+            onOpenEdit();
+          }}
+          title={title}
+        >
+          {text || 'Editar'}
+        </button>
+      );
+    }
+    return <span title={title}>{text}</span>;
   }
 
   if (tipo === 'select') {
     return (
       <select
+        ref={focusEditor}
         className="cm-sel"
         value={draft}
         onChange={(e) => {
@@ -114,7 +140,9 @@ export function EditableCell({
       // El onBlur de React burbujea: este div recibe el blur del NumInput sin pisar el
       // handleBlur interno que NumInput necesita para reiniciar su estado de formato.
       <div
+        ref={(container) => focusEditor(container?.querySelector('input') ?? null)}
         onBlur={(e) => {
+          if (canceled.current) return;
           if (!(e.target instanceof HTMLInputElement)) return;
           const parsed = parseNumInput(e.target.value);
           if (parsed === null) setDraft(e.target.value);
@@ -123,7 +151,10 @@ export function EditableCell({
       >
         <NumInput
           value={draft}
-          onChange={(n) => setDraft(String(n))}
+          onChange={(n) => {
+            canceled.current = false;
+            setDraft(String(n));
+          }}
           format={tipo === 'moneda'}
           moneda={tipo === 'moneda'}
           placeholder={placeholder}
@@ -139,12 +170,16 @@ export function EditableCell({
 
   return (
     <input
+      ref={focusEditor}
       className="cm-ni"
       value={draft}
       placeholder={placeholder}
       readOnly={readOnly}
       {...alignData}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        canceled.current = false;
+        setDraft(e.target.value);
+      }}
       onBlur={commitDraft}
       onKeyDown={handleKeyDown}
       {...a11y}

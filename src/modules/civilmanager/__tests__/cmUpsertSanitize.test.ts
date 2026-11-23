@@ -214,16 +214,4 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     ).rejects.toThrow(/cm_save_state_versioned/);
     expect(rpcSaveState.captured).toHaveLength(0);
   });
-
-  it('guardado FORZADO (resolución «mi borrador gana») usa la firma sin reloj', async () => {
-    const { saveForzadoSupabase } = await import('../storage/rpc.ts');
-    const version = await saveForzadoSupabase(seedState(), {
-      userId: 'u1',
-      proyectoId: PROYECTO,
-    });
-    expect(version).toBe('committed');
-    const { fn, args } = rpcSaveState.captured[0];
-    expect(fn).toBe('cm_save_state');
-    expect(args.p_updated_at).toBeUndefined();
-  });
 });

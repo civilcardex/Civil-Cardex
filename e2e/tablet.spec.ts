@@ -128,13 +128,17 @@ for (const [width, height] of [
       };
       await tap('Equipos');
       await expect(page.getByText('Mezcladora')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Mezcladora', exact: true })).toHaveCount(0);
       await tap('Editar');
-      if (hasTouch) {
-        await tap('Editar fila');
-      } else {
-        await page.getByText('Mezcladora').dblclick();
-      }
+      await tap('Mezcladora');
       const field = page.getByRole('textbox', { name: 'Nombre', exact: true });
+      await expect(field).toBeFocused();
+      if (!hasTouch) {
+        await field.fill('No guardar');
+        await field.press('Escape');
+        await expect(page.getByText('Mezcladora', { exact: true })).toBeVisible();
+        await tap('Mezcladora');
+      }
       await field.fill('Mezcladora portátil');
       await page
         .getByRole('combobox', { name: 'Tipo', exact: true })
@@ -179,6 +183,11 @@ for (const [width, height] of [
         await page.getByRole('button', { name: 'Terminar' }).press('Enter');
         await expect(page.getByTestId('ramales')).toHaveText('1');
         await expect(page.getByTestId('puntos')).toHaveText('2');
+        await page.getByRole('button', { name: /^Editar .+/ }).press('Enter');
+        await expect(page.getByText('Opciones del ramal seleccionado')).toBeVisible();
+        await page.getByRole('button', { name: /^Borrar .+/ }).press('Enter');
+        await expect(page.getByTestId('ramales')).toHaveText('0');
+        await expect(page.getByRole('heading', { name: 'Elementos del plano (0)' })).toBeFocused();
       });
     }
 
@@ -194,7 +203,7 @@ for (const [width, height] of [
         await canvas.tap({ position: { x: 100, y: 100 } });
         await canvas.tap({ position: { x: 400, y: 100 } });
         await page.getByRole('button', { name: 'Terminar' }).tap();
-        await page.getByRole('button', { name: 'Seleccionar' }).tap();
+        await page.getByRole('button', { name: 'Seleccionar', exact: true }).tap();
         await canvas.tap({ position: { x: 250, y: 100 } });
         await page.getByRole('button', { name: 'Opciones' }).tap();
         await page.getByRole('button', { name: 'Desbloquear movimiento' }).tap();

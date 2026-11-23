@@ -20,7 +20,6 @@ import {
 } from './calc.ts';
 import {
   civilManagerLoad,
-  civilManagerResolverConflicto,
   civilManagerSave,
   defaultState,
   hayBorradorPendiente,
@@ -51,7 +50,6 @@ interface CivilManagerContextValue {
   loadError: string | null;
   /** Conflicto de versiones sin resolver (banner del shell). */
   conflictoBorrador: boolean;
-  resolverConflicto: (modo: 'borrador' | 'nube') => Promise<void>;
   /** Respaldo legado detectado (aviso one-shot, dismissable). */
   avisoLegado: boolean;
   descartarAvisoLegado: () => void;
@@ -159,27 +157,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
     return () => clearTimeout(t);
   }, [state]);
 
-  /** Acción del banner de conflicto: 'borrador' fuerza la subida; 'nube' archiva el
-   *  borrador local y recarga desde Supabase. Ningún dato se pierde sin avisar. */
-  const resolverConflicto = useCallback(async (modo: 'borrador' | 'nube'): Promise<void> => {
-    const scope = scopeRef.current;
-    if (!scope) return;
-    try {
-      const nuevo = await civilManagerResolverConflicto(scope, modo);
-      setConflictoBorrador(false);
-      if (nuevo) {
-        hydratedState.current = nuevo;
-        dispatch({ type: 'LOAD', state: nuevo });
-      }
-    } catch (e) {
-      devError('CivilManagerContext resolver conflicto:', e);
-      emitErrorGuardado(
-        'civilmanager',
-        e instanceof Error ? e.message : 'No se pudo resolver el conflicto.',
-      );
-    }
-  }, []);
-
   /** Cierra el aviso del respaldo legado (el registro IDB NO se toca). */
   const descartarAvisoLegado = useCallback((): void => setAvisoLegado(false), []);
 
@@ -261,7 +238,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       loaded,
       loadError,
       conflictoBorrador,
-      resolverConflicto,
       avisoLegado,
       descartarAvisoLegado,
       cargosCalc,
@@ -276,7 +252,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       loaded,
       loadError,
       conflictoBorrador,
-      resolverConflicto,
       avisoLegado,
       descartarAvisoLegado,
       cargosCalc,

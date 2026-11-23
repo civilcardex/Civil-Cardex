@@ -84,7 +84,9 @@ jobs:
 
       # Presupuesto de bundle ENFORZADO: falla si el entry o algún chunk supera su tope.
       - name: Bundle budget
-        run: npm run bundle:budget
+        run: |
+          node --test scripts/bundleBudget.test.mjs
+          npm run bundle:budget
 
       - name: Audit dependencies
         run: npm audit --audit-level=high

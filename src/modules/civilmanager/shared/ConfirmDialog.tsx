@@ -19,11 +19,17 @@ export function ConfirmDialog() {
   useEffect(() => {
     _showConfirm = (msg) =>
       new Promise<boolean>((res) => {
+        if (resolveRef.current) {
+          res(false);
+          return;
+        }
         resolveRef.current = res;
         setReq(msg);
       });
     return () => {
       _showConfirm = null;
+      resolveRef.current?.(false);
+      resolveRef.current = null;
     };
   }, []);
 

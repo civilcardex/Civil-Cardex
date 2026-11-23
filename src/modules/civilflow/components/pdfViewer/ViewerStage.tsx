@@ -277,6 +277,22 @@ export function ViewerStage(props: ViewerStageProps) {
     drawnElements,
   } = props;
 
+  function openSelectedOptions(button: HTMLButtonElement) {
+    const element = engineRef.current?.getSelected();
+    if (!element) return;
+    const rect = button.getBoundingClientRect();
+    setContextMenuState({
+      visible: true,
+      x: rect.left,
+      y: rect.bottom,
+      element: element as PlanoElement,
+      opener: button,
+    });
+  }
+
+  const announceSave =
+    bdError || (saveStatus === 'saved' || saveStatus === 'error' ? STATUS[saveStatus].label : '');
+
   return (
     <div style={mainContainerStyle}>
       <PdfViewerNetworkBar
@@ -412,6 +428,9 @@ export function ViewerStage(props: ViewerStageProps) {
           style={{ position: 'relative', flex: 1, display: 'flex', minHeight: 0, minWidth: 0 }}
         >
           <h2 className="sr-only">Visor de planos</h2>
+          <div className="sr-only" role="status">
+            {announceSave}
+          </div>
           {!isMobile && currentFile && (
             <ViewerDrawingActions
               engineRef={engineRef}
@@ -419,21 +438,7 @@ export function ViewerStage(props: ViewerStageProps) {
               disabled={loading || cambioPiso}
               onSave={handleSave}
               onUndo={handleUndo}
-              onOptions={
-                selElement
-                  ? (button) => {
-                      const element = engineRef.current?.getSelected();
-                      if (!element) return;
-                      const rect = button.getBoundingClientRect();
-                      setContextMenuState({
-                        visible: true,
-                        x: rect.left,
-                        y: rect.bottom,
-                        element: element as PlanoElement,
-                      });
-                    }
-                  : undefined
-              }
+              onOptions={selElement ? openSelectedOptions : undefined}
             />
           )}
           <ViewerMobileChrome
@@ -492,6 +497,7 @@ export function ViewerStage(props: ViewerStageProps) {
 
         {/* Barra lateral derecha (componente: pdfViewer/PdfViewerRightSidebar) */}
         <PdfViewerRightSidebar
+          collapsed={rightCollapsed}
           style={dynamicRightStyle}
           selectStyle={PdfViewer_S4}
           rightSidebarOpacity={rightSidebarOpacity}
@@ -529,6 +535,26 @@ export function ViewerStage(props: ViewerStageProps) {
           setConfirmState={setConfirmState}
           loadingPlanRef={loadingPlanRef}
           drawnElements={drawnElements}
+          onEditElement={openSelectedOptions}
+          onDeleteElement={(id, label, onDeleted) => {
+            const engine = engineRef.current;
+            const plan = currentIdRef.current;
+            const locked = () => engine?._lockedNets.has(activeNet);
+            if (!engine || locked() || loadingPlanRef.current) return;
+            triggerConfirm('Borrar elemento', `¿Borrar ${label} del plano?`, () => {
+              if (
+                engineRef.current !== engine ||
+                currentIdRef.current !== plan ||
+                locked() ||
+                loadingPlanRef.current ||
+                !engine.getElementsByNet(activeNet).some((element) => element.id === id)
+              )
+                return;
+              engine.selectById(id);
+              engine.deleteSelected();
+              onDeleted();
+            });
+          }}
         />
 
         <button
@@ -550,6 +576,7 @@ export function ViewerStage(props: ViewerStageProps) {
         <button
           type="button"
           onClick={() => setRightCollapsed(!rightCollapsed)}
+          aria-expanded={!rightCollapsed}
           style={{
             ...PdfViewer_S5,
             right: rightCollapsed ? 0 : 210,

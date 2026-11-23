@@ -133,13 +133,14 @@ export function RciRamalesTable({
   const [finAyuda, setFinAyuda] = useState(false);
   return (
     <>
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- el foco permite desplazar la tabla con teclado */}
+      {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- el foco permite desplazar la tabla con teclado */}
       <div
         role="region"
         aria-label="Tabla de ramales del piso"
         tabIndex={0}
         style={{ minWidth: 0, maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}
       >
+        {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
         <table
           className="tbl tbl-sep tbl-hline"
           style={{ fontSize: 12, minWidth: 0, width: '100%' }}

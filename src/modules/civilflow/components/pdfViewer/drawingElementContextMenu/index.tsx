@@ -353,6 +353,21 @@ function DrawingElementContextMenuInner() {
   const ctx = useDrawingElementContextMenu();
   const { contextMenuState, setContextMenuState } = ctx;
   const menuRef = useRef<HTMLFormElement>(null);
+  const opener = contextMenuState?.opener;
+  useEffect(() => {
+    if (!opener) return;
+    const menu = menuRef.current;
+    menu?.focus();
+    return () => {
+      if (
+        opener.isConnected &&
+        (!document.activeElement ||
+          document.activeElement === document.body ||
+          menu?.contains(document.activeElement))
+      )
+        opener.focus();
+    };
+  }, [opener]);
   const [adjustedPos, setAdjustedPos] = useState({
     x: contextMenuState?.x || 0,
     y: contextMenuState?.y || 0,
@@ -440,6 +455,7 @@ function DrawingElementContextMenuInner() {
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <form
         ref={menuRef}
+        tabIndex={-1}
         aria-label="Menú contextual de elemento"
         onSubmit={(e) => e.preventDefault()}
         onKeyDown={(e) => {

@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { supabase } from '../src/lib/supabase.ts';
 import PlanoEngine from '../src/modules/civilflow/lib/PlanoEngine/PlanoEngine.ts';
+import type { ElementItem } from '../src/modules/civilflow/lib/PlanoEngine/PlanoState.ts';
+import PdfViewerDrawnElements from '../src/modules/civilflow/components/pdfViewer/PdfViewerDrawnElements.tsx';
 import {
   ViewerDrawingActions,
   ViewerPlanSteps,
@@ -23,6 +25,8 @@ function FlowFixture() {
   const [count, setCount] = useState(0);
   const [points, setPoints] = useState(0);
   const [selected, setSelected] = useState(false);
+  const [selectedId, setSelectedId] = useState<string>();
+  const [elements, setElements] = useState<ElementItem[]>([]);
   const [options, setOptions] = useState(false);
   const [index, setIndex] = useState(0);
   const { isMobile, isNarrow } = useViewerResponsive();
@@ -37,8 +41,13 @@ function FlowFixture() {
     engine.onDirty(() => {
       setCount(engine.ramales.length);
       setPoints(engine.ramales.at(-1)?.pts.length ?? 0);
+      setElements(engine.getElementsByNet(engine.activeNet));
     });
-    engine.onSelect(() => setSelected(!!engine.getSelected()));
+    engine.onSelect(() => {
+      const element = engine.getSelected();
+      setSelected(!!element);
+      setSelectedId(element?.id);
+    });
     eng.current = engine;
     const drawing = canvas.current!;
     const snapshot = () => {
@@ -116,6 +125,20 @@ function FlowFixture() {
       </div>
       <p data-testid="ramales">{count}</p>
       <p data-testid="puntos">{points}</p>
+      {!isMobile && (
+        <PdfViewerDrawnElements
+          drawnElements={elements}
+          activeNet="af"
+          selectedId={selectedId}
+          engineRef={eng}
+          onEdit={() => setOptions(true)}
+          onDelete={(id, _label, onDeleted) => {
+            eng.current?.selectById(id);
+            eng.current?.deleteSelected();
+            onDeleted();
+          }}
+        />
+      )}
       {options && (
         <>
           <p>Opciones del ramal seleccionado</p>
