@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -17,7 +18,16 @@ import {
   esHoraPais,
   sumFactorPrestacional,
 } from './calc.ts';
-import { civilManagerLoad, civilManagerSave, defaultState } from './storage.ts';
+import {
+  civilManagerLoad,
+  civilManagerResolverConflicto,
+  civilManagerSave,
+  defaultState,
+  hayBorradorPendiente,
+  hayRespaldoAnterior,
+  saveCmDraft,
+} from './storage.ts';
+import { captureCmScope, type CmStorageScope } from './storage/session.ts';
 import type { ApuCalculado, CargoCalculado, CivilManagerState } from './types.ts';
 
 type Action =
@@ -38,6 +48,13 @@ interface CivilManagerContextValue {
   state: CivilManagerState;
   patch: (patch: Partial<CivilManagerState>) => void;
   loaded: boolean;
+  loadError: string | null;
+  /** Conflicto de versiones sin resolver (banner del shell). */
+  conflictoBorrador: boolean;
+  resolverConflicto: (modo: 'borrador' | 'nube') => Promise<void>;
+  /** Respaldo legado detectado (aviso one-shot, dismissable). */
+  avisoLegado: boolean;
+  descartarAvisoLegado: () => void;
   cargosCalc: CargoCalculado[];
   factorPrest: number;
   esHora: boolean;
@@ -57,7 +74,15 @@ const CivilManagerContext = createContext<CivilManagerContextValue | null>(null)
 export function CivilManagerProvider({ children }: { children?: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, undefined, defaultState);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  /** Conflicto de versiones SIN resolver (H-02): el borrador local ganó al cargar y cada
+   *  guardado vuelve a chocar. El banner del shell ofrece subir el borrador o usar la nube. */
+  const [conflictoBorrador, setConflictoBorrador] = useState(false);
+  /** Respaldo legado detectado (H-08): aviso one-shot, sin migración automática. */
+  const [avisoLegado, setAvisoLegado] = useState(false);
   const loadedRef = useRef(false);
+  const scopeRef = useRef<CmStorageScope | null>(null);
+  const hydratedState = useRef<CivilManagerState | null>(null);
   const hadDataRef = useRef(false);
 
   // Un solo símbolo de moneda para todo el módulo (fmtMoneda): se actualiza
@@ -67,8 +92,15 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
   }, [state.config.moneda]);
 
   useEffect(() => {
-    civilManagerLoad()
-      .then((loadedState) => {
+    let cancelled = false;
+    captureCmScope()
+      .then(async (scope) => {
+        if (!scope) throw new Error('Selecciona un proyecto desde tu perfil.');
+        if (cancelled) return;
+        const loadedState = await civilManagerLoad(scope);
+        if (cancelled) return;
+        scopeRef.current = scope;
+        loadedRef.current = true;
         if (loadedState) {
           const hasAny =
             loadedState.apus.length ||
@@ -76,19 +108,37 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
             loadedState.insumos.length ||
             loadedState.cuadrillas.length;
           if (hasAny) hadDataRef.current = true;
+          hydratedState.current = loadedState;
           dispatch({ type: 'LOAD', state: loadedState });
         }
+        const [pendiente, legado] = await Promise.all([
+          hayBorradorPendiente(scope),
+          hayRespaldoAnterior(),
+        ]);
+        if (!cancelled) {
+          setConflictoBorrador(pendiente);
+          setAvisoLegado(legado);
+        }
       })
-      .catch((e) => devError('CivilManagerContext load:', e))
+      .catch((e) => {
+        if (!cancelled)
+          setLoadError(e instanceof Error ? e.message : 'No se pudo cargar el proyecto.');
+      })
       .finally(() => {
-        loadedRef.current = true;
-        setLoaded(true);
+        if (!cancelled) setLoaded(true);
       });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!loadedRef.current) return;
+    const scope = scopeRef.current;
+    if (!loadedRef.current || !scope || state === hydratedState.current) return;
+    // Borrador a IDB con debounce corto (H-11): escribir TODO el estado en cada tecla
+    // clonaba el objeto completo por pulsación; el autosave a BD sigue a los 300 ms.
     const t = setTimeout(() => {
+      void saveCmDraft(scope, state);
       const nowEmpty =
         !state.apus.length &&
         !state.equipos.length &&
@@ -98,16 +148,40 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
         devError('CivilManagerContext: guardado de estado vacío bloqueado (safeguard)');
         return;
       }
-      // El guardado en BD es encadenado: si un upsert falla, la BD queda a medias. El aviso
-      // va por el canal GLOBAL (proveedor de alertas en la raíz) y no por el toast local:
-      // así se ve aunque el Toast del gestor no esté montado, y no se pierde el error.
-      civilManagerSave(state).catch((e) => {
+      // El aviso global queda visible aunque se cierre esta sección mientras guarda.
+      civilManagerSave(state, scope).catch((e) => {
         devError('CivilManagerContext save:', e);
-        emitErrorGuardado('civilmanager', e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/Otro dispositivo/.test(msg)) setConflictoBorrador(true);
+        emitErrorGuardado('civilmanager', msg);
       });
     }, 300);
     return () => clearTimeout(t);
   }, [state]);
+
+  /** Acción del banner de conflicto: 'borrador' fuerza la subida; 'nube' archiva el
+   *  borrador local y recarga desde Supabase. Ningún dato se pierde sin avisar. */
+  const resolverConflicto = useCallback(async (modo: 'borrador' | 'nube'): Promise<void> => {
+    const scope = scopeRef.current;
+    if (!scope) return;
+    try {
+      const nuevo = await civilManagerResolverConflicto(scope, modo);
+      setConflictoBorrador(false);
+      if (nuevo) {
+        hydratedState.current = nuevo;
+        dispatch({ type: 'LOAD', state: nuevo });
+      }
+    } catch (e) {
+      devError('CivilManagerContext resolver conflicto:', e);
+      emitErrorGuardado(
+        'civilmanager',
+        e instanceof Error ? e.message : 'No se pudo resolver el conflicto.',
+      );
+    }
+  }, []);
+
+  /** Cierra el aviso del respaldo legado (el registro IDB NO se toca). */
+  const descartarAvisoLegado = useCallback((): void => setAvisoLegado(false), []);
 
   const patch = (p: Partial<CivilManagerState>) => dispatch({ type: 'PATCH', patch: p });
 
@@ -185,6 +259,11 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       state,
       patch,
       loaded,
+      loadError,
+      conflictoBorrador,
+      resolverConflicto,
+      avisoLegado,
+      descartarAvisoLegado,
       cargosCalc,
       factorPrest,
       esHora,
@@ -192,7 +271,21 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       apusCalc,
       apuCalcMap,
     }),
-    [state, loaded, cargosCalc, factorPrest, esHora, apusBasicoCalc, apusCalc, apuCalcMap],
+    [
+      state,
+      loaded,
+      loadError,
+      conflictoBorrador,
+      resolverConflicto,
+      avisoLegado,
+      descartarAvisoLegado,
+      cargosCalc,
+      factorPrest,
+      esHora,
+      apusBasicoCalc,
+      apusCalc,
+      apuCalcMap,
+    ],
   );
 
   return <CivilManagerContext.Provider value={value}>{children}</CivilManagerContext.Provider>;

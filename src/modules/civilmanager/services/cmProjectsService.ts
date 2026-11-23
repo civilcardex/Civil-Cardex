@@ -12,21 +12,30 @@ export interface CmProyectoRow {
 
 /** Lista los proyectos CM del usuario (más nuevo primero). Ej: 3 proyectos -> los 3 con su código para el selector. @returns filas o [] si falla la consulta. */
 export async function fetchCmProyectos(): Promise<CmProyectoRow[]> {
-  try {
+  const pageSize = 200;
+  const rows: CmProyectoRow[] = [];
+  for (;;) {
     const { data, error } = await supabase
       .from('cm_proyectos')
       .select('id, user_id, codigo, nombre, created_at')
       .order('created_at', { ascending: false })
-      .limit(200);
-    if (error) {
-      devError('fetchCmProyectos:', error.message);
-      return [];
-    }
-    return (data as CmProyectoRow[]) || [];
-  } catch (e) {
-    devError('fetchCmProyectos:', e);
-    return [];
+      .order('id', { ascending: false })
+      .range(rows.length, rows.length + pageSize - 1);
+    if (error) throw new Error(error.message);
+    for (const row of data) if (row.id) rows.push({ ...row, id: row.id });
+    if (data.length < pageSize) return rows;
   }
+}
+
+/** Busca el proyecto por su ID (identificador) bajo las reglas de acceso de la base de datos. */
+export async function fetchCmProyectoById(id: string): Promise<CmProyectoRow | null> {
+  const { data, error } = await supabase
+    .from('cm_proyectos')
+    .select('id, user_id, codigo, nombre, created_at')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.id ? { ...data, id: data.id } : null;
 }
 
 /** Crea un proyecto CM para el usuario autenticado. Ej: createCmProyecto('P-001','Torre Norte') -> fila insertada. @returns la fila nueva o null si no hay sesión/falla. */

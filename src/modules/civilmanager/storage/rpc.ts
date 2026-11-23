@@ -1,99 +1,43 @@
-import { devError } from '../../../utils/devError.ts';
 import { supabase } from '../../../lib/supabase';
-import { getUserId } from './session.ts';
+import { captureCmScope, type CmStorageScope } from './session.ts';
 import { limpiarFilas, migrateState } from './serialize.ts';
-import { saveToSupabaseLegacy } from './legacy.ts';
 import { readCmSnapshot } from '../dto.ts';
 import type { CivilManagerState } from '../types.ts';
 
-/**
- * Queries Supabase del módulo CM: carga vía RPC cm_get_data y guardado vía RPC atómica
- * cm_save_state con fallback al camino legado de olas mientras la migración no se aplique.
- */
-
-/** Reloj de concurrencia: updated_at del proyecto activo LEÍDO de la BD (cm_get_data trae
- * la fila completa de cm_proyectos). El guardado lo manda y el RPC rechaza si la BD tiene
- * uno mayor — otro dispositivo guardó después. Ref al nivel del módulo: load→save. */
-let updatedAtLeido: string | null = null;
-
-export function lastCmUpdatedAtLeido(): string | null {
-  return updatedAtLeido;
+/** Lee el estado visible del proyecto. Null significa que no hay acceso o que no existe. */
+export async function loadFromSupabase(scope: CmStorageScope) {
+  const { data, error } = await supabase.rpc('cm_get_data', { p_proyecto_id: scope.proyectoId });
+  if (error) throw new Error(error.message);
+  if (data === null) return null;
+  const snap = readCmSnapshot(data);
+  const activo = snap.proyectos?.find((p) => p.id === scope.proyectoId);
+  if (!activo?.updated_at) return null;
+  const raw: Partial<CivilManagerState> = {
+    factoresPrestaciones: snap.factores,
+    cargos: snap.cargos,
+    cuadrillas: snap.cuadrillas,
+    equipos: snap.equipos,
+    insumos: snap.insumos,
+    apus: snap.apus,
+    presupuestos: snap.presupuestos,
+    proveedores: snap.proveedores,
+    // cm_get_data devuelve snap.config = {config, config_listas, categorias_apu} (wrapper) —
+    // antes se asignaba el wrapper entero a ambas claves y categorias_apu no se extraía:
+    // migrateState caía en defaults y se perdían país/salario/listas al cargar de Supabase.
+    config: snap.config?.config,
+    config_listas: snap.config?.config_listas,
+    categorias_apu: snap.config?.categorias_apu,
+  };
+  return { state: migrateState(raw), version: activo.updated_at };
 }
 
-export async function loadFromSupabase(): Promise<CivilManagerState | null> {
-  const userId = await getUserId();
-  if (!userId) return null;
-  try {
-    const proyectoId = localStorage.getItem('cm_proyecto_activo_id') || null;
-    const { data, error } = await supabase.rpc('cm_get_data', {
-      p_proyecto_id: proyectoId,
-    });
-    if (error) {
-      devError('cm_get_data rpc:', error);
-      return null;
-    }
-    if (!data) return null;
-    // readCmSnapshot es PASSTHROUGH: sin defaults, lo que falte en el jsonb queda undefined
-    // y migrateState (abajo) aplica su fallback por clave — igual que con el cast anterior.
-    const snap = readCmSnapshot(data);
-    // Reloj del proyecto activo para el guardado optimistic (conflicto_concurrencia).
-    const activo = snap.proyectos?.find((p) => p.id === proyectoId) as
-      { id: string; updated_at?: string } | undefined;
-    updatedAtLeido = activo?.updated_at ?? null;
-    const raw: Partial<CivilManagerState> = {
-      factoresPrestaciones: snap.factores,
-      cargos: snap.cargos,
-      cuadrillas: snap.cuadrillas,
-      equipos: snap.equipos,
-      insumos: snap.insumos,
-      apus: snap.apus,
-      presupuestos: snap.presupuestos,
-      proveedores: snap.proveedores,
-      // cm_get_data devuelve snap.config = {config, config_listas, categorias_apu} (wrapper) —
-      // antes se asignaba el wrapper entero a ambas claves y categorias_apu no se extraía:
-      // migrateState caía en defaults y se perdían país/salario/listas al cargar de Supabase.
-      config: snap.config?.config,
-      config_listas: snap.config?.config_listas,
-      categorias_apu: snap.config?.categorias_apu,
-    };
-    return migrateState(raw);
-  } catch (e) {
-    devError('loadFromSupabase:', e);
-    return null;
-  }
-}
-
-/**
- * Detecta que cm_save_state aún no existe en la BD (migración 20261112000000 sin aplicar):
- * PostgREST responde 404 / PGRST202 "Could not find the function ... in the schema cache".
- * Ej: usuario sin la migración aplicada → true → el guardado cae al camino legado.
- */
-function rpcSaveStateNoDesplegada(err: unknown): boolean {
-  const e = err as {
-    code?: string;
-    message?: string;
-    status?: number;
-    context?: { status?: number };
-  } | null;
-  const status = e?.status ?? e?.context?.status;
-  return (
-    e?.code === 'PGRST202' || status === 404 || /not found|not find|404/i.test(e?.message ?? '')
-  );
-}
-
-/**
- * Guarda el estado completo vía RPC cm_save_state: UNA llamada, UNA transacción en la BD
- * (o todo, o nada — adiós a las ~20 llamadas de olas que podían dejar la BD a medias).
- * El sello real lo hace el RPC (user_id = dueño del proyecto, proyecto_id del parámetro);
- * aquí solo se manda el mismo estado limpio que serializaba el camino legado.
- * @returns false si la función no está desplegada todavía (el llamador cae al legado).
- */
-async function saveToSupabaseViaRpc(
+/** Payload jsonb que espera cm_save_state: filas saneadas + integrantes anidados + config. */
+function payloadCmDeEstado(
   state: CivilManagerState,
-  proyectoUid: string,
   userId: string,
-): Promise<boolean> {
-  const payload = {
+  proyectoUid: string,
+): Record<string, unknown> {
+  return {
     factoresPrestaciones: limpiarFilas(
       'cm_factores_prestacionales',
       state.factoresPrestaciones,
@@ -126,59 +70,55 @@ async function saveToSupabaseViaRpc(
     config_listas: state.config_listas,
     categorias_apu: state.categorias_apu,
   };
-  const { error } = await supabase.rpc('cm_save_state', {
-    p_proyecto_id: proyectoUid,
-    p_state: payload,
-    // Concurrencia optimistic: el updated_at leído al cargar; la BD rechaza si alguien
-    // guardó después (conflicto_concurrencia). null = check desactivado.
-    p_updated_at: updatedAtLeido,
-  });
-  if (!error) {
-    // La RPC subió el reloj de la BD: el valor leído quedó VIEJO y haría conflicto con el
-    // siguiente autosave. Sin check hasta la próxima carga del proyecto.
-    updatedAtLeido = null;
-    return true;
-  }
-  if (rpcSaveStateNoDesplegada(error)) return false;
-  // Conflicto de concurrencia: no es error de transporte — mensaje accionable, sin fallback.
-  if (/conflicto_concurrencia/i.test(error.message)) {
-    throw new Error(
-      'Otro dispositivo guardó cambios más recientes de este proyecto. Recargue la página para verlos y volver a intentar.',
-    );
-  }
-  // Error real de la RPC (autorización, FK, validación): NO hay fallback — el legado
-  // fallaría igual y sin atomicidad. Se propaga para que la UI deje de decir "guardando".
-  throw new Error(`cm_save_state: ${error.message}`);
 }
 
-/**
- * Guarda en Supabase: RPC atómica cm_save_state primero; si la migración aún no se aplicó
- * (404/función-no-existe), cae al camino legado de olas paralelas. Sin proyecto activo no
- * se puede atribuir ninguna fila → solo IDB (IndexedDB, espejo local).
- */
-export async function saveToSupabase(state: CivilManagerState): Promise<void> {
-  const userId = await getUserId();
-  if (!userId) return;
-  const proyectoId = localStorage.getItem('cm_proyecto_activo_id') || null;
-  if (!proyectoId) {
-    // Sin proyecto no se puede atribuir ninguna fila (proyecto_id uuid not null) — mandar
-    // '' rompía con 400 (uuid inválido). Se guarda solo local hasta elegir proyecto.
-    devError('saveToSupabase: sin proyecto activo, solo IDB.');
-    return;
+/** Guard mis-usuario/mis-proyecto compartido por ambos caminos de guardado. */
+async function verificarScopeActual(scope: CmStorageScope): Promise<void> {
+  const { userId, proyectoId: proyectoUid } = scope;
+  const actual = await captureCmScope();
+  if (actual?.userId !== userId || actual.proyectoId !== proyectoUid) {
+    throw new Error('Cambió la cuenta o el proyecto. El borrador sigue en este dispositivo.');
   }
-  try {
-    if (await saveToSupabaseViaRpc(state, proyectoId, userId)) return;
-    // La RPC no existe todavía: la migración 20261112000000_cm_save_state.sql no se ha
-    // aplicado en el SQL Editor. Seguimos con el camino viejo hasta que se aplique.
-    devError(
-      'cm_save_state no desplegada: aplicar supabase/migrations/20261112000000_cm_save_state.sql en el SQL Editor. Usando camino legado de olas paralelas.',
+}
+
+/** Guarda una colección completa solo si su versión coincide con la última leída. */
+export async function saveToSupabase(
+  state: CivilManagerState,
+  scope: CmStorageScope,
+  version: string,
+): Promise<string> {
+  const { userId, proyectoId: proyectoUid } = scope;
+  await verificarScopeActual(scope);
+  const { data, error } = await supabase.rpc('cm_save_state_versioned', {
+    p_proyecto_id: proyectoUid,
+    p_state: payloadCmDeEstado(state, userId, proyectoUid),
+    p_updated_at: version,
+  });
+  if (error?.message.includes('conflicto_concurrencia')) {
+    throw new Error(
+      'Otro dispositivo guardó cambios más recientes. Se conservó tu borrador local.',
     );
-    await saveToSupabaseLegacy(state);
-  } catch (e) {
-    devError('saveToSupabase:', e);
-    // Nada traga errores aquí: un fallo del RPC o de la preparación deja la UI diciendo
-    // "guardado" mientras la BD tiene la versión anterior -> al recargar, presupuestos y
-    // APU revertidos. Se propaga.
-    throw e instanceof Error ? e : new Error(String(e));
   }
+  if (error || !data)
+    throw new Error(`cm_save_state_versioned: ${error?.message ?? 'sin versión confirmada'}`);
+  return data;
+}
+
+/** Guardado FORZADO (H-02, resolución «mi borrador gana»): usa la firma antigua cm_save_state
+ *  (p_updated_at default null = sin check de versión, migración 20261123000002 la conserva)
+ *  y devuelve la versión vigente releyendo el proyecto para re-armar el reloj del cliente. */
+export async function saveForzadoSupabase(
+  state: CivilManagerState,
+  scope: CmStorageScope,
+): Promise<string> {
+  const { userId, proyectoId: proyectoUid } = scope;
+  await verificarScopeActual(scope);
+  const { error } = await supabase.rpc('cm_save_state', {
+    p_proyecto_id: proyectoUid,
+    p_state: payloadCmDeEstado(state, userId, proyectoUid),
+  });
+  if (error) throw new Error(`cm_save_state: ${error.message}`);
+  const relectura = await loadFromSupabase(scope);
+  if (!relectura) throw new Error('cm_save_state: sin versión confirmada tras el guardado.');
+  return relectura.version;
 }

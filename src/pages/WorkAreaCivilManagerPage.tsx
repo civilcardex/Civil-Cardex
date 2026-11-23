@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { Navigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, Navigate, useParams } from 'react-router-dom';
 import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { parseManagerSplat } from '../modules/civilflow/components/workarea/tabRoute.ts';
 import { devError } from '../utils/devError.ts';
 import { marcarNavInterna } from '../utils/internalNavigation.ts';
-import { fetchCmProyectos } from '../modules/civilmanager/services/cmProjectsService.ts';
+import { fetchCmProyectoById } from '../modules/civilmanager/services/cmProjectsService.ts';
 import { CargandoProyecto } from '../modules/civilflow/components/shared/LoadingProject';
 
 // Reutilizada por <CargandoProyecto> (el loader compartido de la app).
@@ -24,49 +24,59 @@ function WorkAreaCivilManagerPage() {
   // Switch pendiente evaluado EN RENDER: la URL ya apunta a otro proyecto — nunca montar
   // el workspace del proyecto viejo, aunque el efecto aún no haya arrancado.
   const switchPendiente = proyectoId != null && proyectoId !== idActivo;
-  const [switching, setSwitching] = useState(switchPendiente);
-  const switchingRef = useRef(false);
+  const [failedSwitch, setFailedSwitch] = useState<{ id: string; message: string } | null>(null);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    if (!proyectoId || switchingRef.current) return;
-    if (proyectoId === localStorage.getItem('cm_proyecto_activo_id')) return;
-    switchingRef.current = true;
+    if (!proyectoId || !switchPendiente) return;
+    let cancelled = false;
     void (async () => {
-      // Fuera del cuerpo síncrono del efecto (regla set-state-in-effect).
-      await Promise.resolve();
-      // Puntero ANTES del switch: lo único que permite hacer rollback.
-      const idAnterior = localStorage.getItem('cm_proyecto_activo_id');
-      setSwitching(true);
       try {
-        const rows = await fetchCmProyectos();
-        // Validar ANTES de mover el puntero: RLS filtra proyectos ajenos o sin acceso —
-        // un id ausente de rows (o fetch fallido, devuelve []) no debe robar el activo.
-        if (!rows.some((r) => r.id === proyectoId)) {
-          throw new Error('proyecto-no-encontrado-o-sin-acceso');
+        const project = await fetchCmProyectoById(proyectoId);
+        if (cancelled) return;
+        if (!project) {
+          setFailedSwitch({ id: proyectoId, message: 'Proyecto no encontrado o sin acceso.' });
+          return;
         }
-        const nombre = rows.find((r) => r.id === proyectoId)?.nombre || '';
         localStorage.setItem('cm_proyecto_activo_id', proyectoId);
-        localStorage.setItem('cm_proyecto_activo_nombre', nombre);
+        localStorage.setItem('cm_proyecto_activo_nombre', project.nombre);
         marcarNavInterna();
         window.location.replace(`/civilmanagerareatrabajo/${proyectoId}${cola}`);
       } catch (e) {
-        devError('abrir proyecto CM desde URL:', e);
-        // Rollback: recarga completa — el workspace del proyecto previo solo existe
-        // en storage tras restaurar el puntero; los providers se re-nacen con la recarga.
-        if (idAnterior != null) localStorage.setItem('cm_proyecto_activo_id', idAnterior);
-        marcarNavInterna();
-        window.location.replace(
-          idAnterior != null ? `/civilmanagerareatrabajo/${idAnterior}${cola}` : '/perfil',
-        );
+        if (!cancelled) {
+          devError('abrir proyecto CM desde URL:', e);
+          setFailedSwitch({ id: proyectoId, message: 'No se pudo consultar el proyecto.' });
+        }
       }
     })();
-  }, [proyectoId, switching, cola]);
+    return () => {
+      cancelled = true;
+    };
+  }, [proyectoId, switchPendiente, cola, retry]);
 
   if (!proyectoId && activeId) {
     return <Navigate to={`/civilmanagerareatrabajo/${activeId}${cola}`} replace />;
   }
   // Misma pantalla que el resto de la app (CargandoProyecto) para no encadenar dos al abrir.
-  if (switchPendiente || switching) {
+  if (switchPendiente && failedSwitch && failedSwitch.id === proyectoId) {
+    return (
+      <div className="cm-stub">
+        <p role="alert">{failedSwitch.message}</p>
+        <button
+          type="button"
+          className="cm-btn"
+          onClick={() => {
+            setFailedSwitch(null);
+            setRetry((value) => value + 1);
+          }}
+        >
+          Reintentar
+        </button>{' '}
+        <Link to="/perfil">Volver al perfil</Link>
+      </div>
+    );
+  }
+  if (switchPendiente) {
     return <CargandoProyecto />;
   }
   return (
