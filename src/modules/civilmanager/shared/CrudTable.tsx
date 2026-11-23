@@ -96,7 +96,7 @@ export function CrudTable<T extends { id: string }>({
     <XlWrap>
       {title && <TableHeader title={title} icon={icon} />}
       <DimEnLectura>
-        <XlScroll>
+        <XlScroll label={title}>
           <table>
             <thead>
               <tr>
@@ -138,7 +138,7 @@ export function CrudTable<T extends { id: string }>({
                         {c.render(fila, editing, ctx)}
                       </td>
                     ))}
-                    <XlAct onDelete={() => del(i)} />
+                    <XlAct onDelete={() => del(i)} onEdit={ctx.editRow} />
                   </tr>
                 );
               })}

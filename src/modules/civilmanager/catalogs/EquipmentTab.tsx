@@ -12,6 +12,14 @@ import type { Equipo } from '../types.ts';
 
 /** Tab de equipos (máquinas con costo_hora): edita precio y proveedor, y marca en rojo la fecha de cotización con más de 180 días (isCotOld). */
 export function EquiposTab() {
+  return (
+    <EditableSection dim={false}>
+      <EquiposTabBody />
+    </EditableSection>
+  );
+}
+
+function EquiposTabBody() {
   const { state, patch } = useCivilManager();
 
   const countUsage = useMemo(() => {
@@ -134,7 +142,7 @@ export function EquiposTab() {
   ];
 
   return (
-    <EditableSection dim={false}>
+    <>
       <CrudTable
         title="Equipos"
         icon="equipos_tabla"
@@ -153,6 +161,6 @@ export function EquiposTab() {
         emptyLabel="Sin equipos"
       />
       <ExcelPreviewModal excel={excel} />
-    </EditableSection>
+    </>
   );
 }

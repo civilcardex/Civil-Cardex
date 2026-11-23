@@ -73,6 +73,9 @@
 }
 
 :root {
+  /* App dark-only: el navegador temea canvas, scrollbars y controles nativos en oscuro. */
+  color-scheme: dark;
+
   --bg: #111317;
   --bg2: #1a1c20;
   --bg3: #1e2024;
@@ -150,6 +153,9 @@
   --glow: rgba(245, 214, 104, 0.3);
 }
 
+/* Scrollbar fina de la app: webkit es la vía en Chromium (con scrollbar-color heredado
+ *  Chromium ignora estos pseudo-elementos desde 121 — por eso NUNCA se declara aquí);
+ *  Firefox y Safari 18.2+ reciben las propiedades estándar en el @supports de abajo. */
 ::-webkit-scrollbar {
   width: 6px;
   height: 8px;
@@ -166,6 +172,14 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--acc2);
+}
+
+/* Motores SIN ::-webkit-scrollbar (Firefox, Safari 18.2+): colores estándar. */
+@supports not selector(::-webkit-scrollbar) {
+  :root {
+    scrollbar-color: var(--acc) var(--line);
+    scrollbar-width: thin;
+  }
 }
 
 .card-b::-webkit-scrollbar {

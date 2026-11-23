@@ -36,7 +36,15 @@ function EditToggleBtn(): React.JSX.Element {
     <button
       type="button"
       className={ctx.editing ? 'cm-btn cm-btn-ok' : 'cm-btn cm-btn-primary'}
-      onClick={() => ctx.setEditing(!ctx.editing)}
+      onClick={(event) => {
+        // Un toque no mueve el foco al botón en todos los navegadores. Confirma la
+        // celda enfocada antes de desmontar los controles al volver a solo lectura.
+        const focused = document.activeElement;
+        if (ctx.editing && focused instanceof HTMLElement && focused !== event.currentTarget) {
+          focused.blur();
+        }
+        ctx.setEditing(!ctx.editing);
+      }}
     >
       {ctx.editing ? 'Listo' : 'Editar'}
     </button>

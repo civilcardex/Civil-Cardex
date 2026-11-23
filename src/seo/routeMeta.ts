@@ -46,7 +46,7 @@ export const ROUTE_META: RouteMeta[] = [
     path: '/pricing',
     title: 'Precios',
     description:
-      'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con tarjeta (Lemon Squeezy).',
+      'Compre CivilCardex por módulo: CivilFlow y CivilManager, mensual, semestral o anual, con descuentos acumulativos. Pago seguro con tarjeta (Paddle).',
     changefreq: 'weekly',
     priority: '0.7',
     lastmod: '2026-10-20',

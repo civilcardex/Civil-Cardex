@@ -27,7 +27,7 @@ export default function PricingHero({ modo, setModo, periodo, setPeriodo }: Pric
       <h1 className="pricing-hero-title">Compra solo los módulos que necesitas</h1>
       <p className="text-base text-on-surface-variant max-w-2xl mx-auto">
         Pago único por el período elegido — la renovación es manual y la app le avisa antes de
-        vencer. Pago seguro con tarjeta — checkout hosteado por Lemon Squeezy.
+        vencer. Pago seguro con tarjeta — checkout hosteado por Paddle.
       </p>
       {/* Tipo de plan: individual (1 puesto) vs empresarial (puestos + volumen) */}
       <div

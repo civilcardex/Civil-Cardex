@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import './styles.css';
 import { CivilManagerProvider, useCivilManager } from './context.tsx';
 import { ConfirmDialog } from './shared/ConfirmDialog.tsx';
@@ -15,7 +15,7 @@ import { ConfigTab } from './config/ConfigTab.tsx';
 import { ApuCatalog } from './apu/ApuCatalog.tsx';
 import { PresupuestosTab } from './budgets/BudgetsTab.tsx';
 import { setAyudaContext } from '../../components/help/helpContext.ts';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   CM_CATALOGOS,
   CM_SECCIONES,
@@ -53,25 +53,50 @@ const AYUDA_INTROS_CM: Record<MainSection, string> = {
 };
 
 function CivilManagerShell() {
-  const { loaded } = useCivilManager();
+  const {
+    loaded,
+    loadError,
+    conflictoBorrador,
+    resolverConflicto,
+    avisoLegado,
+    descartarAvisoLegado,
+  } = useCivilManager();
   const navigate = useNavigate();
   const { '*': splat } = useParams<{ '*': string }>();
   const url = parseManagerSplat(splat);
-  const [mainSection, setMainSectionState] = useState<MainSection>(
-    url.seccion && CM_SECCIONES.includes(url.seccion) ? (url.seccion as MainSection) : 'catalogos',
-  );
-  const [catalogoTab, setCatalogoTabState] = useState<CatalogoTab>(
+  const mainSection: MainSection =
+    url.seccion && CM_SECCIONES.includes(url.seccion) ? (url.seccion as MainSection) : 'catalogos';
+  const catalogoTab: CatalogoTab =
     url.catalogoTab && CM_CATALOGOS.includes(url.catalogoTab)
       ? (url.catalogoTab as CatalogoTab)
-      : 'colaboradores',
-  );
+      : 'colaboradores';
+  const sectionNav = useRef<HTMLElement>(null);
+  const catalogNav = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const bars = [sectionNav.current, catalogNav.current].filter((nav) => nav !== null);
+    function revealActive(nav: HTMLElement) {
+      const current = nav.querySelector('[aria-current="true"]');
+      if (!current) return;
+      const visible = nav.getBoundingClientRect();
+      const item = current.getBoundingClientRect();
+      if (item.left < visible.left) nav.scrollLeft += item.left - visible.left;
+      else if (item.right > visible.right) nav.scrollLeft += item.right - visible.right;
+    }
+    const observer =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => bars.forEach(revealActive));
+    bars.forEach((nav) => {
+      revealActive(nav);
+      observer?.observe(nav);
+    });
+    return () => observer?.disconnect();
+  }, [loaded, mainSection, catalogoTab]);
   // La URL es la verdad: setters delegan en navigate (back/adelante funcionan).
   const setMainSection = (id: MainSection): void => {
-    setMainSectionState(id);
     navigate(rutaManager(url.proyectoId, id, url.catalogoTab));
   };
   const setCatalogoTab = (id: CatalogoTab): void => {
-    setCatalogoTabState(id);
     navigate(rutaManager(url.proyectoId, mainSection, id));
   };
 
@@ -94,8 +119,19 @@ function CivilManagerShell() {
   // Tour por SECCIÓN/SUB-SECCIÓN (ped. usuario): Catálogos tiene uno por cada catálogo.
   const tour = useTour(
     mainSection === 'catalogos' ? `cm:catalogos:${catalogoTab}` : `cm:${mainSection}`,
-    loaded,
+    loaded && !loadError,
   );
+  if (loadError) {
+    return (
+      <div className="cm-stub">
+        <p role="alert">No se pudo abrir CivilManager. {loadError}</p>
+        <button type="button" className="cm-btn" onClick={() => window.location.reload()}>
+          Reintentar
+        </button>{' '}
+        <Link to="/perfil">Volver al perfil</Link>
+      </div>
+    );
+  }
   if (!loaded) {
     return (
       <div className="cm-shell">
@@ -109,7 +145,45 @@ function CivilManagerShell() {
   return (
     <div className="cm-shell">
       {tour}
-      <nav className="cm-nav" aria-label="Secciones de CivilManager">
+      {/* Banner de conflicto de versiones (H-02): el borrador pendiente ganó al cargar y cada
+       *  guardado vuelve a chocar — aquí el usuario ELIGE qué versión manda. Nada se pierde:
+       *  'nube' archiva el borrador bajo clave de rescate en IDB. */}
+      {conflictoBorrador ? (
+        <div className="cm-conflicto" role="alert">
+          <p>
+            Otro dispositivo guardó una versión más reciente de este proyecto. Tu borrador está a
+            salvo en este navegador: elige qué versión manda.
+          </p>
+          <div className="cm-conflicto-acciones">
+            <button
+              type="button"
+              className="cm-btn cm-btn-primary"
+              onClick={() => void resolverConflicto('borrador')}
+            >
+              Subir mi borrador (reemplaza la nube)
+            </button>
+            <button type="button" className="cm-btn" onClick={() => void resolverConflicto('nube')}>
+              Usar la versión de la nube (archiva mi borrador)
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {/* Respaldo legado detectado (H-08): aviso informativo, el registro IDB no se toca. */}
+      {avisoLegado && !conflictoBorrador ? (
+        <div className="cm-conflicto" role="status">
+          <p>
+            Hay un respaldo anterior de CivilManager en este navegador (creado sin proyecto activo).
+            No se borró: sigue el procedimiento de recuperación en docs/save-rollout.md antes de
+            eliminar datos del navegador.
+          </p>
+          <div className="cm-conflicto-acciones">
+            <button type="button" className="cm-btn" onClick={descartarAvisoLegado}>
+              Entendido
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <nav ref={sectionNav} className="cm-nav" aria-label="Secciones de CivilManager">
         {MAIN_SECTIONS.map((s) => (
           <button
             key={s.id}
@@ -125,7 +199,7 @@ function CivilManagerShell() {
       </nav>
 
       {mainSection === 'catalogos' && (
-        <nav className="cm-nav" aria-label="Catálogos">
+        <nav ref={catalogNav} className="cm-nav" aria-label="Catálogos">
           {CATALOGO_TABS.map((t) => (
             <button
               key={t.id}

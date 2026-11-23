@@ -11,6 +11,14 @@ import type { Proveedor } from '../types.ts';
 
 /** Tab de proveedores: contacto/nit/teléfonos y los tipos de suministro que manejan. Se borra solo si ningún equipo o insumo los referencia. */
 export function ProveedoresTab() {
+  return (
+    <EditableSection dim={false}>
+      <ProveedoresTabBody />
+    </EditableSection>
+  );
+}
+
+function ProveedoresTabBody() {
   const { state, patch } = useCivilManager();
 
   const countUsage = useMemo(() => {
@@ -151,7 +159,7 @@ export function ProveedoresTab() {
   ];
 
   return (
-    <EditableSection dim={false}>
+    <>
       <CrudTable
         title="Proveedores"
         icon="proveedores_tabla"
@@ -170,6 +178,6 @@ export function ProveedoresTab() {
         emptyLabel="Sin proveedores"
       />
       <ExcelPreviewModal excel={excel} />
-    </EditableSection>
+    </>
   );
 }

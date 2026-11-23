@@ -2370,6 +2370,10 @@ export interface Database {
         Args: { p_plano_id: number; p_data: unknown; p_updated_at?: string | null };
         Returns: unknown;
       };
+      save_plano_data_versioned: {
+        Args: { p_plano_id: number; p_data: unknown; p_updated_at: string | null };
+        Returns: string;
+      };
       save_proyecto: {
         Args: { p_codigo: string; p_nombre: string };
         Returns: unknown;
@@ -2405,6 +2409,10 @@ export interface Database {
       cm_save_state: {
         Args: { p_proyecto_id: string; p_state: unknown; p_updated_at?: string | null };
         Returns: unknown;
+      };
+      cm_save_state_versioned: {
+        Args: { p_proyecto_id: string; p_state: unknown; p_updated_at: string };
+        Returns: string;
       };
       suscripciones_habilitadas: {
         Args: Record<string, never>;

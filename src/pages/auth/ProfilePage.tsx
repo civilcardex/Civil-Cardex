@@ -79,6 +79,8 @@ function ProfilePage() {
   const [proyectosOpen, setProyectosOpen] = useState(false);
   const [proyectos, setProyectos] = useState<ProyectoRow[]>([]);
   const [cmProyectos, setCmProyectos] = useState<CmProyectoRow[]>([]);
+  const [cmListError, setCmListError] = useState(false);
+  const [proyRetry, setProyRetry] = useState(0);
   const [filtroModulo, setFiltroModulo] = useState<'todos' | 'cf' | 'cm'>('todos');
   const [proyLoading, setProyLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -183,10 +185,12 @@ function ProfilePage() {
     async function loadProyectos() {
       setProyLoading(true);
       try {
-        const [cf, cm] = await Promise.all([fetchProyectos(), fetchCmProyectos()]);
+        const [cf, cm] = await Promise.allSettled([fetchProyectos(), fetchCmProyectos()]);
         if (!ignore) {
-          setProyectos(cf);
-          setCmProyectos(cm);
+          if (cf.status === 'fulfilled') setProyectos(cf.value);
+          if (cm.status === 'fulfilled') setCmProyectos(cm.value);
+          else devError('No se pudieron cargar los proyectos de CivilManager:', cm.reason);
+          setCmListError(cm.status === 'rejected');
         }
       } finally {
         if (!ignore) setProyLoading(false);
@@ -196,7 +200,7 @@ function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [proyRetry]);
 
   function handleEditStart(field: string) {
     setEditField(field);
@@ -510,6 +514,8 @@ function ProfilePage() {
             onToggleOpen={() => setProyectosOpen((prev) => !prev)}
             proyectos={proyectos}
             cmProyectos={cmProyectos}
+            cmListError={cmListError}
+            onRetryList={() => setProyRetry((attempt) => attempt + 1)}
             proyLoading={proyLoading}
             filtroModulo={filtroModulo}
             onFiltroModulo={setFiltroModulo}

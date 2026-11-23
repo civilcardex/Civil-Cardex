@@ -10,6 +10,8 @@ interface ProjectsSectionProps {
   onToggleOpen: () => void;
   proyectos: ProyectoRow[];
   cmProyectos: CmProyectoRow[];
+  cmListError: boolean;
+  onRetryList: () => void;
   proyLoading: boolean;
   filtroModulo: 'todos' | 'cf' | 'cm';
   onFiltroModulo: (f: 'todos' | 'cf' | 'cm') => void;
@@ -36,6 +38,8 @@ export function ProjectsSection({
   onToggleOpen,
   proyectos,
   cmProyectos,
+  cmListError,
+  onRetryList,
   proyLoading,
   filtroModulo,
   onFiltroModulo,
@@ -131,14 +135,25 @@ export function ProjectsSection({
             </div>
           ) : null}
 
+          {!proyLoading && cmListError && (
+            <div className="px-6 py-3 text-sm">
+              <p role="alert">No se pudieron consultar los proyectos de CivilManager.</p>
+              <button type="button" className="underline" onClick={onRetryList}>
+                Reintentar
+              </button>
+            </div>
+          )}
+
           {proyLoading ? (
             <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
               Cargando proyectos...
             </div>
           ) : proyectos.length + cmProyectos.length === 0 ? (
-            <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
-              Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
-            </div>
+            !cmListError && (
+              <div className="px-6 py-8 text-center text-on-surface-variant text-sm">
+                Aún no hay proyectos. Crea uno desde "Nuevo proyecto".
+              </div>
+            )
           ) : (
             <>
               <div className="px-6 py-2 flex gap-2 border-b border-outline-variant bg-surface-container-low">

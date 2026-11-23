@@ -9,7 +9,7 @@ import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialo
 
 // Supabase de mentira: CheckoutModal pide la URL del checkout al montar (open=true) — el
 // mock evita red y deja el modal en su estado de error de pasarela (camino real mientras
-// las edges Lemon no estén desplegadas).
+// las edges de pago no estén desplegadas).
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     functions: {

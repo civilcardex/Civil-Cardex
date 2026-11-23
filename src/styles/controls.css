@@ -164,3 +164,70 @@ input[type='number'].ni::-webkit-inner-spin-button {
 input[type='number'].ni {
   -moz-appearance: textfield;
 }
+.viewer-plan-steps,
+.viewer-drawing-actions {
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.viewer-plan-steps button,
+.viewer-drawing-actions button,
+.viewer-drawing-actions details {
+  border: 1px solid var(--line, #52676e);
+  border-radius: 4px;
+  padding: 4px 8px;
+  background: var(--surface, #1b2631);
+  color: inherit;
+}
+
+.viewer-drawing-actions {
+  position: absolute;
+  z-index: 10;
+  inset: 8px 8px auto;
+  flex-wrap: wrap;
+  pointer-events: none;
+}
+
+.viewer-drawing-actions > :not(output) {
+  pointer-events: auto;
+}
+.viewer-drawing-actions output:not(:empty) {
+  padding: 5px;
+  background: #17232d;
+  color: #fff;
+}
+.viewer-drawing-actions:empty,
+.viewer-drawing-actions output:empty,
+.viewer-coarse-action {
+  display: none;
+}
+.viewer-drawing-actions form {
+  display: grid;
+  gap: 4px;
+  max-width: 14rem;
+}
+.viewer-drawing-actions input {
+  width: 100%;
+}
+
+@media (any-pointer: coarse) {
+  .viewer-plan-bar {
+    min-height: 48px;
+  }
+  .viewer-plan-control,
+  .viewer-drawing-actions button,
+  .viewer-drawing-actions summary {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .viewer-drawing-actions summary {
+    align-content: center;
+  }
+  .viewer-coarse-action {
+    display: inline-block;
+  }
+  .visor-sidebar button {
+    min-height: 44px;
+  }
+}

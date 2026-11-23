@@ -53,17 +53,28 @@ jobs:
             echo "Push a main: suite completa (pre-release) con cobertura — los thresholds de vitest.config.ts (ratchet) solo aplican cuando corre coverage."
             npx vitest run --coverage.enabled
           else
-            DIFF=$(git diff --name-only origin/main...HEAD -- 'src/**')
-            CHANGED=$(printf '%s' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -v '.test.' || true)
-            if [ -n "$CHANGED" ]; then
+            DIFF=$(git diff --name-only --diff-filter=ACMR origin/main...HEAD -- 'src/**')
+            mapfile -t SPECS < <(printf '%s\n' "$DIFF" | grep -E '\.(test|spec)\.(ts|tsx)$' || true)
+            mapfile -t CHANGED < <(printf '%s\n' "$DIFF" | grep -E '\.(ts|tsx)$' | grep -vE '\.(test|spec)\.(ts|tsx)$' || true)
+            if [ "${#SPECS[@]}" -gt 0 ]; then
+              npx vitest run "${SPECS[@]}"
+            fi
+            if [ "${#CHANGED[@]}" -gt 0 ]; then
               echo "Archivos fuente modificados (PR):"
-              echo "$CHANGED"
-              # Sin comillas: cada archivo es un argumento aparte para vitest related
-              npx vitest related --run $CHANGED
+              printf '%s\n' "${CHANGED[@]}"
+              npx vitest related --run "${CHANGED[@]}"
             else
               echo "Sin archivos .ts/.tsx modificados; se omiten los tests relacionados."
             fi
           fi
+
+      - name: Contratos de persistencia SQL y Paddle (sin servicios externos)
+        shell: bash
+        run: |
+          npm install --prefix "${RUNNER_TEMP}/civilcardex-sql" --no-package-lock --ignore-scripts @electric-sql/pglite@0.6.0
+          NODE_PATH="${RUNNER_TEMP}/civilcardex-sql/node_modules" node supabase/tests/saveContracts.mjs
+          node --experimental-strip-types --test supabase/tests/paymentContracts.test.mjs
+          npx --yes deno@2.9.6 check --no-lock supabase/functions/paddle-webhook/index.ts supabase/functions/crear-checkout/index.ts supabase/functions/verificar-pago/index.ts
 
       - name: Build
         env:
@@ -75,8 +86,8 @@ jobs:
       - name: Bundle budget
         run: npm run bundle:budget
 
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
 
       # Advisory informativo complementario: lista los archivos >700 l que NO estén en el
       # baseline (el budget ya falla por los congelados; esto avisa si uno NUEVO engorda).

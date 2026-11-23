@@ -1,79 +1,42 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-const captured = vi.hoisted(() => [] as Array<{ table: string; rows: unknown; opts: unknown }>);
-// Resultado configurable del select de integrantes existentes (flujo upsert→delete-stale).
-const integrantesExistentes = vi.hoisted(() => ({
-  data: [] as Array<{ id: string }>,
-  fail: false,
-}));
-// RPC cm_save_state configurable: fail=true = migración sin aplicar (404/PGRST202, el
-// guardado cae al camino LEGADO de olas); error=error real de la RPC (se propaga).
+// RPC configurable: error=error real de la RPC (se propaga). El camino LEGADO de olas fue
+// eliminado (storage/legacy.ts fuera, H-13): solo queda el guardado por RPC con versión.
 const rpcSaveState = vi.hoisted(() => ({
-  fail: true,
   error: null as { code: string; message: string } | null,
   captured: [] as Array<{ fn: string; args: Record<string, unknown> }>,
 }));
-
-// El select de existentes se espera directo (`await supabase.from(t).select('id').eq(...)`)
-// y el del dueño encadena `.maybeSingle()`. La cadena devuelve un objeto que es AMBAS
-// cosas: awaitable (para el select de existentes) y con maybeSingle (para el del dueño).
-const eqChain = (owner: string | null) => ({
-  then: (res: (v: unknown) => void) => res({ data: [], error: null }),
-  maybeSingle: async () => ({ data: owner ? { user_id: owner } : null, error: null }),
-});
 
 vi.mock('../../../lib/supabase', () => ({
   supabase: {
     auth: { getSession: async () => ({ data: { session: { user: { id: 'u1' } } } }) },
     rpc: async (fn: string, args: Record<string, unknown>) => {
-      if (rpcSaveState.fail)
+      // El forzado re-lee el proyecto para confirmar su versión: snapshot mínimo.
+      if (fn === 'cm_get_data')
         return {
-          data: null,
-          error: {
-            code: 'PGRST202',
-            message:
-              'Could not find the function public.cm_save_state(uuid, jsonb) in the schema cache',
-          },
+          data: { proyectos: [{ id: args.p_proyecto_id, updated_at: 'committed' }], config: {} },
+          error: null,
         };
       if (rpcSaveState.error) return { data: null, error: rpcSaveState.error };
       rpcSaveState.captured.push({ fn, args });
-      return { data: null, error: null };
+      return { data: 'committed', error: null };
     },
-    from: (table: string) => ({
-      upsert: async (rows: unknown, opts: unknown) => {
-        captured.push({ table, rows, opts });
-        return { error: null };
-      },
-      select: () => ({
-        in: async () =>
-          integrantesExistentes.fail
-            ? { data: null, error: { message: 'select fail' } }
-            : { data: integrantesExistentes.data, error: null },
-        // reconciliación de borrados por tabla: sin filas existentes no hay stale
-        eq: () => eqChain('u1'),
-      }),
-      delete: () => ({
-        in: (_col: string, ids: string[]) => {
-          captured.push({ table, rows: ids, opts: 'delete' });
-          return { error: null };
-        },
-      }),
-      insert: async (rows: unknown) => {
-        captured.push({ table, rows, opts: 'insert' });
-        return { error: null };
-      },
-    }),
   },
 }));
 
-// El upsert debe viajar con defaultToNull:false (Prefer: missing=default): sin él, PostgREST
-// rellena las claves omitidas por el saneo con NULL (23502) en vez del default de la columna.
-function upsertOptsOf(table: string): { defaultToNull?: boolean } | null {
-  const c = captured.find((x) => x.table === table && x.opts !== 'insert');
-  return (c?.opts as { defaultToNull?: boolean } | undefined) ?? null;
-}
-
 import { defaultState, civilManagerSave } from '../storage.ts';
+import { saveToSupabase } from '../storage/rpc.ts';
+
+vi.mock('../storage/session.ts', () => ({
+  cmScopeKey: ({ userId, proyectoId }: { userId: string; proyectoId: string }) =>
+    `${userId}:${proyectoId}`,
+  captureCmScope: async () => {
+    const proyectoId = (globalThis as { localStorage: Storage }).localStorage.getItem(
+      'cm_proyecto_activo_id',
+    );
+    return proyectoId ? { userId: 'u1', proyectoId } : null;
+  },
+}));
 
 const PROYECTO = '11111111-1111-4111-8111-111111111111';
 
@@ -91,15 +54,6 @@ function resetLS(withProject: boolean) {
     },
   } as Storage;
 }
-
-const rowsOf = (table: string) =>
-  captured
-    .filter((c) => c.table === table && c.opts !== 'insert')
-    .flatMap((c) => c.rows as Record<string, unknown>[]);
-const deletesOf = (table: string) =>
-  captured
-    .filter((c) => c.table === table && c.opts === 'delete')
-    .flatMap((c) => c.rows as string[]);
 
 // 400/409 en consola (orig. usuario): FK proveedor_id:'' (409), columnas cliente sin
 // columna BD (400), proyecto ausente (400 uuid inválido) y cantidad NaN (400 not-null).
@@ -193,134 +147,26 @@ function seedState() {
 
 describe('civilManagerSave sanea payloads Supabase', () => {
   beforeEach(() => {
-    captured.length = 0;
-    integrantesExistentes.data = [];
-    integrantesExistentes.fail = false;
-    rpcSaveState.fail = true;
     rpcSaveState.error = null;
     rpcSaveState.captured.length = 0;
     resetLS(true);
   });
 
-  it("proveedor_id '' viaja como null (FK) y sin columnas de más", async () => {
-    await civilManagerSave(seedState());
-    const eq = rowsOf('cm_equipos');
-    expect(eq).toHaveLength(1);
-    expect(eq[0].proveedor_id).toBeNull();
-    expect(eq[0].proyecto_id).toBe(PROYECTO);
-    const ins = rowsOf('cm_insumos');
-    expect(ins[0].proveedor_id).toBeNull();
-  });
-
-  it('tipo_precio_formulario/alarmas_precio_faltante (columnas dropeadas, M-14) NO viajan', async () => {
-    await civilManagerSave(seedState());
-    const pp = rowsOf('cm_presupuestos');
-    expect(pp).toHaveLength(1);
-    expect(pp[0]).not.toHaveProperty('tipo_precio_formulario');
-    expect(pp[0]).not.toHaveProperty('alarmas_precio_faltante');
-    expect(pp[0]).toHaveProperty('items');
-    expect(pp[0]).toHaveProperty('aiu_override');
-  });
-
-  it('integrantes con cantidad NaN viaja como 0 (not-null/check)', async () => {
-    await civilManagerSave(seedState());
-    const ins = rowsOf('cm_cuadrilla_integrantes');
-    expect(ins).toHaveLength(1);
-    expect(ins[0].cantidad).toBe(0);
-  });
-
-  it('es_basico/fecha_cierre null se OMITEN para que la BD aplique su default (23502)', async () => {
-    const s = seedState();
-    s.apus = [{ ...s.apus[0], es_basico: null as unknown as boolean }];
-    s.presupuestos = [{ ...s.presupuestos[0], fecha_cierre: null as unknown as string }];
-    await civilManagerSave(s);
-    const apu = rowsOf('cm_apus');
-    expect(apu).toHaveLength(1);
-    expect(apu[0]).not.toHaveProperty('es_basico');
-    const pp = rowsOf('cm_presupuestos');
-    expect(pp).toHaveLength(1);
-    expect(pp[0]).not.toHaveProperty('fecha_cierre');
-  });
-
-  // NaN en columna no anulable se omite; observaciones null también; el upsert viaja con
-  // defaultToNull:false para que las omitidas reciban el DEFAULT de la columna, no null.
-  it('NaN en columna no anulable se omite; observaciones null también; defaultToNull:false', async () => {
-    const s = seedState();
-    s.apus = [{ ...s.apus[0], es_basico: NaN as unknown as boolean }];
-    s.presupuestos = [{ ...s.presupuestos[0], observaciones: null as unknown as string }];
-    await civilManagerSave(s);
-    expect(rowsOf('cm_apus')[0]).not.toHaveProperty('es_basico');
-    expect(rowsOf('cm_presupuestos')[0]).not.toHaveProperty('observaciones');
-    expect(upsertOptsOf('cm_apus')?.defaultToNull).toBe(false);
-    expect(upsertOptsOf('cm_presupuestos')?.defaultToNull).toBe(false);
-  });
-
-  // Columnas ANULABLES: null sí viaja (limpiar el valor del presupuesto padre/snap).
-  it('null en columnas anulables (parent_id, perfil_pais_snap) se conserva', async () => {
-    const s = seedState();
-    s.presupuestos = [
-      {
-        ...s.presupuestos[0],
-        parent_id: null,
-        perfil_pais_snap: null,
-      },
-    ];
-    await civilManagerSave(s);
-    const pp = rowsOf('cm_presupuestos')[0];
-    expect(pp).toHaveProperty('parent_id', null);
-    expect(pp).toHaveProperty('perfil_pais_snap', null);
-  });
-
-  it('cantidad decimal viaja tal cual (numeric 6,2) y el integrante sin cargo se salta (400 insert)', async () => {
-    const s = seedState();
-    s.cuadrillas = [
-      {
-        id: 'q1',
-        codigo: 'Q1',
-        descripcion: 'Cuadrilla 1',
-        integrantes: [
-          { id: 'it1', cargo_id: 'c1', cantidad: 1.5 },
-          { id: 'it2', cargo_id: '', cantidad: 2 },
-        ],
-      },
-    ];
-    await civilManagerSave(s);
-    const ins = rowsOf('cm_cuadrilla_integrantes');
-    expect(ins).toHaveLength(1);
-    expect(ins[0].id).toBe('it1');
-    expect(ins[0].cantidad).toBe(1.5);
-  });
-
-  it('integrantes stale se borran tras un upsert exitoso (sin vaciado previo)', async () => {
-    integrantesExistentes.data = [{ id: 'it-vieja' }];
-    await civilManagerSave(seedState());
-    expect(upsertOptsOf('cm_cuadrillas')).not.toBeNull();
-    const borradas = deletesOf('cm_cuadrilla_integrantes');
-    expect(borradas).toEqual(['it-vieja']);
-  });
-
-  it('fallo del select de existentes: sin delete (los datos previos quedan intactos)', async () => {
-    integrantesExistentes.fail = true;
-    await civilManagerSave(seedState());
-    expect(deletesOf('cm_cuadrilla_integrantes')).toHaveLength(0);
-  });
-
-  it('sin proyecto activo no se dispara ningún upsert a la nube', async () => {
+  it('sin proyecto activo no se dispara ninguna RPC de guardado', async () => {
     resetLS(false);
     await civilManagerSave(seedState());
-    expect(captured.filter((c) => c.table === 'cm_equipos')).toHaveLength(0);
-    expect(captured.filter((c) => c.table === 'cm_presupuestos')).toHaveLength(0);
+    expect(rpcSaveState.captured).toHaveLength(0);
   });
 
-  // ─── Camino RPC cm_save_state (migración aplicada): una llamada, cero olas ───
+  // ─── Camino RPC cm_save_state_versioned: una llamada, cero olas ───
 
-  it('RPC desplegada: UNA llamada cm_save_state con el estado completo y cero olas', async () => {
-    rpcSaveState.fail = false;
-    await civilManagerSave(seedState());
+  it('UNA llamada cm_save_state_versioned con el estado completo y cero olas', async () => {
+    await saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base');
     expect(rpcSaveState.captured).toHaveLength(1);
     const { fn, args } = rpcSaveState.captured[0];
-    expect(fn).toBe('cm_save_state');
+    expect(fn).toBe('cm_save_state_versioned');
     expect(args.p_proyecto_id).toBe(PROYECTO);
+    expect(args.p_updated_at).toBe('base');
     const st = args.p_state as Record<string, unknown>;
     // Claves EXACTAS que espera la migración (nombres de cliente, sin extras).
     expect(Object.keys(st).sort()).toEqual(
@@ -338,7 +184,7 @@ describe('civilManagerSave sanea payloads Supabase', () => {
         'categorias_apu',
       ].sort(),
     );
-    // El saneo viaja igual que en el legado: FK '' → null.
+    // El saneo del payload: FK '' → null (400/409 en consola, orig. usuario).
     const equipos = st.equipos as Array<{ proveedor_id: string | null }>;
     expect(equipos[0].proveedor_id).toBeNull();
     // Integrantes anidados: cantidad NaN → 0 y el integrante sin cargo no viaja.
@@ -347,15 +193,37 @@ describe('civilManagerSave sanea payloads Supabase', () => {
       integrantes: Array<{ id: string; cargo_id: string; cantidad: number }>;
     }>;
     expect(cuadrillas[0].integrantes).toEqual([{ id: 'it1', cargo_id: 'c1', cantidad: 0 }]);
-    // Cero round-trips de olas (todo fue por la RPC).
-    expect(captured).toHaveLength(0);
+    // Columnas dropeadas (M-14) fuera del payload.
+    const pp = (st.presupuestos as Array<Record<string, unknown>>)[0];
+    expect(pp).not.toHaveProperty('tipo_precio_formulario');
+    expect(pp).not.toHaveProperty('alarmas_precio_faltante');
   });
 
-  it('RPC con error real (no 404): se propaga y NO cae al legado', async () => {
-    rpcSaveState.fail = false;
+  it('conflicto de versión: mensaje accionable y CERO llamadas de guardado de más', async () => {
+    rpcSaveState.error = { code: 'P0001', message: 'conflicto_concurrencia' };
+    await expect(
+      saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base'),
+    ).rejects.toThrow(/Otro dispositivo/);
+    expect(rpcSaveState.captured).toHaveLength(0);
+  });
+
+  it('RPC con error real (no conflicto): se propaga sin caer a ningún camino alterno', async () => {
     rpcSaveState.error = { code: '23503', message: 'violates foreign key constraint' };
-    await expect(civilManagerSave(seedState())).rejects.toThrow(/cm_save_state/);
-    // Sin upserts de olas: el error real no se enmascara reintentando por tabla.
-    expect(captured).toHaveLength(0);
+    await expect(
+      saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base'),
+    ).rejects.toThrow(/cm_save_state_versioned/);
+    expect(rpcSaveState.captured).toHaveLength(0);
+  });
+
+  it('guardado FORZADO (resolución «mi borrador gana») usa la firma sin reloj', async () => {
+    const { saveForzadoSupabase } = await import('../storage/rpc.ts');
+    const version = await saveForzadoSupabase(seedState(), {
+      userId: 'u1',
+      proyectoId: PROYECTO,
+    });
+    expect(version).toBe('committed');
+    const { fn, args } = rpcSaveState.captured[0];
+    expect(fn).toBe('cm_save_state');
+    expect(args.p_updated_at).toBeUndefined();
   });
 });

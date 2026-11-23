@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { migrateState, defaultState } from '../storage.ts';
-import { calcAPU, parseNum } from '../calc.ts';
+import { calcAPU, parseNum, parseNumInput } from '../calc.ts';
 import { findContadorBajante } from '../../civilflow/utils/writeDiameterToDrawing.ts';
 // findContadorBajante vive en civilflow/utils — path relativo desde civilmanager/__tests:
 import type { Apu, Insumo } from '../types.ts';
@@ -165,4 +165,16 @@ describe('parseNum', () => {
   ])('parseNum(%p) → %p', (input, expected) => {
     expect(parseNum(input)).toBe(expected);
   });
+});
+
+describe('validación completa de importes', () => {
+  it.each([
+    ['1.234,56', 1234.56],
+    ['1,234.56', 1234.56],
+    ['12 345,67', 12345.67],
+  ])('acepta %s sin cambiar su valor', (input, value) => expect(parseNumInput(input)).toBe(value));
+  it.each(['1,234', '1.234', '12,5.00', '45abc', '1e3', '12 34'])(
+    'no confirma el importe ambiguo o incompleto %s',
+    (input) => expect(parseNumInput(input)).toBeNull(),
+  );
 });

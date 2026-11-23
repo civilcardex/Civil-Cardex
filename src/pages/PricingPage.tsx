@@ -62,7 +62,7 @@ function PricingSuscripciones() {
   // Aviso informativo (no error) del resultado de la verificación al volver del checkout.
   const [avisoPago, setAvisoPago] = useState('');
 
-  // Vuelta desde el checkout hosteado de Lemon Squeezy: verifica la referencia
+  // Vuelta del checkout de Paddle (el usuario vuelve manualmente: la API de transacciones no admite success_url): verifica la referencia
   // con la edge function y refresca suscripciones. Limpia ?ref para no re-verificar.
   const refPago = new URLSearchParams(location.search).get('ref');
   // Referencia que aún no confirma (webhook en vuelo / edge sin deployar): el polling de
@@ -85,7 +85,7 @@ function PricingSuscripciones() {
         // Pago recibido pero bajo el monto esperado (p. ej. cupón): quedó en revisión.
         setAvisoPago(AVISO_REVISION);
       } else if (errVerif && edgePagoNoDesplegada(errVerif)) {
-        // Edge Lemon pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
+        // Edge de pago pendiente de deploy (AGENTS.md ACTIVACIÓN paso 3): mientras falte,
         // el guard evita el error crudo — se informa como verificación pendiente, neutro.
         setAvisoPago(
           'Estamos verificando tu pago; tu suscripción quedará activa en breve y esta página se actualizará sola.',
@@ -187,7 +187,7 @@ function PricingSuscripciones() {
     <div className="landing-root pricing-root">
       <Navbar />
       <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
-        {/* Aviso neutro de verificación pendiente (edges Lemon sin deploy) — nunca error. */}
+        {/* Aviso neutro de verificación pendiente (edges de pago sin deploy) — nunca error. */}
         {avisoPago && (
           <p role="status" className="pricing-aviso max-w-4xl mx-auto mb-8 text-center">
             {avisoPago}

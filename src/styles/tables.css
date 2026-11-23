@@ -2398,8 +2398,39 @@ tr.rt-subrow-selected > td {
 .tbl.tbl-sep td:first-child {
   border-left: 1px solid var(--line, #3a3a44);
 }
-/* Horizontales de las celdas de RAMALES del piso: el borderBottom inline de las celdas es
- *  var(--line), casi invisible — !important para ganarle al estilo en línea. */
-.tbl.tbl-hline td {
+/* La cabecera de ramales se desplaza como bloque: las dos filas no dependen de un offset fijo. */
+.tbl.tbl-hline {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.tbl.tbl-hline thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.tbl.tbl-hline thead th {
+  position: static;
+}
+.tbl.tbl-hline thead tr:first-child {
+  position: relative;
+}
+/* Prolonga la divisoria por las celdas combinadas, a la altura real de la primera fila. */
+.tbl.tbl-hline thead tr:first-child::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  border-block-end: 1px solid var(--line, #3a3a44);
+  pointer-events: none;
+}
+.tbl.tbl-hline thead tr:first-child th {
+  border-top: 1px solid var(--line, #3a3a44);
+}
+.tbl.tbl-hline thead tr:not(:first-child) th:first-child {
+  /* Inicio ya limita con el borde derecho de Ramal. */
+  border-left: 0;
+}
+.tbl.tbl-hline td,
+.tbl.tbl-hline th {
   border-bottom: 1px solid var(--line, #3a3a44) !important;
 }

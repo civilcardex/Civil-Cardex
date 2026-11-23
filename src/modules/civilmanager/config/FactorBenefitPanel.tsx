@@ -125,7 +125,7 @@ function FactorTipoCuerpo({ tipo, grupo, subtotal, add, upd, del }: TipoProps) {
                         </span>
                       )}
                     </td>
-                    <XlAct onDelete={() => del(i)} />
+                    <XlAct onDelete={() => del(i)} onEdit={() => setEditIdx(i)} />
                   </tr>
                 );
               })}

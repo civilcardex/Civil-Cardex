@@ -26,14 +26,21 @@ const TIMEOUT_MS = 20_000;
 export const supabase: SupabaseClient<Database> = createClient<Database>(supabaseUrl, supabaseKey, {
   global: {
     fetch: (input, init = {}) => {
-      const ctrl = new AbortController();
-      const t = setTimeout(
-        () => ctrl.abort(new DOMException('timeout', 'TimeoutError')),
-        TIMEOUT_MS,
-      );
-      return fetch(input, { ...init, signal: init.signal ?? ctrl.signal }).finally(() =>
-        clearTimeout(t),
-      );
+      // Timeout nativo (AbortSignal.timeout dispara TimeoutError solo, sin controller +
+      // setTimeout). Si el caller trae su propia signal (cancelación de usuario), se COMBINA
+      // con AbortSignal.any — antes el `init.signal ?? ctrl.signal` la pisaba y el timeout
+      // quedaba desactivado justo en los requests cancelables. AbortSignal.any requiere
+      // Safari 17.4+/Firefox 124+: sin él se conserva la señal del caller sin timeout
+      // (piso de navegadores del repo: Safari/iPadOS 16.4+).
+      const timeout = AbortSignal.timeout(TIMEOUT_MS);
+      return fetch(input, {
+        ...init,
+        signal: !init.signal
+          ? timeout
+          : typeof AbortSignal.any === 'function'
+            ? AbortSignal.any([init.signal, timeout])
+            : init.signal,
+      });
     },
   },
 });

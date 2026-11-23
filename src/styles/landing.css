@@ -6,8 +6,10 @@
   background: #0a0e14;
   color: #e2e2e8;
 }
-/* Scrollbar clara de las páginas con .landing-root (home, docs, pricing).
-           Antes se inyectaba como <style> global; ahora se limita a esas páginas. */
+/* La app es dark-only (hereda color-scheme: dark de :root). Scrollbar clara de las páginas
+ *  con .landing-root (home, docs, pricing): webkit incondicional (Chromium ignora estos
+ *  pseudo-elementos si hay scrollbar-color declarado) y propiedades estándar SOLO en motores
+ *  sin el pseudo-elemento. */
 html:has(.landing-root)::-webkit-scrollbar-thumb {
   background: #dce3ea;
 }
@@ -16,6 +18,12 @@ html:has(.landing-root)::-webkit-scrollbar-thumb:hover {
 }
 html:has(.landing-root)::-webkit-scrollbar-track {
   background: #1a1c20;
+}
+@supports not selector(::-webkit-scrollbar) {
+  html:has(.landing-root) {
+    scrollbar-color: #dce3ea #1a1c20;
+    scrollbar-width: thin;
+  }
 }
 .hero-mod-card {
   transition:

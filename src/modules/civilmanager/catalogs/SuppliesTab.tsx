@@ -13,6 +13,14 @@ import type { Insumo } from '../types.ts';
 
 /** Tab de insumos (materiales del catálogo): costo unitario, categoría y origen; los 'Preparado en obra' eligen su APU (Análisis de Precios Unitarios) básico como fuente de precio. */
 export function InsumosTab() {
+  return (
+    <EditableSection dim={false}>
+      <InsumosTabBody />
+    </EditableSection>
+  );
+}
+
+function InsumosTabBody() {
   const { state, patch, apusBasicoCalc } = useCivilManager();
 
   const countUsage = useMemo(() => {
@@ -205,7 +213,7 @@ export function InsumosTab() {
   ];
 
   return (
-    <EditableSection dim={false}>
+    <>
       <CrudTable
         title="Insumos"
         icon="insumos_tabla"
@@ -224,6 +232,6 @@ export function InsumosTab() {
         emptyLabel="Sin insumos"
       />
       <ExcelPreviewModal excel={excel} />
-    </EditableSection>
+    </>
   );
 }

@@ -317,7 +317,7 @@ export function PricingResumen({
             <span aria-hidden="true" className="pr-secure-icon material-symbols-outlined">
               verified_user
             </span>
-            Pago seguro con tarjeta · Lemon Squeezy
+            Pago seguro con tarjeta · Paddle
           </p>
         </div>
       </div>

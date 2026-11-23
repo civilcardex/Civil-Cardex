@@ -681,3 +681,54 @@
   text-align: right;
   text-align-last: right;
 }
+.cm-touch-edit {
+  display: none;
+}
+/* Banner de conflicto de versiones y del respaldo legado (H-02/H-08): ámbar, no bloqueante. */
+.cm-conflicto {
+  margin: 0 0 10px;
+  padding: 10px 14px;
+  border: 1px solid rgba(217, 119, 6, 0.45);
+  border-left: 4px solid #d97706;
+  border-radius: 6px;
+  background: rgba(217, 119, 6, 0.12);
+}
+.cm-conflicto p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--txt, #e2e2e8);
+}
+.cm-conflicto-acciones {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cm-num-error {
+  display: block;
+  font-size: 11px;
+  color: var(--err, #f04545);
+  white-space: normal;
+  line-height: 1.2;
+}
+
+@media (any-pointer: coarse) {
+  .cm-nav button,
+  .cm-btn,
+  .cm-btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cm-touch-edit {
+    display: inline-grid;
+    place-items: center;
+  }
+  .cm-ni,
+  .cm-sel {
+    font-size: 16px;
+    scroll-margin-block: 1rem;
+  }
+  .cm-xl-scroll {
+    overscroll-behavior-x: contain;
+  }
+}

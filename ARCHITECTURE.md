@@ -40,15 +40,16 @@ Conceptos del motor (glosario completo en AGENTS.md): `scaleM` (m/píxel), `XFG`
 ```
 edición ─ autosave (debounce) ─▶ cola POR PLANO (trazosSaveQueue, planos distintos en paralelo)
    ─▶ tumba anti-vacío (push sin contenido sobre caché con contenido = bloqueado)
-   ─▶ RPC save_plano_data (delete-then-insert por colección; caps por colección)
+   ─▶ RPC save_plano_data_versioned (reemplazo atómico por colección; devuelve el reloj confirmado)
 ```
 - Carga: árbitro por `ts` con reglas anti-vacío (`trazosLocalGanaABdVacia` / `trazosBdGanaALocalVacia`) — un doc vacío nunca borra el piso.
-- **Concurrencia optimistic por plano**: el cliente manda el `updated_at` leído al cargar; el wrapper de `save_plano_data` compara (con lock `for update`) y lanza `conflicto_concurrencia` → aviso "recargue" en el canal global. Firma degradada a 2 args si la migración no está aplicada (retry único).
+- **Concurrencia por plano**: compara el `updated_at` de la copia editable después de adquirir el lock. Conserva el borrador si el reloj no coincide. Una lectura en segundo plano no cambia la versión base y el cliente no reintenta sin versión.
 - Persistencia física: IDB espejo primero, Supabase como verdad; journal local para auditar bloqueos.
 
 **civilmanager — estado completo del proyecto:**
-- RPC atómica `cm_save_state` (UNA transacción para 9 tablas hijas + config): lock pesimista `for update` del proyecto + **optimistic** con `p_updated_at` (conflicto → mensaje accionable); fallback al camino legacy de olas paralelas si la función no está desplegada.
-- Guardado autosave debounce 300 ms serializado en cadena; safeguard anti-guardado-vacío.
+- `cm_save_state_versioned` confirma el reloj dentro de la misma transacción que `cm_save_state`. Las filas se reconcilian solo dentro del proyecto y los campos omitidos conservan su valor. El cliente no degrada al guardado fila por fila.
+- Respaldo IndexedDB por cuenta y proyecto antes del autosave de 300 ms. Si falta la conexión, se conserva el reloj base del borrador y no se mezcla con otro proyecto.
+- Las migraciones `20261123000000`–`20261123000002` deben estar verificadas en el entorno destino antes de publicar el cliente. Los contratos locales viven en [saveContracts.mjs](supabase/tests/saveContracts.mjs).
 - **Presupuesto cerrado = congelado**: al pasar a `cerrado` se refrescan las snaps (catálogos/factores/APUs/perfil país) y `calcMapParaPres` calcula con la foto; borrador/en revisión calculan con catálogos vivos.
 
 ## Doctrina de cálculo (fuente única: `civilflow/constants/`)
@@ -66,7 +67,7 @@ edición ─ autosave (debounce) ─▶ cola POR PLANO (trazosSaveQueue, planos 
 
 ## Suscripciones y empresa (resumen)
 
-Doble kill-switch (cliente `VITE_SUSCRIPCIONES` + BD `app_config('suscripciones_activas')`) — con ambos apagados la app se comporta como sin gating. Compra por módulo/puestos vía Lemon Squeezy (3 Edge Functions fail-closed); asientos de empresa con `empresa_lectura/escritura` que extiende las policies RLS; compartir proyectos dueño→miembros. **Detalle operativo y de activación: AGENTS.md §Suscripciones.**
+Doble kill-switch (cliente `VITE_SUSCRIPCIONES` + BD `app_config('suscripciones_activas')`) — con ambos apagados la app se comporta como sin gating. Compra por módulo/puestos vía Paddle Billing (3 Edge Functions fail-closed); asientos de empresa con `empresa_lectura/escritura` que extiende las policies RLS; compartir proyectos dueño→miembros. **Detalle operativo y de activación: AGENTS.md §Suscripciones.**
 
 ## Seguridad
 

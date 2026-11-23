@@ -25,16 +25,28 @@ function r2(v: number): number {
   return Math.round(v * 100) / 100;
 }
 
-/** Interpreta números con formato local (1.500,00 o 1,500.00) y siempre devuelve finito. Ej: "1.500" -> 1500. (El importador de formularios usa parseCantidad, en excelImport.tsx, que añade desambiguación de formato y delega acá.) */
+/** Lee el número completo. Ej: «1.234,56» y «1,234.56» producen 1234.56. */
+export function parseNumInput(v: unknown, rejectAmbiguous = true): number | null {
+  let s = String(v ?? '').trim();
+  if (rejectAmbiguous && /^[+-]?[1-9]\d{0,2}[.,]\d{3}$/.test(s)) return null;
+  if (/^[+-]?\d{1,3}([ \u00a0\u202f]\d{3})+([.,]\d+)?$/.test(s)) {
+    s = s.replace(/[ \u00a0\u202f]/g, '').replace(',', '.');
+  } else if (/^[+-]?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s) && (s.includes(',') || /\..*\./.test(s))) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (/^[+-]?\d{1,3}(,\d{3})+(\.\d+)?$/.test(s) && (s.includes('.') || /,.*,/.test(s))) {
+    s = s.replace(/,/g, '');
+  } else if (/^[+-]?(?:\d+(?:[.,]\d+)?|[.,]\d+)$/.test(s)) {
+    s = s.replace(',', '.');
+  } else {
+    return null;
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Lee números de cálculo y usa cero cuando no hay un valor numérico válido. Ej: «3,5» → 3.5. */
 export function parseNum(v: unknown): number {
-  let s = String(v ?? '');
-  // Formato europeo inequívoco "1.234,56" (punto=millares + coma=decimal): quitar los puntos
-  // ANTES de la coma→punto genérica. "1.5" o "1,5" siguen parseando como 1.5 (no ambiguo).
-  if (/^-?\d{1,3}(\.\d{3})+,\d+$/.test(s)) s = s.replace(/\./g, '');
-  s = s.replace(/,/g, '.');
-  if (s === '' || s === '.' || s === '-') return 0;
-  const n = parseFloat(s);
-  return isNaN(n) ? 0 : n;
+  return typeof v === 'number' && Number.isFinite(v) ? v : (parseNumInput(v, false) ?? 0);
 }
 
 /** Formatea un número con separador de miles y d decimales (0-4) estilo en-US; NaN cae en 0 para no pintar "NaN" en la tabla. Ej: fmt(1234.5) -> "1,234.50". */

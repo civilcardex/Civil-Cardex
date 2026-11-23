@@ -1,5 +1,5 @@
-import { useState, type InputHTMLAttributes } from 'react';
-import { fmt, fmtMoneda, parseNum } from '../calc.ts';
+import { useLayoutEffect, useRef, useState, type InputHTMLAttributes } from 'react';
+import { fmt, fmtMoneda, parseNumInput } from '../calc.ts';
 
 function numVal(v: unknown, format?: boolean): string {
   const s = String(v ?? '').replace(/,/g, '.');
@@ -17,6 +17,9 @@ interface Props extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'o
   /** Muestra el símbolo de la moneda activa (campos de dinero). */
   moneda?: boolean;
   placeholder?: string;
+  /** Mensaje de validación ajeno al tecleo en curso (H-04): borda el campo y se anuncia con
+   *  role="alert" hasta que el llamador lo quita. Ej: «Escribe 850000 o 850.000,00». */
+  error?: string | null;
 }
 
 /** Input numérico de los catálogos: acepta coma o punto decimal y notifica números (nunca strings). Con format/moneda muestra separador de miles y símbolo al estar sin foco. Ej: el usuario escribe "1,5" -> onChange(1.5). */
@@ -27,10 +30,16 @@ export function NumInput({
   format,
   moneda,
   placeholder,
+  error,
   ...rest
 }: Props) {
   const [raw, setRaw] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const invalid = (raw !== null && raw !== '' && parseNumInput(raw) === null) || Boolean(error);
+  useLayoutEffect(() => {
+    if (focused && input.current === document.activeElement) input.current?.select();
+  }, [focused]);
 
   const isEmpty =
     !focused &&
@@ -51,50 +60,56 @@ export function NumInput({
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const nv = e.target.value;
-    const parsedRaw = nv.replace(/,/g, '.');
-    const isIncomplete = /[.,-]$/.test(nv) || nv === '-' || nv === '+' || nv === '';
-    if (isIncomplete) {
-      setRaw(nv);
-      return;
-    }
-    const n = parseNum(parsedRaw);
-    setRaw(null);
-    onChange(n);
+    setRaw(nv);
+    const n = parseNumInput(nv);
+    if (n !== null) onChange(n);
   }
 
   function handleBlur() {
     setRaw(null);
     setFocused(false);
   }
-  function handleFocus(e: React.FocusEvent<HTMLInputElement>) {
+  function handleFocus() {
     setFocused(true);
-    e.target.select();
   }
 
-  if (placeholder) {
-    return (
-      <div className="cm-num-wrap">
-        <input
-          className="cm-ni"
-          value={isEmpty ? '' : displayVal}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onFocus={handleFocus}
-          {...rest}
-        />
-        {isEmpty && <span className="cm-ni-placeholder">{placeholder}</span>}
-      </div>
-    );
-  }
-
-  return (
+  const campo = (
     <input
+      ref={input}
       className="cm-ni"
-      value={displayVal}
+      inputMode="decimal"
+      aria-invalid={invalid || undefined}
+      aria-describedby={error ? 'cm-num-error' : undefined}
+      {...rest}
+      /* Borde rojo del rechazo (H-04): antes el importe ambiguo se descartaba sin señal.
+       *  Va DESPUÉS del spread: gana al style del llamador solo cuando hay error. */
+      style={{
+        ...(rest.style as React.CSSProperties | undefined),
+        ...(invalid
+          ? {
+              borderColor: 'var(--err, #F04545)',
+              outline: '1px solid var(--err, #F04545)',
+            }
+          : null),
+      }}
+      value={isEmpty && !error ? '' : displayVal}
       onChange={handleChange}
       onBlur={handleBlur}
       onFocus={handleFocus}
-      {...rest}
     />
+  );
+
+  return (
+    <div className="cm-num-wrap">
+      {campo}
+      {isEmpty && !error && placeholder ? (
+        <span className="cm-ni-placeholder">{placeholder}</span>
+      ) : null}
+      {error ? (
+        <span id="cm-num-error" role="alert" className="cm-num-error">
+          {error}
+        </span>
+      ) : null}
+    </div>
   );
 }

@@ -216,6 +216,7 @@ const FUNCTIONS = [
   ['save_perfil', '{ p_perfil: Record<string, unknown> }'],
   ['save_planos_meta', '{ p_proyecto_id: string; p_planos: unknown }'],
   ['save_plano_data', '{ p_plano_id: number; p_data: unknown; p_updated_at?: string | null }'],
+  ['save_plano_data_versioned', '{ p_plano_id: number; p_data: unknown; p_updated_at: string | null }', 'string'],
   ['save_proyecto', '{ p_codigo: string; p_nombre: string }'],
   ['save_proyecto_core', '{ p_proyecto_id: string; p_data: unknown }'],
   ['save_proyecto_general_campo', '{ p_proyecto_id: string; p_campo: string; p_valor: unknown }'],
@@ -225,6 +226,7 @@ const FUNCTIONS = [
   ['update_proyecto_nombre', '{ p_id: string; p_nombre: string }'],
   ['cm_get_data', '{ p_proyecto_id?: string | null }'],
   ['cm_save_state', '{ p_proyecto_id: string; p_state: unknown; p_updated_at?: string | null }'],
+  ['cm_save_state_versioned', '{ p_proyecto_id: string; p_state: unknown; p_updated_at: string }', 'string'],
   ['suscripciones_habilitadas', 'Record<string, never>'],
   ['delete_proyecto', '{ p_id: string }'],
 ];

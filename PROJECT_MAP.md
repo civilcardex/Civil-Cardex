@@ -47,7 +47,7 @@ src/
 ├─ context/            1              # AuthContext (único context global fuera de los módulos)
 ├─ hooks/              6              # genéricos: usePageMeta, usePersistedState, useSubscriptions…
 ├─ layouts/            1              # Layout del shell autenticado
-├─ lib/                6              # supabase.ts (cliente), idb.ts, subscriptions/ (catálogo Lemon Squeezy)
+├─ lib/                6              # supabase.ts (cliente), idb.ts, subscriptions/ (catálogo Paddle)
 ├─ pages/             29              # públicas (Landing, Pricing, Company, legal, ModulePage)
 │  ├─ auth/           10              #   login, register, reset, perfil, proyectos
 │  ├─ learn/           4              #   "Aprende": artículos Hunter/NTC 1500 y fuerza tractiva
@@ -115,10 +115,12 @@ civilmanager/
 
 ## `supabase/`
 
+- `tests/` — contratos de persistencia y concurrencia con datos sintéticos en PostgreSQL desechable.
+
 | Carpeta | Contenido |
 |---|---|
 | `migrations/` | 109 SQL activos + `_retired/` (6 retirados como histórico) + `_consolidated/civilflow-schema-final.sql` (esquema recreable): esquemas `cf_*` (civilflow), `cm_*` (civilmanager), `app_*` (suscripciones), RPCs de guardado (save_plano_data, cm_save_state), RLS + policies de empresa, concurrencia optimistic |
-| `functions/` | 3 Edge Functions de pagos: `crear-checkout`, `verificar-pago`, `ls-webhook` (+ `_shared/`: lemon.ts, payment_utils.ts) |
+| `functions/` | 3 Edge Functions de pagos: `crear-checkout`, `verificar-pago`, `paddle-webhook` (+ `_shared/`: pricing.ts, payment_utils.ts) y `tests/` de contratos |
 
 ## Otros
 

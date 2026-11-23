@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from 'react';
-import { fmtMoneda } from '../calc.ts';
+import { fmtMoneda, parseNumInput } from '../calc.ts';
 import { NumInput } from './NumInput.tsx';
 
 /** Qué control monta la celda al editar: 'texto' input libre, 'numero' NumInput, 'moneda' NumInput con formato y símbolo de la moneda, 'select' lista de opciones. */
@@ -59,6 +59,7 @@ export function EditableCell({
   function handleKeyDown(e: KeyboardEvent<HTMLElement>) {
     if (e.key === 'Enter') {
       e.preventDefault();
+      if ((e.target as HTMLElement).getAttribute('aria-invalid') === 'true') return;
       commitDraft();
     } else if (e.key === 'Escape') {
       setDraft(value);
@@ -102,10 +103,24 @@ export function EditableCell({
   }
 
   if (tipo === 'numero' || tipo === 'moneda') {
+    /* Rechazo VISIBLE (H-04): un importe ambiguo ('850.000') ya no se revierte en silencio
+     *  al salir del campo — se conserva lo tecleado, el borde rojo y el aviso indican el
+     *  formato esperado hasta que el usuario lo corrija o Escape devuelva el valor viejo. */
+    const errorNum =
+      draft !== '' && parseNumInput(draft) === null
+        ? 'Valor no reconocido: escriba 850000 o 850.000,00 (punto = millares, coma = decimales).'
+        : null;
     return (
       // El onBlur de React burbujea: este div recibe el blur del NumInput sin pisar el
       // handleBlur interno que NumInput necesita para reiniciar su estado de formato.
-      <div onBlur={commitDraft}>
+      <div
+        onBlur={(e) => {
+          if (!(e.target instanceof HTMLInputElement)) return;
+          const parsed = parseNumInput(e.target.value);
+          if (parsed === null) setDraft(e.target.value);
+          else if (String(parsed) !== value) onCommit(String(parsed));
+        }}
+      >
         <NumInput
           value={draft}
           onChange={(n) => setDraft(String(n))}
@@ -113,6 +128,7 @@ export function EditableCell({
           moneda={tipo === 'moneda'}
           placeholder={placeholder}
           readOnly={readOnly}
+          error={errorNum}
           {...alignData}
           onKeyDown={handleKeyDown}
           {...a11y}
