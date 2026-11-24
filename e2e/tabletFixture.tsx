@@ -145,6 +145,7 @@ function FlowFixture() {
             engineRef={eng}
             drawing={line}
             disabled={false}
+            tablet
             onSave={() => {}}
             onUndo={() => {}}
             onOptions={selected ? () => setOptions(true) : undefined}
@@ -235,7 +236,9 @@ if (isManager) {
       if (name === 'cm_get_data') {
         return { data: saved ? JSON.parse(saved) : fixture, error: null };
       }
-      if (name !== 'cm_save_state_versioned') throw new Error('RPC inesperado en fixture');
+      if (name !== 'cm_save_state' && name !== 'cm_save_state_versioned') {
+        throw new Error('RPC inesperado en fixture');
+      }
       const updated_at = new Date().toISOString();
       sessionStorage.setItem(
         'tablet-cm',
