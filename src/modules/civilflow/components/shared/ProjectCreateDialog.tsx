@@ -51,7 +51,7 @@ export default function ProjectCreateDialog({ open, onClose }: Props) {
       plansCtx?.pauseCloudSync();
       // El workspace local siempre empieza en blanco para un proyecto nuevo; los datos de Supabase
       // quedan aislados por proyecto_id, no hace falta borrar nada del lado del servidor.
-      clearLocalWorkspace();
+      clearLocalWorkspace({ conservarRescates: true });
       await clearAllPDFs();
       // Marca este proyecto como activo (sesión + storage) para que trazos/plans/proyecto_data
       // queden acotados a él. La maquinaria interna (RPCs, claves) sigue numerada: proyecto_num.

@@ -40,6 +40,8 @@ export default function ProjectCreateDialogCM({ open, onClose }: Props) {
     }
   }
 
+  if (!open) return null;
+
   // Candado de UX; el real es la política INSERT de cm_proyectos con
   // acceso_modulo(). Bloquea solo si VITE y el flag de BD están encendidos;
   // mientras cargan se deja pasar.

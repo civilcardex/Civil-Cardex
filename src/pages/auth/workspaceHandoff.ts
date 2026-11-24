@@ -7,6 +7,7 @@ import { downloadPlanPDF } from '../../modules/civilflow/services/pdfStorageServ
 import { storePDF, clearAllPDFs } from '../../modules/civilflow/services/idbStorage.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 import {
+  getActiveProyectoId,
   saveToStorage,
   setActiveProyectoId,
 } from '../../modules/civilflow/services/storageService.ts';
@@ -57,7 +58,10 @@ export async function abrirProyectoCf({
     // trazos del proyecto que se abre se conservan (ver clearLocalWorkspace): son el único
     // respaldo de un piso cuyo guardado en la nube falló — orig. usuario: la cubierta
     // desaparecía al cerrar la pestaña y reabrir el proyecto.
-    clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
+    clearLocalWorkspace({
+      planosVigentes: (data?.plans_meta ?? []).map((m) => m.id),
+      conservarRescates: true,
+    });
     await clearAllPDFs();
     plansCtx?.resetPlans();
     projectCtx?.resetToDefaults();
@@ -101,15 +105,13 @@ export async function abrirProyectoCf({
     navigate(`/civilflowareatrabajo/${proy.id}`);
 
     void (async () => {
-      const resolved = await Promise.all(
+      await Promise.all(
         plansMeta.map(async (m) => {
           const file = await downloadPlanPDF(proy.id, m.id, m.name || `plano_${m.id}.pdf`);
-          if (file) await storePDF(m.id, file);
-          return m;
+          if (file && getActiveProyectoId() === proy.id) await storePDF(m.id, file);
         }),
       );
-      if (resolved.length > 0) saveToStorage(PLANS_META_KEY, resolved);
-    })();
+    })().catch((err: unknown) => devError('Error precargando planos:', err));
     return true;
   } catch (err) {
     devError('Error abriendo proyecto:', err);

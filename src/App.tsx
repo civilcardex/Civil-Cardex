@@ -59,6 +59,7 @@ import PrivacyPage from './pages/PrivacyPage.tsx';
 import CookiesPage from './pages/CookiesPage.tsx';
 import CookieBanner from './components/CookieBanner.tsx';
 import PricingPage from './pages/PricingPage.tsx';
+import WelcomePage from './pages/WelcomePage.tsx';
 import RequireModule from './components/subscriptions/RequireModule.tsx';
 
 import NotFound from './pages/NotFound.tsx';
@@ -140,6 +141,7 @@ function App() {
                 ['/privacidad', PrivacyPage],
                 ['/cookies', CookiesPage],
                 ['/pricing', PricingPage],
+                ['/welcome', WelcomePage],
               ] as const
             ).map(([path, Pagina]) => (
               <Route
@@ -156,11 +158,13 @@ function App() {
               path="/dibujoRedes/:proyectoId?"
               element={
                 <ErrorBoundary>
-                  <CivilFlowProviders>
-                    <Suspense fallback={<Fallback />}>
-                      <ViewerPage />
-                    </Suspense>
-                  </CivilFlowProviders>
+                  <RequireModule modulo="flow">
+                    <CivilFlowProviders>
+                      <Suspense fallback={<Fallback />}>
+                        <ViewerPage />
+                      </Suspense>
+                    </CivilFlowProviders>
+                  </RequireModule>
                 </ErrorBoundary>
               }
             />
