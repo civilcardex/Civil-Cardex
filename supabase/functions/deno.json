@@ -1,0 +1,5 @@
+{
+  // CI (deno check) instala las deps npm del SDK de Paddle automáticamente.
+  // El deploy de Edge Functions resuelve npm: sin este archivo — no afecta a Vercel.
+  "nodeModulesDir": "auto"
+}
