@@ -15,24 +15,24 @@ import { clienteAdmin, clienteUsuario, json, preflight } from '../_shared/paymen
 
 Deno.serve(async (req: Request) => {
   // Preflight CORS (functions.invoke manda Authorization/apikey).
-  if (req.method === 'OPTIONS') return preflight();
-  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
+  if (req.method === 'OPTIONS') return preflight(req);
+  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405, req);
 
   const supaUser = clienteUsuario(req);
   const {
     data: { user },
   } = await supaUser.auth.getUser();
-  if (!user) return json({ error: 'no_autenticado' }, 401);
+  if (!user) return json({ error: 'no_autenticado' }, 401, req);
 
   let body: { referencia?: unknown };
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'parametros_invalidos' }, 400);
+    return json({ error: 'parametros_invalidos' }, 400, req);
   }
   const referencia = typeof body.referencia === 'string' ? body.referencia.trim() : '';
   if (!referencia || referencia.length > 100) {
-    return json({ error: 'parametros_invalidos' }, 400);
+    return json({ error: 'parametros_invalidos' }, 400, req);
   }
 
   const admin = clienteAdmin();
@@ -41,10 +41,10 @@ Deno.serve(async (req: Request) => {
     .select('estado, user_id')
     .eq('referencia', referencia)
     .single();
-  if (error || !pago) return json({ aprobado: false });
+  if (error || !pago) return json({ aprobado: false }, undefined, req);
 
   // Defensa IDOR: la referencia debe ser del caller.
-  if (pago.user_id !== user.id) return json({ aprobado: false });
+  if (pago.user_id !== user.id) return json({ aprobado: false }, undefined, req);
 
-  return json({ aprobado: pago.estado === 'aprobado', estado: pago.estado });
+  return json({ aprobado: pago.estado === 'aprobado', estado: pago.estado }, undefined, req);
 });

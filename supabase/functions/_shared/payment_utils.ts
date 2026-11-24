@@ -37,27 +37,46 @@ export function paddleConfigurado(): boolean {
 export const SITE_URL =
   Deno.env.get('SITE_URL') ?? Deno.env.get('VITE_SITE_URL') ?? 'https://civilcardex.com';
 
+/** Orígenes de DESARROLLO permitidos además de SITE_URL (secret opcional CORS_DEV_ORIGINS,
+ *  separados por coma). Ej: `http://localhost:5173,http://localhost:5174`. Sin el secret solo
+ *  SITE_URL pasa — en producción la lista queda vacía. */
+const DEV_ORIGINS = (Deno.env.get('CORS_DEV_ORIGINS') ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+const ORIGENES_PERMITIDOS = new Set([SITE_URL, ...DEV_ORIGINS]);
+
 /** Cabeceras CORS para llamadas desde el navegador: supabase-js (functions.invoke) envía
  *  Authorization + apikey + Content-Type (no safelisted) ⇒ el navegador exige preflight
- *  OPTIONS y cabeceras en CADA respuesta. Origin restringido al sitio que las llama
- *  (SITE_URL): paddle-webhook es server-to-server y las
- *  recibe igual (el navegador no participa). */
-export const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': SITE_URL,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  Vary: 'Origin',
-};
+ *  OPTIONS y cabeceras en CADA respuesta. Origin RESTRINGIDO a una lista (SITE_URL + los de
+ *  desarrollo del secret): se refleja el de la petición solo si está en la lista; si no, se
+ *  responde con SITE_URL y el navegador bloquea la lectura. Sin reflejar a ciegas ni '*'
+ *  (cualquier sitio llamaría crear-checkout con la sesión de un usuario logueado). Las
+ *  funciones server-to-server (paddle-webhook, subscription-emails) no reciben Origin y
+ *  reciben SITE_URL — inofensivo, el navegador no participa. */
+export function corsHeaders(req?: Request): Record<string, string> {
+  const origin = req?.headers.get('Origin') ?? '';
+  return {
+    'Access-Control-Allow-Origin': ORIGENES_PERMITIDOS.has(origin) ? origin : SITE_URL,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    Vary: 'Origin',
+  };
+}
 
 /** Respuesta a un preflight OPTIONS (204 sin cuerpo). */
-export function preflight(): Response {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+export function preflight(req?: Request): Response {
+  return new Response(null, { status: 204, headers: corsHeaders(req) });
 }
 
 /** Respuesta JSON estándar (con CORS — el navegador la necesita también en errores). */
-export function json(body: unknown, status = 200): Response {
+export function json(body: unknown, status = 200, req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...CORS_HEADERS },
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+      ...corsHeaders(req),
+    },
   });
 }
 

@@ -56,27 +56,27 @@ export function rolDeJwt(authHeader: string): string | undefined {
 Deno.serve(async (req: Request) => {
   // Preflight CORS: functions.invoke manda Authorization/apikey ⇒ el navegador
   // exige OPTIONS antes del POST real (sin esto toda llamada browser muere aquí).
-  if (req.method === 'OPTIONS') return preflight();
-  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
+  if (req.method === 'OPTIONS') return preflight(req);
+  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405, req);
 
   // 1 · Identidad del caller. La ANON KEY es un JWT válido (rol 'anon'): sin este check
   //     un atacante sin cuenta quema invocaciones edge + getUser() por request hasta el 401.
   const rolJwt = rolDeJwt(req.headers.get('Authorization') ?? '');
-  if (rolJwt !== 'authenticated') return json({ error: 'no_autenticado' }, 401);
+  if (rolJwt !== 'authenticated') return json({ error: 'no_autenticado' }, 401, req);
   const supaUser = clienteUsuario(req);
   const {
     data: { user },
   } = await supaUser.auth.getUser();
-  if (!user) return json({ error: 'no_autenticado' }, 401);
+  if (!user) return json({ error: 'no_autenticado' }, 401, req);
 
   // 2 · Valida el entorno y, en sandbox, el usuario de prueba configurado.
   if (!paddleConfigurado()) {
     console.error(
       'crear-checkout: PADDLE_API_BASE y PADDLE_API_KEY deben corresponder al mismo entorno',
     );
-    return json({ error: 'pasarela_no_configurada' }, 500);
+    return json({ error: 'pasarela_no_configurada' }, 500, req);
   }
-  if (!usuarioPaddlePermitido(user.id)) return json({ error: 'sandbox_restringido' }, 403);
+  if (!usuarioPaddlePermitido(user.id)) return json({ error: 'sandbox_restringido' }, 403, req);
 
   // 3 · Las ventas reales requieren activar suscripciones. El usuario de sandbox
   // puede probar un pago sin cambiar el acceso del resto de usuarios.
@@ -85,9 +85,9 @@ Deno.serve(async (req: Request) => {
     const { data: habilitadas, error: errHab } = await admin.rpc('suscripciones_habilitadas');
     if (errHab) {
       console.error('crear-checkout: gate suscripciones_habilitadas:', errHab.message);
-      return json({ error: 'error_interno' }, 500);
+      return json({ error: 'error_interno' }, 500, req);
     }
-    if (habilitadas !== true) return json({ error: 'suscripciones_deshabilitadas' }, 400);
+    if (habilitadas !== true) return json({ error: 'suscripciones_deshabilitadas' }, 400, req);
   }
 
   // 4 · Payload saneado.
@@ -95,7 +95,7 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch {
-    return json({ error: 'parametros_invalidos' }, 400);
+    return json({ error: 'parametros_invalidos' }, 400, req);
   }
   const modulosRaw = Array.isArray(body.modulos) ? body.modulos : [];
   const modulos = [...new Set(modulosRaw)].filter(
@@ -105,7 +105,7 @@ Deno.serve(async (req: Request) => {
     body.periodo === 'anual' || body.periodo === 'semestral' || body.periodo === 'mensual'
       ? body.periodo
       : ('' as Periodo);
-  if (modulos.length === 0 || !periodo) return json({ error: 'parametros_invalidos' }, 400);
+  if (modulos.length === 0 || !periodo) return json({ error: 'parametros_invalidos' }, 400, req);
 
   const puestos =
     body.puestosPorModulo && typeof body.puestosPorModulo === 'object'
@@ -122,7 +122,7 @@ Deno.serve(async (req: Request) => {
     .select('modulo, precio_mensual_centavos, precio_semestral_centavos, precio_anual_centavos');
   if (errPrecios) {
     console.error('crear-checkout: app_precios ilegible:', errPrecios.message);
-    return json({ error: 'error_interno' }, 500);
+    return json({ error: 'error_interno' }, 500, req);
   }
   const preciosBd: Partial<Record<ModuloId, PreciosBd>> = {};
   for (const r of preciosRows ?? []) {
@@ -137,8 +137,9 @@ Deno.serve(async (req: Request) => {
   }
   const total = calcularTotalCentavos(modulos, periodo, puestos, preciosBd);
   const totalPuestos = modulos.reduce((s, m) => s + puestosDe(puestos, m), 0);
-  if (descuentoPorPuestos(totalPuestos) === null) return json({ error: 'venta_manual' }, 400);
-  if (!Number.isFinite(total) || total <= 0) return json({ error: 'parametros_invalidos' }, 400);
+  if (descuentoPorPuestos(totalPuestos) === null) return json({ error: 'venta_manual' }, 400, req);
+  if (!Number.isFinite(total) || total <= 0)
+    return json({ error: 'parametros_invalidos' }, 400, req);
 
   // 6+7 · Fila de pago pendiente vía RPC atómica: advisory lock por usuario + cap
   //     de 5 intenciones/h + insert en UNA transacción (el check-then-insert en TS
@@ -157,9 +158,9 @@ Deno.serve(async (req: Request) => {
   });
   if (errPago) {
     console.error('crear-checkout: registrar_intencion_pago:', errPago.message);
-    return json({ error: 'error_interno' }, 500);
+    return json({ error: 'error_interno' }, 500, req);
   }
-  if (agendado === false) return json({ error: 'demasiados_intentos' }, 429);
+  if (agendado === false) return json({ error: 'demasiados_intentos' }, 429, req);
 
   // 8 · Transacción Paddle con ítem NO-CATÁLOGO (precio inline: la venta es multi-módulo
   //     con descuentos compuestos — no hay producto por combinación). tax_mode 'internal':
@@ -201,16 +202,16 @@ Deno.serve(async (req: Request) => {
     const data = await resp.json();
     if (!resp.ok) {
       console.error('crear-checkout: Paddle', resp.status, JSON.stringify(data).slice(0, 400));
-      return json({ error: 'pasarela_no_configurada' }, 502);
+      return json({ error: 'pasarela_no_configurada' }, 502, req);
     }
     checkoutUrl = data?.data?.checkout?.url ?? '';
     transactionId = data?.data?.id ?? '';
   } catch (e) {
     console.error('crear-checkout: fetch Paddle:', e instanceof Error ? e.message : e);
-    return json({ error: 'pasarela_no_configurada' }, 502);
+    return json({ error: 'pasarela_no_configurada' }, 502, req);
   }
   if (!/^txn_[a-z0-9]{26}$/.test(transactionId)) {
-    return json({ error: 'pasarela_no_configurada' }, 502);
+    return json({ error: 'pasarela_no_configurada' }, 502, req);
   }
 
   const { error: errVinculo } = await admin
@@ -227,7 +228,7 @@ Deno.serve(async (req: Request) => {
     .single();
   if (errVinculo) {
     console.error('crear-checkout: no se pudo vincular la orden:', errVinculo.message);
-    return json({ error: 'error_interno' }, 500);
+    return json({ error: 'error_interno' }, 500, req);
   }
-  return json({ transactionId, checkoutUrl, referencia });
+  return json({ transactionId, checkoutUrl, referencia }, undefined, req);
 });

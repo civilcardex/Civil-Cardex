@@ -45,14 +45,14 @@ function mensaje(correo: Correo) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
+  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405, req);
   const token = encoder.encode(req.headers.get('X-Subscription-Email-Secret') ?? '');
   const esperado = encoder.encode(cronSecret ?? '');
   if (!cronSecret || token.length !== esperado.length || !timingSafeEqual(token, esperado)) {
-    return json({ error: 'no_autorizado' }, 401);
+    return json({ error: 'no_autorizado' }, 401, req);
   }
   if (!apiKey || !remitente || !entorno || (entorno === 'sandbox' && !usuarioPrueba)) {
-    return json({ error: 'correo_no_configurado' }, 503);
+    return json({ error: 'correo_no_configurado' }, 503, req);
   }
   const admin = clienteAdmin();
   const { data, error } = await admin.rpc('reclamar_correos_suscripcion', {
@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
   });
   if (error) {
     console.error('subscription-emails: no se pudo reservar el lote', error.code);
-    return json({ error: 'lectura_correos' }, 503);
+    return json({ error: 'lectura_correos' }, 503, req);
   }
 
   let enviados = 0;
@@ -98,5 +98,5 @@ Deno.serve(async (req) => {
       );
     }
   }
-  return json({ enviados, fallidos }, fallidos > 0 ? 503 : 200);
+  return json({ enviados, fallidos }, fallidos > 0 ? 503 : 200, req);
 });

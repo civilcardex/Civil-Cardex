@@ -25,11 +25,11 @@ import { processPaymentEvent } from './paymentEvent.ts';
 import { sincronizarEvento } from './syncEvent.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
+  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405, req);
 
   if (!paddle || !PADDLE_WEBHOOK_SECRET) {
     console.error('paddle-webhook: configuración de Paddle incompleta');
-    return json({ error: 'webhook_no_configurado' }, 500);
+    return json({ error: 'webhook_no_configurado' }, 500, req);
   }
 
   let event: EventEntity;
@@ -40,7 +40,7 @@ Deno.serve(async (req: Request) => {
       req.headers.get('Paddle-Signature') ?? '',
     );
   } catch {
-    return json({ error: 'evento_no_verificado' }, 401);
+    return json({ error: 'evento_no_verificado' }, 401, req);
   }
 
   const admin = clienteAdmin();
@@ -50,9 +50,10 @@ Deno.serve(async (req: Request) => {
       event.eventType !== EventName.TransactionCompleted
     ) {
       await sincronizarEvento(event, admin);
-      return json({ ok: true });
+      return json({ ok: true }, undefined, req);
     }
-    if (!usuarioPaddlePermitido(event.data.customData?.user_id)) return json({ ok: true });
+    if (!usuarioPaddlePermitido(event.data.customData?.user_id))
+      return json({ ok: true }, undefined, req);
     const result = await processPaymentEvent(event, {
       load: async (reference) => {
         const { data, error } = await admin
@@ -82,16 +83,16 @@ Deno.serve(async (req: Request) => {
     });
     if (result === 'unbound') {
       console.error('paddle-webhook: orden de Paddle pendiente de vincular');
-      return json({ error: 'pago_no_vinculado' }, 503);
+      return json({ error: 'pago_no_vinculado' }, 503, req);
     }
     if (result === 'invalid') {
       // El mismo cuerpo firmado no cambia al reintentarlo. Dejar la orden pendiente
       // para revisión y reconocer la entrega; otro evento válido aún puede activarla.
       console.error('paddle-webhook: campos de cobro inválidos; no se activó la orden');
     }
-    return json({ ok: true });
+    return json({ ok: true }, undefined, req);
   } catch {
     console.error('paddle-webhook: persistencia fallida; entrega reintentable');
-    return json({ error: 'error_interno' }, 503);
+    return json({ error: 'error_interno' }, 503, req);
   }
 });

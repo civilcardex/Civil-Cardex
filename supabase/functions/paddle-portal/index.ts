@@ -2,15 +2,16 @@ import { clienteAdmin, clienteUsuario, json, preflight } from '../_shared/paymen
 import { ApiError, entornoPaddle, paddle } from '../_shared/paddleSdk.ts';
 
 Deno.serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') return preflight();
-  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
+  if (req.method === 'OPTIONS') return preflight(req);
+  if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405, req);
 
   const {
     data: { user },
   } = await clienteUsuario(req).auth.getUser();
-  if (!user) return json({ error: 'no_autenticado' }, 401);
-  if (!user.email || !user.email_confirmed_at) return json({ error: 'correo_no_verificado' }, 403);
-  if (!paddle) return json({ error: 'portal_no_configurado' }, 503);
+  if (!user) return json({ error: 'no_autenticado' }, 401, req);
+  if (!user.email || !user.email_confirmed_at)
+    return json({ error: 'correo_no_verificado' }, 403, req);
+  if (!paddle) return json({ error: 'portal_no_configurado' }, 503, req);
 
   try {
     const admin = clienteAdmin();
@@ -38,14 +39,14 @@ Deno.serve(async (req: Request) => {
     if (error) throw error;
     const customerId = espejo?.customer_id ?? pago?.paddle_customer_id;
     if (typeof customerId !== 'string' || !/^ctm_[a-z0-9]{26}$/.test(customerId)) {
-      return json({ error: 'sin_facturacion' }, 404);
+      return json({ error: 'sin_facturacion' }, 404, req);
     }
 
     const cliente = await paddle.customers.get(customerId);
     // El checkout permite otro correo de facturación. Solo el correo confirmado
     // del usuario autoriza abrir el historial que incluye compras anteriores.
     if (cliente.id !== customerId || cliente.email.trim().toLowerCase() !== email) {
-      return json({ error: 'correo_facturacion_distinto' }, 403);
+      return json({ error: 'correo_facturacion_distinto' }, 403, req);
     }
 
     const { data: suscripciones, error: errorSubs } = await admin
@@ -74,15 +75,15 @@ Deno.serve(async (req: Request) => {
     ) {
       throw new Error('URL de portal inválida');
     }
-    return json({ url: url.href });
+    return json({ url: url.href }, undefined, req);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
-      return json({ error: 'sin_facturacion' }, 404);
+      return json({ error: 'sin_facturacion' }, 404, req);
     }
     console.error(
       'paddle-portal:',
       error instanceof Error ? error.message : 'error de facturación',
     );
-    return json({ error: 'portal_no_disponible' }, 502);
+    return json({ error: 'portal_no_disponible' }, 502, req);
   }
 });
