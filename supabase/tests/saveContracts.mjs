@@ -71,7 +71,13 @@ try {
       $$ select $1 = '${owner}' and auth.uid() = '${editor}' $$;
     create function public.empresa_lectura(uuid, text) returns boolean language sql as
       $$ select $1 = '${owner}' and auth.uid() in ('${reader}', '${editor}') $$;
-    create table public.cf_planos(id bigint primary key, user_id uuid, updated_at timestamptz, payload jsonb);
+    create table public.cf_proyectos(id uuid primary key, user_id uuid);
+    create table public.cf_planos(
+      id bigint primary key, user_id uuid, updated_at timestamptz, payload jsonb,
+      proyecto_id uuid, name text, nivel integer, scale numeric, status text,
+      origen_x_px numeric, origen_y_px numeric, factor_x numeric, factor_y numeric,
+      cal_global boolean, defined_scale numeric
+    );
     create function public.save_plano_data_impl(bigint, jsonb) returns void language sql as
       $$ update public.cf_planos set payload = $2 where id = $1 $$;
     insert into auth.users values ('${owner}'), ('${reader}'), ('${stranger}'), ('${editor}');
@@ -97,7 +103,9 @@ try {
       ('${project}','${owner}','P1','Prueba'), ('${otherProject}','${stranger}','P2','Otro');
     insert into public.cm_proveedores(id,user_id,proyecto_id,codigo)
       values ('otro','${stranger}','${otherProject}','otro');
-    insert into public.cf_planos values (1,'${owner}','2026-01-01T00:00:00Z','{}');
+    insert into public.cf_proyectos values ('${project}','${owner}');
+    insert into public.cf_planos (id,user_id,updated_at,payload,proyecto_id)
+      values (1,'${owner}','2026-01-01T00:00:00Z','{}','${project}');
     insert into storage.objects values ('plan_pdfs', '${owner}/plano.pdf');
   `);
   await apply('20260903000000_cm_presupuesto_snaps');
@@ -105,6 +113,11 @@ try {
   await apply('20261123000000_cm_save_integrity');
   await apply('20261123000001_cm_read_scope');
   await apply('20261123000002_save_versions');
+  const metaSql = await readFile(new URL('../migrations/20260925000000_repara_rpcs_reaplicacion_vieja.sql', import.meta.url), 'utf8');
+  const metaRpc = metaSql.match(/create or replace function public\.save_planos_meta\([\s\S]*?\$\$;/);
+  assert.ok(metaRpc, 'definición de guardado de metadatos');
+  await db.exec(metaRpc[0].replace('p_proyecto_id bigint', 'p_proyecto_id uuid'));
+  await apply('20261124000000_cf_separate_drawing_version');
   await db.exec('set role authenticated');
   await as(owner);
   const rename = () => db.query('update public.cm_proyectos set nombre = nombre where id = $1 returning id', [project]);
@@ -155,6 +168,14 @@ try {
       ])
     ).rows[0].token;
   const plan1 = await savePlan('2026-01-01T00:00:00Z');
+  await db.query('select public.save_planos_meta($1, $2)', [
+    project,
+    JSON.stringify([{ id: 1, name: 'Piso 1', scale: 66.6667, origen_x_px: 12 }]),
+  ]);
+  const { rows: [metaGuardada] } = await db.query('select name, scale from public.cf_planos where id = 1');
+  assert.equal(metaGuardada.name, 'Piso 1');
+  assert.equal(Number(metaGuardada.scale), 66.6667);
+  // El guardado de calibración cambió el meta, pero no invalida la versión de los trazos.
   const plan2 = await savePlan(plan1);
   assert.notEqual(plan1, plan2);
   await assert.rejects(savePlan(plan1), /conflicto_concurrencia/);

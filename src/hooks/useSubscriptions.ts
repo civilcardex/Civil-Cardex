@@ -87,8 +87,13 @@ export function useSuscripciones() {
   // hasta un remount/refetch. El Set es diminuto; reconstruirlo por render es gratis.
   const activos = modulosActivos(rows ?? []);
   for (const m of accesos) activos.add(m);
-  const bloqueando = SUSCRIPCIONES_ACTIVAS && flagBD === true;
-  const decidido = !SUSCRIPCIONES_ACTIVAS || flagBD !== null;
+  const pruebaIndividual =
+    import.meta.env.DEV &&
+    import.meta.env.VITE_PADDLE_ENVIRONMENT === 'sandbox' &&
+    userId !== null &&
+    userId === import.meta.env.VITE_PADDLE_SANDBOX_USER_ID;
+  const bloqueando = SUSCRIPCIONES_ACTIVAS && (flagBD === true || pruebaIndividual);
+  const decidido = !SUSCRIPCIONES_ACTIVAS || pruebaIndividual || flagBD !== null;
 
   return { rows: rows ?? [], activos, loading: rows === null, bloqueando, decidido };
 }

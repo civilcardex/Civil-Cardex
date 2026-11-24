@@ -6,52 +6,58 @@
 // Contrato con Paddle: POST JSON con header
 //   Paddle-Signature: ts=1671552777;h1=<hex HMAC-SHA256("{ts}:{rawBody}")>
 // (clave PADDLE_WEBHOOK_SECRET, el "webhook secret" del endpoint — NO la API key).
-// Eventos manejados (ambos llaman activar_suscripciones — idempotente: Paddle puede
-// reintentar y paid/completed llegan para la misma transacción):
+// Eventos manejados (ambos pasan por confirmar_pago_paddle, que vincula el cliente
+// y usa activar_suscripciones una sola vez por transacción):
 //   · transaction.paid      → valida firma + monto contra app_pagos y activa.
 //   · transaction.completed → idem (backup: si paid se pierde, completed activa).
-// Otros eventos (transaction.created, adjustment.*, …): reconocidos con 200 sin acción
-// (no hay flujo de reembolso v1).
+// Los eventos de cliente y suscripción actualizan el espejo de facturación.
+// Otros eventos (transaction.created, adjustment.*, …) se reconocen sin acción.
 // Confirma la entrega después de procesarla; 401 con firma inválida.
 
 import {
   clienteAdmin,
   json,
   PADDLE_WEBHOOK_SECRET,
-  verificarFirmaPaddle,
+  usuarioPaddlePermitido,
 } from '../_shared/payment_utils.ts';
+import { EventName, paddle, type EventEntity } from '../_shared/paddleSdk.ts';
 import { processPaymentEvent } from './paymentEvent.ts';
+import { sincronizarEvento } from './syncEvent.ts';
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return json({ error: 'metodo_no_permitido' }, 405);
 
-  // 1 · Config: sin PADDLE_WEBHOOK_SECRET es un fallo de despliegue (500 visible, no un
-  //     crash de WebCrypto por importKey con clave vacía).
-  if (!PADDLE_WEBHOOK_SECRET) {
-    console.error('paddle-webhook: PADDLE_WEBHOOK_SECRET sin setear');
+  if (!paddle || !PADDLE_WEBHOOK_SECRET) {
+    console.error('paddle-webhook: configuración de Paddle incompleta');
     return json({ error: 'webhook_no_configurado' }, 500);
   }
 
-  // 2 · Firma HMAC sobre el cuerpo CRUDO (raw) — nunca sobre el JSON re-serializado.
-  //     Incluye anti-replay: timestamp con más de 5 minutos se rechaza.
-  const raw = await req.text();
-  const firmaOk = await verificarFirmaPaddle(req.headers.get('Paddle-Signature') ?? '', raw);
-  if (!firmaOk) return json({ error: 'firma_invalida' }, 401);
-
-  let event: unknown;
+  let event: EventEntity;
   try {
-    event = JSON.parse(raw);
+    event = await paddle.webhooks.unmarshal(
+      await req.text(),
+      PADDLE_WEBHOOK_SECRET,
+      req.headers.get('Paddle-Signature') ?? '',
+    );
   } catch {
-    return json({ error: 'payload_invalido' }, 400);
+    return json({ error: 'evento_no_verificado' }, 401);
   }
 
   const admin = clienteAdmin();
   try {
+    if (
+      event.eventType !== EventName.TransactionPaid &&
+      event.eventType !== EventName.TransactionCompleted
+    ) {
+      await sincronizarEvento(event, admin);
+      return json({ ok: true });
+    }
+    if (!usuarioPaddlePermitido(event.data.customData?.user_id)) return json({ ok: true });
     const result = await processPaymentEvent(event, {
       load: async (reference) => {
         const { data, error } = await admin
           .from('app_pagos')
-          .select('id, estado, monto_centavos, moneda, user_id')
+          .select('id, estado, monto_centavos, moneda, user_id, txn_id, paddle_customer_id')
           .eq('referencia', reference)
           .maybeSingle();
         if (error) throw new Error('lectura_pago');
@@ -65,14 +71,19 @@ Deno.serve(async (req: Request) => {
           .eq('estado', 'pendiente');
         if (error) throw new Error('actualizacion_pago');
       },
-      activate: async (reference, transactionId) => {
-        const { error } = await admin.rpc('activar_suscripciones', {
+      activate: async (reference, transactionId, customerId) => {
+        const { error } = await admin.rpc('confirmar_pago_paddle', {
           p_referencia: reference,
           p_txn_id: transactionId,
+          p_customer_id: customerId,
         });
         if (error) throw new Error('activacion_pago');
       },
     });
+    if (result === 'unbound') {
+      console.error('paddle-webhook: orden de Paddle pendiente de vincular');
+      return json({ error: 'pago_no_vinculado' }, 503);
+    }
     if (result === 'invalid') {
       // El mismo cuerpo firmado no cambia al reintentarlo. Dejar la orden pendiente
       // para revisión y reconocer la entrega; otro evento válido aún puede activarla.

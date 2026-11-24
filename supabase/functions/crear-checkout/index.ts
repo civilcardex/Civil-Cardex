@@ -3,17 +3,17 @@
 // Contrato con el cliente (CheckoutModal.tsx):
 //   body:  { modulos: ('flow'|'manage')[], periodo: 'mensual'|'semestral'|'anual',
 //            puestosPorModulo?: Record<modulo, number> }
-//   200:   { checkoutUrl, referencia }
+//   200:   { transactionId, checkoutUrl, referencia }
 //   error: { error: 'suscripciones_deshabilitadas' | 'pasarela_no_configurada' |
 //                    'venta_manual' | 'demasiados_intentos' | 'parametros_invalidos' }
 //
-// Flujo: JWT del caller → gate suscripciones_habilitadas → precio SIEMPRE server-side
+// Flujo: JWT del caller → autorización de compra → precio SIEMPRE server-side
 // (app_precios, la verdad en BD; _shared/pricing.ts como fallback — jamás del cliente) →
 // fila app_pagos 'pendiente' (service-role vía RPC atómica; la tabla rechaza INSERT de
 // clientes) → transacción Paddle con ÍTEM NO-CATÁLOGO (precio inline: la venta es
 // multi-módulo con descuentos compuestos — no hay producto por combinación) y
 // custom_data = { referencia, user_id } (el webhook lo recibe de vuelta). El checkout
-// hosteado sale del campo checkout.url de la respuesta. Preflight CORS + cabeceras
+// se abre en Paddle.js con el ID de la transacción. Preflight CORS + cabeceras
 // en toda respuesta (functions.invoke manda Authorization/apikey).
 
 import {
@@ -28,6 +28,8 @@ import {
   clienteAdmin,
   clienteUsuario,
   json,
+  paddleConfigurado,
+  usuarioPaddlePermitido,
   PADDLE_API_BASE,
   PADDLE_API_KEY,
   preflight,
@@ -67,19 +69,26 @@ Deno.serve(async (req: Request) => {
   } = await supaUser.auth.getUser();
   if (!user) return json({ error: 'no_autenticado' }, 401);
 
-  // 2 · Gate global de suscripciones (app_config → RPC). Apagado = nadie compra.
-  //     El error del RPC NO se traga: sin EXECUTE de service_role (o caída) es un
-  //     500 explícito, no un falso "suscripciones_deshabilitadas" indetectable.
-  const admin = clienteAdmin();
-  const { data: habilitadas, error: errHab } = await admin.rpc('suscripciones_habilitadas');
-  if (errHab) {
-    console.error('crear-checkout: gate suscripciones_habilitadas:', errHab.message);
-    return json({ error: 'error_interno' }, 500);
+  // 2 · Valida el entorno y, en sandbox, el usuario de prueba configurado.
+  if (!paddleConfigurado()) {
+    console.error(
+      'crear-checkout: PADDLE_API_BASE y PADDLE_API_KEY deben corresponder al mismo entorno',
+    );
+    return json({ error: 'pasarela_no_configurada' }, 500);
   }
-  if (habilitadas !== true) return json({ error: 'suscripciones_deshabilitadas' }, 400);
+  if (!usuarioPaddlePermitido(user.id)) return json({ error: 'sandbox_restringido' }, 403);
 
-  // 3 · Secrets de la pasarela.
-  if (!PADDLE_API_KEY) return json({ error: 'pasarela_no_configurada' }, 400);
+  // 3 · Las ventas reales requieren activar suscripciones. El usuario de sandbox
+  // puede probar un pago sin cambiar el acceso del resto de usuarios.
+  const admin = clienteAdmin();
+  if (PADDLE_API_BASE === 'https://api.paddle.com') {
+    const { data: habilitadas, error: errHab } = await admin.rpc('suscripciones_habilitadas');
+    if (errHab) {
+      console.error('crear-checkout: gate suscripciones_habilitadas:', errHab.message);
+      return json({ error: 'error_interno' }, 500);
+    }
+    if (habilitadas !== true) return json({ error: 'suscripciones_deshabilitadas' }, 400);
+  }
 
   // 4 · Payload saneado.
   let body: { modulos?: unknown; periodo?: unknown; puestosPorModulo?: unknown };
@@ -158,13 +167,7 @@ Deno.serve(async (req: Request) => {
   //     total de /pricing). unit_price.amount = STRING en centavos (formato Paddle).
   const descripcion = `CivilCardex ${modulos.join(' + ')} (${periodo})`;
   let checkoutUrl = '';
-  // Sin checkout no hay acuerdo posible: la fila pendiente se elimina (el check de
-  // estado de app_pagos no tiene 'fallida', y dejarla contaba contra el cap anti-spam
-  // del usuario por fallos de la pasarela que no le pertenecen). Con await: el runtime
-  // puede congelar el isolate al devolver la Response y matar un delete en vuelo.
-  const cancelarPago = async (): Promise<void> => {
-    await admin.from('app_pagos').delete().eq('referencia', referencia);
-  };
+  let transactionId = '';
   try {
     const resp = await fetch(`${PADDLE_API_BASE}/transactions`, {
       method: 'POST',
@@ -174,6 +177,7 @@ Deno.serve(async (req: Request) => {
         Authorization: `Bearer ${PADDLE_API_KEY}`,
       },
       body: JSON.stringify({
+        currency_code: 'USD',
         items: [
           {
             quantity: 1,
@@ -181,6 +185,7 @@ Deno.serve(async (req: Request) => {
               description: `Suscripción ${descripcion}`,
               name: descripcion,
               unit_price: { amount: String(total), currency_code: 'USD' },
+              quantity: { minimum: 1, maximum: 1 },
               tax_mode: 'internal',
               product: {
                 name: 'CivilCardex',
@@ -191,32 +196,38 @@ Deno.serve(async (req: Request) => {
           },
         ],
         custom_data: { referencia, user_id: user.id },
-        // LIMITACIÓN (H-03, verificado en developer.paddle.com 2026-11-23): la API de
-        // transacciones NO admite checkout.settings.success_url — Paddle muestra su página
-        // de confirmación genérica y el comprador vuelve a la app por su cuenta. La
-        // activación NO depende de la vuelta: la hace el webhook (transaction.paid →
-        // activar_suscripciones). El banner «Pago aprobado» de /pricing?ref= solo se ve si
-        // el usuario regresa manualmente al sitio; el acceso al módulo aparece igual al
-        // navegar (RequireModule evalúa la fecha en cada render).
-        ...(user.email ? { customer: { email: user.email } } : {}),
       }),
     });
     const data = await resp.json();
     if (!resp.ok) {
       console.error('crear-checkout: Paddle', resp.status, JSON.stringify(data).slice(0, 400));
-      await cancelarPago();
       return json({ error: 'pasarela_no_configurada' }, 502);
     }
     checkoutUrl = data?.data?.checkout?.url ?? '';
+    transactionId = data?.data?.id ?? '';
   } catch (e) {
     console.error('crear-checkout: fetch Paddle:', e instanceof Error ? e.message : e);
-    await cancelarPago();
     return json({ error: 'pasarela_no_configurada' }, 502);
   }
-  if (!checkoutUrl) {
-    await cancelarPago();
+  if (!/^txn_[a-z0-9]{26}$/.test(transactionId)) {
     return json({ error: 'pasarela_no_configurada' }, 502);
   }
 
-  return json({ checkoutUrl, referencia });
+  const { error: errVinculo } = await admin
+    .from('app_pagos')
+    .update({
+      txn_id: transactionId,
+      paddle_entorno:
+        PADDLE_API_BASE === 'https://sandbox-api.paddle.com' ? 'sandbox' : 'production',
+    })
+    .eq('referencia', referencia)
+    .eq('estado', 'pendiente')
+    .is('txn_id', null)
+    .select('id')
+    .single();
+  if (errVinculo) {
+    console.error('crear-checkout: no se pudo vincular la orden:', errVinculo.message);
+    return json({ error: 'error_interno' }, 500);
+  }
+  return json({ transactionId, checkoutUrl, referencia });
 });

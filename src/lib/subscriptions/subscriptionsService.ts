@@ -50,14 +50,23 @@ export function estaActiva(
 }
 
 /** Módulos a los que puede entrar: los comprados por él + los asientos que le dieron como miembro del equipo de una empresa. Si la función de BD no existe todavía, devuelve []. */
-export async function fetchModulosConAcceso(): Promise<ModuloId[]> {
+async function consultarModulosConAcceso(): Promise<ModuloId[] | null> {
   try {
     const { data, error } = await supabase.rpc('mis_accesos');
-    if (error || !Array.isArray(data)) return [];
+    if (error || !Array.isArray(data)) return null;
     return data.filter((m: unknown): m is ModuloId => typeof m === 'string');
   } catch {
-    return [];
+    return null;
   }
+}
+
+export async function fetchModulosConAcceso(): Promise<ModuloId[]> {
+  return (await consultarModulosConAcceso()) ?? [];
+}
+
+/** Consulta la vigencia al abrir un proyecto. Ej: un asiento de Civil Manager permite abrirlo aunque lo pagó la empresa. */
+export async function verificarAccesoModulo(modulo: ModuloId): Promise<boolean | null> {
+  return (await consultarModulosConAcceso())?.includes(modulo) ?? null;
 }
 
 /** Lista rápida de módulos con suscripción al día (sin repetidos). */
@@ -176,15 +185,22 @@ export async function verificarPago(referencia: string) {
   );
 }
 
-/** Pide la URL del checkout hosteado de Paddle (edge function crear-checkout: calcula el total server-side desde app_precios e inserta la fila pendiente). Ej: crearCheckout(['flow'], 'anual', {flow:3}) -> {data:{checkoutUrl}, error}. */
+/** Pide una orden de Paddle calculada en el servidor. Ej: crearCheckout(['flow'], 'anual', {flow:3}) devuelve su transacción y referencia. */
 export async function crearCheckout(
   modulos: ModuloId[],
   periodo: Periodo,
   puestos?: PuestosPorModulo,
 ) {
   return edgeConTimeout(() =>
-    supabase.functions.invoke<{ checkoutUrl?: string }>('crear-checkout', {
+    supabase.functions.invoke<{ transactionId: string; referencia: string }>('crear-checkout', {
       body: { modulos, periodo, puestosPorModulo: puestos ?? {} },
     }),
+  );
+}
+
+/** Pide una sesión temporal de facturación para el usuario autenticado. */
+export function abrirPortalFacturacion() {
+  return edgeConTimeout(() =>
+    supabase.functions.invoke<{ url: string }>('paddle-portal', { method: 'POST' }),
   );
 }

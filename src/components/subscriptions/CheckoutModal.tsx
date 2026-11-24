@@ -7,23 +7,32 @@ import {
   edgePagoNoDesplegada,
 } from '../../lib/subscriptions/subscriptionsService.ts';
 import { devError } from '../../utils/devError.ts';
-import { marcarNavInterna } from '../../utils/internalNavigation.ts';
+import { abrirCheckout, cargarPaddle } from '../../lib/subscriptions/paddleCheckout.ts';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  email?: string;
   modulos: ModuloId[];
   periodo: Periodo;
   /** Puestos por módulo (empresarial); ausente = 1 puesto por módulo. */
   puestos?: PuestosPorModulo;
 }
 
-/** Checkout Paddle: pide la URL a la edge function `crear-checkout` y redirige al checkout hosteado (sin iframes — no toca CSP). Ej: puestos {flow:3} con periodo anual -> total con descuentos server-side. */
-export default function CheckoutModal({ open, onClose, modulos, periodo, puestos }: Props) {
+/** Pide la orden al servidor y la abre en Paddle. Ej: 3 puestos de Civil Flow conservan su descuento por volumen. */
+export default function CheckoutModal({ open, onClose, email, modulos, periodo, puestos }: Props) {
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState(false);
   // Evita pedir dos checkouts si el padre re-renderiza con el modal abierto.
   const pedidoRef = useRef(false);
+  const montado = useRef(false);
+
+  useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Al cerrar libera el guard; al abrir pide el checkout UNA sola vez.
@@ -35,20 +44,20 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
     pedidoRef.current = true;
     void (async () => {
       const { data, error: err } = await crearCheckout(modulos, periodo, puestos);
-      if (data?.checkoutUrl) {
-        // Allowlist: la URL de la edge function no se asigna a ciegas — un proxy/deploys
-        // confusos no deben poder redirigir el pago a un clon con el modal abierto.
-        // try/catch OBLIGATORIO: un throw aquí es un unhandled rejection (IIFE void) —
-        // el modal quedaba clavado en «Redirigiendo…» sin feedback y pedidoRef bloqueado.
+      if (!montado.current) return;
+      if (data?.transactionId && data.referencia) {
         try {
-          const url = new URL(data.checkoutUrl as string);
-          if (!/(^|\.)paddle\.com$/.test(url.hostname)) throw new Error('checkout_url_invalida');
-          marcarNavInterna();
-          window.location.assign(url.toString());
+          const paddle = await cargarPaddle();
+          if (!montado.current) return;
+          abrirCheckout(paddle, data.transactionId, data.referencia, email);
+          onClose();
         } catch (e) {
-          devError('crear-checkout: url inválida:', e);
+          if (!montado.current) return;
+          devError('crear-checkout: Paddle.js:', e);
           setError(true);
-          setMensaje('La pasarela devolvió una URL de pago inválida. Inténtalo más tarde.');
+          setMensaje(
+            'No pudimos abrir Paddle. Verifica la configuración de pagos o inténtalo más tarde.',
+          );
         }
         return;
       }
@@ -76,13 +85,20 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
             // body no-JSON (proxy/HTML): mensaje genérico
           }
         }
-        setMensaje(
-          especifico ||
-            'La pasarela de pago no está configurada aún o rechazó la compra. Inténtalo más tarde.',
-        );
+        if (montado.current) {
+          setMensaje(
+            especifico ||
+              'La pasarela de pago no está configurada aún o rechazó la compra. Inténtalo más tarde.',
+          );
+        }
       }
-    })();
-  }, [open, modulos, periodo, puestos]);
+    })().catch((e: unknown) => {
+      if (!montado.current) return;
+      devError('crear-checkout:', e);
+      setError(true);
+      setMensaje('No pudimos preparar tu compra. Inténtalo más tarde.');
+    });
+  }, [open, onClose, email, modulos, periodo, puestos]);
 
   // Reset del aviso al (re)abrir — patrón de ajuste de estado durante render.
   const [prevOpen, setPrevOpen] = useState(open);
@@ -95,6 +111,13 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
   }
 
   if (!open) return null;
+  if (!error) {
+    return (
+      <p role="status" className="pricing-aviso max-w-4xl mx-auto mt-4 text-center">
+        Preparando tu compra en Paddle…
+      </p>
+    );
+  }
 
   return (
     <ModalShell ariaLabel="Checkout de pago">
@@ -110,7 +133,7 @@ export default function CheckoutModal({ open, onClose, modulos, periodo, puestos
         Finalizar compra
       </h3>
       <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)', margin: '0 0 16px' }}>
-        {error ? mensaje : 'Redirigiendo a la pasarela de pago (Paddle)...'}
+        {mensaje}
       </p>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button

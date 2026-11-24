@@ -4,16 +4,27 @@ interface PaymentOrder {
   monto_centavos: number;
   moneda: string;
   user_id: string;
+  txn_id: string | null;
+  paddle_customer_id: string | null;
 }
 
 interface PaymentStore {
   load: (reference: string) => Promise<PaymentOrder | null>;
   review: (id: number) => Promise<void>;
-  activate: (reference: string, transactionId: string) => Promise<void>;
+  activate: (reference: string, transactionId: string, customerId: string) => Promise<void>;
 }
 
-function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+interface PaymentEvent {
+  eventType: string;
+  data?: {
+    id: string;
+    customerId: string | null;
+    subscriptionId?: string | null;
+    customData: Record<string, unknown> | null;
+    details: {
+      totals: { grandTotal: string; balance: string | null; currencyCode: string } | null;
+    } | null;
+  };
 }
 
 function cents(value: unknown): number | null {
@@ -23,34 +34,47 @@ function cents(value: unknown): number | null {
 }
 
 /** Procesa un evento ya autenticado. Un fallo de persistencia debe rechazar la entrega. */
-export async function processPaymentEvent(value: unknown, store: PaymentStore) {
-  const event = record(value);
-  if (event.event_type !== 'transaction.paid' && event.event_type !== 'transaction.completed') {
+export async function processPaymentEvent({ eventType, data }: PaymentEvent, store: PaymentStore) {
+  if (
+    !data ||
+    data.subscriptionId ||
+    (eventType !== 'transaction.paid' && eventType !== 'transaction.completed')
+  ) {
     return 'ignored';
   }
-  const data = record(event.data);
-  const custom = record(data.custom_data);
-  const reference = custom.referencia;
+  const custom = data.customData;
+  const reference = custom?.referencia;
   if (typeof reference !== 'string' || !reference) return 'ignored';
 
   const order = await store.load(reference);
-  if (!order || order.estado !== 'pendiente' || custom.user_id !== order.user_id) return 'ignored';
-  const totals = record(record(data.details).totals);
-  const amount = cents(totals.grand_total);
-  const balance = cents(totals.balance);
   if (
-    typeof data.id !== 'string' ||
-    !data.id.startsWith('txn_') ||
+    !order ||
+    custom?.user_id !== order.user_id ||
+    (order.estado !== 'pendiente' &&
+      (order.estado !== 'aprobado' || order.paddle_customer_id !== null))
+  ) {
+    return 'ignored';
+  }
+  if (!order.txn_id) return 'unbound';
+  if (data.id !== order.txn_id) return 'ignored';
+  const totals = data.details?.totals;
+  const amount = cents(totals?.grandTotal);
+  const balance = cents(totals?.balance);
+  if (
+    !/^txn_[a-z0-9]{26}$/.test(order.txn_id) ||
+    typeof data.customerId !== 'string' ||
+    !/^ctm_[a-z0-9]{26}$/.test(data.customerId) ||
     amount === null ||
     balance === null ||
-    typeof totals.currency_code !== 'string'
+    typeof totals?.currencyCode !== 'string'
   ) {
     return 'invalid';
   }
-  if (balance !== 0 || totals.currency_code !== order.moneda || amount < order.monto_centavos) {
-    await store.review(order.id);
+  if (balance !== 0) return 'invalid';
+  if (totals.currencyCode !== order.moneda || amount < order.monto_centavos) {
+    if (order.estado === 'pendiente') await store.review(order.id);
     return 'review';
   }
-  await store.activate(reference, data.id);
+  await store.activate(reference, order.txn_id, data.customerId);
   return 'activated';
 }

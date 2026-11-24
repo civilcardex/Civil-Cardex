@@ -13,3 +13,10 @@ verify_jwt = true
 
 [functions.verificar-pago]
 verify_jwt = true
+
+[functions.paddle-portal]
+verify_jwt = true
+
+# La llamada programada se autentica con un secreto dedicado.
+[functions.subscription-emails]
+verify_jwt = false
