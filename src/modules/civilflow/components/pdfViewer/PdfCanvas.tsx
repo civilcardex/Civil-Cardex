@@ -1,6 +1,6 @@
 /** Capas visuales del lienzo del visor: canvas del PDF (fondo), canvas de dibujo (trazos), estados de error/carga y el velo translúcido del cambio de piso. Ej: mientras cambia de piso, el velo tapa la mezcla lámina-vieja/trazos-nuevos. */
 import { memo, type RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { pisoLbl } from '../../constants';
 import { OPEN_TAB_KEY } from '../../constants/storage-keys.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';

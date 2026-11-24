@@ -5,7 +5,7 @@
  * y la columna central (drag & drop + preview) en plansTab/PlansUpload.
  */
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import {
   saveTrazosToDB,
   loadTrazosFromDB,

@@ -8,7 +8,7 @@ import { MODULES_DATA } from './moduleData.ts';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
 
 interface ModulePageProps {

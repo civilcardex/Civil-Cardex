@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 // Banner de consentimiento de cookies (orig. usuario: "lo típico"). CivilCardex no usa
 // cookies de rastreo ni publicidad: Supabase Auth guarda tokens en localStorage (esencial),

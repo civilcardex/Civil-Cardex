@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import LegalShell from './LegalShell.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';

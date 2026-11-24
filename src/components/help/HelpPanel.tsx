@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { AyudaContexto } from './helpContext.ts';
 import { iconoDeGrupo, type GuiaGrupo } from './helpGuideTypes.tsx';
 import type { GUIA_TYPE } from './helpGuideTypes.tsx';

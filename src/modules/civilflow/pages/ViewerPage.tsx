@@ -11,7 +11,7 @@ import React, {
   useMemo,
   useSyncExternalStore,
 } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import Navbar from '../../../components/Navbar.tsx';
 import PdfViewer from '../components/PdfViewer';
 import { RainwaterProvider } from '../context/RainwaterContext.tsx';

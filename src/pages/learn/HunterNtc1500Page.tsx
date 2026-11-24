@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import ArticlePage from './ArticlePage.tsx';
 
 /** Artículo "El método de Hunter": contenido editorial de /aprende/hunter-ntc-1500.

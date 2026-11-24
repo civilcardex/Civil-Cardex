@@ -4,10 +4,13 @@
  * Ej: arrastrar "Piso 3.pdf" al centro lo agrega como plano pendiente y muestra "SOLTAR PARA SUBIR".
  */
 import type { Dispatch, RefObject, SetStateAction } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { pisoLbl } from '../../../constants';
 import { getActiveProyectoId } from '../../../services/storageService.ts';
-import { VISOR_ACTIVE_INDEX_KEY, VISOR_ACTIVE_PLAN_ID_KEY } from '../../../constants/storage-keys.ts';
+import {
+  VISOR_ACTIVE_INDEX_KEY,
+  VISOR_ACTIVE_PLAN_ID_KEY,
+} from '../../../constants/storage-keys.ts';
 import { PlanosTab_S3, PlanosTab_S4, PlanosTab_S5, PlanosTab_S6 } from '../PlansTab.styles.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
 

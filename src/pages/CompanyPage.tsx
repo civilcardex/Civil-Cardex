@@ -1,7 +1,7 @@
 /** /empresa — administración de puestos de los planes empresariales del usuario: por cada suscripción propia con puestos > 1: miembros (email, puede-editar,
  * quitar), asignación por correo (solo usuarios registrados) y CTA para ampliar puestos. */
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { CATALOGO, SUSCRIPCIONES_ACTIVAS } from '../lib/subscriptions/catalog.ts';

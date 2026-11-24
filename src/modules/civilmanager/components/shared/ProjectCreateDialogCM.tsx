@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { createCmProyecto } from '../../services/cmProjectsService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { useSuscripciones } from '../../../../hooks/useSubscriptions.ts';

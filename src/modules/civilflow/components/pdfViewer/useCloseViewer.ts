@@ -5,7 +5,7 @@
  * Ej: cerrar con ramales sin UC dispara la alerta y NO navega hasta corregir o confirmar.
  */
 import { useCallback, type MutableRefObject, type RefObject } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { getActiveProyectoId } from '../../services/storageService.ts';

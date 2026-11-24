@@ -69,7 +69,7 @@
     "pdfjs-dist": "^6.4.299",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.5",
+    "react-router": "^7.18.7",
     "three": "^0.187.0",
     "xlsx": "npm:xlsx-republish@0.20.3"
   },

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import Navbar from '../components/Navbar.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';

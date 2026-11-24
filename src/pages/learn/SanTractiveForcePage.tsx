@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import ArticlePage from './ArticlePage.tsx';
 
 /** Artículo "Fuerza tractiva en redes sanitarias": contenido editorial de /aprende/fuerza-tractiva-sanitaria.

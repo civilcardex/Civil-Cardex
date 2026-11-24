@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { ProyectoCard } from './ProjectCard.tsx';
 import { estaActiva, type SuscripcionRow } from '../../lib/subscriptions/subscriptionsService.ts';
 import type { ProyectoRow } from '../../modules/civilflow/services/projectsService.ts';

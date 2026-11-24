@@ -6,7 +6,7 @@
  * Ej: <ToolbarCollapsed visibleTools={...} isToolActive={...} onToolClick={...} />.
  */
 import './toolbarButtons.css';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import type { ToolDef } from './toolbarNetTools.ts';
 
 export const STATUS: Record<string, { color: string; label: string }> = {

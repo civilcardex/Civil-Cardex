@@ -1,6 +1,6 @@
 /** Guard de ruta por módulo: sin suscripción vigente redirige a /pricing. */
 import { useEffect, useState, type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { verificarAccesoModulo } from '../../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';

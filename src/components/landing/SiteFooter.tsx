@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 /** Enlaces internos del pie (mismo estilo); el botón de correo va aparte (no es Link). */
 const LINKS: [string, string][] = [

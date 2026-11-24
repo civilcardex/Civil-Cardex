@@ -2,7 +2,7 @@
  *  servicio, presiones de prueba y catálogos que alimentan las tablas de cada red.
  *  Ej: subir la presión mínima de rci (Red Contra Incendio) endurece el chequeo de todos sus tramos. */
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useProject } from '../context/ProjectContext.tsx';
 import { useApparatus, type ApsItem } from '../context/ApparatusContext.tsx';
 import { NORM_COL, REDES_MAT, CAT_APS, APARATOS_DEF } from '../constants';

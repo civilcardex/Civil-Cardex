@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 import { useAuth } from '../context/AuthContext.tsx';
 import { useAyudaContext } from './help/helpContext.ts';
 import AyudaPanel from './help/HelpPanel.tsx';

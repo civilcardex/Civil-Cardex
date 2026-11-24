@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router';
 import Navbar from '../components/Navbar.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 

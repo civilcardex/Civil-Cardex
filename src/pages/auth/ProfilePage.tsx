@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useContext } from 'react';
 import { supabase } from '../../lib/supabase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 import { devError } from '../../utils/devError.ts';
 import { useAuth } from '../../context/AuthContext.tsx';

@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { GAS } from '../constants/engineeringDataGas.ts';
 import { OPEN_TAB_KEY } from '../constants/storage-keys.ts';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData.ts';

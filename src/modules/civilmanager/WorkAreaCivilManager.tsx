@@ -15,7 +15,7 @@ import { ConfigTab } from './config/ConfigTab.tsx';
 import { ApuCatalog } from './apu/ApuCatalog.tsx';
 import { PresupuestosTab } from './budgets/BudgetsTab.tsx';
 import { setAyudaContext } from '../../components/help/helpContext.ts';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   CM_CATALOGOS,
   CM_SECCIONES,

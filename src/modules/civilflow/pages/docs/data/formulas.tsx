@@ -1,5 +1,5 @@
 /** Contenido de la sección "Fórmulas del sistema" de la página /docs: catálogo completo de las fórmulas que la app aplica en cada cálculo, con variables, límites y norma de origen. */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { NormaLink } from '../../../components/shared/standardsLinks.tsx';
 import { Tabla, donde, fx } from './ui';
 

@@ -1,5 +1,5 @@
 /** Contenido de la sección "Agua fría" de la página /docs: UC (Unidades de Consumo), Hazen-Williams y verificación de presión/velocidad de af (Agua Fría). */
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Tabla, donde, fx } from './ui';
 
 const agua_fria = {

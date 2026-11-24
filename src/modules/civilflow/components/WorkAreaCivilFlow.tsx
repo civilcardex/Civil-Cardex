@@ -2,7 +2,7 @@
  *  todo guardado fallaría en silencio), corre el tour por pestaña y pinta la barra de redes.
  *  Ej: abrir /civilflowareatrabajo sin proyecto válido -> banner en vez de dibujo huérfano. */
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { useWorkAreaState } from './useWorkAreaState.ts';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import { fetchProyectosOrThrow } from '../services/projectsService.ts';
@@ -11,7 +11,7 @@ import { ACTIVE_PROYECTO_ID_KEY } from '../constants/storage-keys.ts';
 import { WorkAreaSidebar } from './WorkAreaSidebar.tsx';
 import WorkAreaContent from './WorkAreaContent.tsx';
 import { useTour } from '../../../components/tour/useTour.tsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { parseFlowSplat, rutaFlow } from './workarea/tabRoute.ts';
 import { ErrorBoundary } from '../../../components/ErrorBoundary.tsx';
 import { REDES } from '../constants';

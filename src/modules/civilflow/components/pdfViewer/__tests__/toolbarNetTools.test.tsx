@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { buildNetTools, isToolDisabledForNet } from '../toolbarNetTools.ts';
 import { STATUS, ToolbarCollapsed, ToolbarExpanded } from '../toolbarButtons.tsx';
 import { renderYVer } from '../../../../../test/render.tsx';

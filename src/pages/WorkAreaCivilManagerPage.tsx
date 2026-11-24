@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router';
 import WorkAreaCivilManager from '../modules/civilmanager/WorkAreaCivilManager.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { parseManagerSplat } from '../modules/civilflow/components/workarea/tabRoute.ts';

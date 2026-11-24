@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes } from 'react-router';
 import { supabase } from '../src/lib/supabase.ts';
 import PlanoEngine from '../src/modules/civilflow/lib/PlanoEngine/PlanoEngine.ts';
 import type { ElementItem } from '../src/modules/civilflow/lib/PlanoEngine/PlanoState.ts';

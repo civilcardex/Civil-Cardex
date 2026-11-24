@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { renderEnJsdom } from '../render.tsx';
 import { expectAxe } from '../axe.ts';
 import LandingPage from '../../pages/LandingPage.tsx';

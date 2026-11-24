@@ -1,6 +1,6 @@
 import { devError } from '../utils/devError.ts';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 import Navbar from '../components/Navbar.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';

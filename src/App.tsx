@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigationType } from 'react-router';
 import Layout from './layouts/Layout.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { ProtectedRoute } from './components/ProtectedRoute.tsx';

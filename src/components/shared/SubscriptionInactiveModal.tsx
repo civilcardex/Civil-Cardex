@@ -1,6 +1,6 @@
 import { ModalShell } from '../shared/ModalShell.tsx';
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 /** Código de proyecto: prefijo del módulo + fecha compacta (CF-20250930-1430).
  *  `toLocaleString('sv')` da "YYYY-MM-DD HH:MM" — el ISO ordenable que Intl no expone

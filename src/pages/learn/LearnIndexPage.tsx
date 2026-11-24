@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import Navbar from '../../components/Navbar.tsx';
 import { usePageMeta } from '../../hooks/usePageMeta.ts';
 import { metaDeRuta, ROUTE_META, type ArticuloMeta, type RouteMeta } from '../../seo/routeMeta.ts';

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { useRef } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { ScaleText, PlanoAsocInfo } from '../viewerInfoPanels.tsx';
 import { useActiveNetState } from '../useActiveNetState.ts';
 import { useDmuroRciInjection } from '../useDmuroRciInjection.ts';

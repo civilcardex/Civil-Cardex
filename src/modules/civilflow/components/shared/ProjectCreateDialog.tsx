@@ -1,7 +1,7 @@
 /** Diálogo de creación de proyecto (nombre, datos básicos): comparte lógica con el gating de
  *  suscripciones — sin módulo activo muestra el aviso pero la BD es el candado real. */
 import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { PlansContext } from '../../context/PlansContext.tsx';
 import { ProjectContext } from '../../context/ProjectContext.tsx';
 import { createProyecto } from '../../services/projectsService.ts';

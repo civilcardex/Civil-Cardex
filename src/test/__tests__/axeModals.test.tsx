@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { renderEnJsdom } from '../render.tsx';
 import { expectAxe } from '../axe.ts';
 import { ConfirmModal } from '../../components/shared/ConfirmModal.tsx';

@@ -1,6 +1,6 @@
 import { ModalShell } from '../shared/ModalShell.tsx';
 import { useState, type CSSProperties } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { CATALOGO, type ModuloId, type ModuloVenta } from '../../lib/subscriptions/catalog.ts';
 import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';

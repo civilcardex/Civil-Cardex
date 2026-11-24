@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import WorkArea from '../components/WorkAreaCivilFlow.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
 import { ProjectContext } from '../context/ProjectContext.tsx';

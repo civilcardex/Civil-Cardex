@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router';
 import AuthLayout from './AuthLayout.tsx';
 import PwdField from './PwdField.tsx';
 import FormField from '../../components/FormField.tsx';
