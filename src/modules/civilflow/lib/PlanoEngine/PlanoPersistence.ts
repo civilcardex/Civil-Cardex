@@ -193,6 +193,7 @@ export function mergeBajanteDedup<T>(base: T, previa: T): T {
 export function serializeWork(engine: {
   scaleM: number;
   definedScaleM: number;
+  workVersion?: number;
   activeNet: string;
   pageW?: number;
   pageH?: number;
@@ -223,7 +224,7 @@ export function serializeWork(engine: {
       return cp;
     });
   return {
-    v: 6,
+    v: engine.workVersion ?? 6,
     scaleM: engine.scaleM,
     definedScaleM: engine.definedScaleM,
     activeNet: engine.activeNet,
@@ -277,6 +278,7 @@ export function applyWorkData(
 ) {
   engine.scaleM = d.scaleM || 0.5;
   engine.definedScaleM = d.definedScaleM || 0;
+  engine.workVersion = d.v ?? 6;
   engine.activeNet = d.activeNet || 'af';
   // Cámara NO se restaura: la doctrina de entrada es "siempre bbox-fit" (reEncuadrarContenido
   // corre justo después de cada loadWork) — restaurar el zoom/offX/offY guardados era un

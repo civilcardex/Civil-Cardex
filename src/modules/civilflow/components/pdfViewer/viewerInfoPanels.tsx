@@ -6,6 +6,11 @@
  */
 import { useMemo } from 'react';
 import type { PlanItem } from '../../context/PlansContext.tsx';
+import { escalaDePapel, esArchivoPdf } from '../../utils/planScale.ts';
+
+function denominador(plan: PlanItem): number {
+  return Math.round(plan.origen ? escalaDePapel(plan.scale, esArchivoPdf(plan.file)) : plan.scale);
+}
 
 /** Etiqueta de escala: la de la lámina calibrada del piso manda; si no, el map de scaleM. */
 export function ScaleText({
@@ -19,7 +24,7 @@ export function ScaleText({
 }): React.ReactElement {
   return useMemo(() => {
     const planoAsoc = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-    if (planoAsoc && planoAsoc.scale) return <span>1:{Math.round(planoAsoc.scale)}</span>;
+    if (planoAsoc && planoAsoc.scale) return <span>1:{denominador(planoAsoc)}</span>;
     const map: Record<string, string> = {
       '0.5': '1:50',
       '0.75': '1:75',
@@ -69,7 +74,7 @@ export function PlanoAsocInfo({
         <div
           style={{ fontSize: 12, color: '#6b8cae', fontFamily: "'Geist',monospace", marginTop: 2 }}
         >
-          Escala 1:{Math.round(planoAsoc.scale)}
+          Escala 1:{denominador(planoAsoc)}
         </div>
       </div>
     );

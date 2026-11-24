@@ -144,7 +144,11 @@ export default function ModalProtocolo({ onClose }: ModalProtocoloProps) {
                   <td>
                     <strong>Fija: 1:50, 1:75, 1:100</strong>
                   </td>
-                  <td>NUNCA "Ajustar a hoja"</td>
+                  <td>
+                    «Ajustar a hoja» ya no descuadra la calibración (se mide sobre el PDF), pero
+                    deforma el dibujo si la compresión no es uniforme y baja la nitidez: mejor
+                    escala fija.
+                  </td>
                 </tr>
                 <tr>
                   <td>Tamaño archivo</td>

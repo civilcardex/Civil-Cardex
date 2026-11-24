@@ -119,8 +119,9 @@ civilmanager/
 
 | Carpeta | Contenido |
 |---|---|
-| `migrations/` | 109 SQL activos + `_retired/` (6 retirados como histórico) + `_consolidated/civilflow-schema-final.sql` (esquema recreable): esquemas `cf_*` (civilflow), `cm_*` (civilmanager), `app_*` (suscripciones), RPCs de guardado (save_plano_data, cm_save_state), RLS + policies de empresa, concurrencia optimistic |
-| `functions/` | 3 Edge Functions de pagos: `crear-checkout`, `verificar-pago`, `paddle-webhook` (+ `_shared/`: pricing.ts, payment_utils.ts) y `tests/` de contratos |
+| `migrations/` | 109 SQL activos + `_retired/` (6 retirados como histórico) + `_consolidated/civilflow-schema-final.sql` (esquema recreable): esquemas `cf_*` (civilflow), `cm_*` (civilmanager), `app_*` (suscripciones), RPCs de guardado (save_plano_data, cm_save_state), RLS + policies de empresa, guardados LWW (el local siempre pisa la nube; sin reloj de versión) |
+| `functions/` | Edge Functions de pagos: `crear-checkout`, `verificar-pago`, `paddle-webhook` y `paddle-portal/` (sesiones de facturación de Paddle para el usuario autenticado), con utilidades en `_shared/` |
+| `functions/subscription-emails/` | Envía confirmaciones de pago y avisos de vencimiento por Resend desde una cola privada. |
 
 ## Otros
 

@@ -9,7 +9,7 @@ import { useReRasterEscala } from './useReRasterScale.ts';
 import PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { devError } from '../../../../utils/devError.ts';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { escalaDeDoc, paginaDeDoc } from '../../utils/planScale.ts';
+import { escalaDeLamina, paginaDeDoc } from '../../utils/planScale.ts';
 import { guardarAlDesmontar } from './persistStrokes.ts';
 import { useRenderLamina, type CallbacksVisor } from './engineInit/renderLamina.ts';
 import { useParsePdf } from './engineInit/parsePdf.ts';
@@ -21,7 +21,6 @@ interface UsePdfViewerEngineParams {
   files?: Array<{ id: number; file: File }>;
   currentId: string | number | undefined;
   currentIdRef: React.MutableRefObject<string | number | undefined>;
-  activeNetRef: React.MutableRefObject<string>;
   cwRef: React.RefObject<HTMLDivElement | null>;
   drawCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   pdfCanvasRef: React.RefObject<HTMLCanvasElement | null>;
@@ -40,13 +39,11 @@ interface UsePdfViewerEngineParams {
     net: string;
     isTee?: boolean;
   }) => void;
-  loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
   setActiveNet: (net: string) => void;
   setScaleM: (sm: string) => void;
   setLoading: (v: boolean) => void;
   setError: (e: string | null) => void;
   onReady?: () => void;
-  scale: number;
   engineRef?: React.MutableRefObject<PlanoEngine | null>;
   loadingPlanRef?: React.MutableRefObject<boolean>;
 }
@@ -55,7 +52,6 @@ export function usePdfViewerEngine({
   currentFile,
   currentId,
   currentIdRef,
-  activeNetRef,
   cwRef,
   drawCanvasRef,
   pdfCanvasRef,
@@ -67,13 +63,11 @@ export function usePdfViewerEngine({
   onRequestText,
   onAlert,
   onAccesorioModal,
-  loadTrazosForPlan,
   setActiveNet,
   setScaleM,
   setLoading,
   setError,
   onReady,
-  scale,
   engineRef: externalEngineRef,
   loadingPlanRef: externalLoadingPlanRef,
 }: UsePdfViewerEngineParams) {
@@ -82,6 +76,7 @@ export function usePdfViewerEngine({
   const internalEngineRef = useRef<PlanoEngine | null>(null);
   const engineRef = externalEngineRef ?? internalEngineRef;
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
+  const pdfPlanIdRef = useRef<string | null>(null);
   const mountId = useRef(0);
   // Última escala/página con la que se rasterizó el fondo (dump __cfCam: comparar contra
   // la escala del doc — distintas = lámina y dibujo en escalas distintas).
@@ -99,7 +94,6 @@ export function usePdfViewerEngine({
   const [engineReady, setEngineReady] = useState(false);
   const internalLoadingPlanRef = useRef(false);
   const loadingPlanRef = externalLoadingPlanRef ?? internalLoadingPlanRef;
-  const scaleRef = useRef(scale);
   const callbacksRef = useRef<CallbacksVisor>({
     onStatus,
     onDirty,
@@ -112,10 +106,6 @@ export function usePdfViewerEngine({
     setActiveNet,
     onReady,
   });
-
-  useEffect(() => {
-    scaleRef.current = scale;
-  }, [scale]);
 
   useEffect(() => {
     callbacksRef.current = {
@@ -150,7 +140,6 @@ export function usePdfViewerEngine({
     drawCanvasRef,
     engineRef,
     currentIdRef,
-    activeNetRef,
     mountIdRef: mountId,
     lastRenderScRef,
     lastPageBaseWRef,
@@ -158,9 +147,6 @@ export function usePdfViewerEngine({
     causaRenderRef,
     ultimoFullScRef,
     callbacksRef,
-    loadTrazosForPlan,
-    setActiveNet,
-    setScaleM,
     setError,
   });
 
@@ -190,10 +176,14 @@ export function usePdfViewerEngine({
         }
         lastBgAt = Date.now();
         const z = lastZoomRaster;
-        /* La densidad del fondo se rasteriza a la ESCALA DEL DOC (la misma del último FULL),
-         *  no a la del prop: rasterizar a otra `sc` con el CSS congelado (bgOnly nunca toca
-         *  el tamaño) estiraría el bitmap 1/scaleM y el fondo se vería borroso/corrido. */
-        const scDoc = escalaDeDoc(currentIdRef.current) ?? scaleRef.current;
+        // El re-raster de densidad nunca desplaza un render completo pendiente.
+        const scDoc = ultimoFullScRef.current;
+        if (
+          scDoc == null ||
+          pdfPlanIdRef.current !== String(currentIdRef.current) ||
+          hayRasterEnVuelo()
+        )
+          return;
         void renderPage(1, scDoc, mountId.current, {
           bgOnly: true,
           extraScale: z,
@@ -294,7 +284,7 @@ export function usePdfViewerEngine({
             // La escala del DOC antes del primer paint: los elementos nacen en su espacio
             // real y no se ven desplazados mientras "se acomodan" (el loader del PDF
             // confirma la misma escala al terminar; orig. usuario).
-            const es = escalaDeDoc(initId);
+            const es = escalaDeLamina(initId);
             // Tamaño FINAL de la lámina (persistido a escala 1 → se aplica con la escala del
             // doc): el lienzo de dibujo y el contenedor quedan con la medida buena desde el
             // primer paint. Sin él, el dibujo se pintaría en un espacio provisional
@@ -302,7 +292,6 @@ export function usePdfViewerEngine({
             // "recuadro" del visor, orig. usuario).
             const pg = es ? paginaDeDoc(initId, es) : null;
             if (es && pg) {
-              eng2.scaleM = es;
               eng2.loadWork(typeof saved === 'string' ? saved : (saved as object));
               const pdfCanvas = pdfCanvasRef.current;
               if (pdfCanvas) {
@@ -378,7 +367,7 @@ export function usePdfViewerEngine({
     pdfCanvasRef,
     renderPage,
     setScaleM,
-    scaleRef,
+    hayRasterEnVuelo,
     mountId,
     reprogramarBgRef,
     callbacksRef,
@@ -394,7 +383,8 @@ export function usePdfViewerEngine({
     currentId,
     pdfDocRef,
     mountIdRef: mountId,
-    scaleRef,
+    pdfPlanIdRef,
+    ultimoFullScRef,
     renderPage,
     reprogramarBgRef,
     hayRasterEnVuelo,
@@ -402,13 +392,11 @@ export function usePdfViewerEngine({
     setError,
   });
 
-  // Re-rasters por escala (prop + evento), con dedupe anti-parpadeo: useReRasterEscala.
+  // Una copia de nube puede llegar después del primer raster.
   useReRasterEscala({
-    pdfDocRef,
-    scale,
     currentIdRef,
-    engineRef,
-    scaleRef,
+    pdfPlanIdRef,
+    mountId,
     ultimoFullScRef,
     renderPage,
   });

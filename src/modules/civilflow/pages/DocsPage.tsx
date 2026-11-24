@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Navbar from '../../../components/Navbar.tsx';
 import { docData } from './docs/data';
+import { practicalGuides, type DocCategory } from './docs/data/practicalGuides.ts';
 import SectionAccordion from './docs/SectionAccordion.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../../../seo/routeMeta.ts';
@@ -50,15 +51,106 @@ const MODULOS: { label: string; nota: string; cats: string[] }[] = [
   },
 ];
 
-/** Página pública de documentación (/docs): menú de categorías por módulo + buscador global sobre el texto plano de la doc + acordeones de secciones. Ej: /docs#gas abre la categoría de gas directamente. */
+const categories = (Object.entries(docData) as [DocCategory, (typeof docData)[DocCategory]][]).map(
+  ([id, data]) => {
+    const guide = practicalGuides[id];
+    const practical = {
+      title: 'En la práctica',
+      body: (
+        <div className="docs-practical">
+          <header className="docs-practical-intro">
+            <span className="material-symbols-outlined docs-practical-icon" aria-hidden="true">
+              tips_and_updates
+            </span>
+            <div>
+              <p className="docs-practical-eyebrow">Guía de aplicación</p>
+              <p className="docs-practical-case">{guide.caso}</p>
+            </div>
+          </header>
+          <div className="docs-practical-layout">
+            <div className="docs-practical-grid">
+              <article className="docs-practical-card">
+                <span className="docs-practical-step">PREPARA</span>
+                <h3>Antes de empezar</h3>
+                <p>{guide.prepara}</p>
+              </article>
+              <article className="docs-practical-card">
+                <span className="docs-practical-step">COMPRUEBA</span>
+                <h3>Lectura del resultado</h3>
+                <p>{guide.revisa}</p>
+              </article>
+              <article className="docs-practical-card">
+                <span className="docs-practical-step">EVITA</span>
+                <h3>Punto de atención</h3>
+                <p>{guide.evita}</p>
+              </article>
+              <article className="docs-practical-card">
+                <span className="docs-practical-step">AL TERMINAR</span>
+                <h3>Resultado esperado</h3>
+                <p>{guide.resultado}</p>
+              </article>
+            </div>
+            <article className="docs-practical-flow">
+              <div className="docs-practical-flow-heading">
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  route
+                </span>
+                <div>
+                  <span className="docs-practical-step">RECORRIDO RECOMENDADO</span>
+                  <h3>Flujo sugerido</h3>
+                </div>
+              </div>
+              <ol>
+                {guide.pasos.map((paso, index) => (
+                  <li key={paso}>
+                    <span aria-hidden="true">{index + 1}</span>
+                    {paso}
+                  </li>
+                ))}
+              </ol>
+            </article>
+          </div>
+          <footer className="docs-practical-footer">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              conversion_path
+            </span>
+            <span>Continúa con</span>
+            <a href={`#${guide.relacionada}`}>
+              {docData[guide.relacionada].name}
+              <span className="material-symbols-outlined" aria-hidden="true">
+                arrow_forward
+              </span>
+            </a>
+          </footer>
+        </div>
+      ),
+    };
+    const sections = [...data.sections, practical].map((section) => ({
+      ...section,
+      categoryColor: data.color,
+      categoryName: data.name,
+      categoryId: id,
+    }));
+    return { id, ...data, sections };
+  },
+);
+const searchableText = new Map<string, string>(
+  categories.flatMap((category) =>
+    category.sections.map(
+      (s) => [`${s.categoryId}:${s.title}`, nodeText(s.body).toLowerCase()] as const,
+    ),
+  ),
+);
+
+function categoryFromHash(): DocCategory {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash.slice(1);
+  return categories.find((category) => category.id === hash)?.id ?? 'hidraulica';
+}
+
+/** Documentación por módulo, con búsqueda en la categoría activa. Ej.: /docs#gas abre la red de gas. */
 function DocsPage() {
-  // Deep-link (orig. usuario): /docs#categoria abre esa categoría directamente (lazy init, sin
-  // efecto ni setState-en-render).
-  const [activeCat, setActiveCat] = useState(() => {
-    // Prerender (node) no tiene window: sin hash, cae a la categoría por defecto.
-    const h = typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '';
-    return Object.keys(docData).includes(h) ? h : 'hidraulica';
-  });
+  const [activeCat, setActiveCat] = useState(categoryFromHash);
+  const categoryHeading = useRef<HTMLHeadingElement>(null);
   const [search, setSearch] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   // Acordeones por módulo del panel izquierdo (orig. usuario), ambos abiertos por defecto.
@@ -67,26 +159,21 @@ function DocsPage() {
   );
   usePageMeta(metaDeRuta('/docs')?.title, metaDeRuta('/docs')?.description);
 
-  const categories = Object.entries(docData).map(([id, data]) => ({
-    id,
-    ...data,
-    sections: data.sections.map((s) => ({
-      ...s,
-      categoryColor: data.color,
-      categoryName: data.name,
-      categoryId: id,
-    })),
-  }));
   const activeCategory = categories.find((c) => c.id === activeCat);
-
-  const allSections = categories.flatMap((c) => c.sections);
-
-  // Texto plano por sección, calculado UNA vez (la búsqueda solo compara strings).
-  const searchableText = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const s of allSections) map[`${s.categoryId}:${s.title}`] = nodeText(s.body).toLowerCase();
-    return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let frame = 0;
+    const syncHash = () => {
+      setActiveCat(categoryFromHash());
+      setOpenSections({});
+      setSearch('');
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => categoryHeading.current?.focus());
+    };
+    window.addEventListener('hashchange', syncHash);
+    return () => {
+      window.removeEventListener('hashchange', syncHash);
+      window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   const toggleSection = (sectionKey: string) => {
@@ -101,14 +188,15 @@ function DocsPage() {
           const key = `${s.categoryId}:${s.title}`;
           return (
             s.title.toLowerCase().includes(search.toLowerCase()) ||
-            searchableText[key]?.includes(search.toLowerCase())
+            searchableText.get(key)?.includes(search.toLowerCase())
           );
         });
 
   // En búsqueda el listado queda dentro de la categoría activa: el hero sigue representándola.
 
-  const selectCat = (id: string) => {
+  const selectCat = (id: DocCategory) => {
     setActiveCat(id);
+    setSearch('');
     setOpenSections({});
     history.replaceState(null, '', `#${id}`);
   };
@@ -183,7 +271,7 @@ function DocsPage() {
                           <li key={cid}>
                             <button
                               type="button"
-                              onClick={() => selectCat(cid)}
+                              onClick={() => selectCat(cat.id)}
                               data-cat={cid}
                               data-selected={sel ? 'true' : 'false'}
                               className={`docs-cat-btn w-full flex items-center gap-3 pl-8 pr-3 py-2.5 text-left transition-colors ${
@@ -224,7 +312,11 @@ function DocsPage() {
                 {activeCategory?.icon}
               </span>
               <div className="flex-1 min-w-[200px]">
-                <h1 className="text-headline-sm font-bold text-on-surface leading-tight">
+                <h1
+                  ref={categoryHeading}
+                  tabIndex={-1}
+                  className="text-headline-sm font-bold text-on-surface leading-tight"
+                >
                   {activeCategory?.name}
                 </h1>
                 <p className="text-[12px] text-on-surface-variant mt-0.5 leading-snug">
@@ -240,7 +332,7 @@ function DocsPage() {
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Buscar en toda la documentación..."
+                    placeholder="Buscar en esta categoría..."
                     aria-label="Buscar documentación"
                     className="flex-1 h-10 px-3 bg-transparent text-on-surface text-[13px] font-mono focus:outline-none"
                   />

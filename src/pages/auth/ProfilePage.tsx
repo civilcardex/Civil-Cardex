@@ -23,13 +23,14 @@ import {
 import ProjectCreateDialog from '../../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
 import ProjectCreateDialogCM from '../../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import ModuleSelectDialog from '../../components/subscriptions/ModuleSelectDialog.tsx';
+import BillingPortalButton from '../../components/subscriptions/BillingPortalButton.tsx';
 import { ConfirmModal } from '../../components/shared/ConfirmModal.tsx';
 import { ProjectsSection } from './ProjectsSection.tsx';
 import { abrirProyectoCf } from './workspaceHandoff.ts';
-import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
+import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
-import { estaActiva } from '../../lib/subscriptions/subscriptionsService.ts';
+import { estaActiva, verificarAccesoModulo } from '../../lib/subscriptions/subscriptionsService.ts';
 import { fetchPerfil as traerPerfil, savePerfil } from '../../lib/profile/profileService.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
@@ -92,6 +93,7 @@ function ProfilePage() {
   const {
     activos: modulosActivosUser,
     bloqueando: subsBloqueando,
+    decidido: subsDecididas,
     rows: subsRows,
   } = useSuscripciones();
   const [moduloElegido, setModuloElegido] = useState<ModuloId | null>(null);
@@ -107,6 +109,19 @@ function ProfilePage() {
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
 
+  async function comprobarApertura(modulo: ModuloId): Promise<boolean> {
+    setErrorApertura(null);
+    if (subsDecididas && !subsBloqueando) return true;
+    const acceso = subsDecididas ? await verificarAccesoModulo(modulo) : null;
+    if (acceso === false) navigate(`/pricing?modulo=${modulo}`);
+    if (acceso === null) {
+      setErrorApertura(
+        'No pudimos comprobar el acceso al módulo. Intenta abrir el proyecto de nuevo.',
+      );
+    }
+    return acceso === true;
+  }
+
   async function openProyecto(proy: ProyectoRow) {
     // Guard de apertura concurrente (CF o CM): dos openProyecto intercalan el hand-off
     // de storage y dejan mezcla de dos proyectos; respaldo del disabled por blocked.
@@ -115,6 +130,7 @@ function ProfilePage() {
     // La secuencia de traspaso (pausar cloud-sync → cargar → reset → hand-off → navegar)
     // vive en workspaceHandoff.ts; el resume va en su finally.
     try {
+      if (!(await comprobarApertura('flow'))) return;
       await abrirProyectoCf({
         proy,
         projectCtx,
@@ -311,6 +327,7 @@ function ProfilePage() {
     if (cmOpeningId != null || openingId != null) return;
     setCmOpeningId(proy.id);
     try {
+      if (!(await comprobarApertura('manage'))) return;
       localStorage.setItem('cm_proyecto_activo_id', proy.id);
       localStorage.setItem('cm_proyecto_activo_nombre', proy.nombre);
       navigate('/civilmanagerareatrabajo');
@@ -540,6 +557,7 @@ function ProfilePage() {
                 </li>
               ))}
             </ul>
+            {SUSCRIPCIONES_ACTIVAS && <BillingPortalButton />}
           </section>
 
           <ProjectsSection

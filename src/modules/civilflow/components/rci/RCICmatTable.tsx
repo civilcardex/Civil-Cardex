@@ -6,6 +6,7 @@
 import type { CSSProperties } from 'react';
 import { EditTablaBtn, useEditarTabla, type RciCtx } from './RCIUI.tsx';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
+import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import { CDEF } from '../../lib/rci/tables.ts';
@@ -20,16 +21,11 @@ const TDCB: CSSProperties = { ...TD, fontSize: 14, padding: '1px 4px' };
 const TDC12: CSSProperties = { ...TDCB, fontSize: 13, padding: '1px 2px' };
 /** Control activo de las celdas: caja tipo sanitario a 13 px (las tablas compactas); C-mat sube a 14 inline. */
 const IN: CSSProperties = { ...IN_CELDA, fontSize: 14 };
-/* Compacto EXTRA de la sub Tubería y mangueras (ped. usuario: sin scroll vertical con las 3
- * tablas): Tubería (GrupoTabla compacta) + C-mat + accesorios especiales un paso menores. */
-/** Cabecera compacta extra (10.5 px), un paso menor que TH10. Ej: las cabeceras de esta tabla C-mat y de RciSpecialAccTable. */
-const TH10C: CSSProperties = { ...TH, fontSize: 10.5 };
-/** Celda compacta extra (11.5 px). Ej: material y C adoptado en RciSpecialAccTable; las celdas de esta tabla C-mat. */
-const TDCC: CSSProperties = { ...TD, fontSize: 11.5, padding: '1px 2px' };
-/** Control activo compacto (12 px) de las celdas editables. Ej: los inputs de C adoptado (húmedo/seco) de esta tabla. */
-const INC: CSSProperties = { ...IN_CELDA, fontSize: 12 };
-/** Nota compacta (11 px) para tablas sin espacio. Ej: la nota de Hazen-Williams al pie de esta tabla y de RciSpecialAccTable. */
-const NOTAC: CSSProperties = { ...NOTA, fontSize: 11 };
+// Tipografía ampliada para Tubería y mangueras, con el padding compacto de las filas.
+const TH_TUBERIA: CSSProperties = { ...TH, fontSize: 13 };
+const TDCC: CSSProperties = { ...TD, fontSize: 14, padding: '1px 2px' };
+const INC: CSSProperties = { ...IN_CELDA, fontSize: 14 };
+const NOTAC: CSSProperties = { ...NOTA, fontSize: 13 };
 /** Botón pequeño de modal (11 px) que comparten las tablas hermanas. Ej: el botón de añadir fila en RciSpecialAccTable. */
 const BTN: CSSProperties = {
   border: '1px solid var(--line)',
@@ -102,39 +98,23 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
         </div>
       </div>
       <div style={{ padding: 6 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+        <RciInputTableScroll label="Coeficiente por material">
+          <table className="tbl" style={{ fontSize: 14, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th scope="col" style={TH10C} title="Material de la tubería">
+                <th scope="col" style={TH_TUBERIA} title="Material de la tubería">
                   Material
                 </th>
-                <th
-                  scope="col"
-                  style={{ ...TH10C, fontSize: 10 }}
-                  title="C de NFPA 13 en sistema húmedo"
-                >
+                <th scope="col" style={TH_TUBERIA} title="C de NFPA 13 en sistema húmedo">
                   NFPA 13·húm.
                 </th>
-                <th
-                  scope="col"
-                  style={{ ...TH10C, fontSize: 10 }}
-                  title="C de NFPA 13 en sistema seco"
-                >
+                <th scope="col" style={TH_TUBERIA} title="C de NFPA 13 en sistema seco">
                   NFPA 13·seco
                 </th>
-                <th
-                  scope="col"
-                  style={{ ...TH10C, fontSize: 10 }}
-                  title="C adoptado · húmedo (editable)"
-                >
+                <th scope="col" style={TH_TUBERIA} title="C adoptado · húmedo (editable)">
                   Adoptado húmedo
                 </th>
-                <th
-                  scope="col"
-                  style={{ ...TH10C, fontSize: 10 }}
-                  title="C adoptado · seco (editable)"
-                >
+                <th scope="col" style={TH_TUBERIA} title="C adoptado · seco (editable)">
                   Adoptado seco
                 </th>
               </tr>
@@ -151,7 +131,7 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
               ))}
             </tbody>
           </table>
-        </div>
+        </RciInputTableScroll>
         <p style={NOTAC}>
           El C se aplica a la fricción de la tubería y corrige las longitudes equivalentes de los
           accesorios (la tabla de NFPA 13 está hecha para C = 120). La succión de la bomba usa el
@@ -161,4 +141,4 @@ function TablaCmat({ estado, editar }: { estado: RciState; editar: EditarRci }) 
     </section>
   );
 }
-export { NOTA, TDCB, TDC12, IN, TH10C, TDCC, INC, NOTAC, BTN, TablaCmat };
+export { NOTA, TDCB, TDC12, IN, TH_TUBERIA, TDCC, INC, NOTAC, BTN, TablaCmat };

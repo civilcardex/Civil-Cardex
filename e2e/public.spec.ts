@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { aceptarBannerCookies } from './helpers.ts';
 
 /**
  * Camino crítico 1: las rutas públicas cargan y ninguna deja scroll horizontal global.
@@ -33,8 +34,7 @@ const RUTAS: RutaPublica[] = [
   },
   {
     ruta: '/docs',
-    // Buscador global de la documentación (único input con ese placeholder).
-    clave: (page) => page.getByPlaceholder('Buscar en toda la documentación...'),
+    clave: (page) => page.getByRole('textbox', { name: 'Buscar documentación' }),
   },
   {
     ruta: '/aprende',
@@ -70,3 +70,70 @@ for (const { ruta, clave } of RUTAS) {
     await expect.poll(() => sinScrollHorizontal(page), { timeout: 10_000 }).toBe(true);
   });
 }
+
+test('las 13 categorías de /docs tienen una guía y los enlaces actualizan la categoría', async ({
+  page,
+}) => {
+  await page.goto('/docs#manual');
+  await aceptarBannerCookies(page);
+  const links = page
+    .getByRole('navigation', { name: 'Categorías de documentación' })
+    .locator('ul button[data-cat]');
+  await expect(links).toHaveCount(13);
+  const ids = await links.evaluateAll((buttons) =>
+    buttons.map((button) => button.getAttribute('data-cat')!),
+  );
+  expect(ids).toHaveLength(13);
+  for (const id of ids) {
+    await page.locator(`ul button[data-cat="${id}"]`).click();
+    const practical = page.locator('main .docs-section').last();
+    await practical.getByRole('button', { name: /En la práctica/ }).click();
+    await expect(practical.getByRole('heading', { name: 'Antes de empezar' })).toBeVisible();
+    await expect(practical.getByRole('heading', { name: 'Lectura del resultado' })).toBeVisible();
+    await expect(practical.getByRole('heading', { name: 'Punto de atención' })).toBeVisible();
+    await expect(practical.getByRole('heading', { name: 'Flujo sugerido' })).toBeVisible();
+    await expect(practical.locator('.docs-practical-flow li')).toHaveCount(5);
+    await expect(practical.locator('.docs-practical-grid .docs-practical-step')).toHaveText([
+      'PREPARA',
+      'COMPRUEBA',
+      'EVITA',
+      'AL TERMINAR',
+    ]);
+    await expect(
+      practical.locator('.docs-practical-flow li > span[aria-hidden="true"]'),
+    ).toHaveText(['1', '2', '3', '4', '5']);
+    await expect(practical.getByText('AL TERMINAR')).toBeVisible();
+    await expect(practical.getByRole('link')).toHaveAttribute('href', /^#/);
+    const cardStyles = await practical
+      .locator('.docs-practical-grid .docs-practical-card')
+      .evaluateAll((cards) =>
+        cards.map((card) => ({
+          border: getComputedStyle(card).borderColor,
+          background: getComputedStyle(card).backgroundColor,
+          titleSize: getComputedStyle(card.querySelector('h3')!).fontSize,
+          subtitleSize: getComputedStyle(card.querySelector('.docs-practical-step')!).fontSize,
+        })),
+      );
+    expect(cardStyles).toHaveLength(4);
+    expect(new Set(cardStyles.map((style) => style.border)).size).toBe(1);
+    expect(new Set(cardStyles.map((style) => style.background)).size).toBe(1);
+    expect(cardStyles.every((style) => style.titleSize === '18px')).toBe(true);
+    expect(cardStyles.every((style) => style.subtitleSize === '12px')).toBe(true);
+    const columnCount = await practical
+      .locator('.docs-practical-layout')
+      .evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length);
+    expect(columnCount).toBe((page.viewportSize()?.width ?? 0) < 760 ? 1 : 2);
+  }
+  await page.locator('ul button[data-cat="manual"]').click();
+  const search = page.getByRole('textbox', { name: 'Buscar documentación' });
+  await search.fill('distancia conocida');
+  const guide = page.locator('main .docs-section').last();
+  await guide.getByRole('button', { name: /En la práctica/ }).click();
+  await guide.getByRole('link', { name: 'Tablas y verificaciones' }).click();
+  await expect(page).toHaveURL(/\/docs#tablas$/);
+  await expect(page.getByRole('heading', { name: 'Tablas y verificaciones' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Tablas y verificaciones' })).toBeFocused();
+  await expect(search).toHaveValue('');
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Manual de usuario' })).toBeVisible();
+});

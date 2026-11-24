@@ -20,6 +20,8 @@ import { marcarNavInterna } from '../../../utils/internalNavigation.ts';
 import { devError } from '../../../utils/devError.ts';
 
 export interface ClearLocalWorkspaceOptions {
+  /** Los borradores de rescate están aislados por usuario y plano; se conservan al navegar. */
+  conservarRescates?: boolean;
   /** Ids de plano del proyecto que se está ABRIENDO. Sus copias locales de trazos
    *  (`civilflow_trazos_<planoId>`) se conservan; las de cualquier otro plano se borran igual
    *  que el resto del workspace — la propagación enumera TODAS las claves de trazos del
@@ -38,6 +40,7 @@ export function clearLocalWorkspace(opts: ClearLocalWorkspaceOptions = {}): void
   const lsKeys: string[] = [];
   for (const k of listRawKeys('civilflow_')) {
     if (PREFIJOS_PREFERENCIAS.some((p) => k.startsWith(p))) continue;
+    if (opts.conservarRescates && k.startsWith('civilflow_plano_borrador_rescate_')) continue;
     if (vigentes && k.startsWith(TRAZOS_PLAN_PREFIX)) {
       const pid = k.slice(TRAZOS_PLAN_PREFIX.length);
       if (vigentes.has(pid)) {
@@ -104,7 +107,10 @@ export async function abrirProyectoDesdeUrl(opts: {
     if (!data) throw new Error('proyecto-no-encontrado-o-sin-acceso');
     // Conserva las copias locales de trazos de ESTE proyecto (ver clearLocalWorkspace):
     // son el único respaldo de un piso cuyo guardado en la nube falló.
-    clearLocalWorkspace({ planosVigentes: (data?.plans_meta ?? []).map((m) => m.id) });
+    clearLocalWorkspace({
+      planosVigentes: (data.plans_meta ?? []).map((m) => m.id),
+      conservarRescates: true,
+    });
     await clearAllPDFs();
     resetear();
     activar(wantsId);

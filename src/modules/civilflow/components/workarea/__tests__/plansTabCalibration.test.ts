@@ -113,7 +113,28 @@ describe('stampCalibracion', () => {
     };
     stampCalibracion(config(0.5), doc);
     expect((doc.ramales as Array<{ pts: number[][] }>)[0].pts[0]).toEqual([400, 300]);
-    expect(doc.ts).toBe(12345); // existente no se toca
+    expect(Number(doc.ts)).toBeGreaterThan(12345);
     expect(doc.origen).toEqual({ x_px: 100, y_px: 50 });
+  });
+
+  it('en PDF base recalibrar cambia las medidas, pero no los puntos', () => {
+    const ramal = {
+      id: 'R1',
+      pts: [
+        [0, 0],
+        [96, 0],
+      ],
+      totalL: 1.27,
+    };
+    const cota = { x1: 0, y1: 0, x2: 96, y2: 0, L: 1.27 };
+    const doc = { v: 7, scaleM: 0.5, ramales: [ramal], dims: [cota] };
+    stampCalibracion(config(1), doc);
+    expect(ramal.pts).toEqual([
+      [0, 0],
+      [96, 0],
+    ]);
+    expect(ramal.totalL).toBe(2.54);
+    expect(cota).toEqual({ x1: 0, y1: 0, x2: 96, y2: 0, L: 2.54 });
+    expect(doc).toMatchObject({ scaleM: 1, definedScaleM: 1 });
   });
 });

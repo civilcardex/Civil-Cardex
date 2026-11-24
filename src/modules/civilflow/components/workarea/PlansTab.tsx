@@ -12,6 +12,7 @@ import {
   loadFromStorage,
   saveToStorage,
   getActiveProyectoId,
+  trazosDocHasContent,
 } from '../../services/storageService.ts';
 import {
   TRAZOS_PREFIX,
@@ -165,10 +166,7 @@ function PlanosTab({ state }: PlanosTabProps) {
     const prevOrigen = origenDePlan(String(config.planId));
     setCalData((prev) => ({ ...prev, [config.planId]: config }));
     updatePlan(config.planId, {
-      // Escala EXACTA en el meta (×100, sin redondear): el meta alimenta escalaGlobalRef
-      // (PdfViewer) y la siembra de calData — redondearlo a entero (0.4723 → 47 → 0.47) hacía
-      // que escalaGlobal ≠ scaleM del doc y el re-base de carga RE-ESCALABA la geometría en
-      // cada primera reapertura (cotas desplazadas/dañadas, incidente 2026-09-22).
+      // El meta conserva el factor exacto; se redondea solo el rótulo.
       scale: config.scaleM ? config.scaleM * 100 : 100,
       origen: config.origen,
       factorX: config.factorX,
@@ -182,12 +180,13 @@ function PlanosTab({ state }: PlanosTabProps) {
 
     try {
       const trazosKey = TRAZOS_PREFIX + config.planId;
+      const proyectoId = getActiveProyectoId();
       // Caché ausente: la BD puede tener trazos reales del piso (otro equipo / caché limpiada
       // al reabrir el proyecto). Fabricar un doc solo-config dejaba la clave no-null para
       // siempre — el prefetch no la rellena y el árbitro la hacía ganar por ts → piso vacío.
       // Se baja el doc de BD primero y se le montan los campos de calibración.
       const fill = (doc: Record<string, unknown>) => {
-        // Mutación pura del doc (stamp + re-base anclado) — definido arriba en este archivo.
+        if (!doc.ts && !trazosDocHasContent(doc)) return;
         stampCalibracion(
           {
             ...config,
@@ -198,7 +197,7 @@ function PlanosTab({ state }: PlanosTabProps) {
           },
           doc,
         );
-        saveToStorage(trazosKey, doc);
+        if (!saveToStorage(trazosKey, doc)) return;
         saveTrazosToDB(String(config.planId), doc).catch((e) => {
           devError('saveTrazosToDB error:', e);
         });
@@ -212,7 +211,13 @@ function PlanosTab({ state }: PlanosTabProps) {
           // para siempre y bloquearía el relleno del prefetch (mismo hazard del comentario
           // de arriba). La calibración vive en el meta; el doc nace con el primer trazo.
           .then((db) => {
-            if (db) fill(db as unknown as Record<string, unknown>);
+            if (
+              !db ||
+              getActiveProyectoId() !== proyectoId ||
+              loadFromStorage(trazosKey, null) !== null
+            )
+              return;
+            fill(db as unknown as Record<string, unknown>);
           })
           .catch((e) => devError('Error syncing calibration to Supabase:', e));
       }

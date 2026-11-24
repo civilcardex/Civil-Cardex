@@ -1,5 +1,6 @@
 import { devError, devLog } from '../../../../utils/devError.ts';
 import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
+import { pxToM, VERSION_LAMINA_BASE } from '../../lib/PlanoEngine/planoCoords.ts';
 /** Subconjunto de PlanItem que la derivación necesita (PlanItem del context lo satisface). */
 export interface PlanCalibFuente {
   id: number;
@@ -111,7 +112,30 @@ export function stampCalibracion(config: ConfigCalibracion, doc: Record<string, 
     )}`,
   );
   if (config.scaleM) {
-    if (escalaPrev && Math.abs(escalaPrev - config.scaleM) > 1e-9) {
+    if (typeof doc.v === 'number' && doc.v >= VERSION_LAMINA_BASE && escalaPrev !== config.scaleM) {
+      // En el formato nuevo el fondo no cambia de tamaño al recalibrar.
+      const trabajo = doc as unknown as PlanoWorkData;
+      for (const c of (trabajo.dims ?? []) as Array<{
+        x1: number;
+        y1: number;
+        x2: number;
+        y2: number;
+        L: number;
+      }>) {
+        c.L = pxToM(config.scaleM, Math.hypot(c.x2 - c.x1, c.y2 - c.y1));
+      }
+      for (const r of (trabajo.ramales ?? []) as Array<{ pts: number[][]; totalL: number }>) {
+        let total = 0;
+        for (let i = 1; i < r.pts.length; i++) {
+          total += pxToM(
+            config.scaleM,
+            Math.hypot(r.pts[i][0] - r.pts[i - 1][0], r.pts[i][1] - r.pts[i - 1][1]),
+          );
+        }
+        r.totalL = +total.toFixed(3);
+      }
+      doc.scaleM = config.scaleM;
+    } else if (escalaPrev && Math.abs(escalaPrev - config.scaleM) > 1e-9) {
       try {
         // Re-base anclado al origen de la propia lámina (px−origen constante = posición
         // física preservada; ver rebasarEscalaTrazos).
@@ -126,6 +150,6 @@ export function stampCalibracion(config: ConfigCalibracion, doc: Record<string, 
   }
   doc.factorX = config.factorX;
   doc.factorY = config.factorY;
-  doc.definedScale = config.definedScale;
-  if (!doc.ts) doc.ts = Date.now();
+  doc.definedScaleM = config.definedScale;
+  doc.ts = Date.now();
 }

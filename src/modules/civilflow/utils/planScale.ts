@@ -1,18 +1,49 @@
-import { loadFromStorage, saveToStorage } from '../services/storageService.ts';
+import { loadFromStorage, saveToStorage, trazosDocHasContent } from '../services/storageService.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
+import { VERSION_LAMINA_BASE } from '../lib/PlanoEngine/planoCoords.ts';
+import type { PlanTrazos } from '../services/storageService.ts';
+
+/** El PDF usa 72 puntos por pulgada; el factor interno cuenta 96. Ej.: 0.6667 en PDF → 1:50. */
+export function escalaDePapel(factorInterno: number, esPdf: boolean): number {
+  return factorInterno * (esPdf ? 72 / 96 : 1);
+}
+
+export function esArchivoPdf(file: Pick<File, 'type' | 'name'>): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
+
+/** Los dibujos nuevos usan coordenadas del PDF base; los antiguos conservan su tamaño guardado. */
+export function escalaDeLamina(planId: string | number | null | undefined): number | null {
+  if (planId == null || planId === '') return null;
+  const doc = leerDocEscala(planId);
+  if (!doc) return null;
+  if ((doc.v ?? 0) >= VERSION_LAMINA_BASE || (!doc.ts && !trazosDocHasContent(doc))) return 1;
+  return escalaValida(doc.scaleM);
+}
+
+function leerDocEscala(planId: string | number) {
+  const raw = loadFromStorage<PlanTrazos | string | null>(TRAZOS_PREFIX + String(planId), null);
+  if (typeof raw !== 'string') return raw;
+  try {
+    return JSON.parse(raw) as PlanTrazos | null;
+  } catch {
+    return null;
+  }
+}
+
+function escalaValida(scale: number | undefined): number | null {
+  return typeof scale === 'number' && Number.isFinite(scale) && scale > 0 ? scale : null;
+}
 
 /**
  * Escala con la que se dibujó un plano: la del DOC guardado (metros por px de plano).
- * El fondo del PDF se rasteriza con este MISMO factor — si se usa otro, la lámina y el
- * dibujo quedan en escalas distintas y los elementos se ven corridos (34% con doc a
- * 0.669 rasterizado a 0.5, orig. usuario).
+ * Se usa para medir el dibujo; no es el tamaño de la lámina.
  * @param planId - id del plano.
  * @returns escala del doc (ej. 0.669), o null si el plano no tiene doc en la caché local.
  */
 export function escalaDeDoc(planId: string | number | null | undefined): number | null {
   if (planId == null || planId === '') return null;
-  const doc = loadFromStorage<{ scaleM?: number } | null>(TRAZOS_PREFIX + String(planId), null);
-  return typeof doc?.scaleM === 'number' && doc.scaleM > 0 ? doc.scaleM : null;
+  return escalaValida(leerDocEscala(planId)?.scaleM);
 }
 
 /** Clave del tamaño de la lámina por plano (px CSS de la página, a escala 1). */
@@ -51,6 +82,7 @@ export function guardarPaginaDeDoc(
 export interface RenderReq {
   pageNum: number;
   sc: number;
+  mountCheck?: number;
   opts?: { bgOnly?: boolean; extraScale?: number; causa?: string };
 }
 

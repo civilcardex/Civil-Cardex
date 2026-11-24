@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
   escalaDeDoc,
+  escalaDeLamina,
+  escalaDePapel,
   filaRender,
   guardarPaginaDeDoc,
   paginaDeDoc,
   type RenderReq,
 } from '../planScale.ts';
+import { pxToM } from '../../lib/PlanoEngine/planoCoords.ts';
 
 // F1: el fondo del PDF se rasteriza con la ESCALA DEL DOC — si se usa otro factor, la
 // lámina y el dibujo quedan en escalas distintas (34% corrido con doc a 0.669).
@@ -23,6 +26,29 @@ describe('escalaDeDoc', () => {
     expect(escalaDeDoc('')).toBeNull();
     localStorage.setItem('civilflow_trazos_8', JSON.stringify({ scaleM: 0 }));
     expect(escalaDeDoc('8')).toBeNull();
+  });
+});
+
+describe('calibración de la lámina', () => {
+  it.each([50, 75, 100])('muestra 1:%i en el PDF y conserva el factor interno', (denominador) => {
+    const factor = (denominador / 100) * (96 / 72);
+    expect(Math.round(escalaDePapel(factor, true) * 100)).toBe(denominador);
+    expect(escalaDePapel(factor, false)).toBe(factor);
+  });
+
+  it('al reabrir un plano nuevo, una referencia de 10 m sigue midiendo 10 m', () => {
+    const escala = 10 / ((480 / 96) * 2.54);
+    localStorage.setItem('civilflow_trazos_nuevo', JSON.stringify({ v: 7, scaleM: escala, ts: 1 }));
+    const raster = escalaDeLamina('nuevo')!;
+    expect(raster).toBe(1);
+    expect(pxToM(escalaDeDoc('nuevo')!, 480 * raster)).toBe(10);
+  });
+
+  it('un plano antiguo con trazos no cambia el tamaño de su fondo', () => {
+    const doc = { v: 6, scaleM: 0.669, ramales: [{ id: 'R1' }] };
+    localStorage.setItem('civilflow_trazos_anterior', JSON.stringify(doc));
+    expect(escalaDeLamina('anterior')).toBe(0.669);
+    expect(escalaDeDoc('anterior')).toBe(0.669);
   });
 });
 

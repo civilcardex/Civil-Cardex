@@ -8,6 +8,7 @@
  *  bomba se recalculan al instante y quedan guardadas. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebouncedEffect } from '../../../../hooks/useDebouncedEffect.ts';
+import { focusRciInput } from './RCIInputTableScroll.tsx';
 import { usePlans } from '../../context/PlansContext.tsx';
 import { useProject } from '../../context/ProjectContext.tsx';
 import { perfilRciDe } from '../../constants/rciCountryStandards.ts';
@@ -177,10 +178,11 @@ function RciDesign() {
       setEstado(est);
       cargadoRef.current = true;
       setHuerfanos(
-        mezcla.huerfanos.map(
-          (h) =>
-            `${TIPO_HUERFANO[h.tipo] || 'El dato'} "${h.nombre}" ya no está en el dibujo; sus datos digitados NO se conservan automáticamente. Redibuje el elemento y vuelva a digitarlos.`,
-        ),
+        mezcla.huerfanos.map((h) => {
+          const nombre = h.nombre.trim();
+          const nombreLegible = nombre && !/^\d+$/.test(nombre) ? ` "${nombre}"` : '';
+          return `${TIPO_HUERFANO[h.tipo] || 'El dato'}${nombreLegible} ya no está en el dibujo; sus datos digitados NO se conservan automáticamente. Redibuje el elemento y vuelva a digitarlos.`;
+        }),
       );
       setPlanActivo((cur) => {
         if (cur) return cur;
@@ -368,14 +370,7 @@ function RciDesign() {
       const subDestino = sub ?? subs[destino] ?? primeraSub(destino);
       setSubs((prev) => ({ ...prev, [destino]: subDestino }));
       window.setTimeout(() => {
-        if (campo) {
-          const el = document.querySelector<HTMLElement>(`[data-campo="${campo}"]`);
-          if (el) {
-            el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            el.focus({ preventScroll: true });
-            return;
-          }
-        }
+        if (campo && focusRciInput(campo)) return;
         // Sin campo conocido: sube al contenido de la pestaña (primer título visible).
         const seccion = document.querySelector<HTMLElement>('[data-rci-tab-content]');
         seccion?.scrollTo({ top: 0 });

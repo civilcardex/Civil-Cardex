@@ -7,7 +7,7 @@
 import { useEffect, useRef } from 'react';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import { getPdfjs } from '../../../utils/lazyPdfjs.ts';
-import { escalaDeDoc } from '../../../utils/planScale.ts';
+import { escalaDeLamina } from '../../../utils/planScale.ts';
 import { crearCachePdf, liberarPdf } from '../pdfCache.ts';
 import { devError } from '../../../../../utils/devError.ts';
 
@@ -18,8 +18,8 @@ interface ParsePdfParams {
   pdfDocRef: React.MutableRefObject<PDFDocumentProxy | null>;
   /** Contador de montaje: el loader lo incrementa por apertura y lo pasa al raster. */
   mountIdRef: React.MutableRefObject<number>;
-  /** Escala default del estado: fallback si el plano no tiene escala de doc guardada. */
-  scaleRef: React.RefObject<number>;
+  pdfPlanIdRef: React.RefObject<string | null>;
+  ultimoFullScRef: React.RefObject<number | null>;
   renderPage: (
     pageNum: number,
     sc: number,
@@ -40,7 +40,8 @@ export function useParsePdf({
   currentId,
   pdfDocRef,
   mountIdRef,
-  scaleRef,
+  pdfPlanIdRef,
+  ultimoFullScRef,
   renderPage,
   reprogramarBgRef,
   hayRasterEnVuelo,
@@ -58,13 +59,15 @@ export function useParsePdf({
   }, []);
 
   useEffect(() => {
+    pdfPlanIdRef.current = null;
+    ultimoFullScRef.current = null;
+    mountIdRef.current += 1;
     // Sin lámina que cargar el loading DEBE bajar (C-1): si se quedara en true,
     // onLoadingChange mantenía el overlay z-9999 bloqueando el visor en proyectos sin planos.
     if (!currentFile) {
       setLoading(false);
       return;
     }
-    mountIdRef.current += 1;
     const thisMount = mountIdRef.current;
     // Secuencia de CARGA (no de montaje): el overlay se baja cuando termina ESTA carga. Si se
     // comprobara el mountId, cualquier render extra (re-raster por zoom o por cambio de escala)
@@ -77,8 +80,9 @@ export function useParsePdf({
       void (async () => {
         try {
           pdfDocRef.current = enCache;
+          pdfPlanIdRef.current = String(currentId);
           setError(null);
-          await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount, {
+          await renderPage(1, escalaDeLamina(currentId) ?? 1, thisMount, {
             causa: 'loader-cache',
           });
           // Si una carga FRÍA anterior quedó con el spinner arriba y esta corrida la
@@ -122,13 +126,11 @@ export function useParsePdf({
           return;
         }
         pdfDocRef.current = pdf;
+        pdfPlanIdRef.current = String(currentId);
         // Guardar en la caché de parseados: el regreso a este piso (o su precalentamiento)
         // no vuelve a pasar por FileReader + getDocument.
         cache.put(currentFile, pdf);
-        // F1: la lámina se rasteriza con la ESCALA DEL DOC (no con el default del estado —
-        // el loader pone engine.scaleM = docScale DENTRO de este render; rasterizar antes
-        // con 0.5 dejaba fondo y dibujo en escalas distintas toda la sesión).
-        await renderPage(1, escalaDeDoc(currentId) ?? scaleRef.current, thisMount, {
+        await renderPage(1, escalaDeLamina(currentId) ?? 1, thisMount, {
           causa: 'loader-pdf',
         });
         // Re-sincronizar la densidad del fondo con el zoom real (el fit de entrada cambia
@@ -180,7 +182,8 @@ export function useParsePdf({
     setLoading,
     pdfDocRef,
     mountIdRef,
-    scaleRef,
+    pdfPlanIdRef,
+    ultimoFullScRef,
     reprogramarBgRef,
     hayRasterEnVuelo,
   ]);

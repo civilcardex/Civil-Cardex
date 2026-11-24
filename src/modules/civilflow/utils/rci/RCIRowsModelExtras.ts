@@ -516,7 +516,7 @@ export const SUBS_POR_TAB: Record<string, SubTab[]> = {
     { id: 'normativa', l: 'Normativa local' },
     { id: 'clasificacion', l: 'Clasificación y riesgo' },
     { id: 'tuberia', l: 'Tubería y mangueras' },
-    { id: 'montantes', l: 'Montantes NFPA 14' },
+    { id: 'montantes', l: 'Montantes' },
     { id: 'siamesa', l: 'Siamesa' },
     { id: 'seleccion', l: 'Bomba: selección' },
     { id: 'succion', l: 'Succión y NPSH' },

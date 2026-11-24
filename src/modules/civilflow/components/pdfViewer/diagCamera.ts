@@ -3,7 +3,7 @@
 // = fondo y geometría alineados; distintos = la hoja quedó rasterizada en otra escala.
 // Solo en DEV (expone la escala de la lámina del cliente en la consola).
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
-import { escalaDeDoc } from '../../utils/planScale.ts';
+import { escalaDeDoc, escalaDeLamina } from '../../utils/planScale.ts';
 import { ptsDeDibujoConDims } from '../../lib/PlanoEngine/planoCamera.ts';
 
 /** Instala `window.__cfCam()` (solo DEV): vuelca escala de lámina vs escala de render, ancho de página esperado/dibujado y qué elementos empujan el bbox del encuadre. */
@@ -18,6 +18,7 @@ export function instalarCfCam(args: {
   (window as unknown as { __cfCam?: () => unknown }).__cfCam = () => {
     const eng = args.engineRef.current;
     const escalaDoc = escalaDeDoc(args.currentIdRef.current);
+    const escalaLamina = escalaDeLamina(args.currentIdRef.current);
     const escalaRender = args.lastRenderScRef.current;
     const baseWpx = args.lastPageBaseWRef.current;
     // BBox del contenido (lo que usa reEncuadrarContenido): un punto lejísimos del resto
@@ -49,9 +50,10 @@ export function instalarCfCam(args: {
       : [];
     return {
       escalaDoc,
+      escalaLamina,
       escalaRender,
       pageW_base_px: baseWpx,
-      pageW_esperado: baseWpx != null && escalaDoc ? baseWpx * escalaDoc : null,
+      pageW_esperado: baseWpx != null && escalaLamina ? baseWpx * escalaLamina : null,
       pageW_dibujado: escalaRender != null && baseWpx != null ? baseWpx * escalaRender : null,
       zoom: eng?.zoom ?? null,
       offX: eng?.offX ?? null,

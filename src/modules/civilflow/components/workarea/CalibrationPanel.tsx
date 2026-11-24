@@ -1,4 +1,5 @@
 import { pisoLbl } from '../../constants';
+import { escalaDePapel } from '../../utils/planScale.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import {
@@ -239,7 +240,7 @@ export function PanelCalibracion(props: PanelCalibracionProps) {
                   whiteSpace: 'nowrap',
                 }}
               >
-                1:{Math.round(scaleM * 100)}
+                1:{Math.round(escalaDePapel(scaleM, isPdf) * 100)}
               </div>
             ) : (
               <div

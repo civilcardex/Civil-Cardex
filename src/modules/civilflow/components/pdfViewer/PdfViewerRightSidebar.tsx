@@ -54,7 +54,7 @@ interface PdfViewerRightSidebarProps {
   setConfirmState: Dispatch<SetStateAction<ConfirmState>>;
   loadingPlanRef: React.MutableRefObject<boolean>;
   drawnElements: import('../../lib/PlanoEngine/PlanoState.ts').ElementItem[];
-  onEditElement: (button: HTMLButtonElement) => void;
+  onEditElement?: (button: HTMLButtonElement) => void;
   onDeleteElement: (id: string, label: string, onDeleted: () => void) => void;
 }
 

@@ -8,6 +8,9 @@ interface Props {
   onSave: () => void;
   onUndo: () => void;
   onOptions?: (button: HTMLButtonElement) => void;
+  /** Punta táctil (tablet): único lugar donde se muestran Terminar/Cancelar/Coordenadas —
+   *  en desktop el acceso es doble clic (terminar) y Enter/Escape (cancelar). */
+  tablet?: boolean;
 }
 
 export function ViewerDrawingActions({
@@ -17,6 +20,7 @@ export function ViewerDrawingActions({
   onSave,
   onUndo,
   onOptions,
+  tablet,
 }: Props) {
   const [message, setMessage] = useState('');
 
@@ -28,6 +32,8 @@ export function ViewerDrawingActions({
     const x = Number(data.get('x'));
     const y = Number(data.get('y'));
     if (
+      data.get('x') === '' ||
+      data.get('y') === '' ||
       !Number.isFinite(x) ||
       !Number.isFinite(y) ||
       x < 0 ||
@@ -60,7 +66,7 @@ export function ViewerDrawingActions({
 
   return (
     <div className="viewer-drawing-actions" role="group" aria-label="Acciones del dibujo">
-      {drawing && (
+      {drawing && tablet && (
         <>
           <button
             type="button"
@@ -89,7 +95,7 @@ export function ViewerDrawingActions({
           </button>
           <details>
             <summary>Trazar por coordenadas</summary>
-            <form onSubmit={addPoint}>
+            <form onSubmit={addPoint} noValidate>
               <label>
                 X (px) <input name="x" type="number" min="0" step="any" required />
               </label>
@@ -101,7 +107,7 @@ export function ViewerDrawingActions({
           </details>
         </>
       )}
-      {onOptions && (
+      {tablet && onOptions && (
         <button
           type="button"
           disabled={disabled}

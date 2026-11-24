@@ -363,20 +363,11 @@ function esObjetoAusente(err: { message?: string; code?: string }): boolean {
   return /does not exist|could not find the (table|function)/i.test(err.message ?? '');
 }
 
-// ponytail: árbitro de concurrencia del blob RCI (mayor gana) — el ts vive EN EL SERVIDOR
-// (updated_at de la fila leída y el que devuelve el RPC), así que el reloj del cliente no
-// entra a la ecuación. loadRciDatos recuerda el updated_at de la fila y saveRciDatos lo
-// re-envía como p_cliente_ts (migración 20261103000001); tras cada guardado exitoso recuerda
-// el devuelto. Así el llamador (RciDesign) no necesita cargar ni re-enviar el ts — con el
-// único caso "guardar sin haber leído nunca" cayendo a Date.now() = escribe igual.
-const ultimoTsRci = new Map<string, string>();
-
 /**
  * Carga el estado RCI (RciState completo — gris del plano + amarillos digitados) guardado en
  * la BD (cf_rci_datos_proyecto, 1:1 con el proyecto). Devuelve null cuando la fila no existe,
  * cuando el blob no parece un RciState o cuando la migración aún no está aplicada — el
- * llamador decide si usar defaults. De paso recuerda el updated_at de la fila: es el ts que
- * saveRciDatos re-enviará como p_cliente_ts (árbitro "mayor gana").
+ * llamador decide si usar defaults.
  */
 export async function loadRciDatos(proyectoId: string): Promise<RciState | null> {
   try {
@@ -390,10 +381,7 @@ export async function loadRciDatos(proyectoId: string): Promise<RciState | null>
       return null;
     }
     if (!data) return null;
-    const fila = data as { datos: unknown; updated_at?: string | null };
-    if (typeof fila.updated_at === 'string' && fila.updated_at) {
-      ultimoTsRci.set(proyectoId, fila.updated_at);
-    }
+    const fila = data as { datos: unknown };
     if (!pareceRciState(fila.datos)) {
       devError(
         'proyectoDataService loadRciDatos: el blob guardado no parece un RciState; se ignora.',
@@ -409,18 +397,11 @@ export async function loadRciDatos(proyectoId: string): Promise<RciState | null>
 
 /**
  * Guarda el estado RCI completo del proyecto vía el RPC save_rci_datos (upsert 1:1; el impl
- * resuelve user_id y updated_at=now()). Con la migración 20261103000001 el upsert es
- * árbitro: manda p_cliente_ts (el ts del caller, o el recordado de la última lectura/
- * guardado) y el RPC SOLO pisa si el remoto no es más nuevo — si lo es lanza 'rci_stale' y
- * aquí muere en devError SIN alarma al canal de guardados (perdió la carrera, no falló el
- * disco). Misma tolerancia que load con la migración sin aplicar: false con devError limpio;
- * con el RPC viejo (devuelve void, data null) el guardado igual aterrizó → true.
+ * resuelve user_id y updated_at=now()). Last-write-wins (ped. usuario 2026-11-24): se omite
+ * p_cliente_ts (default null = el servidor pisa SIEMPRE) — el guardado local gana. Misma
+ * tolerancia que load con la migración sin aplicar: false con devError limpio.
  */
-export async function saveRciDatos(
-  proyectoId: string,
-  estado: RciState,
-  clienteTs?: string,
-): Promise<boolean> {
+export async function saveRciDatos(proyectoId: string, estado: RciState): Promise<boolean> {
   try {
     const {
       data: { session },
@@ -429,20 +410,11 @@ export async function saveRciDatos(
       emitErrorGuardado('sin-sesion', 'proyectoDataService: sin sesión, respaldo no guardado.');
       return false;
     }
-    const tsArbitro = clienteTs ?? ultimoTsRci.get(proyectoId) ?? new Date().toISOString();
-    const { data, error } = await supabase.rpc('save_rci_datos', {
+    const { error } = await supabase.rpc('save_rci_datos', {
       p_proyecto_id: proyectoId,
       p_datos: estado,
-      p_cliente_ts: tsArbitro,
     });
     if (error) {
-      if (/rci_stale/i.test(error.message ?? '')) {
-        devError(
-          'proyectoDataService saveRciDatos: el servidor tiene una versión más nueva del diseño RCI (otra sesión guardó después); guardado descartado — recarga para verla.',
-          error.message,
-        );
-        return false;
-      }
       if (esObjetoAusente(error)) {
         devError(
           'proyectoDataService saveRciDatos: save_rci_datos no existe aún (migración 20261102000000 sin aplicar); RCI sin persistencia en esta sesión.',
@@ -453,8 +425,6 @@ export async function saveRciDatos(
       emitErrorGuardado('save-rci', error.message);
       return false;
     }
-    // El RPC nuevo devuelve el updated_at efectivo: queda como ts del próximo guardado.
-    if (typeof data === 'string' && data) ultimoTsRci.set(proyectoId, data);
     return true;
   } catch (e) {
     devError('proyectoDataService saveRciDatos exception:', e);

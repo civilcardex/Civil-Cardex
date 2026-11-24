@@ -5,7 +5,6 @@ import type { CivilManagerState } from './types.ts';
 
 export { defaultState, migrateState } from './storage/serialize.ts';
 
-const versions = new Map<string, string>();
 const saveQueues = new Map<string, Promise<void>>();
 const latestDrafts = new Map<string, CivilManagerState>();
 
@@ -13,7 +12,7 @@ const latestDrafts = new Map<string, CivilManagerState>();
 export async function saveCmDraft(scope: CmStorageScope, state: CivilManagerState): Promise<void> {
   const key = cmScopeKey(scope);
   latestDrafts.set(key, state);
-  await saveToIdb(scope, state, versions.get(key) ?? null, true);
+  await saveToIdb(scope, state, null, true);
 }
 
 /** ¿Hay un borrador sin confirmar para este proyecto? (banner de conflicto, H-02). */
@@ -24,28 +23,17 @@ export const hayRespaldoAnterior = hayRespaldoLegado;
 
 /** Recupera un borrador del mismo proyecto y mantiene su versión base. */
 export async function civilManagerLoad(scope: CmStorageScope): Promise<CivilManagerState | null> {
-  const key = cmScopeKey(scope);
   const draft = await loadFromIdb(scope);
   let remote: Awaited<ReturnType<typeof loadFromSupabase>>;
   try {
     remote = await loadFromSupabase(scope);
   } catch (error) {
     if (!draft) throw error;
-    if (draft.version) versions.set(key, draft.version);
-    else versions.delete(key);
     return draft.state;
   }
-  if (!remote) {
-    versions.delete(key);
-    throw new Error('Proyecto no encontrado o sin acceso.');
-  }
-  if (draft?.pending) {
-    if (draft.version) versions.set(key, draft.version);
-    else versions.delete(key);
-    return draft.state;
-  }
-  versions.set(key, remote.version);
-  await saveToIdb(scope, remote.state, remote.version, false);
+  if (!remote) throw new Error('Proyecto no encontrado o sin acceso.');
+  if (draft?.pending) return draft.state;
+  await saveToIdb(scope, remote.state, null, false);
   return remote.state;
 }
 
@@ -60,28 +48,15 @@ export async function civilManagerSave(
   const job = (saveQueues.get(key) ?? Promise.resolve())
     .catch(() => {})
     .then(async () => {
-      const version = versions.get(key) ?? null;
-      const local = await saveToIdb(scope, latestDrafts.get(key) ?? state, version, true);
-      if (!version) {
-        throw new Error(
-          local === false
-            ? 'No se pudo guardar en el navegador y no se conoce la versión en nube.'
-            : 'No se conoce la versión en nube. Se conservó tu borrador local.',
-        );
-      }
-      const committedVersion = await saveToSupabase(state, scope, version).catch((error) => {
+      // LWW (ped. usuario 2026-11-24): sin reloj — el borrador local SIEMPRE pisa la nube.
+      const local = await saveToIdb(scope, latestDrafts.get(key) ?? state, null, true);
+      await saveToSupabase(state, scope).catch((error) => {
         if (local === false)
           throw new Error('No se pudo guardar en nube ni en el navegador.', { cause: error });
         throw error;
       });
-      versions.set(key, committedVersion);
       const latest = latestDrafts.get(key);
-      await saveToIdb(
-        scope,
-        latest ?? state,
-        committedVersion,
-        latest !== undefined && latest !== state,
-      );
+      await saveToIdb(scope, latest ?? state, null, latest !== undefined && latest !== state);
       if (latest === state && latestDrafts.get(key) === state) latestDrafts.delete(key);
     });
   saveQueues.set(key, job);

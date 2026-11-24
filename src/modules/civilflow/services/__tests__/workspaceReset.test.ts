@@ -63,6 +63,18 @@ describe('clearLocalWorkspace', () => {
     expect(lsGet('civilflow_trazos_101')).toBeNull();
   });
 
+  it('crear otro proyecto deja el rescate intacto, sin montarlo como dibujo del nuevo', () => {
+    seedTrazos('101', { ts: 1, ramales: [{ id: 'R1' }] });
+    const key = 'civilflow_plano_borrador_rescate_u1:101';
+    const borrador = lsGet('civilflow_trazos_101')!;
+    localStorage.setItem(key, borrador);
+    clearLocalWorkspace({ conservarRescates: true });
+    expect(lsGet(key)).toBe(borrador);
+    expect(lsGet('civilflow_trazos_101')).toBeNull();
+    clearLocalWorkspace();
+    expect(lsGet(key)).toBeNull();
+  });
+
   it('un doc ilegible se conserva: puede ser el único respaldo del piso', () => {
     localStorage.setItem('civilflow_trazos_roto', '{esto no es json');
 

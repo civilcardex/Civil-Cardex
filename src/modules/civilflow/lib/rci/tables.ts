@@ -83,6 +83,9 @@ export const HZ: Record<string, HzEntry> = {
   },
 };
 
+/** Riesgos que quedan por debajo del mínimo de almacenamiento (G2) que exige el proyecto. */
+export const RIESGOS_BAJO_MINIMO_ALMACENAMIENTO = new Set(['Riesgo leve', 'Riesgo ordinario G1']);
+
 /** Diámetros nominales (pulgadas, como texto comercial: '2 1/2"') en orden creciente. */
 export const NOM: string[] = [
   '1/2"',

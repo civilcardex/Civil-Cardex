@@ -53,8 +53,7 @@ const AYUDA_INTROS_CM: Record<MainSection, string> = {
 };
 
 function CivilManagerShell() {
-  const { loaded, loadError, conflictoBorrador, avisoLegado, descartarAvisoLegado } =
-    useCivilManager();
+  const { loaded, loadError, avisoLegado, descartarAvisoLegado } = useCivilManager();
   const navigate = useNavigate();
   const { '*': splat } = useParams<{ '*': string }>();
   const url = parseManagerSplat(splat);
@@ -139,16 +138,8 @@ function CivilManagerShell() {
   return (
     <div className="cm-shell">
       {tour}
-      {conflictoBorrador ? (
-        <div className="cm-conflicto" role="alert">
-          <p>
-            Otro dispositivo guardó una versión más reciente de este proyecto. Tu borrador está a
-            salvo en este navegador. No se sobrescribió la versión de la nube.
-          </p>
-        </div>
-      ) : null}
       {/* Respaldo legado detectado (H-08): aviso informativo, el registro IDB no se toca. */}
-      {avisoLegado && !conflictoBorrador ? (
+      {avisoLegado ? (
         <div className="cm-conflicto" role="status">
           <p>
             Hay un respaldo anterior de CivilManager en este navegador (creado sin proyecto activo).

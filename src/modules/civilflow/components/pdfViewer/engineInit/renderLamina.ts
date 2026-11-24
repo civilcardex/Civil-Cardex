@@ -41,7 +41,6 @@ interface RenderLaminaParams {
   drawCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   engineRef: React.RefObject<PlanoEngine | null>;
   currentIdRef: React.RefObject<string | number | undefined>;
-  activeNetRef: React.RefObject<string>;
   /** Contador de montaje: un raster de un montaje viejo se aborta al comparar contra él. */
   mountIdRef: React.RefObject<number>;
   /** Diagnóstico __cfCam (solo DEV, lo lee diagCamera.ts): última escala y ancho base rasterizados. */
@@ -52,9 +51,6 @@ interface RenderLaminaParams {
   /** Dedupe de re-rasters por escala (lo lee useReRasterScale.ts): un FULL deja la escala aquí. */
   ultimoFullScRef: React.RefObject<number | null>;
   callbacksRef: React.RefObject<CallbacksVisor>;
-  loadTrazosForPlan: (eng: PlanoEngine, id: string | number) => Promise<boolean>;
-  setActiveNet: (net: string) => void;
-  setScaleM: (sm: string) => void;
   setError: (e: string | null) => void;
 }
 
@@ -68,7 +64,6 @@ export function useRenderLamina({
   drawCanvasRef,
   engineRef,
   currentIdRef,
-  activeNetRef,
   mountIdRef,
   lastRenderScRef,
   lastPageBaseWRef,
@@ -76,9 +71,6 @@ export function useRenderLamina({
   causaRenderRef,
   ultimoFullScRef,
   callbacksRef,
-  loadTrazosForPlan,
-  setActiveNet,
-  setScaleM,
   setError,
 }: RenderLaminaParams): {
   renderPage: (
@@ -107,7 +99,7 @@ export function useRenderLamina({
   const lanzarPendiente = useCallback((req: RenderReq, mountCheck: number): boolean => {
     const rp = renderPageRef.current;
     if (!rp) return false;
-    void rp(req.pageNum, req.sc, mountCheck, req.opts);
+    void rp(req.pageNum, req.sc, req.mountCheck ?? mountCheck, req.opts);
     return true;
   }, []);
   const colaRef = useRef<ColaRender | null>(null);
@@ -121,6 +113,7 @@ export function useRenderLamina({
       mountCheck: number,
       opts: { bgOnly?: boolean; extraScale?: number; causa?: string } = {},
     ) => {
+      if (mountCheck && mountCheck !== mountIdRef.current) return;
       renderCountRef.current += 1;
       causaRenderRef.current = opts?.causa ?? (opts?.bgOnly ? 'bg' : 'full');
       // extraScale > 1: rasteriza el fondo a mayor densidad (zoom en vivo) SIN tocar el
@@ -130,7 +123,7 @@ export function useRenderLamina({
       // el presupuesto post-viewport es el único límite (lado ≤6000px, área ≤24MP).
       const extraPedido = opts.extraScale ?? 1;
       // En vuelo: ENCOLAR (no descartar) — el último pedido gana y corre al cerrar este.
-      const req: RenderReq = { pageNum, sc, opts };
+      const req: RenderReq = { pageNum, sc, mountCheck, opts };
       if (!cola.decidir(req)) return;
       const pdf = pdfDocRef.current;
       const pdfCanvas = pdfCanvasRef.current;
@@ -148,6 +141,7 @@ export function useRenderLamina({
           /* ignorar */
         }
         renderTaskRef.current = null;
+        if (mountCheck && mountCheck !== mountIdRef.current) return;
       }
       cola.abrir();
 
@@ -226,6 +220,7 @@ export function useRenderLamina({
         }
         renderTaskRef.current = null;
 
+        if (mountCheck && mountCheck !== mountIdRef.current) return;
         // Tamaño de página del piso NUEVO ANTES de re-encuadrar: el fitPage del piso vacío
         // usa pageW — con el del piso ANTERIOR el encuadre salía equivocado y el reacomodo
         // llegaba tarde (bug de orden puro, orig. usuario: «el salto sigue pasando»).
@@ -265,22 +260,6 @@ export function useRenderLamina({
           dctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
           const resolvedId = eng._loadedPlanId || currentIdRef.current || 'work';
-          if (
-            eng.ramales.length === 0 &&
-            eng.bajantes.length === 0 &&
-            eng.dims.length === 0 &&
-            eng.textAnnots.length === 0 &&
-            eng.areas.length === 0
-          ) {
-            const loaded = await loadTrazosForPlan(eng, resolvedId);
-            if (loaded) {
-              const loadedNet = eng.activeNet || activeNetRef.current || 'af';
-              const sm = eng.scaleM;
-              setActiveNet(loadedNet);
-              if (sm != null) setScaleM(String(sm));
-              eng.render();
-            }
-          }
           // Diagnóstico de la carga: con qué escala se rasterizó la lámina, de qué tamaño
           // quedó y con qué cámara quedó el encuadre (para comparar dos sesiones).
           try {
@@ -323,10 +302,6 @@ export function useRenderLamina({
       causaRenderRef,
       ultimoFullScRef,
       currentIdRef,
-      activeNetRef,
-      loadTrazosForPlan,
-      setActiveNet,
-      setScaleM,
       setError,
       engineRef,
       pdfCanvasRef,

@@ -158,15 +158,15 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     expect(rpcSaveState.captured).toHaveLength(0);
   });
 
-  // ─── Camino RPC cm_save_state_versioned: una llamada, cero olas ───
+  // ─── Camino RPC cm_save_state (LWW): una llamada, cero olas ───
 
-  it('UNA llamada cm_save_state_versioned con el estado completo y cero olas', async () => {
-    await saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base');
+  it('UNA llamada cm_save_state con el estado completo, sin reloj y cero olas', async () => {
+    await saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO });
     expect(rpcSaveState.captured).toHaveLength(1);
     const { fn, args } = rpcSaveState.captured[0];
-    expect(fn).toBe('cm_save_state_versioned');
+    expect(fn).toBe('cm_save_state');
     expect(args.p_proyecto_id).toBe(PROYECTO);
-    expect(args.p_updated_at).toBe('base');
+    expect('p_updated_at' in args).toBe(false);
     const st = args.p_state as Record<string, unknown>;
     // Claves EXACTAS que espera la migración (nombres de cliente, sin extras).
     expect(Object.keys(st).sort()).toEqual(
@@ -199,19 +199,11 @@ describe('civilManagerSave sanea payloads Supabase', () => {
     expect(pp).not.toHaveProperty('alarmas_precio_faltante');
   });
 
-  it('conflicto de versión: mensaje accionable y CERO llamadas de guardado de más', async () => {
-    rpcSaveState.error = { code: 'P0001', message: 'conflicto_concurrencia' };
-    await expect(
-      saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base'),
-    ).rejects.toThrow(/Otro dispositivo/);
-    expect(rpcSaveState.captured).toHaveLength(0);
-  });
-
-  it('RPC con error real (no conflicto): se propaga sin caer a ningún camino alterno', async () => {
+  it('RPC con error real: se propaga sin caer a ningún camino alterno', async () => {
     rpcSaveState.error = { code: '23503', message: 'violates foreign key constraint' };
     await expect(
-      saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }, 'base'),
-    ).rejects.toThrow(/cm_save_state_versioned/);
+      saveToSupabase(seedState(), { userId: 'u1', proyectoId: PROYECTO }),
+    ).rejects.toThrow(/cm_save_state/);
     expect(rpcSaveState.captured).toHaveLength(0);
   });
 });

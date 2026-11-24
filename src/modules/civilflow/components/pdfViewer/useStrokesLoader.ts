@@ -3,56 +3,47 @@
 // (eventos de sync) para que las tablas montadas recojan los cambios. Devuelve true si el
 // motor terminó con contenido cargado.
 import { useCallback } from 'react';
-import { leerPlansMeta, planCalibrado } from '../../utils/plansMeta.ts';
-import {
-  corrigeEscalaMeta,
-  decideEscalaDelDoc,
-  docConTs,
-  registraCarga,
-  debeAvisarCorreccionEscala,
-  EVENTO_ESCALA_CAMBIADA,
-} from '../../utils/loadDiagnostics.ts';
+import type { PlanItem } from '../../context/PlansContext.tsx';
+import { registraCarga, EVENTO_ESCALA_CAMBIADA } from '../../utils/loadDiagnostics.ts';
 import {
   loadFromStorage,
-  saveToStorage,
   saveTrazosToDB,
   loadTrazosFromDB,
   arbitrarCarga,
   saveTrazosLocales,
+  trazosDocHasContent,
+  getActiveProyectoId,
 } from '../../services/storageService.ts';
 import type { PlanTrazos } from '../../services/storageService.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { validaDocTrazos } from '../../services/storage/validateDocStrokes.ts';
-import { aceptarVersionDePlano } from '../../services/storage/strokesDb.ts';
-import { PLANS_META_KEY } from '../../constants/storage-keys.ts';
 import {
   migrateAssocLayoutOnLoad,
   sweepMisplacedLdesvios,
 } from '../../utils/assocLayoutMigration.ts';
 import { restaurarAsociacionesDesdeLocal } from '../../utils/crossFloorStorage.ts';
-import { origenDePlan } from '../../utils/crossFloorStorage.ts';
-import { rebasarEscalaTrazos, type PlanoWorkData } from '../../lib/PlanoEngine/PlanoPersistence.ts';
+import { VERSION_LAMINA_BASE } from '../../lib/PlanoEngine/planoCoords.ts';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { emitSanSync, emitHidroSync, EV_STORAGE } from '../../utils/fixtureEvents.ts';
 import { journalTrazos, resumenTrazos } from '../../services/storage/strokesJournal.ts';
 
 interface UseTrazosLoaderParams {
+  plansRef: React.RefObject<PlanItem[]>;
   activeNetRef: React.RefObject<string>;
   setActiveNet: React.Dispatch<React.SetStateAction<string>>;
   setScaleM: React.Dispatch<React.SetStateAction<string>>;
-  /** Escala única del proyecto (del plan calGlobal) — ref actualizada por el visor. */
-  escalaGlobalRef: React.RefObject<number | null>;
 }
 
 /** Carga los trazos de un plano resolviendo local-vs-BD por marca de tiempo (gana el más reciente) y notifica los cambios para que las tablas montadas se actualicen. */
 export function useTrazosLoader({
+  plansRef,
   activeNetRef,
   setActiveNet,
   setScaleM,
-  escalaGlobalRef,
 }: UseTrazosLoaderParams) {
   return useCallback(
     async (eng: PlanoEngine, resolvedId: string | number): Promise<boolean> => {
+      const proyectoId = getActiveProyectoId();
       const tryLoad = (id: string | number): PlanTrazos | string | null => {
         const key = `trazos_${id}`;
         const saved = loadFromStorage<PlanTrazos | string | null>(key, null);
@@ -78,18 +69,18 @@ export function useTrazosLoader({
         eng.areas = [];
         eng.dims = [];
         eng.textAnnots = [];
+        eng.guideLines = [];
+        eng.crossFloorGhosts = [];
         eng.selId = null;
         eng.activeRamal = null;
         eng.activeArea = null;
         eng.render();
       }
-      // scaleM del DOCUMENTO capturado tras cada loadWork — el engine vivo puede ser pisado
-      // por el estado React (syncEngine/default '0.5') durante el await de BD; el re-base
-      // debe comparar la escala del doc, no la pisada (bug: elementos corridos al reabrir).
+      // Diagnóstico: capturar la escala del documento que realmente entró al motor.
       let docScale = 0;
       // Diagnóstico: la escala y el ts de cada copia (local vs BD). El arbitration gana el
       // mayor ts: si la copia local va sin ts cuenta 0 y la BD manda siempre.
-      const escalaTsDe = (doc: unknown): { escala: number | null; ts: number | null } => {
+      const escalaTsDe = (doc: unknown) => {
         const d = (
           typeof doc === 'string'
             ? (() => {
@@ -104,10 +95,12 @@ export function useTrazosLoader({
         return {
           escala: typeof d?.scaleM === 'number' ? d.scaleM : null,
           ts: typeof d?.ts === 'number' ? d.ts : null,
+          tieneContenido: trazosDocHasContent(d),
         };
       };
       const localInfo = escalaTsDe(localData);
-      let bdInfo = { escala: null as number | null, ts: null as number | null };
+      let docDibujado = !!(localInfo.ts || localInfo.tieneContenido);
+      let bdInfo = escalaTsDe(null);
       // El usuario pudo cambiar de piso durante el await de red: el motor ya es del piso
       // NUEVO y _loadedPlanId apunta a él — un loadWork con el doc del piso VIEJO bajo el
       // id nuevo era la FOTOCOPIA entre pisos (elementos del piso 2 apareciendo en la
@@ -122,7 +115,9 @@ export function useTrazosLoader({
           eng.render();
         });
       };
-      const pisoVigente = (): boolean => String(eng._loadedPlanId ?? '') === String(resolvedId);
+      const pisoVigente = (): boolean =>
+        getActiveProyectoId() === proyectoId &&
+        String(eng._loadedPlanId ?? '') === String(resolvedId);
       if (localData) {
         const workStr = typeof localData === 'string' ? localData : JSON.stringify(localData);
         eng.loadWork(workStr);
@@ -156,14 +151,10 @@ export function useTrazosLoader({
         if (dbData) {
           bdInfo = escalaTsDe(dbData);
           const dbTs = Number(dbData.ts || 0);
-          const localTs = Number((typeof localData === 'string' ? null : localData)?.ts || 0);
-          /* Versión ANTES del arbitraje, SIEMPRE (H-01): con caché local ya sincronizada
-           *  ninguna rama previa fijaba el reloj y TODO autosave quedaba bloqueado («Falta
-           *  cargar la versión del plano»). 'nueva' archiva el borrador local bajo la clave
-           *  de rescate (lo hace la aceptación) → la nube manda. */
-          const version = aceptarVersionDePlano(dbData, localData);
-          if (version === 'error') return initiallyLoaded;
-          const decision = arbitrarCarga(version, localData, dbData, localTs, dbTs);
+          const localTs = localInfo.ts ?? 0;
+          /* Árbitro por contenido+ts (LWW en el guardado): al abrir gana el doc MÁS NUEVO,
+           *  con las reglas anti-vacío por delante. Sin reloj de versión (ped. 2026-11-24). */
+          const decision = arbitrarCarga(localData, dbData, localTs, dbTs);
           // Caja negra (DEV): la decisión del árbitro con los conteos de AMBOS lados. Es la
           // firma que nombra al culpable cuando un piso aparece vacío al reabrir: si aquí se
           // ve `local=vacio bd=vacio`, el borrado ocurrió ANTES (buscar el push vacío en el
@@ -194,10 +185,8 @@ export function useTrazosLoader({
             // gap ≥1 h la restauración se saltaba → loadWork pisaba engine+caché buenas con el
             // doc BD sin anillo/LD_ — causa raíz del borrado persistente). Seguro porque la
             // desasociación legítima borra en AMBOS lados: la caché local sin piezas no aporta
-            // nada a la unión. SOLO con 'misma': tras aceptar una nube nueva el borrador está
-            // archivado — mezclar sus asociaciones reanimaría lo descartado.
-            const restauradas =
-              version === 'misma' && restaurarAsociacionesDesdeLocal(localData, merged);
+            // nada a la unión.
+            const restauradas = restaurarAsociacionesDesdeLocal(localData, merged);
             if (restauradas) {
               saveTrazosToDB(String(resolvedId), merged);
               eng.loadWork(JSON.stringify(merged));
@@ -205,6 +194,7 @@ export function useTrazosLoader({
               eng.loadWork(typeof dbData === 'string' ? dbData : JSON.stringify(dbData));
             }
             docScale = eng.scaleM;
+            docDibujado = !!(dbTs || trazosDocHasContent(merged));
             // La caché refleja EXACTAMENTE lo cargado en el engine: guardar dbData cuando se
             // restauró pisaba el merged y el anti-loss producía la pérdida que curaba.
             saveTrazosLocales(
@@ -223,7 +213,7 @@ export function useTrazosLoader({
             window.dispatchEvent(new Event(EV_STORAGE));
             emitSanSync();
             emitHidroSync();
-          } else if (decision === 'local-ts') {
+          } else if (decision === 'local-ts' && localTs > dbTs) {
             saveTrazosToDB(String(resolvedId), localData);
           }
         } else if (localData) {
@@ -242,134 +232,43 @@ export function useTrazosLoader({
       } catch (e) {
         devError('[LOAD] Supabase error/sync error:', e);
       }
-      // ESCALA DEL PISO (decisión 2026-10-21, orig. usuario: "al reingresar los elementos
-      // aparecen desplazados y las cotas leen menos").
-      //
-      // La escala de un piso es la SUYA: la de su calibración en plans_meta. Antes se
-      // comparaba contra la escala GLOBAL del proyecto (el primer plan con calGlobal) y, si
-      // no coincidía, se re-escalaba TODA la geometría anclada al origen — eso encogía el
-      // dibujo de los pisos calibrados a mano en cuanto el portador global cambiaba, y el
-      // cambio quedaba guardado. Ahora:
-      //  · piso calibrado a mano  → su escala manda (nadie la re-escala).
-      //  · piso que hereda el global (calGlobal) → sigue al global (una sola escala de
-      //    proyecto), pero cualquier re-escalado se ANUNCIa y se registra.
-      //  · piso sin calibración → su escala de doc manda (nada la toca).
-      // El doc manda sobre el valor por defecto del plano: es el que define el espacio de
-      // los píxeles del dibujo.
-      const escalaGlobal = escalaGlobalRef.current;
-      let meta = [] as ReturnType<typeof leerPlansMeta>;
-      try {
-        meta = leerPlansMeta();
-      } catch {
-        /* sin meta accesible: el doc manda tal cual */
+      if (!pisoVigente()) return initiallyLoaded;
+      const meta = plansRef.current.find((m) => String(m.id) === String(resolvedId));
+      const escalaPlano = Number(meta?.scale) / 100;
+      // Un registro de solo metadatos no fija las coordenadas del dibujo. En un piso nuevo
+      // se mide con su calibración y se dibuja sobre el PDF base, incluso sin doc en caché.
+      if (!docDibujado) {
+        eng.workVersion = VERSION_LAMINA_BASE;
+        const escala = Number.isFinite(escalaPlano) && escalaPlano > 0 ? escalaPlano : 0.5;
+        eng.setScaleM(escala);
+        setScaleM(String(escala));
       }
-      const entrada = meta.find((m) => String(m.id) === String(resolvedId));
-      const calibrado = planCalibrado(meta, resolvedId);
-      // Escala calibrada del piso: la global si el piso la hereda (calGlobal), si no la suya.
-      const escalaPropia =
-        calibrado && typeof entrada?.scale === 'number' && entrada.scale > 0
-          ? entrada.calGlobal === true && escalaGlobal
-            ? escalaGlobal
-            : entrada.scale / 100
-          : null;
-      const decision = decideEscalaDelDoc({ escalaDoc: docScale, escalaPlano: escalaPropia });
-      const elementosCargados =
-        eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length;
+      const definida = meta?.definedScale;
+      if (
+        (!docDibujado || eng.definedScaleM <= 0) &&
+        typeof definida === 'number' &&
+        Number.isFinite(definida) &&
+        definida > 0
+      ) {
+        eng.setDefinedScaleM(definida);
+      } else if (!docDibujado) {
+        eng.setDefinedScaleM(0);
+      }
+      // Abrir nunca reescala ni modifica la calibración guardada. Si al llegar la nube
+      // cambió el formato de coordenadas, actualizar solamente el fondo.
+      window.dispatchEvent(new CustomEvent(EVENTO_ESCALA_CAMBIADA, { detail: String(resolvedId) }));
       registraCarga(resolvedId, {
-        escalaDoc: docScale || null,
-        escalaPlano: escalaPropia,
-        escalaGlobal: escalaGlobal ?? null,
+        escalaDoc: docDibujado ? docScale : null,
+        escalaPlano: escalaPlano > 0 ? escalaPlano : null,
+        escalaGlobal: null,
         escalaLocal: localInfo.escala,
         escalaBd: bdInfo.escala,
         tsLocal: localInfo.ts,
         tsBd: bdInfo.ts,
-        accion: decision.accion,
-        factor: decision.accion === 'rebase' ? decision.factor : null,
-        elementos: elementosCargados,
+        accion: 'nada',
+        factor: null,
+        elementos: eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length,
       });
-      // Aplicar la decisión SOLO con el piso aún vigente (un cambio de piso durante el await
-      // deja el motor en otro piso: setScaleM/rebase here serían del piso equivocado).
-      if (pisoVigente() && decision.accion === 'autoheal') {
-        // Meta legacy REDONDEADO (0.4723 → 47 → 0.47): el doc (exacto) corrige al meta y no
-        // se tocan trazos. Divergencias reales (calibraciones manuales) superan el 0.6 %.
-        escalaGlobalRef.current = entrada?.calGlobal === true ? decision.escala : escalaGlobal;
-        setScaleM(String(decision.escala));
-        try {
-          const corregido = corrigeEscalaMeta(
-            meta,
-            resolvedId,
-            decision.escala,
-            entrada?.calGlobal === true,
-          );
-          if (corregido.cambio) saveToStorage(PLANS_META_KEY, corregido.meta);
-        } catch {
-          /* sin meta accesible: solo queda aplicado en la ref de esta sesión */
-        }
-      } else if (
-        pisoVigente() &&
-        (decision.accion === 'reparar-etiqueta' || decision.accion === 'rebase')
-      ) {
-        // La etiqueta del doc quedó pisada (o el doc está en otra escala real): se deja la
-        // geometría donde está y se corrige la escala que la interpreta. En el re-base la
-        // geometría SÍ se re-escala (px−origen constante = posición física preservada).
-        try {
-          (eng as unknown as PlanoWorkData).scaleM = docScale;
-          if (decision.accion === 'rebase') {
-            rebasarEscalaTrazos(
-              eng as unknown as PlanoWorkData,
-              decision.escala,
-              origenDePlan(String(resolvedId)),
-            );
-          } else {
-            (eng as unknown as PlanoWorkData).scaleM = decision.escala;
-          }
-          eng.setScaleM(decision.escala);
-          setScaleM(String(decision.escala));
-          const work = eng.saveWork();
-          // ts FRESCO: el árbitro local-vs-BD gana el mayor ts. Sin ts, la copia local cuenta
-          // como 0 y la BD gana SIEMPRE -> el doc conservaba la escala mala y la corrección se
-          // repetía en cada entrada (el aviso salía siempre). Mismo convenio que el autosave
-          // (persistTrazosSnapshot): todo doc que se persiste va con ts.
-          const workConTs = docConTs(work);
-          // Tumba anti-vacío: un loadWork fallido a medias deja el engine sin contenido —
-          // persistir el re-base pisaría la caché (y luego BD vía el RPC destructivo) con
-          // un doc vacío. Solo persiste con contenido, o si no había nada que proteger.
-          const conContenido =
-            eng.ramales.length + eng.bajantes.length + eng.areas.length + eng.dims.length > 0;
-          if (conContenido || !localData) {
-            const guardado = saveTrazosLocales(
-              resolvedId,
-              workConTs as unknown as Record<string, unknown>,
-            );
-            void saveTrazosToDB(String(resolvedId), workConTs);
-            if (!guardado) {
-              // La caché local no se pudo escribir (cuota de localStorage llena): la corrección
-              // NO quedó guardada y volvería a salir en la próxima entrada. Sin esto, el
-              // usuario ve el mismo aviso cada vez y cree que la app está rota.
-              devError('[LOAD] la corrección de escala no se pudo guardar en localStorage');
-            }
-            if (debeAvisarCorreccionEscala(resolvedId, `${docScale}->${decision.escala}`)) {
-              const base =
-                decision.accion === 'rebase'
-                  ? `El piso ${resolvedId} estaba a ${docScale} m/px y se pasó a ${decision.escala} m/px (se re-escaló el dibujo, anclado al origen de calibración).`
-                  : `El piso ${resolvedId} tenía la escala mal puesta (${docScale} m/px) y se restauró la de su calibración (${decision.escala} m/px). El dibujo NO se movió.`;
-              eng.triggerAlert(
-                'Escala del piso corregida',
-                guardado
-                  ? base
-                  : `${base} OJO: no se pudo guardar (almacenamiento local lleno): puede volver a salir.`,
-              );
-            }
-          }
-          window.dispatchEvent(new Event(EV_STORAGE));
-          // La lámina de fondo se rasteriza con la escala del doc: si la escala cambia, la
-          // lámina tiene que volver a rasterizarse o el fondo y el dibujo quedan en escalas
-          // distintas (el dibujo se ve corrido y más corto respecto de la lámina).
-          window.dispatchEvent(new CustomEvent(EVENTO_ESCALA_CAMBIADA));
-        } catch (e) {
-          devError('[LOAD] corrección de escala del piso:', e);
-        }
-      }
       // Migración del layout de asociación (fantasma+Ldesvio ahora viven en el piso inferior):
       // corre tras la carga con el nivel actual como clave del anillo; idempotente por marca
       // `assocLayout: 2` en el storage de cada piso.
@@ -381,6 +280,6 @@ export function useTrazosLoader({
       }
       return initiallyLoaded;
     },
-    [activeNetRef, setActiveNet, setScaleM, escalaGlobalRef],
+    [activeNetRef, plansRef, setActiveNet, setScaleM],
   );
 }

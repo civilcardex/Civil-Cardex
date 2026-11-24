@@ -212,6 +212,32 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     expect(nc[0].guide).toContain('diámetro');
   });
 
+  it('verificación de almacenamiento exige G2 y se recalcula al cambiar el riesgo del piso', () => {
+    const stAlmacen = ejemploVerificacion();
+    stAlmacen.clas.almacen = 'Sí';
+    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo ordinario G1'));
+
+    const checkG1 = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
+      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
+    );
+    expect(checkG1?.st).toBe('NO CUMPLE');
+    expect(checkG1?.val).toContain('Riesgo ordinario G1');
+    expect(checkG1?.guide).toContain('Riesgo ordinario G2');
+
+    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo ordinario G2'));
+    const checkG2 = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
+      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
+    );
+    expect(checkG2?.st).toBe('CUMPLE');
+    expect(checkG2?.val).toContain('Riesgo ordinario G2');
+
+    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo leve'));
+    const checkLeve = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
+      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
+    );
+    expect(checkLeve?.st).toBe('NO CUMPLE');
+  });
+
   it('compute es determinista: dos corridas dan el mismo resultado (puro, sin estado global)', () => {
     const R2 = compute(ejemploVerificacion(), clasificar(ejemploVerificacion()));
     expect(R2.red!.rt!.Q).toBe(R.red!.rt!.Q);

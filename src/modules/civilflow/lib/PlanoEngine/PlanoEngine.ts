@@ -157,6 +157,7 @@ export default class PlanoEngine implements IPlanoEngineCore {
   gridMode!: boolean;
   scaleM!: number;
   definedScaleM!: number;
+  workVersion?: number;
   /** Dmuro (RCI) inyectado por la capa React (ver IPlanoEngineCore.dmuroRci): null = apagado. */
   dmuroRci: number | null = null;
   pageW!: number;

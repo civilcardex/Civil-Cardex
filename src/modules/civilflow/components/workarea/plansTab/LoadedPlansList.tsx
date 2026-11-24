@@ -1,5 +1,6 @@
 import { pisoLbl } from '../../../constants';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { escalaDePapel, esArchivoPdf } from '../../../utils/planScale.ts';
 import { PlanosTab_S13, PlanosTab_S14, PlanosTab_verBtn } from '../PlansTab.styles.ts';
 
 /**
@@ -109,7 +110,10 @@ export function ListaCargados(props: ListaCargadosProps) {
                       ) : null}
                       {p.definedScale ? <span style={{ color: 'var(--line)' }}>|</span> : null}
                       <span style={{ color: 'var(--txt2)' }}>
-                        Calibrada 1:{Math.round(p.scale)}
+                        Calibrada 1:
+                        {Math.round(
+                          p.origen ? escalaDePapel(p.scale, esArchivoPdf(p.file)) : p.scale,
+                        )}
                       </span>
                     </>
                   ) : null}

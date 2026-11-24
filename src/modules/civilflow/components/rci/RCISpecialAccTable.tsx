@@ -4,7 +4,8 @@
  *  Ej: 'VA' (válvula de alarma) con modo LD y valor 50 aparece en el panel de accesorios. */
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
-import { BTN, INC, NOTAC, TDCC, TH10C, type EditarRci } from './RCICmatTable.tsx';
+import { BTN, INC, NOTAC, TDCC, TH_TUBERIA, type EditarRci } from './RCICmatTable.tsx';
+import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import type { EspAcc } from '../../lib/rci/tables.ts';
 import type { RciState } from '../../lib/rci/types.ts';
 /* ---------------- Catálogo de accesorios especiales ---------------- */
@@ -60,26 +61,26 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
         </div>
       </div>
       <div style={{ padding: 6 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse' }}>
+        <RciInputTableScroll label="Catálogo de accesorios especiales">
+          <table className="tbl" style={{ fontSize: 14, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th scope="col" style={TH10C}>
+                <th scope="col" style={TH_TUBERIA}>
                   Código
                 </th>
-                <th scope="col" style={TH10C}>
+                <th scope="col" style={TH_TUBERIA}>
                   Accesorio
                 </th>
-                <th scope="col" style={TH10C}>
+                <th scope="col" style={TH_TUBERIA}>
                   Cómo se da la pérdida
                 </th>
-                <th scope="col" style={TH10C}>
+                <th scope="col" style={TH_TUBERIA}>
                   Valor
                 </th>
-                <th scope="col" style={TH10C}>
+                <th scope="col" style={TH_TUBERIA}>
                   Q ref. (gpm)
                 </th>
-                <th scope="col" style={TH10C} />
+                <th scope="col" style={TH_TUBERIA} />
               </tr>
             </thead>
             <tbody>
@@ -163,7 +164,7 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
                       aria-label={`Eliminar accesorio ${i + 1}`}
                       disabled={!edit}
                       onClick={() => del(i)}
-                      style={{ ...BTN, padding: '0 6px' }}
+                      style={{ ...BTN, fontSize: 14, padding: '0 6px' }}
                     >
                       ×
                     </button>
@@ -172,9 +173,9 @@ function TablaEsp({ estado, editar }: { estado: RciState; editar: EditarRci }) {
               ))}
             </tbody>
           </table>
-        </div>
+        </RciInputTableScroll>
         <div style={{ marginTop: 4 }}>
-          <button type="button" disabled={!edit} onClick={add} style={BTN}>
+          <button type="button" disabled={!edit} onClick={add} style={{ ...BTN, fontSize: 14 }}>
             + Añadir accesorio
           </button>
         </div>

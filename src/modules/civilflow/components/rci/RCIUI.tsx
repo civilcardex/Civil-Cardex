@@ -314,13 +314,13 @@ const TAGDEF_RCI: Record<string, string> = {
 };
 
 /** Chip de naturaleza del dato (Norma/Rango/Fabricante/Proyecto/Criterio, TAGDEF del HTML). */
-export function TagRci({ tag }: { tag?: string }) {
+export function TagRci({ tag, fontSize = 9 }: { tag?: string; fontSize?: number }) {
   if (!tag) return null;
   return (
     <span
       title={TAGDEF_RCI[tag]}
       style={{
-        fontSize: 9,
+        fontSize,
         fontWeight: 600,
         padding: '1px 6px',
         borderRadius: 4,

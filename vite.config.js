@@ -21,7 +21,8 @@ export default defineConfig(({ isSsrBuild }) => ({
             /script-src 'self' 'wasm-unsafe-eval'/,
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
           )
-          .replace(/style-src 'self'/, "style-src 'self' 'unsafe-inline'");
+          .replace(/style-src 'self'/, "style-src 'self' 'unsafe-inline'")
+          .replace(/style-src-elem 'self'/, "style-src-elem 'self' 'unsafe-inline'");
       },
     },
   ],

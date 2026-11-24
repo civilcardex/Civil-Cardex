@@ -303,8 +303,8 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
               background: 'var(--bg2)',
               border: '1px solid var(--line)',
               borderRadius: 8,
-              width: 'min(920px, calc(100vw - 40px))', // <dialog> padre fit-content: un 100% colapsa
-              maxHeight: '90vh',
+              width: 'min(1180px, calc(100dvw - 32px))', // <dialog> padre fit-content: un 100% colapsa
+              maxHeight: 'calc(100dvh - 32px)',
               overflowY: 'auto',
               boxShadow: '0 12px 30px rgba(0,0,0,.5)',
               padding: 14,

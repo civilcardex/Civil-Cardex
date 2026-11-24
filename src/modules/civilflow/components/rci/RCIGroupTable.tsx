@@ -6,6 +6,7 @@
 import { Fragment, useState, type CSSProperties } from 'react';
 import { EditTablaBtn, TagRci, useEditarTabla, type RciCtx } from './RCIUI.tsx';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
+import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import type { RciResult, RciState } from '../../lib/rci/types.ts';
 
@@ -202,6 +203,12 @@ interface PropsGrupo {
   editar: EditarRci;
   /** Ancho mínimo de la tabla (px): estira las columnas para tablas aireadas. */
   minAncho?: number;
+  /** Ajusta la tarjeta al contenido sin desbordar el área de Entradas. */
+  anchoContenido?: boolean;
+  /** Ancho preferido de la tarjeta (px), limitado por el espacio disponible. */
+  anchoPreferido?: number;
+  /** Agranda la letra de Tubería y mangueras, incluso en ventanas bajas. */
+  letraGrande?: boolean;
   /** Texto del icono ⓘ junto al título: qué condición Sí/No habilita las filas bloqueadas
    *  de esta tabla. Ausente = la tabla no tiene filas dependientes. */
   depNota?: string;
@@ -234,6 +241,9 @@ export function GrupoTabla({
   editar,
   onAbrirModal,
   minAncho,
+  anchoContenido,
+  anchoPreferido,
+  letraGrande,
   depNota,
   compacta,
   portatil,
@@ -297,29 +307,40 @@ export function GrupoTabla({
     });
   };
   /* Tamaños según modo: estándar (14/13/12) vs compacta (12/11/11) para subs con varias tablas. */
-  const thS: CSSProperties = { ...TH10, fontSize: compacta ? 10.5 : 12 };
-  const lblS: CSSProperties = { ...LBL_TD, fontSize: compacta ? 12 : 14 };
-  const ctrlS: CSSProperties = { ...CTRL, fontSize: compacta ? 12 : 14 };
-  const tdS: CSSProperties = compacta ? { ...TDC, fontSize: 11 } : TDC;
-  /* Subpestañas MUY anchas (normativa/succión ≥1600): compacta el card para que la página
+  const thS: CSSProperties = { ...TH10, fontSize: letraGrande ? 13 : compacta ? 10.5 : 12 };
+  const lblS: CSSProperties = { ...LBL_TD, fontSize: compacta && !letraGrande ? 12 : 14 };
+  const ctrlS: CSSProperties = { ...CTRL, fontSize: compacta && !letraGrande ? 12 : 14 };
+  const tdS: CSSProperties = { ...TDC, fontSize: letraGrande ? 14 : compacta ? 11 : 12 };
+  /* Subpestañas MUY anchas (≥1600): compacta el card para que la página
    * quepa sin el ligero scroll vertical global (ped. usuario 2026-11-13). */
   const ancha = !!minAncho && minAncho >= 1600;
-  const obsS: CSSProperties = compacta
-    ? /* Portátil (≤860 px de alto): la Observación absorbe el ancho — menos envuelto = filas
-       *  más bajas = la sub cabe sin scroll. En monitor se conserva el tope de 520 (ped.
-       *  2026-11-17: la columna no desborda la tarjeta). */
-      { ...OBS_TD, fontSize: 11.5, maxWidth: portatil ? undefined : OBS_TD.maxWidth }
-    : ancha
+  const obsS: CSSProperties = letraGrande
+    ? { ...OBS_TD, fontSize: 13 }
+    : anchoPreferido
       ? { ...OBS_TD, maxWidth: undefined }
-      : OBS_TD;
+      : anchoContenido
+        ? { ...OBS_TD, maxWidth: 360 }
+        : compacta
+          ? /* Portátil (≤860 px de alto): la Observación absorbe el ancho — menos envuelto = filas
+             *  más bajas = la sub cabe sin scroll. En monitor se conserva el tope de 520 (ped.
+             *  2026-11-17: la columna no desborda la tarjeta). */
+            { ...OBS_TD, fontSize: 11.5, maxWidth: portatil ? undefined : OBS_TD.maxWidth }
+          : ancha
+            ? { ...OBS_TD, maxWidth: undefined }
+            : OBS_TD;
   return (
-    // Doctrina ancho (ped. usuario 2026-11-17): el card SIEMPRE ocupa todo el ancho y la
-    // tabla lo llena — en Clasificación (720) el select de Construcción del techo se ve
-    // completo y la Observación absorbe el excedente (sin scroll vertical). «ancha» solo
-    // controla el padding compacto de las subpestañas ≥1600.
     <section
       className="card"
-      style={ancha ? { width: '100%', padding: '2px 6px' } : { width: '100%' }}
+      style={{
+        width: anchoPreferido
+          ? `min(100%, ${anchoPreferido}px)`
+          : anchoContenido
+            ? 'fit-content'
+            : '100%',
+        maxWidth: '100%',
+        minWidth: 0,
+        ...(ancha ? { padding: '2px 6px' } : {}),
+      }}
     >
       <div
         className="card-h"
@@ -355,11 +376,11 @@ export function GrupoTabla({
         </div>
       </div>
       <div style={{ padding: ancha ? 2 : 6 }}>
-        <div style={{ overflowX: 'auto' }}>
+        <RciInputTableScroll label={titulo}>
           <table
             className="tbl"
             style={{
-              fontSize: compacta ? 11 : 12,
+              fontSize: letraGrande ? 14 : compacta ? 11 : 12,
               borderCollapse: 'collapse',
               /* Doctrina sin-scroll (2026-11-17): tabla SIEMPRE 100% fluida, sin techo —
                * comprime al estrechar y en pantallas anchas llena el card entero; el
@@ -420,7 +441,11 @@ export function GrupoTabla({
                 const anchoCtl = `calc(${Math.min(60, maxLbl + 2)}ch + 30px)`;
                 return (
                   <Fragment key={d.path}>
-                    <tr style={off ? { opacity: 0.55 } : undefined}>
+                    <tr
+                      tabIndex={-1}
+                      className="focus-visible:outline focus-visible:outline-current"
+                      style={off ? { opacity: 0.55 } : undefined}
+                    >
                       <td style={lblS} title={ayu}>
                         {d.lbl}
                       </td>
@@ -470,7 +495,7 @@ export function GrupoTabla({
                         )}
                       </td>
                       <td style={tdS}>
-                        <TagRci tag={TAGS_RCI[d.path]} />
+                        <TagRci tag={TAGS_RCI[d.path]} fontSize={letraGrande ? 13 : undefined} />
                       </td>
                       <td style={obsS}>
                         {ayu}
@@ -494,7 +519,7 @@ export function GrupoTabla({
               })}
             </tbody>
           </table>
-        </div>
+        </RciInputTableScroll>
       </div>
     </section>
   );

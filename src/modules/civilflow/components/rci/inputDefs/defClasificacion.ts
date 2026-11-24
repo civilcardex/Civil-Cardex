@@ -1,6 +1,6 @@
 /** Campos de la sub-pestaña CLASIFICACIÓN: riesgo NFPA, tipo de sistema, almacenamiento y
- *  construcción del techo — lo que decide el área de diseño. Ej: clas.almacen «Sí» bloquea
- *  el Riesgo leve. */
+ *  construcción del techo — lo que decide el área de diseño. Ej: clas.almacen «Sí» exige
+ *  Riesgo ordinario G2 como mínimo en cada piso. */
 import type { DefCampo } from '../RCIGroupTable.tsx';
 import { CONSTR_OPCIONES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
 
@@ -18,7 +18,7 @@ export const GRUPO_CLASIFICACION: DefCampo[] = [
     path: 'clas.almacen',
     lbl: '¿La ocupación incluye almacenamiento?',
     opts: SINO,
-    ayu: 'Con almacenamiento no se admite Riesgo leve',
+    ayu: 'Con almacenamiento, el riesgo mínimo por piso es Riesgo ordinario G2',
   },
   {
     path: 'clas.arrumeH',

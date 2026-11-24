@@ -14,9 +14,6 @@
 import { memo, useState, useRef, useEffect, useCallback, useMemo, type CSSProperties } from 'react';
 import { usePlanLoadSwitch } from './pdfViewer/usePlanLoadSwitch.ts';
 import { useViewerResponsive } from './pdfViewer/useViewerResponsive.ts';
-import { leerPlansMeta, planCalibrado } from '../utils/plansMeta.ts';
-import { decideEscalaPorDefectoDelPlan } from '../utils/loadDiagnostics.ts';
-import { escalaDeDoc } from '../utils/planScale.ts';
 import PlanoEngine, { type ElementItem } from '../lib/PlanoEngine/PlanoEngine.ts';
 import type { ProbedElement } from './pdfViewer/tramoEditor/context.ts';
 import type { Piso } from '../lib/shared/projectTypes.ts';
@@ -125,7 +122,6 @@ function PdfViewer_({
       writeHydroDrawingSync(plansRef.current);
     } catch {}
   }, []);
-  const [scale] = useState(1);
   // Estado responsive del visor centralizado (umbrales 768/1024 + colapso al cruzar 1024).
   const { isMobile, isNarrow, leftCollapsed, setLeftCollapsed, rightCollapsed, setRightCollapsed } =
     useViewerResponsive();
@@ -168,24 +164,6 @@ function PdfViewer_({
   const [activeNet, setActiveNet] = useActiveNetState(activeNetworks);
 
   const [scaleM, setScaleM] = useState('0.5');
-  // Escala única del proyecto: scale/100 del plan calibrado con calGlobal (fuente de verdad
-  // para el re-base de pisos que calibraron a mano — incidente cotas distintas por piso).
-  const escalaGlobalRef = useRef<number | null>(null);
-  useEffect(() => {
-    // Fuente ESTABLE: plans_meta en storage (su orden no cambia entre sesiones). El array
-    // `planos` se reconstruye distinto según local/nube y el "primer calGlobal" cambiaba
-    // de piso entre sesiones → el re-base movía toda la geometría (orig. usuario 2026-10-15).
-    try {
-      const meta = leerPlansMeta();
-      const g = meta.find((m) => m.calGlobal === true && m.origen && m.scale);
-      escalaGlobalRef.current = g ? g.scale / 100 : null;
-      return;
-    } catch {
-      /* sin storage: fallback al array */
-    }
-    const g = planos.find((p) => p.calGlobal === true && p.origen && p.scale);
-    escalaGlobalRef.current = g ? g.scale / 100 : null;
-  }, [planos]);
   const [selectedNivel, setSelectedNivel] = useState<number | null>(null);
   const syncedNivelForIdRef = useRef<string | number | null>(null);
 
@@ -238,47 +216,6 @@ function PdfViewer_({
   });
 
   useEffect(() => {
-    if (selectedNivel !== null) {
-      const plano = planos.find((p) => p.nivel === selectedNivel && p.status === 'confirmed');
-      // Solo pisos SIN calibración: el set estándar pisaba el scaleM calibrado que vino en
-      // los trazos (y el autosave lo persistía pisado — normalización de copias corrupta).
-      let calibrado = false;
-      try {
-        const meta = leerPlansMeta();
-        calibrado = plano ? planCalibrado(meta, plano.id) : false;
-      } catch {
-        /* sin meta: comportamiento previo */
-      }
-      // Y además: la escala por defecto del plano SOLO se aplica a un piso SIN dibujo.
-      // Si el piso ya tiene doc (escala propia) o elementos cargados, su escala manda: pisarla
-      // dejaba las cotas leiendo en otra escala y los elementos corridos (orig. usuario: al
-      // reingresar, "los elementos aparecen desplazados y las cotas leen menos").
-      const eng = engineRef.current;
-      const planIdCargado = eng?._loadedPlanId ?? currentIdRef.current ?? null;
-      const escalaDoc = planIdCargado != null ? escalaDeDoc(planIdCargado) : null;
-      const tieneContenido = !!(
-        eng &&
-        eng.ramales.length +
-          eng.bajantes.length +
-          eng.areas.length +
-          eng.dims.length +
-          eng.textAnnots.length >
-          0
-      );
-      const escalaPlan = plano && plano.scale ? plano.scale / 100 : null;
-      if (!calibrado && decideEscalaPorDefectoDelPlan({ escalaDoc, tieneContenido, escalaPlan })) {
-        const derived = String(escalaPlan);
-        if (['0.5', '0.75', '1', '1.25', '2'].includes(derived)) {
-          setScaleM(derived);
-          if (engineRef.current) engineRef.current.setScaleM(derived);
-        }
-      }
-      const dScale = plano && plano.definedScale ? plano.definedScale : 0;
-      if (engineRef.current) engineRef.current.setDefinedScaleM(dScale);
-    }
-  }, [selectedNivel, planos]);
-
-  useEffect(() => {
     /* Las GUÍAS son anotaciones neutrales (ped. usuario): seleccionarlas NO cambia la red
      * activa — su menú resuelve la red en vivo según lo que cruzan (effectiveNet). Sin esto,
      * una guía dibujada con af activa mandaba el selector a af en cada selección.
@@ -318,10 +255,10 @@ function PdfViewer_({
   }, [currentId, planos, selectedNivel]);
 
   const loadTrazosForPlan = useTrazosLoader({
+    plansRef,
     activeNetRef,
     setActiveNet,
     setScaleM,
-    escalaGlobalRef,
   });
 
   // ── Persistencia: autosave 1.5s, snapshot en cada onDirty, sweep, franja de error de guardado.
@@ -352,8 +289,6 @@ function PdfViewer_({
       tipoTramo,
       snapOn,
       gridOn,
-      scaleM,
-      setScaleM,
       mats,
       diamSel,
       gasMatSel,
@@ -390,7 +325,6 @@ function PdfViewer_({
     files,
     currentId,
     currentIdRef,
-    activeNetRef,
     cwRef,
     drawCanvasRef,
     pdfCanvasRef,
@@ -402,13 +336,11 @@ function PdfViewer_({
     onRequestText: onRequestTextCb,
     onAlert: onAlertHandler,
     onAccesorioModal: onAccesorioModalHandler,
-    loadTrazosForPlan,
     setActiveNet,
     setScaleM,
     setLoading,
     setError,
     onReady,
-    scale,
     engineRef: engineRef as React.MutableRefObject<PlanoEngine | null>,
     loadingPlanRef,
   });

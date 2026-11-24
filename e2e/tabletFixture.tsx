@@ -12,10 +12,45 @@ import {
 import { ViewerMobileChrome } from '../src/modules/civilflow/components/pdfViewer/ViewerMobileChrome.tsx';
 import { useViewerResponsive } from '../src/modules/civilflow/components/pdfViewer/useViewerResponsive.ts';
 import { RciRamalesTable } from '../src/modules/civilflow/components/rci/RCIRamalesTable.tsx';
+import RciInputs from '../src/modules/civilflow/components/rci/RCIInputs.tsx';
+import { NavRciProvider, type NavRci } from '../src/modules/civilflow/components/rci/RCIUI.tsx';
+import { focusRciInput } from '../src/modules/civilflow/components/rci/RCIInputTableScroll.tsx';
+import {
+  clasificar,
+  compute,
+  ejemploVerificacion,
+} from '../src/modules/civilflow/lib/rci/index.ts';
+import { RUTA_DE } from '../src/modules/civilflow/utils/rci/RCIRowsModelExtras.ts';
 import WorkAreaCivilManager from '../src/modules/civilmanager/WorkAreaCivilManager.tsx';
 import { TOURS } from '../src/components/tour/tourSteps.ts';
 import '../src/styles/controls.css';
 import '../src/styles/tables.css';
+
+function RciInputsFixture() {
+  const [estado, editar] = useState(ejemploVerificacion);
+  const [sub, setSub] = useState<string | null>(null);
+  const irA: NavRci['irA'] = (_tab, next, field) => {
+    setSub(next ?? null);
+    if (field) window.setTimeout(() => focusRciInput(field), 60);
+  };
+  const tips = clasificar(estado);
+  return (
+    <main>
+      <button
+        type="button"
+        onClick={() => {
+          const route = RUTA_DE(['entradas', 'mont.dn']);
+          irA('entradas', route.sub, route.campo);
+        }}
+      >
+        Ir al dato
+      </button>
+      <NavRciProvider nav={{ tab: 'entradas', sub, irA }}>
+        <RciInputs ctx={{ estado, tips, R: compute(estado, tips), edit: false, editar }} />
+      </NavRciProvider>
+    </main>
+  );
+}
 
 function FlowFixture() {
   const wrap = useRef<HTMLDivElement>(null);
@@ -218,6 +253,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/civilmanagerareatrabajo/*" element={<WorkAreaCivilManager />} />
       </Routes>
     </BrowserRouter>
+  ) : new URLSearchParams(location.search).has('rci-entradas') ? (
+    <RciInputsFixture />
   ) : (
     <FlowFixture />
   ),

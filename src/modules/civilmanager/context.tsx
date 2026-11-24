@@ -22,7 +22,6 @@ import {
   civilManagerLoad,
   civilManagerSave,
   defaultState,
-  hayBorradorPendiente,
   hayRespaldoAnterior,
   saveCmDraft,
 } from './storage.ts';
@@ -49,7 +48,6 @@ interface CivilManagerContextValue {
   loaded: boolean;
   loadError: string | null;
   /** Conflicto de versiones sin resolver (banner del shell). */
-  conflictoBorrador: boolean;
   /** Respaldo legado detectado (aviso one-shot, dismissable). */
   avisoLegado: boolean;
   descartarAvisoLegado: () => void;
@@ -75,7 +73,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
   const [loadError, setLoadError] = useState<string | null>(null);
   /** Conflicto de versiones SIN resolver (H-02): el borrador local ganó al cargar y cada
    *  guardado vuelve a chocar. El banner del shell ofrece subir el borrador o usar la nube. */
-  const [conflictoBorrador, setConflictoBorrador] = useState(false);
   /** Respaldo legado detectado (H-08): aviso one-shot, sin migración automática. */
   const [avisoLegado, setAvisoLegado] = useState(false);
   const loadedRef = useRef(false);
@@ -109,12 +106,8 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
           hydratedState.current = loadedState;
           dispatch({ type: 'LOAD', state: loadedState });
         }
-        const [pendiente, legado] = await Promise.all([
-          hayBorradorPendiente(scope),
-          hayRespaldoAnterior(),
-        ]);
+        const legado = await hayRespaldoAnterior();
         if (!cancelled) {
-          setConflictoBorrador(pendiente);
           setAvisoLegado(legado);
         }
       })
@@ -149,9 +142,7 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       // El aviso global queda visible aunque se cierre esta sección mientras guarda.
       civilManagerSave(state, scope).catch((e) => {
         devError('CivilManagerContext save:', e);
-        const msg = e instanceof Error ? e.message : String(e);
-        if (/Otro dispositivo/.test(msg)) setConflictoBorrador(true);
-        emitErrorGuardado('civilmanager', msg);
+        emitErrorGuardado('civilmanager', e instanceof Error ? e.message : String(e));
       });
     }, 300);
     return () => clearTimeout(t);
@@ -237,7 +228,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       patch,
       loaded,
       loadError,
-      conflictoBorrador,
       avisoLegado,
       descartarAvisoLegado,
       cargosCalc,
@@ -251,7 +241,6 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
       state,
       loaded,
       loadError,
-      conflictoBorrador,
       avisoLegado,
       descartarAvisoLegado,
       cargosCalc,

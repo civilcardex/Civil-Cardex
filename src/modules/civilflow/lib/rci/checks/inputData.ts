@@ -37,7 +37,7 @@ export function verificarDatosEntrada(ctx: ChecksCtx): void {
         'NO CUMPLE',
         `${ib} tramos incompletos`,
         '—',
-        'Complete material, diámetro y longitud del montante, la ruta del cuarto de bombas o los gabinetes (Entradas → Montantes NFPA 14).',
+        'Complete material, diámetro y longitud del montante, la ruta del cuarto de bombas o los gabinetes (Entradas → Montantes).',
         ['entradas', 'mont.dn'],
       );
   }

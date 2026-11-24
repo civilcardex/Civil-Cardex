@@ -27,6 +27,66 @@ export interface Database {
         };
         Relationships: [];
       };
+      app_paddle_customers: {
+        Row: {
+          entorno: string;
+          customer_id: string;
+          email: string;
+          ultimo_evento_en: string;
+          primary: unknown | null;
+        };
+        Insert: {
+          entorno: string;
+          customer_id: string;
+          email: string;
+          ultimo_evento_en: string;
+          primary?: unknown | null;
+        };
+        Update: {
+          entorno?: string;
+          customer_id?: string;
+          email?: string;
+          ultimo_evento_en?: string;
+          primary?: unknown | null;
+        };
+        Relationships: [];
+      };
+      app_paddle_subscriptions: {
+        Row: {
+          entorno: string;
+          subscription_id: string;
+          customer_id: string;
+          estado: string;
+          articulos: unknown;
+          cambio_programado: string | null;
+          cambio_en: string | null;
+          ultimo_evento_en: string;
+          primary: unknown | null;
+        };
+        Insert: {
+          entorno: string;
+          subscription_id: string;
+          customer_id: string;
+          estado: string;
+          articulos: unknown;
+          cambio_programado?: string | null;
+          cambio_en?: string | null;
+          ultimo_evento_en: string;
+          primary?: unknown | null;
+        };
+        Update: {
+          entorno?: string;
+          subscription_id?: string;
+          customer_id?: string;
+          estado?: string;
+          articulos?: unknown;
+          cambio_programado?: string | null;
+          cambio_en?: string | null;
+          ultimo_evento_en?: string;
+          primary?: unknown | null;
+        };
+        Relationships: [];
+      };
       app_pagos: {
         Row: {
           id: number | null;
@@ -41,6 +101,7 @@ export interface Database {
           created_at: string;
           aprobado_at: string | null;
           puestos_por_modulo: unknown;
+          paddle_customer_id: string | null;
         };
         Insert: {
           id?: number | null;
@@ -55,6 +116,7 @@ export interface Database {
           created_at?: string;
           aprobado_at?: string | null;
           puestos_por_modulo?: unknown;
+          paddle_customer_id?: string | null;
         };
         Update: {
           id?: number | null;
@@ -69,6 +131,7 @@ export interface Database {
           created_at?: string;
           aprobado_at?: string | null;
           puestos_por_modulo?: unknown;
+          paddle_customer_id?: string | null;
         };
         Relationships: [];
       };
@@ -93,6 +156,51 @@ export interface Database {
           precio_anual_centavos?: number;
           updated_at?: string;
           precio_semestral_centavos?: number;
+        };
+        Relationships: [];
+      };
+      app_subscription_emails: {
+        Row: {
+          clave: string | null;
+          tipo: string;
+          entorno: string;
+          user_id: string;
+          pago_id: number;
+          suscripcion_id: number | null;
+          fecha_fin: string | null;
+          intentos: number;
+          primer_intento_en: string | null;
+          procesar_desde: string;
+          enviado_en: string | null;
+          proveedor_id: string | null;
+        };
+        Insert: {
+          clave?: string | null;
+          tipo: string;
+          entorno: string;
+          user_id: string;
+          pago_id: number;
+          suscripcion_id?: number | null;
+          fecha_fin?: string | null;
+          intentos?: number;
+          primer_intento_en?: string | null;
+          procesar_desde?: string;
+          enviado_en?: string | null;
+          proveedor_id?: string | null;
+        };
+        Update: {
+          clave?: string | null;
+          tipo?: string;
+          entorno?: string;
+          user_id?: string;
+          pago_id?: number;
+          suscripcion_id?: number | null;
+          fecha_fin?: string | null;
+          intentos?: number;
+          primer_intento_en?: string | null;
+          procesar_desde?: string;
+          enviado_en?: string | null;
+          proveedor_id?: string | null;
         };
         Relationships: [];
       };

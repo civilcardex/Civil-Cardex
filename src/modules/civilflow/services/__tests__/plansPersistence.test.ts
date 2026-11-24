@@ -84,7 +84,7 @@ beforeEach(() => {
   for (const k of Object.keys(db)) delete db[k];
   mockRpc.mockReset();
   mockRpc.mockImplementation(async (name: string, args: Record<string, unknown>) => {
-    if (name === 'save_plano_data_versioned') {
+    if (name === 'save_plano_data') {
       const payload = args.p_data as {
         header: Row;
         bajantes: Row[];
@@ -369,7 +369,7 @@ describe('D) el cambio de piso deja el doc con ts fresco y lo sube a BD', () => 
     // Y el push a BD se pidió (el RPC corre en microtask → se espera un turno).
     await new Promise((r) => setTimeout(r, 0));
     expect(mockRpc).toHaveBeenCalledWith(
-      'save_plano_data_versioned',
+      'save_plano_data',
       expect.objectContaining({ p_plano_id: 801 }),
     );
   });

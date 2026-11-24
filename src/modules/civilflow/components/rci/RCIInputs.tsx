@@ -19,6 +19,7 @@ import { ModalClases } from './RCIClassesModal.tsx';
 import { TablaCuarto } from './RCIRoomTable.tsx';
 
 const SUB_POR_ID = new Map(SUBS_POR_TAB.entradas.map((s) => [s.id, s]));
+const SUBS_AJUSTADAS = new Set(['siamesa', 'seleccion', 'succion', 'jockey', 'tanque']);
 /* ---------------- La pestaña ---------------- */
 
 /** Pestaña ENTRADAS: sub-pestañas verticales (SUBS_POR_TAB['entradas']) + el grupo de campos
@@ -28,13 +29,14 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
   const { estado, R, editar } = ctx;
   const nav = useNavRci();
   /* Portátil / ventana baja (ped. 2026-11-23: sin scroll vertical en 14-15"): la densidad
-   *  compacta (la de Tubería) aplica a TODAS las subs — fuentes 12/11 y paddings mínimos
+   *  compacta aplica fuera de Tubería y de las tarjetas ajustadas — fuentes 12/11 y paddings mínimos
    *  caben Normativa (15 filas) en ~420 px. En pantallas altas no cambia nada. */
   const portatil = useMediaQuery('(max-height: 860px)');
   /** Preferencia local; la sub efectiva es la del contexto de navegación si «Ir al dato» o la
    *  guía la fijaron (nav.sub manda), y si no, la última que el usuario abrió aquí. */
   const [preferida, setPreferida] = useState('normativa');
   const sub = nav.sub && SUB_POR_ID.has(nav.sub) ? nav.sub : preferida;
+  const anchoContenido = SUBS_AJUSTADAS.has(sub);
   const elegir = (id: string) => {
     setPreferida(id);
     nav.irA('entradas', id);
@@ -70,7 +72,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(340px, max-content))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 500px), 1fr))',
                   gap: 12,
                   alignItems: 'start',
                 }}
@@ -85,8 +87,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                   editar={editar}
                   onAbrirModal={abrirModal}
                   depNota={notaDeps(GRUPOS[sub] || [])}
-                  compacta
-                  portatil={portatil}
+                  letraGrande
                 />
                 <TablaCmat estado={estado} editar={editar} />
               </div>
@@ -94,52 +95,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 <TablaEsp estado={estado} editar={editar} />
               </div>
             </>
-          ) : sub === 'montantes' ? (
-            /* Montantes NFPA 14 solo: la ayuda «¿Qué clase elegir?» salió de la tarjeta y vive
-             * en el MODAL que abre la celda Observación de la fila Clase de sistema. */
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <GrupoTabla
-                titulo={SUB_POR_ID.get(sub)?.l || sub}
-                nota={NOTA_SUB[sub]}
-                icono={ICONO_SUB[sub]}
-                campos={GRUPOS[sub] || []}
-                estado={estado}
-                R={R}
-                editar={editar}
-                onAbrirModal={abrirModal}
-                depNota={notaDeps(GRUPOS[sub] || [])}
-                compacta={portatil}
-                portatil={portatil}
-              />
-            </div>
-          ) : sub === 'seleccion' ? null : (
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <GrupoTabla
-                minAncho={
-                  sub === 'normativa' || sub === 'succion'
-                    ? 1800
-                    : sub === 'montantes'
-                      ? 1600
-                      : sub === 'clasificacion'
-                        ? 720
-                        : undefined
-                }
-                titulo={SUB_POR_ID.get(sub)?.l || sub}
-                nota={NOTA_SUB[sub]}
-                icono={ICONO_SUB[sub]}
-                campos={GRUPOS[sub] || []}
-                estado={estado}
-                R={R}
-                editar={editar}
-                onAbrirModal={abrirModal}
-                depNota={notaDeps(GRUPOS[sub] || [])}
-                compacta={portatil}
-                portatil={portatil}
-              />
-            </div>
-          )}
-          {sub === 'seleccion' ? (
-            /* Bomba: selección, y la tubería del cuarto de bombas DEBAJO. */
+          ) : (
             <div
               style={{
                 display: 'flex',
@@ -149,6 +105,10 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
               }}
             >
               <GrupoTabla
+                key={sub}
+                minAncho={sub === 'normativa' ? 1800 : sub === 'clasificacion' ? 720 : undefined}
+                anchoContenido={anchoContenido}
+                anchoPreferido={sub === 'succion' ? 1200 : undefined}
                 titulo={SUB_POR_ID.get(sub)?.l || sub}
                 nota={NOTA_SUB[sub]}
                 icono={ICONO_SUB[sub]}
@@ -158,14 +118,12 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 editar={editar}
                 onAbrirModal={abrirModal}
                 depNota={notaDeps(GRUPOS[sub] || [])}
-                compacta={portatil}
+                compacta={portatil && !anchoContenido}
                 portatil={portatil}
               />
-              <div style={{ marginTop: 16 }}>
-                <TablaCuarto estado={estado} editar={editar} />
-              </div>
+              {sub === 'seleccion' ? <TablaCuarto estado={estado} editar={editar} /> : null}
             </div>
-          ) : null}
+          )}
         </section>
       </SubTabsRci>
       {clasesAbiertas ? <ModalClases cerrar={() => setClasesAbiertas(false)} /> : null}

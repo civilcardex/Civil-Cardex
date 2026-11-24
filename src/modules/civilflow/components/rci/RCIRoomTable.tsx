@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
 import { BTN, IN, NOTA, TDC12, type EditarRci } from './RCICmatTable.tsx';
+import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import { NOM } from '../../lib/rci/tables.ts';
@@ -88,7 +89,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
         </div>
       </div>
       <div style={{ padding: 6 }}>
-        <div style={{ overflowX: 'auto' }}>
+        <RciInputTableScroll label="Tubería del cuarto de bombas">
           <table className="tbl" style={{ fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -236,7 +237,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
               })}
             </tbody>
           </table>
-        </div>
+        </RciInputTableScroll>
         <p style={NOTA}>
           Una fila con la longitud total, sus accesorios y el desnivel. Los resultados (pérdidas y
           presión en la brida) están en la pestaña Bomba y tanque.
@@ -253,8 +254,8 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
               border: '1px solid var(--line)',
               borderRadius: 8,
               // Dentro de <dialog> el padre es fit-content: un 100% colapsa la card al contenido.
-              width: 'min(920px, calc(100vw - 40px))',
-              maxHeight: '90vh',
+              width: 'min(1180px, calc(100dvw - 32px))',
+              maxHeight: 'calc(100dvh - 32px)',
               overflowY: 'auto',
               padding: 14,
               boxShadow: '0 12px 30px rgba(0,0,0,.5)',

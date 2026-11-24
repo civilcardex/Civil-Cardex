@@ -5,7 +5,7 @@ import { emitPlanLoaded } from '../../utils/fixtureEvents.ts';
 import { devError } from '../../../../utils/devError.ts';
 import { persistTrazosSnapshot } from './persistStrokes.ts';
 import { markPlanContentLoaded } from '../../utils/drawingSync.ts';
-import { paginaDeDoc } from '../../utils/planScale.ts';
+import { escalaDeLamina, paginaDeDoc } from '../../utils/planScale.ts';
 
 interface UsePlanoLoadSwitchParams {
   engineRef: React.MutableRefObject<PlanoEngine | null>;
@@ -164,7 +164,7 @@ export function usePlanLoadSwitch({
           // (persistida por el render anterior) manda el tamaño de página y el encuadre ⤢
           // corre antes del primer render — la cámara heredada del piso anterior nunca se
           // llega a ver.
-          const pg = paginaDeDoc(resolvedId, eng.scaleM);
+          const pg = paginaDeDoc(resolvedId, escalaDeLamina(resolvedId) ?? 1);
           if (pg) eng.setPageSize(pg.w, pg.h);
           // MISMA fórmula que el loader y el post-raster (reEncuadrarContenido, bbox del
           // dibujo CON dims): antes fitPage encuadraba la HOJA aquí y pisaba la cámara que
@@ -183,13 +183,15 @@ export function usePlanLoadSwitch({
           eng.areas = [];
           eng.dims = [];
           eng.textAnnots = [];
+          eng.guideLines = [];
+          eng.crossFloorGhosts = [];
           eng.selId = null;
           eng.activeRamal = null;
           eng.activeArea = null;
           eng.setActiveNet(activeNetRef.current);
           // Piso vacío también centra: sin esto, fitPage corría con el pageW del piso
           // ANTERIOR (setPageSize del raster llega después) y el encuadre llegaba tarde.
-          const pg = paginaDeDoc(resolvedId, eng.scaleM);
+          const pg = paginaDeDoc(resolvedId, escalaDeLamina(resolvedId) ?? 1);
           if (pg) eng.setPageSize(pg.w, pg.h);
           eng.reEncuadrarContenido();
           eng.render();

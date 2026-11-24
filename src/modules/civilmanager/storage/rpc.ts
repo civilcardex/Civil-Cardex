@@ -81,25 +81,17 @@ async function verificarScopeActual(scope: CmStorageScope): Promise<void> {
   }
 }
 
-/** Guarda una colección completa solo si su versión coincide con la última leída. */
+/** Guarda el estado completo (last-write-wins, ped. usuario 2026-11-24): se omite el reloj
+ *  (p_updated_at default null = sin check) — el borrador local SIEMPRE pisa la nube. */
 export async function saveToSupabase(
   state: CivilManagerState,
   scope: CmStorageScope,
-  version: string,
-): Promise<string> {
+): Promise<void> {
   const { userId, proyectoId: proyectoUid } = scope;
   await verificarScopeActual(scope);
-  const { data, error } = await supabase.rpc('cm_save_state_versioned', {
+  const { error } = await supabase.rpc('cm_save_state', {
     p_proyecto_id: proyectoUid,
     p_state: payloadCmDeEstado(state, userId, proyectoUid),
-    p_updated_at: version,
   });
-  if (error?.message.includes('conflicto_concurrencia')) {
-    throw new Error(
-      'Otro dispositivo guardó cambios más recientes. Se conservó tu borrador local.',
-    );
-  }
-  if (error || !data)
-    throw new Error(`cm_save_state_versioned: ${error?.message ?? 'sin versión confirmada'}`);
-  return data;
+  if (error) throw new Error(`cm_save_state: ${error.message}`);
 }

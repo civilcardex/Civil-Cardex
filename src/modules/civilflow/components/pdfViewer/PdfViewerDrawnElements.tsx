@@ -7,7 +7,7 @@ interface PdfViewerDrawnElementsProps {
   activeNet: string;
   selectedId?: string;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
-  onEdit: (button: HTMLButtonElement) => void;
+  onEdit?: (button: HTMLButtonElement) => void;
   onDelete: (id: string, label: string, onDeleted: () => void) => void;
 }
 
@@ -225,16 +225,20 @@ export default function PdfViewerDrawnElements({
                     </button>
                     {['ramal', 'bajante', 'montante'].includes(el.tipo || el.type) && (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          aria-label={`Editar ${el.label || el.id}`}
-                          onClick={(event) => {
-                            engineRef.current?.selectById(el.id);
-                            onEdit(event.currentTarget);
-                          }}
-                        >
-                          Editar
-                        </button>
+                        {/* «Editar» SOLO con acceso al menú (tablets/coarse): en desktop el
+                         *  acceso es el clic derecho sobre el elemento. */}
+                        {onEdit && (
+                          <button
+                            type="button"
+                            aria-label={`Editar ${el.label || el.id}`}
+                            onClick={(event) => {
+                              engineRef.current?.selectById(el.id);
+                              onEdit(event.currentTarget);
+                            }}
+                          >
+                            Editar
+                          </button>
+                        )}
                         <button
                           type="button"
                           aria-label={`Borrar ${el.label || el.id}`}

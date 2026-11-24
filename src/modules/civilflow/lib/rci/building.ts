@@ -293,7 +293,9 @@ export function edificio(
     const red = (st.redes || {})[g.planta];
     const act = g.id === activeId,
       rocT = act ? roc : g.roc || roc,
-      riesgo = act ? st.clas.riesgo : g.riesgo || st.clas.riesgo;
+      /* Riesgo se clasifica por piso: incluso la tipología activa debe conservar el de su
+       * representante, para que sus cálculos y verificaciones reaccionen al cambio en Pisos. */
+      riesgo = g.riesgo || st.clas.riesgo;
     if (!red) {
       typ[g.id] = { g, pend: true, ok: false, roc: rocT, riesgo };
       return;

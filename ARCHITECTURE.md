@@ -40,14 +40,14 @@ Conceptos del motor (glosario completo en AGENTS.md): `scaleM` (m/píxel), `XFG`
 ```
 edición ─ autosave (debounce) ─▶ cola POR PLANO (trazosSaveQueue, planos distintos en paralelo)
    ─▶ tumba anti-vacío (push sin contenido sobre caché con contenido = bloqueado)
-   ─▶ RPC save_plano_data_versioned (reemplazo atómico por colección; devuelve el reloj confirmado)
+   ─▶ RPC save_plano_data (reemplazo atómico por colección)
 ```
 - Carga: árbitro por `ts` con reglas anti-vacío (`trazosLocalGanaABdVacia` / `trazosBdGanaALocalVacia`) — un doc vacío nunca borra el piso.
-- **Concurrencia por plano**: compara el `updated_at` de la copia editable después de adquirir el lock. Conserva el borrador si el reloj no coincide. Una lectura en segundo plano no cambia la versión base y el cliente no reintenta sin versión.
+- **Concurrencia LWW (ped. usuario 2026-11-24)**: el guardado local SIEMPRE pisa la nube — sin reloj de versión (`p_updated_at` null = sin check en el servidor); no hay conflicto ni aviso de recarga. Al abrir un piso manda el doc de ts mayor (anti-vacío primero); la próxima edición re-subel local.
 - Persistencia física: IDB espejo primero, Supabase como verdad; journal local para auditar bloqueos.
 
 **civilmanager — estado completo del proyecto:**
-- `cm_save_state_versioned` confirma el reloj dentro de la misma transacción que `cm_save_state`. Las filas se reconcilian solo dentro del proyecto y los campos omitidos conservan su valor. El cliente no degrada al guardado fila por fila.
+- `cm_save_state` reconcilia las colecciones dentro del proyecto; los campos omitidos conservan su valor. **LWW**: el cliente NO manda reloj (`p_updated_at` null = sin check) — el borrador local siempre pisa la nube.
 - Respaldo IndexedDB por cuenta y proyecto antes del autosave de 300 ms. Si falta la conexión, se conserva el reloj base del borrador y no se mezcla con otro proyecto.
 - Las migraciones `20261123000000`–`20261123000002` deben estar verificadas en el entorno destino antes de publicar el cliente. Los contratos locales viven en [saveContracts.mjs](supabase/tests/saveContracts.mjs).
 - **Presupuesto cerrado = congelado**: al pasar a `cerrado` se refrescan las snaps (catálogos/factores/APUs/perfil país) y `calcMapParaPres` calcula con la foto; borrador/en revisión calculan con catálogos vivos.
@@ -66,6 +66,10 @@ edición ─ autosave (debounce) ─▶ cola POR PLANO (trazosSaveQueue, planos 
 4 visores GLB (`rci3d`, `epc3d`, `aparatos3d`, `rciNetwork3d`) sobre **staging común** (`components/shared/threeStage.ts`): `montarEscena(opts)` construye renderer/escena/cámaras/rig de luces ×π verbatim por visor, `disposeEscena()` fuerza la pérdida de contexto WebGL. Lo que NO se comparte: loops (RCI render bajo demanda con `framesPendientes`), cargas de modelos y framing calibrado. Parser GLB propio + caché de buffers (`glbCache`).
 
 ## Suscripciones y empresa (resumen)
+
+Los pagos aprobados encolan una confirmación en la misma transacción que concede acceso. Supabase Cron invoca `subscription-emails`, que encola avisos al entrar en los últimos siete días de vigencia y comprueba la fecha antes de enviarlos. La cola privada desduplica por pago y por fecha de vencimiento de cada módulo. Resend entrega los mensajes al correo confirmado del titular. La función restringe Sandbox al usuario autorizado de Paddle.
+
+Para habilitar el envío, desplegar `subscription-emails` y configurar `RESEND_API_KEY`, `SUBSCRIPTION_EMAIL_FROM` (remitente de dominio verificado) y un secreto dedicado `SUBSCRIPTION_EMAIL_CRON_SECRET`. Guardar la URL de la función y el mismo secreto en Supabase Vault con los nombres de `supabase/subscription-email-cron.sql`. Ese archivo crea el trabajo en pausa. Activarlo después de comprobar los secretos de correo. La renovación sigue siendo manual.
 
 Doble kill-switch (cliente `VITE_SUSCRIPCIONES` + BD `app_config('suscripciones_activas')`) — con ambos apagados la app se comporta como sin gating. Compra por módulo/puestos vía Paddle Billing (3 Edge Functions fail-closed); asientos de empresa con `empresa_lectura/escritura` que extiende las policies RLS; compartir proyectos dueño→miembros. **Detalle operativo y de activación: AGENTS.md §Suscripciones.**
 

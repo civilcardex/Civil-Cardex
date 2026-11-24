@@ -21,6 +21,7 @@ vi.mock('../../../../lib/supabase', () => ({
 
 import {
   saveTrazosToDB,
+  setActiveProyectoId,
   trazosDocHasContent,
   trazosLocalGanaABdVacia,
   trazosBdGanaALocalVacia,
@@ -72,6 +73,7 @@ const ghost = {
 
 beforeEach(() => {
   resetStorage();
+  setActiveProyectoId('11111111-1111-4111-8111-111111111111');
   mockRpc.mockReset();
   mockRpc.mockResolvedValue({ data: '2026-02-01T00:00:00Z', error: null });
   setLS('civilflow_plano_version_u1:501', '2026-01-01T00:00:00Z');
@@ -137,24 +139,15 @@ describe('tumba anti-vacío en saveTrazosToDB', () => {
   });
 
   it('push con contenido sí llega a la BD', async () => {
-    // clave cruda (getActiveProyectoId lee el raw y hace Number)
-    (globalThis as unknown as { localStorage: Storage }).localStorage.setItem(
-      'civilflow_active_proyecto_id',
-      '11111111-1111-4111-8111-111111111111',
-    );
     setLS('civilflow_trazos_501', { ramales: [{ id: 'R1' }] });
     await saveTrazosToDB('501', { ramales: [{ id: 'R1' }], bajantes: [], ts: Date.now() });
     expect(mockRpc).toHaveBeenCalledWith(
-      'save_plano_data_versioned',
+      'save_plano_data',
       expect.objectContaining({ p_plano_id: 501 }),
     );
   });
 
   it('borrado legítimo converge: caché ya sin contenido → el push vacío pasa', async () => {
-    (globalThis as unknown as { localStorage: Storage }).localStorage.setItem(
-      'civilflow_active_proyecto_id',
-      '11111111-1111-4111-8111-111111111111',
-    );
     setLS('civilflow_trazos_501', { origen: 1 }); // sin colecciones: no es contenido
     await saveTrazosToDB('501', { ramales: [], bajantes: [], ts: Date.now() });
     expect(mockRpc).toHaveBeenCalled();

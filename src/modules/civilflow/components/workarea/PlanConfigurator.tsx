@@ -4,6 +4,7 @@ import ModalPrimeraCalibracion from './ModalFirstCalibration';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import { usePlanFileLoader } from './usePlanFileLoader.ts';
+import { escalaDePapel } from '../../utils/planScale.ts';
 import { TOAST_BG, PlanoConfigurator_S1, PlanoConfigurator_S2 } from './PlanConfigurator.styles.ts';
 import { useCalibration } from './useCalibration';
 import { dibujaOverlayCalibracion } from './calibrationOverlay.ts';
@@ -439,7 +440,10 @@ function PlanoConfiguratorBase({
         {scaleM && (
           <>
             <span style={{ fontSize: 13, color: 'var(--txt2)', fontFamily: 'monospace' }}>
-              ✓ 1cm = <strong style={{ color: 'var(--acc)' }}>{scaleM.toFixed(4)}m</strong>
+              ✓ 1 cm ={' '}
+              <strong style={{ color: 'var(--acc)' }}>
+                {escalaDePapel(scaleM, isPdf).toFixed(4)} m
+              </strong>
             </span>
             {factorX && factorY && (
               <span
@@ -567,7 +571,7 @@ function PlanoConfiguratorBase({
             setLenX('');
             if (factorY) {
               setScaleM(factorY);
-              setDefinedScale(factorY);
+              setDefinedScale(escalaDePapel(factorY, isPdf));
             } else {
               setScaleM(null);
               setDefinedScale(null);
@@ -579,7 +583,7 @@ function PlanoConfiguratorBase({
             setLenY('');
             if (factorX) {
               setScaleM(factorX);
-              setDefinedScale(factorX);
+              setDefinedScale(escalaDePapel(factorX, isPdf));
             } else {
               setScaleM(null);
               setDefinedScale(null);

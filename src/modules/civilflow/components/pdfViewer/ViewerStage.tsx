@@ -438,7 +438,10 @@ export function ViewerStage(props: ViewerStageProps) {
               disabled={loading || cambioPiso}
               onSave={handleSave}
               onUndo={handleUndo}
-              onOptions={selElement ? openSelectedOptions : undefined}
+              /* El botón «Opciones» SOLO en tablets (coarse): es el acceso al menú
+               *  contextual donde no hay clic derecho (ped. usuario 2026-11-24). */
+              onOptions={coarsePointer && selElement ? openSelectedOptions : undefined}
+              tablet={coarsePointer}
             />
           )}
           <ViewerMobileChrome
@@ -535,7 +538,8 @@ export function ViewerStage(props: ViewerStageProps) {
           setConfirmState={setConfirmState}
           loadingPlanRef={loadingPlanRef}
           drawnElements={drawnElements}
-          onEditElement={openSelectedOptions}
+          /* Tarjetas de edición por elemento: igual que «Opciones», solo tablets. */
+          onEditElement={coarsePointer ? openSelectedOptions : undefined}
           onDeleteElement={(id, label, onDeleted) => {
             const engine = engineRef.current;
             const plan = currentIdRef.current;

@@ -212,6 +212,7 @@ export interface PricingResumenProps {
   /** 25+ puestos totales (tope PUESTOS_TOPE_AUTOMATICO=24): el CTA pasa a contacto directo. */
   negociado: boolean;
   hayPago: boolean;
+  abriendoCheckout: boolean;
   user: { email?: string } | null;
   pagar: () => void;
   vigente: VigenteFn;
@@ -229,6 +230,7 @@ export function PricingResumen({
   total,
   negociado,
   hayPago,
+  abriendoCheckout,
   user,
   pagar,
   vigente,
@@ -303,11 +305,15 @@ export function PricingResumen({
             <button
               type="button"
               onClick={pagar}
-              disabled={!hayPago}
-              aria-label={user || !hayPago ? 'Pagar ahora' : 'Inicia sesión para pagar'}
+              disabled={!hayPago || abriendoCheckout}
+              aria-label={user || !hayPago ? undefined : 'Inicia sesión para pagar'}
               className="pr-cta pr-cta-btn pr-cta-buy inline-flex items-center gap-2 uppercase tracking-widest font-bold"
             >
-              {user || !hayPago ? 'Pagar ahora' : 'Inicia sesión y paga'}
+              {abriendoCheckout
+                ? 'Preparando pago…'
+                : user || !hayPago
+                  ? 'Pagar ahora'
+                  : 'Inicia sesión y paga'}
               <span aria-hidden="true" className="pr-cta-icon material-symbols-outlined">
                 arrow_forward
               </span>

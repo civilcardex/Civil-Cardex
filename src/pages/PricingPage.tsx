@@ -1,5 +1,5 @@
 import { devError } from '../utils/devError.ts';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
@@ -7,6 +7,7 @@ import { metaDeRuta } from '../seo/routeMeta.ts';
 import { useAuth } from '../context/AuthContext.tsx';
 import { MODULES_DATA } from './moduleData.ts';
 import CheckoutModal from '../components/subscriptions/CheckoutModal.tsx';
+import { cargarPaddle } from '../lib/subscriptions/paddleCheckout.ts';
 import {
   CATALOGO,
   PUESTOS_TOPE_AUTOMATICO,
@@ -16,6 +17,7 @@ import {
   descuentoPorPuestos,
   type ModuloId,
   type Periodo,
+  type PuestosPorModulo,
 } from '../lib/subscriptions/catalog.ts';
 import {
   dispararRefetchSuscripciones,
@@ -29,7 +31,7 @@ import PricingHero from './pricing/PricingHero.tsx';
 import { PricingPlans, PricingResumen } from './pricing/PricingPlans.tsx';
 import PricingFaq from './pricing/PricingFaq.tsx';
 
-function PricingSuscripciones() {
+function PricingSuscripciones({ avisoEnlace }: { avisoEnlace: ReactNode }) {
   usePageMeta(metaDeRuta('/pricing')?.title, metaDeRuta('/pricing')?.description);
   const { user } = useAuth();
   const { rows, loading } = useSuscripciones();
@@ -54,7 +56,11 @@ function PricingSuscripciones() {
   /** ?modulo= siembra la selección SOLO hasta que el usuario interactúa: tras el primer toggle la elección es del usuario y el override del URL
    * debe morir, si no total/checkbox/modal leen conjuntos distintos. */
   const seleccionEfectiva = !ignoraUrl && seleccionMemo ? seleccionMemo : seleccion;
-  const [checkoutAbierto, setCheckoutAbierto] = useState(false);
+  const [pedido, setPedido] = useState<{
+    modulos: ModuloId[];
+    periodo: Periodo;
+    puestos?: PuestosPorModulo;
+  } | null>(null);
   // Puestos por modulo (empresarial): 1 = individual. Tope automatico 24; 25+ negociado.
   const [puestos, setPuestos] = useState<Record<ModuloId, number>>({ flow: 1, manage: 1 });
   // Individual = 1 puesto por módulo (sin volumen). Empresarial = steppers + descuento por volumen.
@@ -62,7 +68,7 @@ function PricingSuscripciones() {
   // Aviso informativo (no error) del resultado de la verificación al volver del checkout.
   const [avisoPago, setAvisoPago] = useState('');
 
-  // Vuelta del checkout de Paddle (el usuario vuelve manualmente: la API de transacciones no admite success_url): verifica la referencia
+  // Vuelta desde /welcome: verifica la referencia
   // con la edge function y refresca suscripciones. Limpia ?ref para no re-verificar.
   const refPago = new URLSearchParams(location.search).get('ref');
   // Referencia que aún no confirma (webhook en vuelo / edge sin deployar): el polling de
@@ -171,12 +177,16 @@ function PricingSuscripciones() {
   }
 
   function pagar() {
-    if (!hayPago || negociado) return;
+    if (!hayPago || negociado || pedido) return;
     if (!user) {
       navigate('/login');
       return;
     }
-    setCheckoutAbierto(true);
+    setPedido({
+      modulos: [...seleccionEfectiva],
+      periodo,
+      puestos: modo === 'empresarial' ? puestos : undefined,
+    });
   }
 
   function vigente(id: ModuloId) {
@@ -187,6 +197,7 @@ function PricingSuscripciones() {
     <div className="landing-root pricing-root">
       <Navbar />
       <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
+        {avisoEnlace}
         {/* Aviso neutro de verificación pendiente (edges de pago sin deploy) — nunca error. */}
         {avisoPago && (
           <p role="status" className="pricing-aviso max-w-4xl mx-auto mb-8 text-center">
@@ -220,33 +231,46 @@ function PricingSuscripciones() {
           total={total}
           negociado={negociado}
           hayPago={hayPago}
+          abriendoCheckout={pedido !== null}
           user={user}
           pagar={pagar}
           vigente={vigente}
         />
 
+        {pedido && (
+          <CheckoutModal open onClose={() => setPedido(null)} email={user?.email} {...pedido} />
+        )}
+
         <PricingFaq modulosProx={modulosProx} />
       </main>
-
-      <CheckoutModal
-        open={checkoutAbierto}
-        onClose={() => setCheckoutAbierto(false)}
-        modulos={[...seleccionEfectiva]}
-        periodo={periodo}
-        puestos={
-          modo === 'empresarial'
-            ? Object.fromEntries([...seleccionEfectiva].map((id) => [id, puestos[id] ?? 1]))
-            : undefined
-        }
-      />
     </div>
   );
 }
 
-/** Página de planes (marketing): selección de módulos/puestos y periodo con totales calculados del catálogo; abre CheckoutModal. Sirve también como aterrizaje del retorno del checkout (?ref=). */
+/** Página de planes y enlace de pago de Paddle. Ej: ?_ptxn=txn_… reabre una orden existente. */
 function PricingPage() {
   usePageMeta(metaDeRuta('/pricing')?.title, metaDeRuta('/pricing')?.description);
-  if (SUSCRIPCIONES_ACTIVAS) return <PricingSuscripciones />;
+  const { search } = useLocation();
+  const transaccion = new URLSearchParams(search).get('_ptxn');
+  const [errorEnlace, setErrorEnlace] = useState<string | null>(null);
+  useEffect(() => {
+    if (!transaccion || !/^txn_[a-z0-9]{26}$/.test(transaccion)) return;
+    let ignorar = false;
+    void cargarPaddle().catch((error: unknown) => {
+      devError('enlace de pago Paddle:', error);
+      if (!ignorar) setErrorEnlace(transaccion);
+    });
+    return () => {
+      ignorar = true;
+    };
+  }, [transaccion]);
+
+  const avisoEnlace = errorEnlace && errorEnlace === transaccion && (
+    <p role="alert" className="pricing-aviso max-w-4xl mx-auto mb-8 text-center">
+      No pudimos abrir el enlace de pago de Paddle. Recarga la página para reintentar.
+    </p>
+  );
+  if (SUSCRIPCIONES_ACTIVAS) return <PricingSuscripciones avisoEnlace={avisoEnlace} />;
   return (
     <>
       <script type="application/ld+json">{JSON.stringify(FAQ_JSONLD)}</script>
@@ -254,6 +278,7 @@ function PricingPage() {
       <div className="landing-root pricing-root">
         <Navbar />
         <main className="container mx-auto px-6 lg:px-8 py-24 pt-28">
+          {avisoEnlace}
           <section className="text-center space-y-4 mb-20">
             <h1 className="pricing-title text-primary uppercase">Planes y Precios</h1>
             <p className="text-base text-on-surface-variant max-w-xl mx-auto">

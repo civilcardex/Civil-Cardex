@@ -5,6 +5,7 @@
  */
 import { fmtEs as f1 } from '../fmtEs.ts';
 import { isSi, num } from '../hydraulics';
+import { RIESGOS_BAJO_MINIMO_ALMACENAMIENTO } from '../tables.ts';
 import type { ChecksCtx } from './helpers';
 
 /** Riesgo NFPA 13 compatible con almacenamiento + altura de arrume ≤ 3,66 m. */
@@ -18,10 +19,17 @@ export function verificarAlmacenamiento(ctx: ChecksCtx): void {
     'NFPA 13-2025 cap. 4',
     ['entradas', 'clas.riesgo'],
     (t) => ({
-      st: almacen && t.riesgo === 'Riesgo leve' ? 'NO CUMPLE' : 'CUMPLE',
+      st: !almacen
+        ? 'CUMPLE'
+        : !t.riesgo
+          ? 'PENDIENTE'
+          : RIESGOS_BAJO_MINIMO_ALMACENAMIENTO.has(t.riesgo)
+            ? 'NO CUMPLE'
+            : 'CUMPLE',
       val: `${t.riesgo} / almacenamiento: ${c.almacen}`,
-      guide:
-        'Con almacenamiento no se admite Riesgo leve. Cambie la clasificación a Riesgo ordinario G2 como mínimo (arrume ≤ 3,66 m); si el arrume es mayor, diseñe con NFPA 13 cap. 20–25.',
+      guide: !t.riesgo
+        ? 'Asigne un riesgo NFPA 13 al piso. Con almacenamiento, el mínimo admitido es Riesgo ordinario G2.'
+        : 'Con almacenamiento, Riesgo ordinario G2 es el mínimo. Cambie el piso a G2 o superior (arrume ≤ 3,66 m); si el arrume es mayor, diseñe con NFPA 13 cap. 20–25.',
     }),
   );
   add(

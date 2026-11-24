@@ -28,8 +28,6 @@ export function useEngineBridge(args: {
   tipoTramo: string;
   snapOn: boolean;
   gridOn: boolean;
-  scaleM: string;
-  setScaleM: React.Dispatch<React.SetStateAction<string>>;
   mats: Record<string, MaterialItem[]>;
   diamSel: Record<string, string>;
   gasMatSel: Record<string, string>;
@@ -46,8 +44,6 @@ export function useEngineBridge(args: {
     tipoTramo,
     snapOn,
     gridOn,
-    scaleM,
-    setScaleM,
     mats,
     diamSel,
     gasMatSel,
@@ -94,29 +90,6 @@ export function useEngineBridge(args: {
     eng.setTipoTramo(tipoTramo as TramoType);
     eng.setSnap(snapOn);
     eng.setGridMode(gridOn);
-    // La escala del MOTOR manda cuando el piso tiene dibujo: el doc define el espacio de
-    // los píxeles y su escala es la que interpretan las cotas. Si el estado de React se
-    // diferenció (un refresco de planos lo pisa), se adopta la del motor en vez de deformar
-    // el dibujo (orig. usuario: al reingresar, las cotas leían menos y los elementos
-    // aparecían desplazados).
-    const smEstado = Number(scaleM);
-    const conDibujo =
-      eng.ramales.length +
-        eng.bajantes.length +
-        eng.areas.length +
-        eng.dims.length +
-        eng.textAnnots.length >
-      0;
-    if (
-      conDibujo &&
-      Number.isFinite(smEstado) &&
-      eng.scaleM > 0 &&
-      Math.abs(smEstado - eng.scaleM) > 1e-9
-    ) {
-      setScaleM(String(eng.scaleM));
-    } else {
-      eng.setScaleM(scaleM);
-    }
     const floorObj = pisos.find((p) => p.n === selectedNivel);
     eng.nivelActual = floorObj
       ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
@@ -138,20 +111,17 @@ export function useEngineBridge(args: {
     const d = tipoTramo === 'tributario' ? '' : dRaw;
     const p = activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : 0;
     eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
-    // setScaleM añadido a deps: setter de useState (identidad estable) — sin cambio de conducta.
   }, [
     tool,
     activeNet,
     tipoTramo,
     snapOn,
     gridOn,
-    scaleM,
     mats,
     diamSel,
     selectedNivel,
     pisos,
     gasMatSel,
-    setScaleM,
     engineRef,
   ]);
 

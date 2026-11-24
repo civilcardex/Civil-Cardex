@@ -7,6 +7,9 @@ export interface Point {
   y: number;
 }
 
+/** A partir de este formato, las coordenadas se guardan en el tamaño base de la lámina. */
+export const VERSION_LAMINA_BASE = 7;
+
 /** La cámara del visor: zoom y desplazamiento (pan) — todo el plano se dibuja a través de ella. */
 interface Camara {
   zoom: number;

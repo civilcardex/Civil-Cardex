@@ -3,7 +3,6 @@
  *  Ej: intentar 2" en un ramal con inodoro -> alerta aunque estés en otra pestaña. */
 import React, { useEffect, useRef, useState } from 'react';
 import { MONO_3D } from './shared/config3d';
-import { EVENTO_ERROR_GUARDADO } from '../../../utils/saveEvents.ts';
 
 const GAlertDialog_S1: React.CSSProperties = {
   background: 'linear-gradient(135deg, #1e222b 0%, #15181f 100%)',
@@ -68,23 +67,10 @@ export function GlobalAlertDialog() {
     return () => window.removeEventListener('civilflow_diametro_validation', onDiamValidation);
   }, []);
 
-  // Fallo de guardado en la nube: se escucha AQUÍ (raíz de la app) y no solo en el visor.
-  // Antes solo PdfViewer lo escuchaba, así que en el área de trabajo un guardado fallido
-  // (RLS, red, suscripción vencida) se perdía en silencio: el usuario veía "guardado" y al
-  // recargar todos los cambios se habían ido.
-  useEffect(() => {
-    const onBdSaveError = (e: Event) => {
-      const detail = (e as CustomEvent<{ reason: string; message: string }>).detail;
-      if (!detail) return;
-      setState({
-        isOpen: true,
-        title: 'No se pudo guardar en la nube',
-        message: `${detail.reason}: ${detail.message}`,
-      });
-    };
-    window.addEventListener(EVENTO_ERROR_GUARDADO, onBdSaveError);
-    return () => window.removeEventListener(EVENTO_ERROR_GUARDADO, onBdSaveError);
-  }, []);
+  /* Los fallos de guardado ya NO abren este modal (ped. usuario 2026-11-24: la alerta
+   *  «No se pudo guardar en la nube» salía a cada rato). El canal EVENTO_ERROR_GUARDADO
+   *  sigue vivo para la franja roja del visor (useSaveStatusBanner); los guardados son
+   *  last-write-wins y el conflicto de versión desapareció. */
 
   useEffect(() => {
     if (state.isOpen && dialogRef.current) {

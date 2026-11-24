@@ -66,15 +66,15 @@ function TablaTipologias({
   const COLS_T = [
     'Tipología',
     'Pisos',
-    'Riesgo · sistema',
-    'H techo',
+    'Riesgo',
+    'H techo (m)',
     'S × L (m)',
-    'Densidad',
-    'Área de diseño',
-    'Rociadores',
-    'Q teórico',
+    'Densidad (gpm/ft²)',
+    'Área de diseño (m²)',
+    'Rociadores (n.º)',
+    'Q teórico (gpm)',
     'Representativo',
-    'NPT rep.',
+    'NPT rep. (m)',
     'Red',
     '',
   ];
@@ -102,7 +102,7 @@ function TablaTipologias({
           <thead>
             <tr>
               {COLS_T.map((l) => (
-                <th key={l} scope="col" style={{ ...TH, fontSize: 12 }}>
+                <th key={l} scope="col" style={{ ...TH, fontSize: 12, textAlign: 'center' }}>
                   {l}
                 </th>
               ))}
@@ -120,39 +120,41 @@ function TablaTipologias({
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     <span style={{ ...TCHIP, background: colorTip(g.id) }}>{g.id}</span>
                   </td>
-                  <td style={{ ...TD, fontSize: 13 }}>{rangoTipologia(g, rows)}</td>
+                  <td className="c" style={{ ...TD, fontSize: 13 }}>
+                    {rangoTipologia(g, rows)}
+                  </td>
                   <td
                     className="c"
-                    style={{ ...TD, fontSize: 13, textAlign: 'left' }}
+                    style={{ ...TD, fontSize: 13, textAlign: 'center' }}
                     title="Criterios de los pisos en Auto de esta tipología"
                   >
                     {rep ? `${rep.riesgo} · ${rep.sistema}` : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    {Number(o.HtFt) / 3.28084 ? (Number(o.HtFt) / 3.28084).toFixed(2) : '—'} m
+                    {Number(o.HtFt) / 3.28084 ? (Number(o.HtFt) / 3.28084).toFixed(2) : '—'}
                     {htsDistintas ? ' *' : ''}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     {Number(o.S) ? `${Number(o.S).toFixed(2)} × ${Number(o.L).toFixed(2)}` : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    {o.hz.d ? `${o.hz.d.toFixed(2)} gpm/ft²` : '—'}
+                    {o.hz.d ? o.hz.d.toFixed(2) : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    {o.Adis ? `${(o.Adis * 0.092903).toFixed(1)} m²` : '—'}
+                    {o.Adis ? (o.Adis * 0.092903).toFixed(1) : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     {o.Nreq || '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    {o.Qteo ? `${o.Qteo.toFixed(0)} gpm` : '—'}
+                    {o.Qteo ? o.Qteo.toFixed(0) : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     <select
                       value={rep ? String(rep.nombre || '') : ''}
                       onChange={(e) => onRep(g.id, e.target.value)}
                       aria-label={`Representativo de ${g.id}`}
-                      style={{ ...CELDA12, width: 120 }}
+                      style={{ ...CELDA12, width: 120, textAlign: 'center' }}
                     >
                       {g.pisos.toReversed().map((i) => (
                         <option key={i} value={String(rows[i].nombre || '')}>
@@ -163,7 +165,7 @@ function TablaTipologias({
                     </select>
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
-                    {nptRep !== null && !isNaN(nptRep) ? `${nptRep.toFixed(2)} m` : '—'}
+                    {nptRep !== null && !isNaN(nptRep) ? nptRep.toFixed(2) : '—'}
                   </td>
                   <td className="c" style={{ ...TD, fontSize: 13 }}>
                     <ChipRed
@@ -191,7 +193,10 @@ function TablaTipologias({
             })}
             {grupos.length === 0 && (
               <tr>
-                <td colSpan={13} style={{ ...TD, fontSize: 13, color: 'var(--txt3)' }}>
+                <td
+                  colSpan={13}
+                  style={{ ...TD, fontSize: 13, color: 'var(--txt3)', textAlign: 'center' }}
+                >
                   Sin tipologías todavía.
                 </td>
               </tr>

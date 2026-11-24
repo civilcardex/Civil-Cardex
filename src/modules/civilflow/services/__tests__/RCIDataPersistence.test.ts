@@ -11,8 +11,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 //     save false, SIN throw y SIN alarma al canal de guardados (el cliente sigue funcionando).
 //  D) Blob guardado que NO parece un RciState (dato viejo/otra fase) → null, sin crashear.
 //  E) Error real de guardado → sí avisa al canal.
-//  F) Árbitro (20261103000001): el save manda p_cliente_ts (el updated_at recordado de la
-//     última lectura); si el remoto es más nuevo → 'rci_stale' → false SIN alarma al canal.
+//  F) LWW (ped. usuario 2026-11-24): el save NO manda p_cliente_ts — el local siempre pisa.
 
 const { mockFrom, mockRpc, mockGetSession, alertas } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
@@ -127,31 +126,25 @@ describe('persistencia RCI por proyecto', () => {
     expect(alertas).toHaveBeenCalledWith('save-rci', 'no_autorizado');
   });
 
-  it('F: árbitro — el save re-envía el updated_at recordado de la lectura', async () => {
+  it('F: LWW — el save NO manda p_cliente_ts (el local siempre pisa)', async () => {
     fila = {
       datos: JSON.parse(JSON.stringify(ejemploVerificacion())),
       updated_at: '2026-11-01T10:00:00Z',
     };
     await loadRciDatos('p1');
     await expect(saveRciDatos('p1', ejemploVerificacion())).resolves.toBe(true);
-    expect(mockRpc).toHaveBeenCalledWith(
-      'save_rci_datos',
-      expect.objectContaining({ p_proyecto_id: 'p1', p_cliente_ts: '2026-11-01T10:00:00Z' }),
-    );
+    const save = mockRpc.mock.calls.find(([name]) => name === 'save_rci_datos');
+    expect(save?.[1].p_proyecto_id).toBe('p1');
+    expect('p_cliente_ts' in (save?.[1] ?? {})).toBe(false);
   });
 
-  it('F2: árbitro — remoto más nuevo que lo leído → rci_stale → false SIN alarma (y la fila no se pisa)', async () => {
-    // El cliente leyó la fila en su momento (ts T0) y otra sesión guardó DESPUÉS (T1 > T0):
-    // el guardado local pierde la carrera y muere en devError, sin tocar la fila del otro.
-    fila = {
-      datos: JSON.parse(JSON.stringify(ejemploVerificacion())),
-      updated_at: '2026-11-01T10:00:00Z',
-    };
-    await loadRciDatos('p1');
+  it('F2: LWW — un remoto más nuevo NO bloquea: el guardado local lo pisa', async () => {
+    // El cliente nunca leyó la fila (o la leyó vieja): sin p_cliente_ts el servidor pisa
+    // siempre — el guardado local gana (ped. usuario 2026-11-24).
     fila = { datos: { de: 'otra-sesion' }, updated_at: '2026-11-02T10:00:00Z' };
-    await expect(saveRciDatos('p1', ejemploVerificacion())).resolves.toBe(false);
+    await expect(saveRciDatos('p1', ejemploVerificacion())).resolves.toBe(true);
+    expect(fila.datos).toEqual(JSON.parse(JSON.stringify(ejemploVerificacion())));
     expect(alertas).not.toHaveBeenCalled();
-    expect(fila.datos).toEqual({ de: 'otra-sesion' });
   });
 
   it('F3: árbitro — sin lectura previa el save usa Date.now() y escribe igual (1er guardado)', async () => {

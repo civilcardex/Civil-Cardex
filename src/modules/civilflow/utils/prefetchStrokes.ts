@@ -2,7 +2,11 @@
 // caché local, migra el layout de asociaciones y re-escribe las claves de sync para que las
 // tablas (FixturesPanel, InfTab, diseño) muestren todos los pisos sin necesidad de abrir el
 // visor 2D piso por piso (orig. usuario). Idempotente: correrlo varias veces no duplica nada.
-import { saveToStorage, loadTrazosFromDB } from '../services/storageService.ts';
+import {
+  saveToStorage,
+  loadTrazosFromDB,
+  getActiveProyectoId,
+} from '../services/storageService.ts';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import { migrateAssocLayoutOnLoad, sweepMisplacedLdesvios } from './assocLayoutMigration.ts';
@@ -16,21 +20,25 @@ import { emitAparatosClear, EV_STORAGE } from './fixtureEvents.ts';
 // Single-flight: WorkArea, ViewerPage e Isometria disparan el prefetch al montar sobre el
 // mismo estado. Sin esto, dos ejecuciones concurrentes intercalan read-modify-write de
 // documentos completos (migración) y pueden persistir estado medio aplicado.
-let inflight: Promise<void> | null = null;
+let inflight: { proyectoId: string | null; tarea: Promise<void> } | null = null;
 
 /** Prefetch best-effort single-flight (nunca rechaza; concurrentes comparten la promesa en vuelo). */
 export function prefetchAllTrazos(
   plans: Array<SyncPlanInput & { nivel: string | number | null }>,
 ): Promise<void> {
-  inflight ??= runPrefetch(plans).finally(() => {
-    inflight = null;
+  const proyectoId = getActiveProyectoId();
+  if (inflight?.proyectoId === proyectoId) return inflight.tarea;
+  const tarea = runPrefetch(plans, () => getActiveProyectoId() === proyectoId).finally(() => {
+    if (inflight?.tarea === tarea) inflight = null;
   });
-  return inflight;
+  inflight = { proyectoId, tarea };
+  return tarea;
 }
 
 /** Cuerpo del prefetch: caché local ← BD, migración de asociaciones, sweep y re-escritura de sync. */
 async function runPrefetch(
   plans: Array<SyncPlanInput & { nivel: string | number | null }>,
+  vigente: () => boolean,
 ): Promise<void> {
   try {
     // Migración DESPUÉS del fetch (nunca antes): sobre un piso sin caché local, migrateAssoc
@@ -54,12 +62,17 @@ async function runPrefetch(
     await Promise.all(
       missing.map(async (p) => {
         const data = await loadTrazosFromDB(String(p.id));
-        if (data && leerDocDePlan(p.id) == null && saveToStorage(TRAZOS_PREFIX + p.id, data)) {
-          aceptarVersionDePlano(data, null);
+        if (
+          vigente() &&
+          data &&
+          leerDocDePlan(p.id) == null &&
+          saveToStorage(TRAZOS_PREFIX + p.id, data)
+        ) {
           markPlanTrazosFresh(p.id);
         }
       }),
     );
+    if (!vigente()) return;
     // Única pasada de migración: con todos los pisos ya en caché, cada asociación encuentra
     // ambos extremos y el barrido elimina Ldesvios remanentes en el piso equivocado.
     migrateAll();
@@ -95,4 +108,3 @@ async function runPrefetch(
     devError('[PREFETCH] trazos:', e);
   }
 }
-import { aceptarVersionDePlano } from '../services/storage/strokesDb.ts';

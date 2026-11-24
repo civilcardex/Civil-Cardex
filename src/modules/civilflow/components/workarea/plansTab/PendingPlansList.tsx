@@ -1,5 +1,6 @@
 import { pisoLbl } from '../../../constants';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
+import { escalaDePapel, esArchivoPdf } from '../../../utils/planScale.ts';
 import {
   PlanosTab_S8,
   PlanosTab_S9,
@@ -169,7 +170,7 @@ export function ListaPendientes(props: ListaPendientesProps) {
                           </span>
                         ) : null}
                         <span style={{ color: 'var(--txt2)' }}>
-                          | Calibrada 1:{Math.round((p.scale / 100) * 100)}
+                          | Calibrada 1:{Math.round(escalaDePapel(p.scale, esArchivoPdf(p.file)))}
                         </span>
                       </span>
                     ) : (

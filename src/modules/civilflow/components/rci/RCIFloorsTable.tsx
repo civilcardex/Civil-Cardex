@@ -15,7 +15,7 @@ import {
 } from '../../utils/rci/RCIRowsModel.ts';
 import { AYUDA_SALIDA } from './RCIFloorCells.tsx';
 import { RciHelpModal } from './RCIHelpModal.tsx';
-import { HZ } from '../../lib/rci/tables.ts';
+import { HZ, RIESGOS_BAJO_MINIMO_ALMACENAMIENTO } from '../../lib/rci/tables.ts';
 import type { PisoRow, RciState } from '../../lib/rci/types.ts';
 /** Columnas de la tabla de pisos (tooltip = ayuda resumida del HTML de referencia). Las que
  *  traen `ph` llevan el botón «Ver ayuda» (el panel del HTML, PISOS_PHELP). */
@@ -287,8 +287,7 @@ function TablaPisos({
   const [borrador, setBorrador] = useState<{ i: number; k: string; val: string } | null>(null);
   const [err, setErr] = useState<{ i: number; k: string; msg: string } | null>(null);
   const hzDe = (riesgo: string): (typeof HZ)[string] => HZ[riesgo] || HZ['Riesgo leve'];
-  /* Con almacenamiento la ocupación NO admite Riesgo leve (NFPA 13, observación del campo
-   *  ¿La ocupación incluye almacenamiento?): la opción queda deshabilitada en el select. */
+  /* Con almacenamiento, G2 es el riesgo mínimo: leve y ordinario G1 no se admiten. */
   const conAlmacen = String(globalEstado?.clas?.almacen || '') === 'Sí';
   /** Valor GLOBAL del proyecto para un campo (placeholder de K/Pmin/S/L cuando la fila está vacía). */
   const sProy = (k: 'K' | 'Pmin' | 'S' | 'L' | 'Dmuro'): string => {
@@ -409,13 +408,12 @@ function TablaPisos({
                     <select
                       value={f.riesgo}
                       onChange={(e) => {
-                        // Con almacenamiento NO se admite Riesgo leve (ped. usuario 2026-11-20,
-                        // observación del campo de Entradas): NO guarda y marca la celda en rojo.
-                        if (conAlmacen && e.target.value === 'Riesgo leve') {
+                        // Rechaza riesgos inferiores a G2 y mantiene visible el error en la celda.
+                        if (conAlmacen && RIESGOS_BAJO_MINIMO_ALMACENAMIENTO.has(e.target.value)) {
                           setErr({
                             i: f.i,
                             k: 'riesgo',
-                            msg: 'Con almacenamiento NO se admite Riesgo leve (NFPA 13). Elija Ordinario o superior.',
+                            msg: 'Con almacenamiento el riesgo mínimo es Riesgo ordinario G2. Elija G2 o un riesgo superior.',
                           });
                           return;
                         }
@@ -425,17 +423,17 @@ function TablaPisos({
                       className={`ds-celda12 ds-px-144${
                         err && err.i === f.i && err.k === 'riesgo'
                           ? ' ds-err-border'
-                          : conAlmacen && f.riesgo === 'Riesgo leve'
+                          : conAlmacen && RIESGOS_BAJO_MINIMO_ALMACENAMIENTO.has(f.riesgo)
                             ? ' ds-err-border'
                             : ''
                       }`}
                       title={
                         err && err.i === f.i && err.k === 'riesgo'
                           ? err.msg
-                          : conAlmacen && f.riesgo === 'Riesgo leve'
-                            ? 'Con almacenamiento NO se admite Riesgo leve (NFPA 13): cámbielo a Ordinario o superior.'
+                          : conAlmacen && RIESGOS_BAJO_MINIMO_ALMACENAMIENTO.has(f.riesgo)
+                            ? 'Con almacenamiento el riesgo mínimo es Riesgo ordinario G2: cambie este piso a G2 o a un riesgo superior.'
                             : conAlmacen
-                              ? 'Riesgo NFPA 13 — con almacenamiento NO se admite Riesgo leve'
+                              ? 'Riesgo NFPA 13 — con almacenamiento se exige Riesgo ordinario G2 como mínimo.'
                               : 'Riesgo NFPA 13 (vacío = sin clasificar; el motor usa el default de norma)'
                       }
                     >
@@ -444,7 +442,7 @@ function TablaPisos({
                         <option
                           key={o}
                           value={o}
-                          disabled={conAlmacen && o === 'Riesgo leve' && f.riesgo !== 'Riesgo leve'}
+                          disabled={conAlmacen && RIESGOS_BAJO_MINIMO_ALMACENAMIENTO.has(o)}
                         >
                           {o}
                         </option>
