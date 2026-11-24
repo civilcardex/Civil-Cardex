@@ -74,7 +74,8 @@ jobs:
           npm install --prefix "${RUNNER_TEMP}/civilcardex-sql" --no-package-lock --ignore-scripts @electric-sql/pglite@0.6.0
           NODE_PATH="${RUNNER_TEMP}/civilcardex-sql/node_modules" node supabase/tests/saveContracts.mjs
           node --experimental-strip-types --test supabase/tests/paymentContracts.test.mjs
-          npx --yes deno@2.9.6 check --no-lock supabase/functions/paddle-webhook/index.ts supabase/functions/crear-checkout/index.ts supabase/functions/verificar-pago/index.ts
+          # Las Edge Functions usan imports npm: propios. npm ci gestiona el frontend.
+          DENO_NO_PACKAGE_JSON=1 npx --yes deno@2.9.6 check --no-lock --node-modules-dir=none supabase/functions/paddle-webhook/index.ts supabase/functions/crear-checkout/index.ts supabase/functions/verificar-pago/index.ts
 
       - name: Build
         env:
