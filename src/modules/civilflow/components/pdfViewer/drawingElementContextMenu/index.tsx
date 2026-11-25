@@ -60,6 +60,8 @@ interface DrawingElementContextMenuProps {
     onConfirm: () => void,
     confirmLabel?: string,
   ) => void;
+  /** Pantalla táctil (tablet): si el menú no cabe, scrollea por dentro. */
+  tablet?: boolean;
 }
 
 export default memo(function DrawingElementContextMenu(props: DrawingElementContextMenuProps) {
@@ -337,6 +339,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
     openUcMove,
     doInvert,
     readUcInfo,
+    tablet: !!props.tablet,
   };
 
   return (
@@ -351,7 +354,7 @@ export default memo(function DrawingElementContextMenu(props: DrawingElementCont
 
 function DrawingElementContextMenuInner() {
   const ctx = useDrawingElementContextMenu();
-  const { contextMenuState, setContextMenuState } = ctx;
+  const { contextMenuState, setContextMenuState, tablet } = ctx;
   const menuRef = useRef<HTMLFormElement>(null);
   const opener = contextMenuState?.opener;
   useEffect(() => {
@@ -379,6 +382,10 @@ function DrawingElementContextMenuInner() {
     const parentEl = el.offsetParent;
     if (!parentEl) return;
     const parentRect = parentEl.getBoundingClientRect();
+    /* Tablet: si el menú no cabe, scrollea por dentro en vez de cortarse — el alto máximo va
+     * contra el contenedor real (no la ventana) y se fija ANTES de medir, para que el ajuste de
+     * posición abajo trabaje con la altura ya limitada. */
+    if (tablet) el.style.maxHeight = `${Math.max(160, parentRect.height - 20)}px`;
     const menuRect = el.getBoundingClientRect();
 
     let newX = contextMenuState.x - parentRect.left;
@@ -406,7 +413,7 @@ function DrawingElementContextMenuInner() {
     }
 
     setAdjustedPos({ x: newX, y: newY });
-  }, [contextMenuState]);
+  }, [contextMenuState, tablet]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -483,7 +490,9 @@ function DrawingElementContextMenuInner() {
           left: adjustedPos.x,
           top: adjustedPos.y,
         }}
-        className={isBajanteTipo && !hasPts ? 'dcm-panel dcm-panel-bajante' : 'dcm-panel'}
+        className={`${isBajanteTipo && !hasPts ? 'dcm-panel dcm-panel-bajante' : 'dcm-panel'}${
+          tablet ? ' dcm-panel-scroll' : ''
+        }`}
         onContextMenu={(e) => e.preventDefault()}
       >
         {isBombaMenu ? (

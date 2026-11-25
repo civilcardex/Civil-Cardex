@@ -195,9 +195,13 @@ export function usePdfViewerEngine({
       }, delay);
     };
     // El loader re-sincroniza la densidad del fondo tras el primer render (ver refs arriba).
+    // SIN demora (antes 300 ms): el encuadre de entrada deja el zoom sobre el dpr y esa
+    // ventana se veía difusa — a los 0 ms el re-raster de densidad corre en el mismo turno de
+    // carga y el velo/spinner (que espera rasters en vuelo) levanta con la hoja ya nítida
+    // (ped. usuario 2026-11-25: «el visor difumina los pdfs al cargar»).
     reprogramarBgRef.current = () => {
       lastZoomRaster = engineRef.current?.zoom ?? 1;
-      scheduleBg(300);
+      scheduleBg(0);
     };
     const zoomObserver = new MutationObserver(() => {
       // Fuente de verdad = engine.zoom, no el string del transform (acopla a su formato).

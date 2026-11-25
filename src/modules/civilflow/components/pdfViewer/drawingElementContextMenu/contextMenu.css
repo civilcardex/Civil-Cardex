@@ -347,3 +347,14 @@
   background: #00dce5;
   color: #1e2024;
 }
+
+/* Tablet: si el menú no cabe en pantalla, scrollea por dentro (el alto máximo lo fija el
+   componente según su contenedor). Los hijos no se encogen: desbordan y el panel scrollea.
+   En PC el menú se sigue mostrando completo. */
+.dcm-panel.dcm-panel-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.dcm-panel.dcm-panel-scroll > * {
+  flex-shrink: 0;
+}

@@ -8,6 +8,7 @@ import type {
 } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
+import { hitDelSeleccionado } from './drawingElementContextMenu/menuHit.ts';
 import { ViewerDrawingActions } from './ViewerDrawingActions.tsx';
 import type { ElementItem } from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoElement, PlanoNet } from '../../lib/PlanoEngine/PlanoState.ts';
@@ -278,8 +279,9 @@ export function ViewerStage(props: ViewerStageProps) {
   } = props;
 
   function openSelectedOptions(button: HTMLButtonElement) {
-    const element = engineRef.current?.getSelected();
-    if (!element) return;
+    const engine = engineRef.current;
+    const element = engine?.getSelected();
+    if (!engine || !element) return;
     const rect = button.getBoundingClientRect();
     setContextMenuState({
       visible: true,
@@ -287,6 +289,9 @@ export function ViewerStage(props: ViewerStageProps) {
       y: rect.bottom,
       element: element as PlanoElement,
       opener: button,
+      /* Dónde se tocó (extremo, cuerpo o fantasma): sin esto el menú omite el selector de
+       * aparatos/accesorios y el panel de conexión (ped. usuario 2026-11-25). */
+      ...hitDelSeleccionado(engine, element as PlanoElement, engine._lastDown),
     });
   }
 
@@ -451,6 +456,32 @@ export function ViewerStage(props: ViewerStageProps) {
             onFit={handleFit}
             onZoomStep={(f: number) => engineRef.current?.zoomStep(f)}
           />
+          {/* Indicación al dibujar en táctil (ped. usuario 2026-11-25): la parte inferior es
+           *  donde se busca cómo cerrar el trazado — doble toque = terminar, cambiar de
+           *  herramienta = cerrar (2+ pts) o descartar (1 pt). */}
+          {coarsePointer && tool === 'line' && !isMobile && (
+            <div
+              role="status"
+              style={{
+                position: 'absolute',
+                bottom: 18,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10,
+                padding: '6px 14px',
+                background: 'rgba(14, 20, 28, 0.92)',
+                border: '1px solid #3a494a',
+                borderRadius: 16,
+                color: '#849495',
+                fontSize: 11,
+                fontFamily: 'var(--body)',
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+              }}
+            >
+              Doble toque en el punto final para terminar el trazado · «Cancelar» lo descarta
+            </div>
+          )}
 
           <PdfCanvas
             cwRef={cwRef}
@@ -490,6 +521,7 @@ export function ViewerStage(props: ViewerStageProps) {
           activeNet={activeNet}
           setDiamSel={setDiamSel}
           triggerConfirm={triggerConfirm}
+          tablet={coarsePointer}
         />
         <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
         <AccesorioModal

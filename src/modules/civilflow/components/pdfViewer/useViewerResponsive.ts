@@ -1,18 +1,16 @@
-/** Modo consulta bajo 744 px; por debajo de 1024 px los paneles laterales se colapsan al cruzar el umbral. */
+/** Modo consulta bajo 744 px (solo teléfono): bajo ese ancho los paneles laterales nacen
+ *  colapsados. Las TABLETS (≥744) se comportan como PC — cintas expandidas con TODOS sus
+ *  desplegables (antes el umbral 1024 las colapsaba con inert y faltaban los desplegables,
+ *  ped. usuario 2025-11-25). Dentro de la franja el usuario puede colapsar a mano. */
 import { useEffect, useState } from 'react';
 import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 
-// Estado responsive del visor en UN solo lugar: móvil <744 (modo consulta: sin toolbar de
-// dibujo), angosto <1024 (colapsar sidebars SOLO al cruzar el breakpoint — un listener crudo
-// de resize re-cerraba los paneles en cada resize, p. ej. el teclado del SO en tablet pisaba
-// la re-expansión manual). Dentro de la franja el usuario puede re-abrir.
-
 /** Estado de sidebars colapsadas + flags isMobile/isNarrow del visor. */
 export function useViewerResponsive() {
-  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 1024);
-  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 1024);
+  const [leftCollapsed, setLeftCollapsed] = useState(() => window.innerWidth < 744);
+  const [rightCollapsed, setRightCollapsed] = useState(() => window.innerWidth < 744);
   const isMobile = useMediaQuery('(width < 744px)');
-  const isNarrow = useMediaQuery('(max-width: 1023px)');
+  const isNarrow = useMediaQuery('(max-width: 743px)');
   useEffect(() => {
     if (isNarrow) {
       setLeftCollapsed(true);

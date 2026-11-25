@@ -52,6 +52,8 @@ export interface LowerFloorRamales {
  *  inversión de dirección). */
 export interface DrawingElementContextMenuContextValue {
   contextMenuState: ContextMenuState;
+  /** Pantalla táctil (tablet): el menú scrollea por dentro si no cabe en pantalla. */
+  tablet: boolean;
   setContextMenuState: React.Dispatch<React.SetStateAction<ContextMenuState | null>>;
   element: PlanoElement;
   selectedNivel: number | null;

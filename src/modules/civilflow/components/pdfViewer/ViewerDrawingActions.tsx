@@ -8,8 +8,9 @@ interface Props {
   onSave: () => void;
   onUndo: () => void;
   onOptions?: (button: HTMLButtonElement) => void;
-  /** Punta táctil (tablet): único lugar donde se muestran Terminar/Cancelar/Coordenadas —
-   *  en desktop el acceso es doble clic (terminar) y Enter/Escape (cancelar). */
+  /** Punta táctil (tablet): la franja se reduce a «Opciones» (acceso al menú contextual, que
+   *  en PC es el clic derecho). Terminar/Cancelar/Coordenadas y Deshacer/Guardar son SOLO de
+   *  escritorio (ped. usuario 2026-11-25). */
   tablet?: boolean;
 }
 
@@ -66,7 +67,7 @@ export function ViewerDrawingActions({
 
   return (
     <div className="viewer-drawing-actions" role="group" aria-label="Acciones del dibujo">
-      {drawing && tablet && (
+      {drawing && !tablet && (
         <>
           <button
             type="button"
@@ -107,7 +108,22 @@ export function ViewerDrawingActions({
           </details>
         </>
       )}
-      {tablet && onOptions && (
+      {/* RESTAURADO (ped. usuario 2026-11-25): «Cancelar» también en tablet — sin teclado ni
+       *  clic derecho, era la única vía para descartar un trazado equivocado. «Terminar» y
+       *  «Coordenadas» siguen siendo solo de escritorio (doble toque y panel de tablet). */}
+      {drawing && tablet && (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            engineRef.current?.cancelRamal();
+            setMessage('Trazado cancelado.');
+          }}
+        >
+          Cancelar
+        </button>
+      )}
+      {onOptions && (
         <button
           type="button"
           disabled={disabled}
@@ -116,12 +132,28 @@ export function ViewerDrawingActions({
           Opciones
         </button>
       )}
-      <button type="button" className="viewer-coarse-action" disabled={disabled} onClick={onUndo}>
-        Deshacer
-      </button>
-      <button type="button" className="viewer-coarse-action" disabled={disabled} onClick={onSave}>
-        Guardar
-      </button>
+      {/* Deshacer/Guardar SOLO escritorio: en tablet la franja se reduce a «Opciones» — el
+       *  autosave (1,5 s) guarda solo. */}
+      {!tablet && (
+        <>
+          <button
+            type="button"
+            className="viewer-coarse-action"
+            disabled={disabled}
+            onClick={onUndo}
+          >
+            Deshacer
+          </button>
+          <button
+            type="button"
+            className="viewer-coarse-action"
+            disabled={disabled}
+            onClick={onSave}
+          >
+            Guardar
+          </button>
+        </>
+      )}
       <output aria-live="polite">{drawing ? message : ''}</output>
     </div>
   );
