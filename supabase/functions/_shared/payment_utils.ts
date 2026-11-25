@@ -37,23 +37,25 @@ export function paddleConfigurado(): boolean {
 export const SITE_URL =
   Deno.env.get('SITE_URL') ?? Deno.env.get('VITE_SITE_URL') ?? 'https://civilcardex.com';
 
-/** Orígenes de DESARROLLO permitidos además de SITE_URL (secret opcional CORS_DEV_ORIGINS,
- *  separados por coma). Ej: `http://localhost:5173,http://localhost:5174`. Sin el secret solo
- *  SITE_URL pasa — en producción la lista queda vacía. */
+/** Orígenes extra permitidos además de SITE_URL (secret opcional CORS_DEV_ORIGINS,
+ *  separados por coma). Ej: `http://localhost:5173,https://mi-preview.vercel.app`. */
 const DEV_ORIGINS = (Deno.env.get('CORS_DEV_ORIGINS') ?? '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
+const DOMINIOS_CIVILCARDEX = ['https://civilcardex.com', 'https://www.civilcardex.com'];
 const ORIGENES_PERMITIDOS = new Set([SITE_URL, ...DEV_ORIGINS]);
+if (DOMINIOS_CIVILCARDEX.includes(SITE_URL)) {
+  for (const origin of DOMINIOS_CIVILCARDEX) ORIGENES_PERMITIDOS.add(origin);
+}
 
 /** Cabeceras CORS para llamadas desde el navegador: supabase-js (functions.invoke) envía
  *  Authorization + apikey + Content-Type (no safelisted) ⇒ el navegador exige preflight
- *  OPTIONS y cabeceras en CADA respuesta. Origin RESTRINGIDO a una lista (SITE_URL + los de
- *  desarrollo del secret): se refleja el de la petición solo si está en la lista; si no, se
- *  responde con SITE_URL y el navegador bloquea la lectura. Sin reflejar a ciegas ni '*'
- *  (cualquier sitio llamaría crear-checkout con la sesión de un usuario logueado). Las
- *  funciones server-to-server (paddle-webhook, subscription-emails) no reciben Origin y
- *  reciben SITE_URL — inofensivo, el navegador no participa. */
+ *  OPTIONS y cabeceras en CADA respuesta. Se refleja el Origin solo si es de confianza; a
+ *  los demás se les devuelve SITE_URL y el navegador bloquea la lectura. Sin '*': las
+ *  funciones de pago exigen JWT, pero un origen ajeno no debe poder leer la respuesta.
+ *  Las server-to-server (paddle-webhook, subscription-emails) no envían Origin y reciben
+ *  SITE_URL — inofensivo, el navegador no participa. */
 export function corsHeaders(req?: Request): Record<string, string> {
   const origin = req?.headers.get('Origin') ?? '';
   return {
