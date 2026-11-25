@@ -49,6 +49,8 @@
   - style-src tampoco lleva 'unsafe-inline': el CSS crítico vive en /styles/critical.css y el
     HTML prerenderizado no trae style="..." (pase de estilos CSP-safe, 2026-11).
     React aplica los style={{...}} de runtime por CSSOM, que la CSP no bloquea.
+  - Los hashes SHA-256 de estilos corresponden a los valores que Paddle.js inserta para
+    el checkout superpuesto. Mantener la misma lista en vercel.json.
   - 'wasm-unsafe-eval' (no 'unsafe-eval'): pdfjs-dist compila WebAssembly para algunos
     decodificadores de imagen. pdf.js solo usa `new Function` como TEST de disponibilidad
     (isEvalSupported) y degrada solo si eval no existe -> no necesita 'unsafe-eval'.
@@ -58,7 +60,7 @@
   - frame-ancestors NO va aquí: los navegadores lo ignoran en <meta>; lo aplica el header HTTP de vercel.json
   - SRI (integrity) on Google Fonts not feasible — URLs are dynamically generated. crossorigin="anonymous" is set instead.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://va.vercel-scripts.com https://cdn.paddle.com; style-src 'self'; style-src-elem 'self' https://cdn.paddle.com https://sandbox-cdn.paddle.com; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com https://api.paddle.com https://sandbox-api.paddle.com https://buy.paddle.com https://sandbox-buy.paddle.com https://create-checkout.paddle.com https://sandbox-create-checkout.paddle.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com https://buy.paddle.com https://sandbox-buy.paddle.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://va.vercel-scripts.com https://cdn.paddle.com; style-src 'self'; style-src-elem 'self' https://cdn.paddle.com https://sandbox-cdn.paddle.com 'sha256-DZJGI9GW1KarnkjWFGQEtAWrfY4TQZwE9gIsAtq6sTk='; style-src-attr 'unsafe-hashes' 'sha256-G1uQ2TdzPadBgZhbO2zOTrRdlDoq9BGEKzWJvICVQLo=' 'sha256-Z29WkVafffk4H/87Pln052+Z9XSPafMCUJvrH0WSxpM=' 'sha256-BKJzP3dU1V1cVZwOs23ngG9tPG4LdgjCR+1pJQmpx+U=' 'sha256-ET0BUt5sEVpoIgG1qTt57VnxpJOfKa7aXm9/pkiVoto='; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://va.vercel-scripts.com https://api.paddle.com https://sandbox-api.paddle.com https://buy.paddle.com https://sandbox-buy.paddle.com https://create-checkout.paddle.com https://sandbox-create-checkout.paddle.com; worker-src 'self' blob:; frame-src 'self' blob: https://www.youtube-nocookie.com https://player.vimeo.com https://buy.paddle.com https://sandbox-buy.paddle.com; object-src 'self' blob:; base-uri 'self'; form-action 'self';" />
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=()" />

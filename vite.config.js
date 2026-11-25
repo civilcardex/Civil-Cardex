@@ -22,7 +22,11 @@ export default defineConfig(({ isSsrBuild }) => ({
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'",
           )
           .replace(/style-src 'self'/, "style-src 'self' 'unsafe-inline'")
-          .replace(/style-src-elem 'self'/, "style-src-elem 'self' 'unsafe-inline'");
+          .replace(
+            /style-src-elem 'self'([^;]*?)(?: 'sha256-[^']+')+;/,
+            "style-src-elem 'self' 'unsafe-inline'$1;",
+          )
+          .replace(/; style-src-attr [^;]+;/, ';');
       },
     },
   ],

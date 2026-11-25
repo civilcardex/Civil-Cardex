@@ -47,6 +47,24 @@ describe('CSP estricta de estilos', () => {
     }
   });
 
+  it('ambas políticas habilitan solo los estilos inline identificados de Paddle', () => {
+    const hashes = "'sha256-[A-Za-z0-9+/]{43}='";
+    const directivas = (csp: string) =>
+      csp
+        .split(';')
+        .map((d) => d.trim())
+        .filter((d) => /^style-src-(elem|attr) /.test(d));
+    const estilos = directivas(cspMeta());
+    expect(estilos).toEqual(directivas(cspHeader()));
+    expect(estilos).toHaveLength(2);
+    expect(estilos[0]).toMatch(
+      new RegExp(
+        `^style-src-elem 'self' https://cdn\\.paddle\\.com https://sandbox-cdn\\.paddle\\.com ${hashes}$`,
+      ),
+    );
+    expect(estilos[1]).toMatch(new RegExp(`^style-src-attr 'unsafe-hashes'( ${hashes}){4}$`));
+  });
+
   it('index.html no trae bloques <style> ni atributos style inline', () => {
     // Los comentarios de rationale pueden nombrar las etiquetas; se ignoran.
     const sinComentarios = HTML.replace(/<!--[\s\S]*?-->/g, '');
