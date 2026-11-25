@@ -62,7 +62,8 @@ describe('CSP estricta de estilos', () => {
         `^style-src-elem 'self' https://cdn\\.paddle\\.com https://sandbox-cdn\\.paddle\\.com ${hashes}$`,
       ),
     );
-    expect(estilos[1]).toMatch(new RegExp(`^style-src-attr 'unsafe-hashes'( ${hashes}){4}$`));
+    expect(estilos[1]).toMatch(new RegExp(`^style-src-attr 'unsafe-hashes'( ${hashes}){5}$`));
+    expect(estilos[1]).toContain("'sha256-2XqHna/5LR6kvJPWE5Kxz59WO1bCXlc8efuSqN5Ue0M='");
   });
 
   it('index.html no trae bloques <style> ni atributos style inline', () => {
