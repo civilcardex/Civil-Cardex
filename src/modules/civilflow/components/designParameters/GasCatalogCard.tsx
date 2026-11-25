@@ -32,8 +32,13 @@ export function GasCatalogCard() {
           Catálogo de gasodomésticos
         </h3>
       </div>
-      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
-        <table className="tbl" style={{ fontSize: 12, width: '100%', tableLayout: 'fixed' }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto' }}>
+        {/* Ancho mínimo = suma de los th (58+106+94+76+76+68 + Aparato ~120): en tablet
+         *  scrollea en vez de aplastar las columnas (antes overflowX hidden + fixed). */}
+        <table
+          className="tbl"
+          style={{ fontSize: 12, width: '100%', minWidth: 580, tableLayout: 'fixed' }}
+        >
           <thead>
             <tr>
               <th title="Aparato de gas del proyecto." scope="col" style={{ padding: '4px 8px' }}>

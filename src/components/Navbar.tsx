@@ -15,7 +15,6 @@ function Navbar() {
   const location = useLocation();
   const path = location.pathname;
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrollY, setScrollY] = useState(0);
   const [prevPath, setPrevPath] = useState(path);
   // Ayuda contextual (orig. usuario): las áreas de trabajo reportan su módulo/pestaña y el
   // botón abre el panel in-place junto al perfil — sin redirigir.
@@ -29,19 +28,37 @@ function Navbar() {
     setMenuOpen(false);
   }
 
+  /* Parpadeo al volver arriba del landing (ped. usuario 2026-11-25): el scroll-snap oscila
+   *  alrededor de la frontera y el estado alternaba navbar-top ↔ navbar-scrolled (altura +
+   *  fondo + blur con transición de 500 ms = flicker). Arreglo: HISTÉRESIS (bajar: >50 px;
+   *  subir: <25 px) + un chequeo por frame con rAF — el estado solo cambia una vez por
+   *  dirección, ya no en cada cruce del umbral. */
+  const [enTope, setEnTope] = useState(path === '/');
+
   useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    let raf = 0;
+    const handleScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        setEnTope((prev) => (path === '/' ? (prev ? y < 50 : y < 25) : false));
+      });
+    };
     handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [path]);
 
   const active =
     'text-primary border-b border-primary pb-1 uppercase text-xs tracking-[0.08em] font-bold cursor-pointer active-nav-glow transition-all';
   const inactive =
     'text-on-surface-variant uppercase text-xs tracking-[0.08em] font-bold hover:text-primary transition-colors px-3 py-1';
 
-  const isLandingTop = path === '/' && scrollY < 50;
+  const isLandingTop = enTope;
 
   return (
     <>

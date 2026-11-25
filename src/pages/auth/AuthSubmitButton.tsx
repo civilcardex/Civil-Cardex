@@ -6,17 +6,20 @@ export default function AuthSubmitButton({
   busy,
   label,
   busyLabel,
+  className = '',
 }: {
   busy?: boolean;
   label: string;
   busyLabel: string;
+  /** Clases extra (ej: separación del bloque anterior en el registro). */
+  className?: string;
 }): React.JSX.Element {
   return (
     <button
       type="submit"
       disabled={busy}
       aria-busy={busy}
-      className="w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all"
+      className={`w-full h-12 font-bold text-[11px] tracking-widest uppercase transition-all${className ? ` ${className}` : ''}`}
       style={{
         background: '#00dce5',
         color: '#0a0e14',

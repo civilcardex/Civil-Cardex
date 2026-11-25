@@ -9,15 +9,15 @@ function Layout() {
       <a href="#main-content" className="skip-link">
         Saltar al contenido principal
       </a>
-      <div className="h-screen overflow-hidden bg-surface-bg flex flex-col">
+      <div className="h-dvh overflow-hidden bg-surface-bg flex flex-col">
         {/* header landmark: la navbar es fixed (fuera de flujo), el wrapper no altera el layout. */}
         <header>
           <Navbar />
         </header>
-        <div className="flex flex-1 overflow-hidden pt-14">
+        <div className="flex flex-1 min-h-0 overflow-hidden pt-14">
           {/* overflow-y auto: las páginas altas (perfil, módulos) scrollean aquí; el workarea
               no desborda (usa h-full + scroll interno propio), así que no cambia para él. */}
-          <main id="main-content" className="flex-1 flex flex-col min-w-0 overflow-y-auto">
+          <main id="main-content" className="flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto">
             <div className="flex-1">
               <Outlet />
             </div>

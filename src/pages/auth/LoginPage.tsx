@@ -88,7 +88,7 @@ function LoginPage() {
           />
         </fieldset>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between" style={{ marginTop: 12 }}>
           <label
             className="flex items-center gap-2 cursor-pointer"
             title="Desmarcado: la sesión termina al cerrar el navegador"

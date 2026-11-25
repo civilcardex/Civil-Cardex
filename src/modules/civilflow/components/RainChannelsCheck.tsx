@@ -151,323 +151,327 @@ export default function ChequeoCanalesLluvias() {
         <div className="rain-empty-12">Activa el canal recolectora para ver este chequeo.</div>
       ) : (
         <div className="rain-pad-12">
-          <table ref={tablaRef} className="tbl rain-table-fix">
-            <colgroup>
-              <col data-w="4.5" />
-              <col data-w="5.5" />
-              <col data-w="3.8" />
-              <col data-w="3.4" />
-              <col data-w="3.8" />
-              <col data-w="3.8" />
-              <col data-w="3.8" />
-              <col data-w="7" />
-              <col data-w="3.2" />
-              <col data-w="4.5" />
-              <col data-w="4" />
-              <col data-w="7.5" />
-              <col data-w="3.6" />
-              <col data-w="3.4" />
-              <col data-w="3.2" />
-              <col data-w="3.2" />
-              <col data-w="3.6" />
-              <col data-w="3.4" />
-              <col data-w="3.6" />
-              <col data-w="4" />
-              <col data-w="3.8" />
-              <col data-w="4.2" />
-              <col data-w="4.2" />
-              <col data-w="4.4" />
-              <col data-w="4.2" />
-              <col data-w="4.2" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th
-                  title="Canal recolector de cubierta (CNL) según el dibujo."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                  rowSpan={2}
-                >
-                  Canal
-                </th>
-                <th
-                  title="Bajantes que descargan al canal: definen el N° de bocas y el reparto del caudal."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                  rowSpan={2}
-                >
-                  Bajantes
-                  <br />
-                  asociados
-                </th>
-                <th
-                  title="Áreas que drenan al canal (m²)."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={5}
-                >
-                  ÁREA (m²)
-                </th>
-                <th
-                  title="Método racional aplicado al área efectiva."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={4}
-                >
-                  CAUDAL DE DISEÑO
-                </th>
-                <th
-                  title="Material, rugosidad y pendiente del canal."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={3}
-                >
-                  CANAL
-                </th>
-                <th
-                  title="Dimensiones de la sección del canal (cm) — manda el dibujo."
-                  scope="col"
-                  className="col-h ok rain-thg10"
-                  colSpan={4}
-                >
-                  SECCIÓN PROPUESTA
-                </th>
-                <th
-                  title="Capacidad de la sección y uso del canal."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={2}
-                >
-                  CAPACIDAD (Manning)
-                </th>
-                <th
-                  title="Tirante normal y velocidad del agua en el canal."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={2}
-                >
-                  FLUJO REAL
-                </th>
-                <th
-                  title="Entrega del canal al bajante: embocadura y su altura de agua."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={2}
-                >
-                  DESCARGA AL BAJANTE
-                </th>
-                <th
-                  title="Chequeos de capacidad del canal y de la embocadura."
-                  scope="col"
-                  className="col-h ll rain-thg10"
-                  colSpan={2}
-                >
-                  CHEQUEOS
-                </th>
-              </tr>
-              <tr>
-                <th
-                  title="Área de los bajantes que descargan al canal (m²)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Parcial
-                </th>
-                <th
-                  title="Área adicional no dibujada, editable (m²)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Otras
-                </th>
-                <th
-                  title="Área total = Parcial + Otras (m²)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Total
-                </th>
-                <th
-                  title="Área de muros que descargan sobre el canal (m²)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Muro
-                </th>
-                <th
-                  title="Área efectiva = Total más la mitad del muro vertical."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Efectiva
-                </th>
-                <th
-                  title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Material
-                  <br />
-                  cubierta
-                </th>
-                <th
-                  title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Coef.
-                  <br />
-                  escorr.
-                </th>
-                <th
-                  title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Intensidad
-                </th>
-                <th
-                  title="Caudal real que llega al canal (L/s). Unidad: L/s."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Q real
-                </th>
-                <th
-                  title="Material del canal: define la rugosidad n. Visite el catálogo maestro para más información."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Material
-                  <br />
-                  canal
-                </th>
-                <th
-                  title="Rugosidad del material del canal."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Manning
-                </th>
-                <th
-                  title="Pendiente longitudinal del canal (%) — manda el dibujo. Unidad: porcentaje (%)."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Pend.
-                </th>
-                <th
-                  title="Ancho de la base del canal (cm) — editable, escribe al dibujo. Unidad: cm."
-                  scope="col"
-                  className="col-h ok rain-th10"
-                >
-                  Base
-                </th>
-                <th
-                  title="Altura útil del canal (cm) — editable, escribe al dibujo. Unidad: cm."
-                  scope="col"
-                  className="col-h ok rain-th10"
-                >
-                  Altura
-                </th>
-                <th
-                  title="Borde libre sobre el tirante (cm) — editable, default 10. Unidad: cm."
-                  scope="col"
-                  className="col-h ok rain-th10"
-                >
-                  Borde
-                </th>
-                <th
-                  title="Sección total = base más altura más borde libre. Unidad: cm."
-                  scope="col"
-                  className="col-h ok rain-th10"
-                >
-                  Total
-                </th>
-                <th
-                  title="Capacidad máxima de la sección (L/s). Unidad: L/s."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Q máx
-                </th>
-                <th
-                  title="Uso de la capacidad del canal: debe ser ≤ 100%."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Q real/
-                  <br />Q máx
-                </th>
-                <th
-                  title="Profundidad del agua en el canal (m). Unidad: m."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Tirante
-                </th>
-                <th
-                  title="Velocidad del agua en el canal (m/s). Unidad: m/s."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Vel.
-                </th>
-                <th
-                  title="Menor diámetro propuesto de los bajantes asociados (pulg). Unidad: pulg."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Diámetro
-                  <br />
-                  baj.
-                </th>
-                <th
-                  title="Altura de lámina de agua requerida en la embocadura (m). Unidad: m."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Lámina
-                </th>
-                <th
-                  title="O.K. si el canal tiene capacidad para el caudal real."
-                  scope="col"
-                  className="col-h ll rain-th10"
-                >
-                  Qreal ≤<br />
-                  Qmáx
-                </th>
-                <th
-                  title="O.K. si la lámina requerida cabe en la altura útil; sin bajantes: Revisar."
-                  scope="col"
-                  className="col-h ok rain-th10"
-                >
-                  H ≤ h<br />
-                  útil
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {canalesLl.length === 0 ? (
+          {/* Ancho mínimo legible (25 columnas): en tablet scrollea en vez de aplastarse. */}
+          <div className="tbl-wrap-x">
+            <table ref={tablaRef} className="tbl rain-table-fix" style={{ minWidth: 1250 }}>
+              <colgroup>
+                <col data-w="4.5" />
+                <col data-w="5.5" />
+                <col data-w="3.8" />
+                <col data-w="3.4" />
+                <col data-w="3.8" />
+                <col data-w="3.8" />
+                <col data-w="3.8" />
+                <col data-w="7" />
+                <col data-w="3.2" />
+                <col data-w="4.5" />
+                <col data-w="4" />
+                <col data-w="7.5" />
+                <col data-w="3.6" />
+                <col data-w="3.4" />
+                <col data-w="3.2" />
+                <col data-w="3.2" />
+                <col data-w="3.6" />
+                <col data-w="3.4" />
+                <col data-w="3.6" />
+                <col data-w="4" />
+                <col data-w="3.8" />
+                <col data-w="4.2" />
+                <col data-w="4.2" />
+                <col data-w="4.4" />
+                <col data-w="4.2" />
+                <col data-w="4.2" />
+              </colgroup>
+              <thead>
                 <tr>
-                  <td colSpan={26} className="rain-empty-10">
-                    No hay canales. Dibuja canales recolectores en el visor para que aparezcan aquí.
-                  </td>
+                  <th
+                    title="Canal recolector de cubierta (CNL) según el dibujo."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                    rowSpan={2}
+                  >
+                    Canal
+                  </th>
+                  <th
+                    title="Bajantes que descargan al canal: definen el N° de bocas y el reparto del caudal."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                    rowSpan={2}
+                  >
+                    Bajantes
+                    <br />
+                    asociados
+                  </th>
+                  <th
+                    title="Áreas que drenan al canal (m²)."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={5}
+                  >
+                    ÁREA (m²)
+                  </th>
+                  <th
+                    title="Método racional aplicado al área efectiva."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={4}
+                  >
+                    CAUDAL DE DISEÑO
+                  </th>
+                  <th
+                    title="Material, rugosidad y pendiente del canal."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={3}
+                  >
+                    CANAL
+                  </th>
+                  <th
+                    title="Dimensiones de la sección del canal (cm) — manda el dibujo."
+                    scope="col"
+                    className="col-h ok rain-thg10"
+                    colSpan={4}
+                  >
+                    SECCIÓN PROPUESTA
+                  </th>
+                  <th
+                    title="Capacidad de la sección y uso del canal."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={2}
+                  >
+                    CAPACIDAD (Manning)
+                  </th>
+                  <th
+                    title="Tirante normal y velocidad del agua en el canal."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={2}
+                  >
+                    FLUJO REAL
+                  </th>
+                  <th
+                    title="Entrega del canal al bajante: embocadura y su altura de agua."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={2}
+                  >
+                    DESCARGA AL BAJANTE
+                  </th>
+                  <th
+                    title="Chequeos de capacidad del canal y de la embocadura."
+                    scope="col"
+                    className="col-h ll rain-thg10"
+                    colSpan={2}
+                  >
+                    CHEQUEOS
+                  </th>
                 </tr>
-              ) : (
-                canalesLl.map((c) => (
-                  <FilaCanalRow
-                    c={c}
-                    diamPulgPorChip={diamPulgPorChip}
-                    canalBajantes={canalBajantes}
-                    onCanalField={onCanalField}
-                    setMaterialCanal={setMaterialCanal}
-                    edit={edit}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
+                <tr>
+                  <th
+                    title="Área de los bajantes que descargan al canal (m²)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Parcial
+                  </th>
+                  <th
+                    title="Área adicional no dibujada, editable (m²)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Otras
+                  </th>
+                  <th
+                    title="Área total = Parcial + Otras (m²)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Total
+                  </th>
+                  <th
+                    title="Área de muros que descargan sobre el canal (m²)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Muro
+                  </th>
+                  <th
+                    title="Área efectiva = Total más la mitad del muro vertical."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Efectiva
+                  </th>
+                  <th
+                    title="Material de la cubierta: define el coeficiente de escorrentía C. Visite el catálogo maestro para más información."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Material
+                    <br />
+                    cubierta
+                  </th>
+                  <th
+                    title="Coeficiente de escorrentía del material; sin material elegido el cálculo no se realiza (Q = 0)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Coef.
+                    <br />
+                    escorr.
+                  </th>
+                  <th
+                    title="Intensidad de lluvia de diseño (mm/h). Unidad: mm/h."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Intensidad
+                  </th>
+                  <th
+                    title="Caudal real que llega al canal (L/s). Unidad: L/s."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Q real
+                  </th>
+                  <th
+                    title="Material del canal: define la rugosidad n. Visite el catálogo maestro para más información."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Material
+                    <br />
+                    canal
+                  </th>
+                  <th
+                    title="Rugosidad del material del canal."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Manning
+                  </th>
+                  <th
+                    title="Pendiente longitudinal del canal (%) — manda el dibujo. Unidad: porcentaje (%)."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Pend.
+                  </th>
+                  <th
+                    title="Ancho de la base del canal (cm) — editable, escribe al dibujo. Unidad: cm."
+                    scope="col"
+                    className="col-h ok rain-th10"
+                  >
+                    Base
+                  </th>
+                  <th
+                    title="Altura útil del canal (cm) — editable, escribe al dibujo. Unidad: cm."
+                    scope="col"
+                    className="col-h ok rain-th10"
+                  >
+                    Altura
+                  </th>
+                  <th
+                    title="Borde libre sobre el tirante (cm) — editable, default 10. Unidad: cm."
+                    scope="col"
+                    className="col-h ok rain-th10"
+                  >
+                    Borde
+                  </th>
+                  <th
+                    title="Sección total = base más altura más borde libre. Unidad: cm."
+                    scope="col"
+                    className="col-h ok rain-th10"
+                  >
+                    Total
+                  </th>
+                  <th
+                    title="Capacidad máxima de la sección (L/s). Unidad: L/s."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Q máx
+                  </th>
+                  <th
+                    title="Uso de la capacidad del canal: debe ser ≤ 100%."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Q real/
+                    <br />Q máx
+                  </th>
+                  <th
+                    title="Profundidad del agua en el canal (m). Unidad: m."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Tirante
+                  </th>
+                  <th
+                    title="Velocidad del agua en el canal (m/s). Unidad: m/s."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Vel.
+                  </th>
+                  <th
+                    title="Menor diámetro propuesto de los bajantes asociados (pulg). Unidad: pulg."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Diámetro
+                    <br />
+                    baj.
+                  </th>
+                  <th
+                    title="Altura de lámina de agua requerida en la embocadura (m). Unidad: m."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Lámina
+                  </th>
+                  <th
+                    title="O.K. si el canal tiene capacidad para el caudal real."
+                    scope="col"
+                    className="col-h ll rain-th10"
+                  >
+                    Qreal ≤<br />
+                    Qmáx
+                  </th>
+                  <th
+                    title="O.K. si la lámina requerida cabe en la altura útil; sin bajantes: Revisar."
+                    scope="col"
+                    className="col-h ok rain-th10"
+                  >
+                    H ≤ h<br />
+                    útil
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {canalesLl.length === 0 ? (
+                  <tr>
+                    <td colSpan={26} className="rain-empty-10">
+                      No hay canales. Dibuja canales recolectores en el visor para que aparezcan
+                      aquí.
+                    </td>
+                  </tr>
+                ) : (
+                  canalesLl.map((c) => (
+                    <FilaCanalRow
+                      c={c}
+                      diamPulgPorChip={diamPulgPorChip}
+                      canalBajantes={canalBajantes}
+                      onCanalField={onCanalField}
+                      setMaterialCanal={setMaterialCanal}
+                      edit={edit}
+                    />
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

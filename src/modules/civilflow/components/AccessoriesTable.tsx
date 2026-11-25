@@ -9,20 +9,18 @@ import type { Tramo } from '../context/tramosReducer';
 const AccessoriesTable_S1: React.CSSProperties = {
   width: 76,
   textAlign: 'center',
-  fontSize: 9,
+  fontSize: 10,
   padding: '2px 2px',
 };
 const AccessoriesTable_S3: React.CSSProperties = {
-  fontSize: 9,
+  fontSize: 10,
   textAlign: 'center',
   fontWeight: 600,
   padding: '2px 2px',
   whiteSpace: 'nowrap',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
 };
 const AccessoriesTable_S5: React.CSSProperties = {
-  fontSize: 8,
+  fontSize: 10,
   textAlign: 'center',
   whiteSpace: 'normal',
   wordBreak: 'break-word',
@@ -85,78 +83,81 @@ const AccesoriosTable = memo(function AccesoriosTable({
         <span className="card-s">{filtered.length} tramos</span>
       </div>
       <div style={{ padding: '12px' }}>
-        <table
-          className="tbl"
-          style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 9 }}
-        >
-          <thead>
-            <tr>
-              <th scope="col" className="col-h" style={AccessoriesTable_S1}>
-                Tramo
-              </th>
-              {cols.map((a) => (
-                <th
-                  scope="col"
-                  key={a.id}
-                  title={a.nombre}
-                  className="col-h"
-                  style={AccessoriesTable_S5}
-                >
-                  <img
-                    src={a.icono}
-                    alt={a.nombre}
-                    width={16}
-                    height={16}
-                    style={{
-                      width: 16,
-                      height: 16,
-                      objectFit: 'contain',
-                      display: 'block',
-                      margin: '0 auto 2px',
-                    }}
-                    loading="lazy"
-                  />
-                  <span style={{ fontSize: 8, fontWeight: 500 }}>{a.nombre}</span>
+        {/* Ancho mínimo legible (19 columnas): en tablet scrollea en vez de aplastarse. */}
+        <div className="tbl-wrap-x">
+          <table
+            className="tbl"
+            style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse', fontSize: 10 }}
+          >
+            <thead>
+              <tr>
+                <th scope="col" className="col-h" style={AccessoriesTable_S1}>
+                  Tramo
                 </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((t, i) => {
-              const base = t.label || t.id;
-              const lbl = t.piso != null ? `${base}-${pisoCorto(t.piso)}` : base;
-              return (
-                <tr key={i}>
-                  <td className="c" style={AccessoriesTable_S3}>
-                    {lbl}
-                  </td>
-                  {cols.map((a) => {
-                    const v = valor(t, a.id);
-                    return (
-                      <td
-                        key={a.id}
-                        className="c"
-                        style={{ padding: '4px 1px', overflow: 'hidden' }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            fontFamily: cMono,
-                            color: v > 0 ? 'var(--txt)' : 'var(--txt3)',
-                          }}
+                {cols.map((a) => (
+                  <th
+                    scope="col"
+                    key={a.id}
+                    title={a.nombre}
+                    className="col-h"
+                    style={AccessoriesTable_S5}
+                  >
+                    <img
+                      src={a.icono}
+                      alt={a.nombre}
+                      width={16}
+                      height={16}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        objectFit: 'contain',
+                        display: 'block',
+                        margin: '0 auto 2px',
+                      }}
+                      loading="lazy"
+                    />
+                    <span style={{ fontSize: 10, fontWeight: 500 }}>{a.nombre}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((t, i) => {
+                const base = t.label || t.id;
+                const lbl = t.piso != null ? `${base}-${pisoCorto(t.piso)}` : base;
+                return (
+                  <tr key={i}>
+                    <td className="c" style={AccessoriesTable_S3}>
+                      {lbl}
+                    </td>
+                    {cols.map((a) => {
+                      const v = valor(t, a.id);
+                      return (
+                        <td
+                          key={a.id}
+                          className="c"
+                          style={{ padding: '4px 1px', overflow: 'hidden' }}
                         >
-                          {v || '—'}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-            {filtered.length === 0 && <EmptyRow colSpan={1 + cols.length} fontSize={9} />}
-          </tbody>
-        </table>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: cMono,
+                              color: v > 0 ? 'var(--txt)' : 'var(--txt3)',
+                            }}
+                          >
+                            {v || '—'}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              {filtered.length === 0 && <EmptyRow colSpan={1 + cols.length} fontSize={9} />}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

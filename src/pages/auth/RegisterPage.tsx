@@ -254,7 +254,12 @@ function RegisterPage() {
           </div>
         </fieldset>
 
-        <AuthSubmitButton busy={loading} label="CREAR CUENTA" busyLabel="CREANDO CUENTA..." />
+        <AuthSubmitButton
+          busy={loading}
+          label="CREAR CUENTA"
+          busyLabel="CREANDO CUENTA..."
+          className="mt-3.5"
+        />
         {error && (
           <div role="alert" style={AUTH_ERROR_STYLE}>
             {error}

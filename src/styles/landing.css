@@ -263,6 +263,18 @@ html:has(.landing-root) {
     0 10px 20px rgba(0, 0, 0, 0.3),
     0 0 15px rgba(245, 214, 104, 0.05);
 }
+/* Móvil/tablet: shimmer y degradado plateado ESTÁTICOS — animar background-position con
+ *  background-clip:text en GPUs débiles entrecorta el título. Mismo criterio que
+ *  TypewriterText (≤768 px o pantalla táctil): la tablet en horizontal mide 1024+ px, así que
+ *  el solo ancho la dejaba fuera (ped. usuario 2025-11-25). */
+@media (max-width: 768px), (any-pointer: coarse) {
+  .core-shimmer,
+  .civsilver {
+    animation: none !important;
+    background-position: 50% center !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-snap-type: none !important;

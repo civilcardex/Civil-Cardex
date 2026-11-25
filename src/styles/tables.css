@@ -93,6 +93,55 @@
   }
 }
 
+/* Wrapper de scroll horizontal compartido (familia RCI lo usa inline): la tabla dentro
+   declara su ancho mínimo legible y el excedente scrollea. */
+.tbl-wrap-x {
+  overflow-x: auto;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+/* ── TABLET (ped. usuario 2026-11-25): tablas legibles en puntero táctil ≤1366 px ──
+ * Regla de producto: una tabla necesita su ancho mínimo legible; si no cabe, SCROLLEA —
+ * nunca se aprieta en columnas de 32 px con cabeceras partidas en sílabas. El tier 1200 de
+ * arriba aprieta la fuente a 9-11 px: en tablet eso es ilegible, así que aquí se sube el
+ * piso. Solo puntero táctil — en PC nada cambia. */
+@media (any-pointer: coarse) and (max-width: 1366px) {
+  .tbl {
+    font-size: 12px;
+  }
+  .tbl th {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+  .tbl td {
+    padding: 4px 6px;
+  }
+  /* En tablas que ya viven en un wrapper con scroll-x, la cabecera va en UNA línea y los
+   * valores mono no se parten — el scroll cubre el excedente. */
+  .scroll-inner .tbl th,
+  [data-tour='redes-contenido'] .gas-scroll th,
+  .ds-scroll-x .tbl th,
+  .rt-scroll-x .tbl th,
+  .tbl-wrap-x .tbl th {
+    white-space: nowrap;
+  }
+  .scroll-inner .tbl td.tbl-v,
+  .scroll-inner .tbl td.c,
+  [data-tour='redes-contenido'] .gas-scroll td,
+  .ds-scroll-x .tbl td,
+  .rt-scroll-x .tbl td,
+  .tbl-wrap-x .tbl td {
+    white-space: nowrap;
+  }
+  /* BOM: las dos cards de tabla (50% c/u) se apilan a ancho completo — a 800 px cada una
+   * quedaba en ~400 px con la tabla apretada. */
+  .ar-half {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+}
+
 /* Header pegajoso: títulos de columna visibles al desplazar (fondo opaco en th ya exists). */
 .tbl thead th {
   position: sticky;
@@ -1521,13 +1570,6 @@ tr.rt-subrow-selected > td {
   width: 60px;
   padding: 4px 6px;
 }
-.dp-w-65 {
-  width: 65px;
-  padding: 2px 4px;
-  font-size: 12px;
-  text-align: center;
-  color: var(--txt);
-}
 .dp-w-80 {
   width: 80px;
   padding: 4px 6px;
@@ -1749,10 +1791,6 @@ tr.rt-subrow-selected > td {
   font-weight: 600;
   color: #849495;
 }
-.ep-span-note {
-  color: var(--txt3);
-  font-weight: 600;
-}
 .ep-err-solid {
   font-weight: 700;
   color: #ef5350;
@@ -1760,14 +1798,6 @@ tr.rt-subrow-selected > td {
 .ep-ok-solid {
   font-weight: 700;
   color: #22c55e;
-}
-.ep-tech-mono {
-  font-family: 'Geist', monospace;
-  font-size: 12px;
-  color: var(--txt3);
-  margin-bottom: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 .ep-dim {
   font-size: 10px;
@@ -2179,18 +2209,6 @@ tr.rt-subrow-selected > td {
   fill: #e85d04 !important;
   font-weight: 700;
 }
-.ep-gi {
-  display: inline-block;
-  margin-left: 5px;
-  color: var(--az2, #2e6da4);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-}
-.ep-gi:hover {
-  color: #e85d04;
-}
-
 /* Selector segmentado de unidades del EPC (m.c.a./bar/psi/kPa): tarjetas en línea, la
  *  activa en azul sólido — mismo lenguaje que los botones de montaje. */
 .ep-un-seg {
