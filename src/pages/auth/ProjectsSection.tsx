@@ -1,9 +1,13 @@
 import { Link } from 'react-router';
 import { ProyectoCard } from './ProjectCard.tsx';
-import { estaActiva, type SuscripcionRow } from '../../lib/subscriptions/subscriptionsService.ts';
+import {
+  estaActiva,
+  vigenciaDe,
+  type SuscripcionRow,
+} from '../../lib/subscriptions/subscriptionsService.ts';
 import type { ProyectoRow } from '../../modules/civilflow/services/projectsService.ts';
 import type { CmProyectoRow } from '../../modules/civilmanager/services/cmProjectsService.ts';
-import type { ModuloId } from '../../lib/subscriptions/catalog.ts';
+import { CATALOGO } from '../../lib/subscriptions/catalog.ts';
 
 interface ProjectsSectionProps {
   cmHasMore?: boolean;
@@ -20,11 +24,7 @@ interface ProjectsSectionProps {
   filtroModulo: 'todos' | 'cf' | 'cm';
   onFiltroModulo: (f: 'todos' | 'cf' | 'cm') => void;
   user: { id: string; email?: string } | null;
-  subsBloqueando: boolean;
-  modulosActivosUser: Set<ModuloId>;
   subsRows: SuscripcionRow[];
-  onNuevoDirecto: () => void;
-  onNuevoModuloElegido: (m: ModuloId) => void;
   onNuevoSelector: () => void;
   errorApertura: string | null;
   openingId: string | null;
@@ -35,8 +35,14 @@ interface ProjectsSectionProps {
   onDeleteCm: (id: string) => void;
 }
 
-/** Acordeón de proyectos (CF + CM) del perfil: filtro por módulo, tarjetas y acciones.
- *  Extraído verbatim de ProfilePage — solo cambia el paso de callbacks por props. */
+/** Color de cada tono de vigencia: normal, por vencer (7 días o menos) o vencida. */
+const TONO_VIGENCIA = {
+  ok: 'var(--on-surface-variant, #9ba8aa)',
+  ambar: '#f59e0b',
+  rojo: 'var(--error, #ff4444)',
+} as const;
+
+/** Acordeón de proyectos (CF + CM) del perfil: cuánto le queda a cada suscripción, filtro por módulo, tarjetas y acciones. "Nuevo proyecto" siempre pregunta el módulo (onNuevoSelector). */
 export function ProjectsSection({
   proyectosOpen,
   onToggleOpen,
@@ -52,11 +58,7 @@ export function ProjectsSection({
   filtroModulo,
   onFiltroModulo,
   user,
-  subsBloqueando,
-  modulosActivosUser,
   subsRows,
-  onNuevoDirecto,
-  onNuevoModuloElegido,
   onNuevoSelector,
   errorApertura,
   openingId,
@@ -66,6 +68,11 @@ export function ProjectsSection({
   onDeleteCf,
   onDeleteCm,
 }: ProjectsSectionProps) {
+  // La que vence primero arriba. Copia ordenada: subsRows es una prop.
+  const suscripciones = [...subsRows].sort(
+    (a, b) => new Date(a.fecha_fin).getTime() - new Date(b.fecha_fin).getTime(),
+  );
+
   return (
     <section
       aria-labelledby="proyectos-heading"
@@ -98,20 +105,43 @@ export function ProjectsSection({
         </span>
       </button>
 
+      {/* Siempre visible (también con el acordeón cerrado): es lo que explica en qué
+          módulos puede crear proyecto y cuánto le queda a cada uno. Solo filas propias —
+          los asientos de empresa no exponen la vigencia del titular. */}
+      {suscripciones.length > 0 && (
+        <div className="px-6 py-3 border-t border-outline-variant">
+          <h3
+            id="suscripciones-heading"
+            className="text-[11px] font-bold tracking-widest uppercase text-on-surface-variant"
+          >
+            Suscripciones
+          </h3>
+          <ul
+            aria-labelledby="suscripciones-heading"
+            className="mt-1.5 flex flex-wrap gap-x-6 gap-y-1 text-[13px]"
+          >
+            {suscripciones.map((r) => {
+              const vigencia = vigenciaDe(r);
+              return (
+                <li key={r.id}>
+                  <span className="font-semibold text-on-surface">
+                    {CATALOGO.find((c) => c.id === r.modulo)?.nombre ?? r.modulo}
+                  </span>
+                  <span style={{ color: TONO_VIGENCIA[vigencia.tono] }}> · {vigencia.texto}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {proyectosOpen && (
         <div className="border-t border-outline-variant">
           <div className="px-6 py-3 border-b border-outline-variant bg-surface-container-low">
             <button
               type="button"
               className="flex items-center gap-2 text-primary hover:text-primary-fixed text-[13px] font-medium transition-colors"
-              onClick={() => {
-                // 1 módulo activo → directo al modal de nombre; 0 o 2+ → selector
-                // (0 muestra el aviso de pricing dentro del selector).
-                if (!subsBloqueando) onNuevoDirecto();
-                else if (modulosActivosUser.size === 1)
-                  onNuevoModuloElegido([...modulosActivosUser][0]);
-                else onNuevoSelector();
-              }}
+              onClick={onNuevoSelector}
             >
               <span className="material-symbols-outlined text-lg!">add_circle</span>
               Nuevo proyecto

@@ -19,12 +19,14 @@ vi.mock('../../lib/supabase', () => ({
 }));
 
 // Suscripciones de mentira: ModuleSelectDialog lista módulos según el hook (sin BD aquí).
+// Con candado activo y un módulo vigente por asiento → un solo radio.
 vi.mock('../../hooks/useSubscriptions.ts', () => ({
   useSuscripciones: () => ({
     rows: [],
     activos: new Set(['flow']),
     loading: false,
-    bloqueando: false,
+    bloqueando: true,
+    decidido: true,
     refetch: () => {},
   }),
 }));

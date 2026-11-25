@@ -6,7 +6,13 @@ vi.mock('../../supabase', () => ({
   },
 }));
 
-import { estaActiva, modulosActivos, type SuscripcionRow } from '../subscriptionsService.ts';
+import {
+  diasParaVencer,
+  estaActiva,
+  modulosActivos,
+  vigenciaDe,
+  type SuscripcionRow,
+} from '../subscriptionsService.ts';
 
 function fila(overrides: Partial<SuscripcionRow>): SuscripcionRow {
   return {
@@ -52,6 +58,56 @@ describe('modulosActivos', () => {
 
   it('conjunto vacío sin filas', () => {
     expect(modulosActivos([]).size).toBe(0);
+  });
+});
+
+describe('vigenciaDe (cuánto le queda a una suscripción)', () => {
+  const ahora = new Date('2026-11-24T12:00:00Z');
+  const enDias = (dias: number) => new Date(ahora.getTime() + dias * 86_400_000).toISOString();
+
+  it('dice los días que faltan y la fecha; tono normal si faltan más de 7', () => {
+    const v = vigenciaDe({ estado: 'activa', fecha_fin: enDias(23) }, ahora);
+    expect(v.texto).toMatch(/^Vence en 23 días · /);
+    expect(v.tono).toBe('ok');
+  });
+
+  it('tono ambar cuando vence en 7 días o menos (y singular con 1)', () => {
+    expect(vigenciaDe({ estado: 'activa', fecha_fin: enDias(7) }, ahora).tono).toBe('ambar');
+    expect(vigenciaDe({ estado: 'activa', fecha_fin: enDias(1) }, ahora).texto).toMatch(
+      /^Vence en 1 día · /,
+    );
+  });
+
+  it('menos de 24 h: «Vence hoy» solo si es el mismo día local de la fecha mostrada', () => {
+    const v = vigenciaDe({ estado: 'activa', fecha_fin: enDias(0.5) }, ahora);
+    expect(v.tono).toBe('ambar');
+    expect(v.texto).toMatch(/^Vence (hoy|en menos de 24 horas) · /);
+  });
+
+  it('dos horas después de vencer dice «menos de 24 horas», nunca «hace 1 día»', () => {
+    const v = vigenciaDe({ estado: 'activa', fecha_fin: enDias(-0.08) }, ahora);
+    expect(v.tono).toBe('rojo');
+    expect(v.texto).toMatch(/^Venci(ó|o) (hoy|hace menos de 24 horas) · /);
+  });
+
+  it('vencida: cuántos días hace venció, en rojo', () => {
+    const v = vigenciaDe({ estado: 'activa', fecha_fin: enDias(-3) }, ahora);
+    expect(v.tono).toBe('rojo');
+    expect(v.texto).toMatch(/^Venció hace 3 días · /);
+  });
+
+  it('cancelada aunque la fecha de fin aún no llegó', () => {
+    const v = vigenciaDe({ estado: 'cancelada', fecha_fin: enDias(10) }, ahora);
+    expect(v.tono).toBe('rojo');
+    expect(v.texto).toMatch(/^Cancelada · /);
+  });
+});
+
+describe('diasParaVencer', () => {
+  it('toma la fecha de fin más próxima', () => {
+    const ahora = new Date('2026-11-24T12:00:00Z');
+    const enDias = (dias: number) => new Date(ahora.getTime() + dias * 86_400_000).toISOString();
+    expect(diasParaVencer([enDias(20), enDias(3), enDias(300)], ahora)).toBe(3);
   });
 });
 

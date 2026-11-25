@@ -11,33 +11,40 @@ interface Props {
   onPick: (modulo: ModuloId) => void;
 }
 
-/** Diálogo "¿en qué módulo desea crear el proyecto?": lista SOLO los módulos comprados y vigentes ("Activo hasta X"). Con 0 activos ofrece /pricing; con 1 entra directo sin preguntar. */
+/** Diálogo "¿en qué módulo desea crear el proyecto?". Con el candado de suscripciones activo lista SOLO los módulos vigentes del usuario ("Activo hasta X") y con ninguno ofrece /pricing; sin candado lista todo el catálogo. Con UN solo módulo disponible va preseleccionado. */
 export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
-  const { rows, activos, loading } = useSuscripciones();
+  const { rows, activos, bloqueando, decidido } = useSuscripciones();
   const [elegido, setElegido] = useState<ModuloId | null>(null);
 
-  // Asientos de empresa incluidos: `activos` (RPC mis_accesos) trae módulos vigentes
-  // por asiento que no tienen fila propia visible para el miembro.
-  const disponibles: ModuloVenta[] = CATALOGO.filter(
-    (m) => activos.has(m.id) || rows.some((r) => r.modulo === m.id && estaActiva(r)),
-  );
+  // Con candado: solo los módulos que tiene vigentes. Asientos de empresa incluidos:
+  // `activos` (RPC mis_accesos) trae módulos por asiento sin fila propia visible para
+  // el miembro. Sin candado (sistema apagado) puede crear en cualquier módulo.
+  const disponibles: ModuloVenta[] = bloqueando
+    ? CATALOGO.filter(
+        (m) => activos.has(m.id) || rows.some((r) => r.modulo === m.id && estaActiva(r)),
+      )
+    : CATALOGO;
 
-  // Reset al (re)abrir o al llegar datos, y con UN solo módulo comprado va
-  // preseleccionado — patrón de ajuste de estado durante render (react-hooks).
-  const estadoKey = `${open}|${loading}|${rows.length}|${activos.size}`;
+  // Reset de la elección al (re)abrir o al cambiar los módulos disponibles — patrón de
+  // ajuste de estado durante render (react-hooks).
+  const estadoKey = `${open}|${decidido}|${rows.length}|${activos.size}`;
   const [prevKey, setPrevKey] = useState(estadoKey);
   if (estadoKey !== prevKey) {
     setPrevKey(estadoKey);
     setElegido(null);
-    if (open && !loading && disponibles.length === 1) {
-      setElegido(disponibles[0].id);
-    }
   }
+  // Con UN solo módulo disponible va elegido de una. Derivado (no estado): también al
+  // montar ya resuelto, que es lo habitual con la caché de sesión.
+  // Una elección anterior solo vale si SIGUE en el catálogo visible: si el módulo se cayó
+  // al revalidar, «Continuar» no debe abrir un proyecto para un módulo que ya no se ofrece.
+  const elegidoValido = elegido && disponibles.some((m) => m.id === elegido) ? elegido : null;
+  const elegidoActual: ModuloId | null =
+    elegidoValido ?? (disponibles.length === 1 ? disponibles[0].id : null);
 
   if (!open) return null;
 
   return (
-    <ModalShell ariaLabel="Elegir módulo">
+    <ModalShell ariaLabel="Elegir módulo" onClose={onClose}>
       <h3
         style={{
           fontSize: 15,
@@ -52,10 +59,17 @@ export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
         ¿En qué módulo desea crear el proyecto?
       </p>
 
-      {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)' }}>
-          Verificando suscripciones...
-        </p>
+      {!decidido ? (
+        <>
+          <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)' }}>
+            Verificando suscripciones...
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 16 }}>
+            <button type="button" onClick={onClose} style={BTN_SECUNDARIO}>
+              Cancelar
+            </button>
+          </div>
+        </>
       ) : disponibles.length === 0 ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ fontSize: 13, color: 'var(--on-surface-variant, #9ba8aa)' }}>
@@ -88,21 +102,23 @@ export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
                     gap: 10,
                     padding: '10px 12px',
                     border: `1px solid ${
-                      elegido === m.id
+                      elegidoActual === m.id
                         ? 'var(--primary, #4D8FF7)'
                         : 'var(--outline-variant, #3a3a44)'
                     }`,
                     borderRadius: 6,
                     cursor: 'pointer',
                     background:
-                      elegido === m.id ? 'var(--surface-container-low, #141418)' : 'transparent',
+                      elegidoActual === m.id
+                        ? 'var(--surface-container-low, #141418)'
+                        : 'transparent',
                   }}
                 >
                   <input
                     type="radio"
                     name="modulo-proyecto"
                     value={m.id}
-                    checked={elegido === m.id}
+                    checked={elegidoActual === m.id}
                     onChange={() => setElegido(m.id)}
                     aria-label={m.nombre}
                   />
@@ -135,15 +151,17 @@ export default function ModuleSelectDialog({ open, onClose, onPick }: Props) {
             </button>
             <button
               type="button"
-              disabled={!elegido}
-              onClick={() => elegido && onPick(elegido)}
+              disabled={!elegidoActual}
+              onClick={() => elegidoActual && onPick(elegidoActual)}
               style={{
                 ...BTN_CREAR,
-                background: elegido
+                background: elegidoActual
                   ? 'var(--primary, #4D8FF7)'
                   : 'var(--surface-container-low, #141418)',
-                color: elegido ? 'var(--on-primary, #fff)' : 'var(--on-surface-variant, #9ba8aa)',
-                cursor: elegido ? 'pointer' : 'default',
+                color: elegidoActual
+                  ? 'var(--on-primary, #fff)'
+                  : 'var(--on-surface-variant, #9ba8aa)',
+                cursor: elegidoActual ? 'pointer' : 'default',
               }}
             >
               Continuar

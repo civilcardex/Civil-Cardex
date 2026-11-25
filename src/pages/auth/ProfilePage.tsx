@@ -30,7 +30,11 @@ import { abrirProyectoCf } from './workspaceHandoff.ts';
 import { SUSCRIPCIONES_ACTIVAS, type ModuloId } from '../../lib/subscriptions/catalog.ts';
 import { useSuscripciones } from '../../hooks/useSubscriptions.ts';
 import SiteFooter from '../../components/landing/SiteFooter.tsx';
-import { estaActiva, verificarAccesoModulo } from '../../lib/subscriptions/subscriptionsService.ts';
+import {
+  estaActiva,
+  verificarAccesoModulo,
+  vigenciaDe,
+} from '../../lib/subscriptions/subscriptionsService.ts';
 import { fetchPerfil as traerPerfil, savePerfil } from '../../lib/profile/profileService.ts';
 import { clearLocalWorkspace } from '../../modules/civilflow/services/workspaceReset.ts';
 
@@ -41,13 +45,6 @@ const campos = [
   { key: 'matricula', label: 'Matrícula Profesional' },
   { key: 'telefono', label: 'Teléfono' },
 ];
-
-/** Días para la fecha_fin más próxima (reloj del cliente, igual que estaActiva).
- *  Vive fuera del render: react-hooks/purity prohíbe Date.now() directo en él. */
-function diasParaVencer(fechasFin: string[]): number {
-  const min = Math.min(...fechasFin.map((f) => new Date(f).getTime()));
-  return Math.floor((min - Date.now()) / 86400000);
-}
 
 /** Iniciales para el avatar del header (2 palabras máx). */
 function inicialesDe(nombre: string): string {
@@ -88,10 +85,8 @@ function ProfilePage() {
   const [proyRetry, setProyRetry] = useState(0);
   const [filtroModulo, setFiltroModulo] = useState<'todos' | 'cf' | 'cm'>('todos');
   const [proyLoading, setProyLoading] = useState(false);
-  const [showCreate, setShowCreate] = useState(false);
   const [showModSel, setShowModSel] = useState(false);
   const {
-    activos: modulosActivosUser,
     bloqueando: subsBloqueando,
     decidido: subsDecididas,
     rows: subsRows,
@@ -348,12 +343,14 @@ function ProfilePage() {
     if (activas.length === 0) {
       chipVencimiento = { tipo: 'rojo', texto: 'SUSCRIPCIÓN VENCIDA' };
     } else {
-      const dias = diasParaVencer(activas.map((r) => r.fecha_fin));
-      if (dias <= 7) {
-        chipVencimiento = {
-          tipo: 'ambar',
-          texto: dias === 0 ? 'Vence hoy' : `Vence en ${dias} día${dias === 1 ? '' : 's'}`,
-        };
+      // Texto relativo COMPARTIDO con el detalle de suscripciones (H-03): vigenciaDe de la
+      // suscripción que antes vence; el chip pinta solo la parte relativa (sin la fecha).
+      const [másPróxima] = [...activas].sort(
+        (a, b) => new Date(a.fecha_fin).getTime() - new Date(b.fecha_fin).getTime(),
+      );
+      const { tono, texto } = vigenciaDe(másPróxima);
+      if (tono === 'ambar') {
+        chipVencimiento = { tipo: 'ambar', texto: texto.split(' · ')[0] };
       }
     }
   }
@@ -382,8 +379,8 @@ function ProfilePage() {
     <div className="flex flex-col flex-1 min-h-full">
       <div className="space-y-6 max-w-[1200px] mx-auto w-full px-4 lg:px-6 flex-1">
         <script type="application/ld+json">{JSON.stringify(personJsonLd)}</script>
-        {/* Con suscripciones activas, "Nuevo proyecto" pregunta primero por el módulo
-          comprado; el flujo interno de cada módulo sigue intacto. */}
+        {/* "Nuevo proyecto" siempre pregunta primero en qué módulo crearlo; el flujo
+            interno de cada módulo sigue intacto. */}
         <ModuleSelectDialog
           open={showModSel}
           onClose={() => setShowModSel(false)}
@@ -393,11 +390,8 @@ function ProfilePage() {
           }}
         />
         <ProjectCreateDialog
-          open={showCreate || moduloElegido === 'flow'}
-          onClose={() => {
-            setShowCreate(false);
-            if (moduloElegido === 'flow') setModuloElegido(null);
-          }}
+          open={moduloElegido === 'flow'}
+          onClose={() => setModuloElegido(null)}
         />
         <ProjectCreateDialogCM
           open={moduloElegido === 'manage'}
@@ -575,11 +569,7 @@ function ProfilePage() {
             filtroModulo={filtroModulo}
             onFiltroModulo={setFiltroModulo}
             user={user}
-            subsBloqueando={subsBloqueando}
-            modulosActivosUser={modulosActivosUser}
             subsRows={subsRows}
-            onNuevoDirecto={() => setShowCreate(true)}
-            onNuevoModuloElegido={setModuloElegido}
             onNuevoSelector={() => setShowModSel(true)}
             errorApertura={errorApertura}
             openingId={openingId}

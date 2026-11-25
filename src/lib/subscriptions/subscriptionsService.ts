@@ -49,6 +49,61 @@ export function estaActiva(
   return new Date(s.fecha_fin).getTime() > ahora.getTime();
 }
 
+/** Días completos que faltan para llegar a una fecha (reloj del cliente, igual que estaActiva). Sale negativo si la fecha ya pasó; 0 si falta o pasó menos de un día. Ej: fecha_fin en 3,1 días -> 3; hace 2 horas -> 0. */
+export function diasHasta(fecha: string, ahora: Date = new Date()): number {
+  const ms = new Date(fecha).getTime() - ahora.getTime();
+  return ms >= 0 ? Math.floor(ms / 86_400_000) : Math.ceil(ms / 86_400_000);
+}
+
+/** ¿Caen dos fechas en el mismo día del calendario local? Evita decir «hoy» cuando la fecha mostrada es de mañana. */
+function mismoDiaLocal(a: Date, b: Date): boolean {
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+
+/** Días para la fecha de fin más próxima entre varias suscripciones. Ej: flow vence en 20 días y manage en 3 -> 3. */
+export function diasParaVencer(fechasFin: string[], ahora: Date = new Date()): number {
+  return Math.min(...fechasFin.map((f) => diasHasta(f, ahora)));
+}
+
+/** Cómo decirle al usuario cuánto le queda a UNA suscripción: texto listo para pintar y un tono (ok / ambar si vence en 7 días o menos / rojo si ya venció o está cancelada). Ej: fecha_fin dentro de 3 días -> 'Vence en 3 días · 18 dic 2026', tono ambar. */
+export function vigenciaDe(
+  s: Pick<SuscripcionRow, 'estado' | 'fecha_fin'>,
+  ahora: Date = new Date(),
+): { texto: string; tono: 'ok' | 'ambar' | 'rojo' } {
+  const fin = new Date(s.fecha_fin);
+  const cuando = fin.toLocaleDateString('es-CO');
+  const ms = fin.getTime() - ahora.getTime();
+  const horas = Math.abs(ms) / 3_600_000;
+  const dias = Math.floor(horas / 24);
+  const plural = (n: number) => (n === 1 ? '' : 's');
+  const hoy = mismoDiaLocal(fin, ahora);
+  // Al vencer, la fila sigue con estado 'activa' (nadie la cambia): la fecha manda.
+  if (ms <= 0) {
+    const texto =
+      horas < 24
+        ? hoy
+          ? `Venció hoy · ${cuando}`
+          : `Venció hace menos de 24 horas · ${cuando}`
+        : `Venció hace ${dias} día${plural(dias)} · ${cuando}`;
+    return { tono: 'rojo', texto };
+  }
+  if (s.estado !== 'activa') return { tono: 'rojo', texto: `Cancelada · ${cuando}` };
+  if (horas < 24) {
+    return {
+      tono: 'ambar',
+      texto: hoy ? `Vence hoy · ${cuando}` : `Vence en menos de 24 horas · ${cuando}`,
+    };
+  }
+  return {
+    tono: dias <= 7 ? 'ambar' : 'ok',
+    texto: `Vence en ${dias} día${plural(dias)} · ${cuando}`,
+  };
+}
+
 /** Módulos a los que puede entrar: los comprados por él + los asientos que le dieron como miembro del equipo de una empresa. Si la función de BD no existe todavía, devuelve []. */
 async function consultarModulosConAcceso(): Promise<ModuloId[] | null> {
   try {
