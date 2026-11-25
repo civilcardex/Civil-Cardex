@@ -29,9 +29,23 @@ test('la cola distingue entornos y envía un aviso por cada vigencia', async () 
         ('${productionUser}', 'production@example.test', now());
     `);
     const migration = await readFile(
-      new URL('../migrations/20261124000003_subscription_emails.sql', import.meta.url), 'utf8',
+      new URL('../migrations/20261124000003_subscription_emails.sql', import.meta.url),
+      'utf8',
     );
     await db.exec(migration);
+    await db.exec('alter table public.app_pagos add column txn_id text;');
+    await db.exec(
+      await readFile(
+        new URL('../migrations/20261125000000_failed_payment_emails.sql', import.meta.url),
+        'utf8',
+      ),
+    );
+    await db.exec(
+      await readFile(
+        new URL('../migrations/20261125000001_failed_payment_email_expiry.sql', import.meta.url),
+        'utf8',
+      ),
+    );
     await db.exec(`
       insert into public.app_pagos values
         (1, '${sandboxUser}', 'pendiente', null, array['flow'], 2500, 'USD', 'test', now(), 'sandbox'),
@@ -44,13 +58,19 @@ test('la cola distingue entornos y envía un aviso por cada vigencia', async () 
       update public.app_pagos set estado = 'aprobado' where id in (1, 2);
       set role service_role;
     `);
-    const sandbox = async () => (await db.query(
-      "select * from public.reclamar_correos_suscripcion('sandbox', $1)",
-      [sandboxUser],
-    )).rows;
+    const sandbox = async () =>
+      (
+        await db.query("select * from public.reclamar_correos_suscripcion('sandbox', $1)", [
+          sandboxUser,
+        ])
+      ).rows;
     const first = await sandbox();
     assert.deepEqual(first.map(({ tipo }) => tipo).sort(), ['pago', 'vencimiento']);
-    assert.ok(first.every(({ email, modulos }) => email === 'sandbox@example.test' && modulos[0] === 'flow'));
+    assert.ok(
+      first.every(
+        ({ email, modulos }) => email === 'sandbox@example.test' && modulos[0] === 'flow',
+      ),
+    );
     assert.deepEqual(await sandbox(), []);
     await db.exec(`
       reset role;
@@ -60,16 +80,82 @@ test('la cola distingue entornos y envía un aviso por cada vigencia', async () 
       set role service_role;
     `);
     const retry = await sandbox();
-    assert.deepEqual(retry.map(({ clave, intentos }) => [clave, intentos]), [['pago/1', 2]]);
-    const live = (await db.query(
-      "select * from public.reclamar_correos_suscripcion('production', null)",
-    )).rows;
-    assert.deepEqual(live.map(({ clave, email }) => [clave, email]), [['pago/2', 'production@example.test']]);
+    assert.deepEqual(
+      retry.map(({ clave, intentos }) => [clave, intentos]),
+      [['pago/1', 2]],
+    );
+    const live = (
+      await db.query("select * from public.reclamar_correos_suscripcion('production', null)")
+    ).rows;
+    assert.deepEqual(
+      live.map(({ clave, email }) => [clave, email]),
+      [['pago/2', 'production@example.test']],
+    );
+
+    const failed = async (user = sandboxUser, txn = 'txn_test', mode = 'sandbox') =>
+      (
+        await db.query(
+          "select public.encolar_correo_pago_fallido('decline', $1, $2, $3) as resultado",
+          [user, txn, mode],
+        )
+      ).rows[0].resultado;
+    assert.equal(await failed(), 'sin_vincular');
+    await db.exec(
+      "reset role; update public.app_pagos set txn_id = 'txn_test' where id = 3; set role service_role;",
+    );
+    assert.equal(await failed(productionUser), 'ignorado');
+    assert.equal(await failed(sandboxUser, 'txn_other'), 'ignorado');
+    assert.equal(await failed(sandboxUser, 'txn_test', 'production'), 'ignorado');
+    assert.equal(await failed(), 'aceptado');
+    assert.equal(await failed(), 'aceptado');
+    const alerts = async () =>
+      (
+        await db.query("select * from public.reclamar_correos_suscripcion('sandbox', $1, true)", [
+          sandboxUser,
+        ])
+      ).rows;
+    assert.deepEqual(await alerts(), []);
+    await db.exec(`
+      reset role;
+      update public.app_subscription_emails set procesar_desde = now() where tipo = 'pago_fallido';
+      set role service_role;
+    `);
+    assert.deepEqual(await sandbox(), []);
+    assert.deepEqual(
+      (await alerts()).map(({ clave, modulos }) => [clave, modulos]),
+      [['pago_fallido/3', ['manage']]],
+    );
+    // Un rechazo antiguo sin envío efectivo NO debe resucitar días después.
+    await db.exec(`
+      reset role;
+      update public.app_subscription_emails
+      set fallo_en = now() - interval '49 hours', procesar_desde = now(),
+          primer_intento_en = null, enviado_en = null
+      where clave = 'pago_fallido/3';
+      set role service_role;
+    `);
+    assert.deepEqual(await alerts(), []);
+    await db.exec(`
+      reset role;
+      update public.app_pagos set estado = 'aprobado' where id = 3;
+      update public.app_subscription_emails set procesar_desde = now() where clave = 'pago_fallido/3';
+      set role service_role;
+    `);
+    assert.deepEqual(
+      (await alerts()).map(({ clave }) => clave),
+      ['pago/3'],
+    );
+    assert.equal(await failed(), 'ignorado');
     await db.exec('reset role; set role authenticated;');
-    await assert.rejects(db.query('select * from public.app_subscription_emails'), /permission denied/);
-    await assert.rejects(db.query(
-      "select * from public.reclamar_correos_suscripcion('production', null)",
-    ), /permission denied/);
+    await assert.rejects(failed(), /permission denied/);
+    await assert.rejects(
+      db.query('select * from public.app_subscription_emails'),
+      /permission denied/,
+    );
+    await assert.rejects(
+      db.query("select * from public.reclamar_correos_suscripcion('production', null)"),
+      /permission denied/,
+    );
   } finally {
     await db.close();
   }

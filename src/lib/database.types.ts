@@ -173,6 +173,7 @@ export interface Database {
           procesar_desde: string;
           enviado_en: string | null;
           proveedor_id: string | null;
+          fallo_en: string | null;
         };
         Insert: {
           clave?: string | null;
@@ -187,6 +188,7 @@ export interface Database {
           procesar_desde?: string;
           enviado_en?: string | null;
           proveedor_id?: string | null;
+          fallo_en?: string | null;
         };
         Update: {
           clave?: string | null;
@@ -201,6 +203,7 @@ export interface Database {
           procesar_desde?: string;
           enviado_en?: string | null;
           proveedor_id?: string | null;
+          fallo_en?: string | null;
         };
         Relationships: [];
       };

@@ -10,6 +10,7 @@
 // y usa activar_suscripciones una sola vez por transacción):
 //   · transaction.paid      → valida firma + monto contra app_pagos y activa.
 //   · transaction.completed → idem (backup: si paid se pierde, completed activa).
+//   · transaction.payment_failed → programa un aviso si la orden sigue pendiente.
 // Los eventos de cliente y suscripción actualizan el espejo de facturación.
 // Otros eventos (transaction.created, adjustment.*, …) se reconocen sin acción.
 // Confirma la entrega después de procesarla; 401 con firma inválida.
@@ -20,7 +21,7 @@ import {
   PADDLE_WEBHOOK_SECRET,
   usuarioPaddlePermitido,
 } from '../_shared/payment_utils.ts';
-import { EventName, paddle, type EventEntity } from '../_shared/paddleSdk.ts';
+import { entornoPaddle, EventName, paddle, type EventEntity } from '../_shared/paddleSdk.ts';
 import { processPaymentEvent } from './paymentEvent.ts';
 import { sincronizarEvento } from './syncEvent.ts';
 
@@ -45,6 +46,27 @@ Deno.serve(async (req: Request) => {
 
   const admin = clienteAdmin();
   try {
+    if (event.eventType === EventName.TransactionPaymentFailed) {
+      const { referencia, user_id } = event.data.customData ?? {};
+      if (
+        event.data.subscriptionId ||
+        typeof referencia !== 'string' ||
+        !referencia ||
+        typeof user_id !== 'string' ||
+        !usuarioPaddlePermitido(user_id)
+      )
+        return json({ ok: true }, undefined, req);
+
+      const { data, error } = await admin.rpc('encolar_correo_pago_fallido', {
+        p_referencia: referencia,
+        p_user_id: user_id,
+        p_txn_id: event.data.id,
+        p_entorno: entornoPaddle,
+      });
+      if (error) throw new Error('encolar_pago_fallido');
+      if (data === 'sin_vincular') return json({ error: 'pago_no_vinculado' }, 503, req);
+      return json({ ok: true }, undefined, req);
+    }
     if (
       event.eventType !== EventName.TransactionPaid &&
       event.eventType !== EventName.TransactionCompleted
