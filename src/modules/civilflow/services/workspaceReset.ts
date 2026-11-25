@@ -8,6 +8,22 @@ const PREFIJOS_PREFERENCIAS = [
   'civilflow_net_',
 ];
 
+/* Libros de CONTEOS de aparatos/accesorios (ped. usuario 2026-11-25: «al restaurar, todos
+ *  los aparatos asignados se resetean»). La apertura del proyecto los borraba con TODO el
+ *  workspace; la restauración dependía de que cada fila de BD llevara fixtures — si el
+ *  último autosave de la sesión anterior salió antes de la inyección, la nube quedaba sin
+ *  ellos y el libro vacío se volvió permanente. Se conservan SOLO cuando hay planos
+ *  vigentes (reapertura del MISMO proyecto): las claves llevan planId, así que cambiar de
+ *  proyecto sigue limpiando. */
+const PREFIJOS_CONTEOS = [
+  'civilflow_aparatos_by_tramo_v2',
+  'civilflow_aparatos_heredados_v1',
+  'civilflow_aparatos_heredados_trib_v1',
+  'civilflow_bajadas_receptoras_v1',
+  'civilflow_tramo_hidro_data_v3',
+  'civilflow_gas_accesorios',
+];
+
 import { listRawKeys, setActiveProyectoId, getActiveProyectoId } from './storage/localStorage.ts';
 import { TRAZOS_PLAN_PREFIX, ACTIVE_NETS_KEY, PLANS_META_KEY } from '../constants/storage-keys.ts';
 import { journalTrazos } from './storage/strokesJournal.ts';
@@ -41,6 +57,7 @@ export function clearLocalWorkspace(opts: ClearLocalWorkspaceOptions = {}): void
   for (const k of listRawKeys('civilflow_')) {
     if (PREFIJOS_PREFERENCIAS.some((p) => k.startsWith(p))) continue;
     if (opts.conservarRescates && k.startsWith('civilflow_plano_borrador_rescate_')) continue;
+    if (vigentes && PREFIJOS_CONTEOS.some((p) => k.startsWith(p))) continue;
     if (vigentes && k.startsWith(TRAZOS_PLAN_PREFIX)) {
       const pid = k.slice(TRAZOS_PLAN_PREFIX.length);
       if (vigentes.has(pid)) {
