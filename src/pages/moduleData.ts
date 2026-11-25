@@ -28,11 +28,18 @@ export interface ModuleConfig {
   badgeLabel: string;
   headline: string;
   description: string;
-  ctaText?: string;
   /** Solo flow/manage renderizan features: los demás módulos caen en «En construcción» (early-return de ModulePage). */
   features?: Feature[];
   specs?: Spec[];
   customLayout?: 'flow' | 'manage';
+}
+
+export const NEW_PROJECT_CTA_TEXT = 'Iniciar nuevo proyecto';
+
+export interface ModuleHeroProps {
+  cfg: ModuleConfig;
+  onCtaClick: () => void;
+  ctaDisabled: boolean;
 }
 
 /** Los 6 módulos indexados por id ('flow', 'manage', …): fuente de los heroes, precios y ROUTE_META. */
@@ -120,7 +127,6 @@ export const MODULES_DATA: Record<string, ModuleConfig> = {
     headline: 'Presupuestos y APU de Obra Civil',
     description:
       'Construya análisis de precios unitarios con mano de obra, insumos, equipo y transporte. Gestione catálogos de proveedores, insumos, equipos, cuadrillas y colaboradores, con configuración de perfil país, factor prestacional e importación desde Excel.',
-    ctaText: 'INICIAR NUEVO PROYECTO',
     customLayout: 'manage',
   },
   roads: {

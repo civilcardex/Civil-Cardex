@@ -2,12 +2,7 @@
  *  Se prerenderiza en el build — el texto vive en DOM desde el primer render (SEO). */
 import { Link } from 'react-router';
 import { useEffect, useRef, useState } from 'react';
-import type { ModuleConfig } from '../../../../pages/moduleData.ts';
-
-interface Props {
-  cfg: ModuleConfig;
-  onCtaClick?: () => void;
-}
+import { NEW_PROJECT_CTA_TEXT, type ModuleHeroProps } from '../../../../pages/moduleData.ts';
 
 interface NetCard {
   name: string;
@@ -440,7 +435,7 @@ function FlowHeroBackground() {
   );
 }
 
-export default function FlowHero({ cfg, onCtaClick }: Props) {
+export default function FlowHero({ cfg, onCtaClick, ctaDisabled }: ModuleHeroProps) {
   const heroRef = useRef<HTMLElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -493,11 +488,14 @@ export default function FlowHero({ cfg, onCtaClick }: Props) {
         <div className="flex flex-col sm:flex-row gap-4 mt-6">
           <button
             type="button"
+            disabled={ctaDisabled}
             onClick={onCtaClick}
-            className="flow-cta inline-flex items-center gap-2 px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold transition-all"
+            className="flow-cta inline-flex items-center gap-2 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.08em] transition-all disabled:cursor-wait"
           >
-            <span className="material-symbols-outlined text-sm!">rocket_launch</span>
-            {cfg.ctaText}
+            <span aria-hidden="true" className="material-symbols-outlined text-sm!">
+              rocket_launch
+            </span>
+            {NEW_PROJECT_CTA_TEXT}
           </button>
           <Link
             to="/docs"

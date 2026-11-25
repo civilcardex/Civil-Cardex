@@ -1,26 +1,22 @@
-import { useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import ModulePageLayout from '../components/ModulePageLayout.tsx';
 import FlowHero from '../modules/civilflow/components/modulePage/FlowHero.tsx';
 import ManageHero from '../components/modulePage/ManageHero.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
-import { MODULES_DATA } from './moduleData.ts';
+import { MODULES_DATA, type ModuleHeroProps } from './moduleData.ts';
 import ProjectCreateDialog from '../modules/civilflow/components/shared/ProjectCreateDialog.tsx';
 import ProjectCreateDialogCM from '../modules/civilmanager/components/shared/ProjectCreateDialogCM.tsx';
 import { useAuth } from '../context/AuthContext.tsx';
 import { Link, useNavigate } from 'react-router';
 import { useSuscripciones } from '../hooks/useSubscriptions.ts';
+import { verificarAccesoModulo } from '../lib/subscriptions/subscriptionsService.ts';
 
 interface ModulePageProps {
   moduleId: 'flow' | 'structure' | 'terrain' | 'manage' | 'roads';
 }
 
-interface HeroProps {
-  cfg: NonNullable<(typeof MODULES_DATA)[keyof typeof MODULES_DATA]>;
-  onCtaClick?: () => void;
-}
-
-const HERO_BY_LAYOUT: Record<string, ComponentType<HeroProps>> = {
+const HERO_BY_LAYOUT: Record<string, ComponentType<ModuleHeroProps>> = {
   flow: FlowHero,
   manage: ManageHero,
 };
@@ -38,13 +34,19 @@ const SPECS_COLS = [
 /** Página pública de cada módulo (hero + features + specs + normas + CTA "Nuevo proyecto" con gating de suscripción). Ej: /civilflow pinta MODULES_DATA.flow con FlowHero. */
 export default function ModulePage({ moduleId }: ModulePageProps) {
   const cfg = MODULES_DATA[moduleId];
-  const { user } = useAuth();
+  const { user, loading: cargandoSesion } = useAuth();
   const navigate = useNavigate();
-  const { activos, bloqueando } = useSuscripciones();
-  // Seat-aware: activos = filas propias ∪ puestos de empresa (mis_accesos).
-  const tieneModulo = (id: 'flow' | 'manage') => activos.has(id);
+  const { bloqueando, decidido } = useSuscripciones();
   const [showCreate, setShowCreate] = useState(false);
   const [showCreateCM, setShowCreateCM] = useState(false);
+  const [verificandoAcceso, setVerificandoAcceso] = useState(false);
+  const [errorAcceso, setErrorAcceso] = useState(false);
+  const comprobacion = useRef<AbortController | null>(null);
+  const userId = user?.id;
+
+  useEffect(() => {
+    return () => comprobacion.current?.abort();
+  }, [moduleId, userId]);
   // Las metas salen de la fuente ÚNICA (ROUTE_META): el prerender usa la misma tabla, así que
   // el crawler y el navegador ven lo mismo.
   // ROUTE_META cubre las 5 rutas de módulo (test routeMeta): el fallback es '' por si
@@ -115,32 +117,47 @@ export default function ModulePage({ moduleId }: ModulePageProps) {
   }
 
   const Hero = HERO_BY_LAYOUT[cfg.customLayout ?? 'flow'];
+  const ctaDisabled = cargandoSesion || (!!userId && !decidido) || verificandoAcceso;
+
+  async function iniciarProyecto() {
+    if (ctaDisabled || comprobacion.current || (moduleId !== 'flow' && moduleId !== 'manage'))
+      return;
+    if (!userId) {
+      navigate('/login', { state: { from: cfg.ruta } });
+      return;
+    }
+    setErrorAcceso(false);
+    if (bloqueando) {
+      const consulta = new AbortController();
+      comprobacion.current = consulta;
+      setVerificandoAcceso(true);
+      const acceso = await verificarAccesoModulo(moduleId);
+      comprobacion.current = null;
+      setVerificandoAcceso(false);
+      if (consulta.signal.aborted) return;
+      if (acceso === null) {
+        setErrorAcceso(true);
+        return;
+      }
+      if (!acceso) {
+        navigate(`/pricing?modulo=${moduleId}`);
+        return;
+      }
+    }
+    if (moduleId === 'flow') setShowCreate(true);
+    else setShowCreateCM(true);
+  }
 
   return (
     <ModulePageLayout title={cfg.title} mainClassName="flex flex-col w-full" moduleId={moduleId}>
       <script type="application/ld+json">{JSON.stringify(softwareAppJsonLd)}</script>
       {/* Hero Section */}
-      <Hero
-        cfg={cfg}
-        onCtaClick={
-          moduleId === 'flow' || moduleId === 'manage'
-            ? () => {
-                // Sin sesión → login llevando el destino: LoginPage vuelve a ESTE módulo
-                // tras autenticar (location.state.from; sin estado iría a /perfil).
-                if (!user) {
-                  navigate('/login', { state: { from: `/modulo/${moduleId}` } });
-                  return;
-                }
-                if (bloqueando && !tieneModulo(moduleId)) {
-                  navigate(`/pricing?modulo=${moduleId}`);
-                  return;
-                }
-                if (moduleId === 'flow') setShowCreate(true);
-                else setShowCreateCM(true);
-              }
-            : undefined
-        }
-      />
+      <Hero cfg={cfg} ctaDisabled={ctaDisabled} onCtaClick={() => void iniciarProyecto()} />
+      {errorAcceso && (
+        <p role="alert" className="px-6 py-3 text-center text-sm text-on-surface">
+          No pudimos comprobar tu suscripción. Vuelve a pulsar Iniciar nuevo proyecto.
+        </p>
+      )}
 
       {/* Features / Details Section */}
       <section

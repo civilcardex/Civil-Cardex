@@ -1,10 +1,5 @@
 import { Link } from 'react-router';
-import type { ModuleConfig } from '../../pages/moduleData.ts';
-
-interface Props {
-  cfg: ModuleConfig;
-  onCtaClick?: () => void;
-}
+import { NEW_PROJECT_CTA_TEXT, type ModuleHeroProps } from '../../pages/moduleData.ts';
 
 // Large, faint background glyphs echoing the module's own domain (budgeting, catalogs,
 // crews, suppliers) instead of a flat gradient — purely decorative, aria-hidden.
@@ -35,7 +30,7 @@ const FUNCTIONALITIES = [
 ];
 
 /** Hero de la página del módulo CM (Civil Manager): H1, CTAs y funcionalidades clave sobre íconos de dominio de fondo (decorativos, aria-hidden). */
-export default function ManageHero({ cfg, onCtaClick }: Props) {
+export default function ManageHero({ cfg, onCtaClick, ctaDisabled }: ModuleHeroProps) {
   return (
     <section className="manage-hero relative pt-24 pb-16 px-6 lg:px-8 overflow-hidden flex flex-col items-center justify-center text-center">
       <div className="manage-hero-overlay absolute inset-0 pointer-events-none" />
@@ -83,22 +78,17 @@ export default function ManageHero({ cfg, onCtaClick }: Props) {
         </div>
 
         <div className="mh-cta-row mh-card flex flex-col sm:flex-row gap-4 mt-10">
-          {onCtaClick ? (
-            <button
-              type="button"
-              onClick={onCtaClick}
-              className="mh-cta mh-cta-button inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 transition-all hover:-translate-y-0.5"
-            >
-              <span className="material-symbols-outlined">rocket_launch</span> {cfg.ctaText}
-            </button>
-          ) : (
-            <Link
-              to="/civilmanagerareatrabajo"
-              className="mh-cta inline-flex px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold items-center gap-2 transition-all hover:-translate-y-0.5"
-            >
-              <span className="material-symbols-outlined">rocket_launch</span> {cfg.ctaText}
-            </Link>
-          )}
+          <button
+            type="button"
+            disabled={ctaDisabled}
+            onClick={onCtaClick}
+            className="mh-cta mh-cta-button inline-flex items-center gap-2 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.08em] transition-all enabled:hover:-translate-y-0.5 disabled:cursor-wait"
+          >
+            <span aria-hidden="true" className="material-symbols-outlined">
+              rocket_launch
+            </span>
+            {NEW_PROJECT_CTA_TEXT}
+          </button>
           <Link
             to="/docs"
             className="font-geist-mono inline-flex items-center gap-2 border border-outline-variant text-on-surface px-8 py-4 uppercase text-[11px] tracking-[0.08em] font-bold hover:border-primary hover:-translate-y-0.5 transition-all"
