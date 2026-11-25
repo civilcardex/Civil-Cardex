@@ -20,12 +20,27 @@ export function handlePointerMove(engine: EngineFull, e: MouseEvent | TouchEvent
     if (engine._pinchDist0 == null) {
       engine._pinchDist0 = dist;
       engine._pinchZoom0 = engine.zoom;
+      engine._pinchMid0 = { mx, my };
       return;
     }
+    /* Pan del gesto (estándar de mapas, ped. usuario 2026-11-25): el delta del punto medio
+     *  traslada el plano; zoomAnclado se aplica DESPUÉS y ancla el zoom sobre la posición YA
+     *  paneada — zoom y pan conviven en el mismo arrastre. Funciona con cualquier herramienta
+     *  activa: el 2.º dedo nunca dibuja (el trazo va por el pending de 1 dedo en canvasSetup). */
+    if (engine._pinchMid0) {
+      engine.offX += mx - engine._pinchMid0.mx;
+      engine.offY += my - engine._pinchMid0.my;
+    }
+    engine._pinchMid0 = { mx, my };
+    // zoomAnclado solo repinta cuando cambia la escala; el paneo puro (distancia constante
+    // o zoom ya saturado) también tiene que dibujar el nuevo offset.
+    const zoomAntes = engine.zoom;
     zoomAnclado(engine, (engine._pinchZoom0 * dist) / engine._pinchDist0, mx, my);
+    if (engine.zoom === zoomAntes) engine.scheduleRender();
     return;
   }
   engine._pinchDist0 = null;
+  engine._pinchMid0 = null;
   const { x, y } = engine._getPos(e);
   engine._lastMouseCvs = { x, y };
   if (engine.panning) {

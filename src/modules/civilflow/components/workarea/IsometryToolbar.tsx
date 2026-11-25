@@ -198,11 +198,11 @@ export default function IsometriaToolbar({
           type="range"
           min={-90}
           max={90}
-          value={rotX}
+          value={Math.round(rotX)}
           onChange={(e) => setRotX(Number(e.target.value))}
           style={{ width: 60 }}
         />
-        <span style={{ width: 28, textAlign: 'right' }}>{rotX}°</span>
+        <span style={{ width: 28, textAlign: 'right' }}>{Math.round(rotX)}°</span>
       </div>
       <div
         style={{
@@ -252,11 +252,11 @@ export default function IsometriaToolbar({
           type="range"
           min={0}
           max={360}
-          value={rotZ}
+          value={Math.round(rotZ)}
           onChange={(e) => setRotZ(Number(e.target.value))}
           style={{ width: 60 }}
         />
-        <span style={{ width: 32, textAlign: 'right' }}>{rotZ}°</span>
+        <span style={{ width: 32, textAlign: 'right' }}>{Math.round(rotZ)}°</span>
       </div>
       <label
         style={{

@@ -19,6 +19,7 @@ export function handlePointerDown(engine: EngineFull, e: MouseEvent | TouchEvent
   // touchstart de CADA dedo entra aquí y crearía vértices o selecciones fantasma.
   if (e instanceof TouchEvent && e.touches.length > 1) return;
   const { x, y } = engine._getPos(e);
+  engine._lastDown = { x, y };
 
   if ((e instanceof MouseEvent && e.button === 1) || engine.tool === 'pan') {
     engine.panning = true;

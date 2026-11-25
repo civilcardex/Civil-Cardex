@@ -67,5 +67,5 @@ export function pintaEjes(args: {
   ctx.font = '9px Geist,monospace';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
-  ctx.fillText(`${rotX}°/${rotZ}° z${scaleZ.toFixed(1)}`, 6, 6);
+  ctx.fillText(`${Math.round(rotX)}°/${Math.round(rotZ)}° z${scaleZ.toFixed(1)}`, 6, 6);
 }

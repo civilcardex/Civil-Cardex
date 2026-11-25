@@ -20,6 +20,10 @@
   min-height: 0;
 }
 
+.content.workarea-isometry {
+  padding-block-end: 0;
+}
+
 .content > .fu {
   flex: 1;
   display: flex;

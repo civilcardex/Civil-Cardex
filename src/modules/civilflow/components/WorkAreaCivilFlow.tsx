@@ -48,8 +48,19 @@ interface NetworkBarProps {
 }
 
 function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: NetworkBarProps) {
+  const isometry = tab === 'iso';
+  if (isometry && redesActivas.length === 0) return null;
   return (
-    <div data-tour="barra-redes" style={WorkAreaCivilFlow_S1}>
+    <nav
+      aria-label="Redes activas"
+      data-tour="barra-redes"
+      style={{
+        ...WorkAreaCivilFlow_S1,
+        padding: isometry
+          ? '2px 12px max(2px, env(safe-area-inset-bottom))'
+          : WorkAreaCivilFlow_S1.padding,
+      }}
+    >
       {redesActivas.map((r) => {
         const active = tab === 'redes' && redActiva === r.id;
         const netColor = r.col || '#666';
@@ -63,6 +74,7 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
             }}
             style={{
               ...WorkAreaCivilFlow_S6,
+              minBlockSize: isometry ? 44 : undefined,
               borderColor: active ? netColor : 'var(--line)',
               color: active ? netColor : 'var(--txt3)',
               background: active ? 'rgba(0,0,0,.15)' : 'transparent',
@@ -85,7 +97,7 @@ function NetworkBar({ redesActivas, tab, redActiva, setTab, setRedActiva }: Netw
         );
       })}
       <div style={{ flex: 1 }} />
-    </div>
+    </nav>
   );
 }
 
@@ -164,12 +176,11 @@ function CivilFlowInner({ tabInicial }: { tabInicial?: string | null }) {
   }, [state.plans]);
 
   return (
-    // Isometría se acota al hueco real (100dvh − navbar h-14) para que su sidebar sea el
-    // ÚNICO scroll. Las demás pestañas usan '100%' (valor ORIGINAL): la cadena flex de
-    // .content > .fu necesita una altura definida para que cada sección llene el viewport.
+    // Layout ya reserva la altura de la barra superior. Ocupamos el hueco restante
+    // para mantener las redes al pie sin volver a descontar altura del visor.
     <div
       style={{
-        height: state.tab === 'iso' ? 'calc(100dvh - 3.5rem)' : '100%',
+        height: '100%',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -201,7 +212,10 @@ function CivilFlowInner({ tabInicial }: { tabInicial?: string | null }) {
       <div className="app" style={{ flex: 1, minHeight: 0 }}>
         <WorkAreaSidebar tab={state.tab} setTab={state.setTab} />
         <div className="layout">
-          <div className="content" style={{ padding: state.tab === 'planos' ? 0 : undefined }}>
+          <div
+            className={state.tab === 'iso' ? 'content workarea-isometry' : 'content'}
+            style={{ padding: state.tab === 'planos' ? 0 : undefined }}
+          >
             <WorkAreaContent state={state} />
           </div>
         </div>

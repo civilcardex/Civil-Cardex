@@ -37,6 +37,9 @@ export interface EngineFull extends IPlanoEngineCore {
   _pinchDist0: number | null;
   /** Zoom del engine al iniciar el pinch: base para escalar por razón de distancias. */
   _pinchZoom0: number;
+  /** Punto medio de los 2 dedos al INICIAR el gesto y en el frame previo: su delta entre
+   *  eventos es el paneo del gesto pinch (zoom + pan en el mismo arrastre, ped. 2026-11-25). */
+  _pinchMid0: { mx: number; my: number } | null;
   /** Rueda acumulada por cuadro (deltaY normalizado a px). */
   _wheelAccum: number;
   /** Id del rAF pendiente del flush de rueda; 0 = sin flush programado. */

@@ -16,6 +16,7 @@ import {
   type IsoRamal,
   type IsoBajante,
 } from './isometry/geometry';
+import { bajanteVisible } from './isometry/painters/networks.ts';
 import { useIsometriaRender } from './isometry/useIsometryRender.ts';
 import { useIsometriaInteraction } from './isometry/useIsometryInteraction.ts';
 import { exportPdf, exportPng } from './isometry/export.ts';
@@ -81,6 +82,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
   const [offX, setOffX] = useState(0);
   const [offY, setOffY] = useState(0);
   const [selTramo, setSelTramo] = useState<string | null>(null);
+  const [mostrarTramos, setMostrarTramos] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 500 });
@@ -376,6 +378,8 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       if (!activeNets.has(netId)) continue;
       const prof = profByNet[netId] ?? 0;
       for (const r of netData.ramales) {
+        // Mismo filtro que el pintor: encuadrar no debe incluir pisos ocultos.
+        if (pisosVisibles && !pisosVisibles.has(r.planNivel)) continue;
         // `prof` (Parámetros de Diseño > Materiales por red > "Profundidad de instalación
         // respecto a NPT") se guarda NEGATIVO bajo losa (p. ej. sanitaria -0.70). En esta
         // proyección un z MÁS POSITIVO se renderiza MÁS ABAJO en pantalla (ver project() en
@@ -390,6 +394,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         }
       }
       for (const b of netData.bajantes) {
+        if (!bajanteVisible(b, pisosVisibles, confirmedPlanos)) continue;
         const prof2 = profByNet[b.net] ?? 0;
         // npt YA viene en mm (lo mismo que nptMap): NO se multiplica por 1000. Con el
         // factor de más, un bajante con npt=2700 quedaba a 2 700 000 (400 km por encima
@@ -440,6 +445,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       for (const [planId, planData] of planImagesRef.current) {
         const plan = confirmedPlanos.find((p) => p.id === planId);
         if (!plan || plan.nivel == null) continue;
+        if (pisosVisibles && !pisosVisibles.has(Number(plan.nivel))) continue;
         const z = nptMap[plan.nivel] || 0;
         const z_pix = getZPix(z, plan.nivel);
         const imgW = planData.w;
@@ -496,6 +502,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     offY,
     size,
     confirmedPlanos,
+    pisosVisibles,
     getIsoCoords,
     getZPix,
   ]);
@@ -514,7 +521,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     return { ramales, bajantes, len: len.toFixed(1) };
   }, [dataByNet]);
 
-  const { cursorStyle, handleMouseDown } = useIsometriaInteraction({
+  const { cursorStyle, pointerHandlers } = useIsometriaInteraction({
     canvasRef,
     rotX,
     setRotX,
@@ -524,6 +531,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
     setOffX,
     offY,
     setOffY,
+    zoom,
     setZoom,
     setSelTramo,
   });
@@ -641,7 +649,7 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
       />
 
       {/* Área principal */}
-      <div className="fu" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+      <div className="fu iso-network-layout" data-tramos={mostrarTramos}>
         {/* Sidebar de tramos — agrupados por red y luego por piso */}
         <IsometriaSidebar
           tramoTree={tramoTree}
@@ -655,17 +663,43 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
         />
 
         {/* Lienzo 3D (ancla del tour: solo el visor, no los paneles laterales) */}
-        <div
-          ref={containerRef}
-          data-tour="iso-canvas"
-          style={{ flex: 1, minHeight: 0, overflow: 'hidden', position: 'relative' }}
-        >
+        <div ref={containerRef} data-tour="iso-canvas" className="iso-network-stage">
           <canvas
             ref={canvasRef}
-            style={{ width: '100%', height: '100%', display: 'block', cursor: cursorStyle }}
-            onMouseDown={handleMouseDown}
+            className="iso-gesture-canvas"
+            style={{ cursor: cursorStyle }}
+            {...pointerHandlers}
             onContextMenu={(e) => e.preventDefault()}
           />
+          <div className="iso-quick-controls">
+            <button
+              type="button"
+              aria-expanded={mostrarTramos}
+              onClick={() => setMostrarTramos((v) => !v)}
+            >
+              Tramos
+            </button>
+            <button
+              type="button"
+              aria-label="Alejar"
+              onClick={() => setZoom((z) => Math.max(0.05, z / 1.25))}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              aria-label="Acercar"
+              onClick={() => setZoom((z) => Math.min(2, z * 1.25))}
+            >
+              +
+            </button>
+            <button type="button" onClick={fitView}>
+              Encuadrar
+            </button>
+          </div>
+          <p className="iso-touch-hint">
+            Toca un tramo · Arrastra para girar · Dos dedos para mover o ampliar
+          </p>
           {isoLoading && (
             <div className="iso-loading-overlay">
               <div className="iso-loading-spinner" />

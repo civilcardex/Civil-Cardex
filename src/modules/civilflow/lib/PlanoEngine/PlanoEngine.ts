@@ -194,6 +194,8 @@ export default class PlanoEngine implements IPlanoEngineCore {
   panY0!: number;
   mouseX!: number;
   mouseY!: number;
+  _lastDown: { x: number; y: number } | null = null;
+  _pinchMid0: { mx: number; my: number } | null = null;
   ghostDrag!: { id: string; startX: number; startY: number; baseDx: number; baseDy: number } | null;
   guideDrag!: {
     id: string;

@@ -389,6 +389,9 @@ export interface IPlanoEngineCore {
   activeNet: string;
   mouseX: number;
   mouseY: number;
+  /** Último clic/toque sobre el lienzo (coords internas del motor): con él el botón
+   *  «Opciones» de las tablets reproduce el clic derecho en ese mismo punto. */
+  _lastDown?: { x: number; y: number } | null;
   zoom: number;
   offX: number;
   offY: number;

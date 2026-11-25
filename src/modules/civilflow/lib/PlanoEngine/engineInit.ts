@@ -159,4 +159,5 @@ export function initEngineState(
   engine._onUpdateCb = null;
   engine._loadedPlanId = null;
   engine._pinchDist0 = null;
+  engine._pinchMid0 = null;
 }

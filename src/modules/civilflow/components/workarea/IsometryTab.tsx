@@ -4,6 +4,7 @@ import PageNav from '../PageNav.tsx';
 import { IsometriaGeneral } from './IsometryGeneral.tsx';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import { setAyudaContext } from '../../../../components/help/helpContext.ts';
+import './isometry.css';
 
 // Pestaña Isometría con 4 sub-pestañas (orig. usuario): Isometría (el contenido histórico),
 // Aparatos (visor 3D del detalle de instalación), Bomba red contra incendio (solo el visor 3D
@@ -55,7 +56,7 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
   }, [sub]);
   return (
     <div
-      className="fu"
+      className="fu iso-workspace"
       data-tour="cf-tab-iso"
       style={{
         display: 'flex',
@@ -67,7 +68,12 @@ function IsometriaTabBase({ state }: { state: ReturnType<typeof useWorkAreaState
       }}
     >
       {tour}
-      <PageNav page={sub} setPage={setSub} total={5} labels={SUBTABS} color="var(--acc)" />
+      <div className="iso-tabs">
+        <PageNav page={sub} setPage={setSub} total={5} labels={SUBTABS} color="var(--acc)" />
+      </div>
+      {sub !== 1 && (
+        <p className="iso-3d-hint">Arrastra para girar · Pellizca para acercar o alejar</p>
+      )}
       {/* El ancla del tour vive DENTRO de cada visor (data-tour="iso-canvas"): aquí se
           envolvería también la barra y los paneles, que el paso no debe resaltar. */}
       {/* display:flex OBLIGATORIO: sin él este wrapper es un bloque y el flex:1 del root

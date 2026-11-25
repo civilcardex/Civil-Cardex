@@ -67,7 +67,7 @@ export async function exportPdf({
 
   doc.setFontSize(9);
   doc.text(
-    `Vista: rotX=${rotX}° rotZ=${rotZ}° scaleZ=${scaleZ.toFixed(1)} zoom=${Math.round(zoom * 100)}%`,
+    `Vista: rotX=${Math.round(rotX)}° rotZ=${Math.round(rotZ)}° scaleZ=${scaleZ.toFixed(1)} zoom=${Math.round(zoom * 100)}%`,
     margin,
     pageH - 8,
   );

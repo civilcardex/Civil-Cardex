@@ -42,15 +42,25 @@ for (const [width, height] of [
           touchPoints: [first, second],
         });
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
-        await tap('Terminar');
-        await expect(
-          page.getByText('Coloca al menos dos puntos para terminar el ramal.'),
-        ).toBeVisible();
+        // En tablet no hay «Terminar»: el gesto cancelado no debe cerrar el ramal
+        // aunque el siguiente toque caiga cerca del punto anterior.
+        await at(140, 130);
+        await at(140, 130);
+        await expect(page.getByTestId('ramales')).toHaveText('0');
+        await tap('Cancelar'); // descarta el punto suelto que dejó el toque de prueba
+        await expect(page.getByTestId('puntos')).toHaveText('0');
         await cdp.detach();
       }
-      await at(100, 100);
-      await at(220, 100);
-      await tap('Terminar');
+      if (hasTouch) {
+        // Doble toque: el 1.er toque añade el punto y el 2.º cierra sin duplicarlo.
+        await at(100, 100);
+        await at(220, 100);
+        await at(220, 100);
+      } else {
+        await at(100, 100);
+        await at(220, 100);
+        await tap('Terminar');
+      }
       await expect(page.getByTestId('ramales')).toHaveText('1');
       await expect(page.getByTestId('puntos')).toHaveText('2');
       await at(110, 160);
@@ -202,7 +212,7 @@ for (const [width, height] of [
         await page.getByRole('button', { name: 'Dibujar ramal' }).tap();
         await canvas.tap({ position: { x: 100, y: 100 } });
         await canvas.tap({ position: { x: 400, y: 100 } });
-        await page.getByRole('button', { name: 'Terminar' }).tap();
+        await canvas.tap({ position: { x: 400, y: 100 } }); // doble toque cierra el ramal
         await page.getByRole('button', { name: 'Seleccionar', exact: true }).tap();
         await canvas.tap({ position: { x: 250, y: 100 } });
         await page.getByRole('button', { name: 'Opciones' }).tap();

@@ -65,6 +65,9 @@ function FlowFixture() {
   const [options, setOptions] = useState(false);
   const [index, setIndex] = useState(0);
   const { isMobile, isNarrow } = useViewerResponsive();
+  // El contrato real del visor: «tablet» = puntero grueso. Terminar/Coordenadas son solo
+  // de escritorio; en táctil se cierra con doble toque y Cancelar sigue disponible.
+  const esTactil = matchMedia('(any-pointer: coarse)').matches;
   useEffect(() => {
     const engine = new PlanoEngine(wrap.current!, null, canvas.current!);
     engine.pageW = 500;
@@ -145,7 +148,7 @@ function FlowFixture() {
             engineRef={eng}
             drawing={line}
             disabled={false}
-            tablet
+            tablet={esTactil}
             onSave={() => {}}
             onUndo={() => {}}
             onOptions={selected ? () => setOptions(true) : undefined}

@@ -32,6 +32,9 @@ export function setupCanvasEvents(engine: EngineFull): void {
     null;
   let rollback: (() => void) | null = null;
   let dragPlanId: EngineFull['_loadedPlanId'];
+  /** Último toque sintetizado: dos toques rápidos en el mismo punto = doble toque táctil
+   *  (el equivalente al doble clic con que se cierra el trazado en escritorio). */
+  let lastTap: { t: number; x: number; y: number } | null = null;
   const interrupt = () => {
     if (dragPlanId === engine._loadedPlanId) rollback?.();
     rollback = null;
@@ -43,6 +46,9 @@ export function setupCanvasEvents(engine: EngineFull): void {
     engine.canv.style.cursor =
       engine.tool === 'pan' ? 'grab' : engine.tool === 'sel' ? 'default' : 'crosshair';
     engine._pinchDist0 = null;
+    engine._pinchMid0 = null;
+    // Un gesto interrumpido NO debe dejar armado el doble toque del toque anterior.
+    lastTap = null;
     engine.render();
   };
   engine._touchStartHandler = engine._wrapTouch((e) => {
@@ -68,7 +74,10 @@ export function setupCanvasEvents(engine: EngineFull): void {
     }
     if (interrupted || !e.touches.length) return;
     const t = e.touches[0];
-    if (pending && Math.hypot(t.clientX - pending.x, t.clientY - pending.y) > 10) pending = null;
+    if (pending && Math.hypot(t.clientX - pending.x, t.clientY - pending.y) > 10) {
+      pending = null;
+      lastTap = null; // el dedo se movió: esto ya no es un toque, es un arrastre.
+    }
     if (started && !rollback && DRAG_KEYS.some((key) => key !== 'marqueeRect' && engine[key])) {
       rollback = captureDragGeometry(engine);
     }
@@ -77,12 +86,42 @@ export function setupCanvasEvents(engine: EngineFull): void {
   engine._touchEndHandler = (e: TouchEvent) => {
     e.preventDefault();
     if (e.touches.length < 2) engine._pinchDist0 = null;
+    engine._pinchMid0 = null;
     if (e.type === 'touchcancel') {
       interrupt();
       return;
     }
     if (e.touches.length > 0 || interrupted) return;
     const t = e.changedTouches[0];
+    /* DOBLE TOQUE (ped. usuario 2026-11-25): el 2.º toque rápido sobre el MISMO punto con un
+     *  trazado abierto cierra el ramal/tributario (el equivalente táctil del doble clic de
+     *  escritorio). Se detecta ANTES de sintetizar el punto para no insertar el duplicado:
+     *  el punto final ya lo puso el 1.er toque. Con un solo punto no hay nada que cerrar —
+     *  se ignora el toque y el trazado sigue. Ventana 600 ms / 30 px (holgada para el pulso
+     *  en tablet — ped. usuario 2026-11-25: «aumenta el tiempo para dar doble click»). */
+    const ramalAbierto = engine.activeRamal;
+    // El SEGUNDO toque tiene que ser un toque válido por sí mismo: si el dedo se arrastró
+    // (pending ya fue descartado) o cambió de plano/herramienta, no cierra nada.
+    const toqueValido =
+      !!pending &&
+      !!t &&
+      pending.planId === engine._loadedPlanId &&
+      pending.tool === engine.tool &&
+      Math.hypot(t.clientX - pending.x, t.clientY - pending.y) <= 10;
+    const esDobleToque =
+      toqueValido &&
+      !!lastTap &&
+      Date.now() - lastTap.t <= 600 &&
+      !!t &&
+      Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y) <= 30 &&
+      engine.tool === 'line' &&
+      !!ramalAbierto;
+    lastTap = pending && t && !esDobleToque ? { t: Date.now(), x: t.clientX, y: t.clientY } : null;
+    if (esDobleToque && ramalAbierto) {
+      pending = null;
+      if (ramalAbierto.pts.length >= 2) engine.finishRamal();
+      return;
+    }
     if (
       pending &&
       t &&

@@ -42,6 +42,7 @@ export default function IsometriaSidebar({
 }: IsometriaSidebarProps) {
   return (
     <div
+      className="iso-network-sidebar"
       data-tour="iso-sidebar"
       style={{
         width: 200,

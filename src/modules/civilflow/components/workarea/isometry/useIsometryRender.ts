@@ -72,9 +72,12 @@ export function useIsometriaRender({
     const W = size.w,
       H = size.h;
     const dpr = devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    ctx.scale(dpr, dpr);
+    const backingW = Math.round(W * dpr);
+    const backingH = Math.round(H * dpr);
+    if (canvas.width !== backingW) canvas.width = backingW;
+    if (canvas.height !== backingH) canvas.height = backingH;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#14161a';
     ctx.fillRect(0, 0, W, H);
@@ -129,6 +132,7 @@ export function useIsometriaRender({
     });
     // 4) Ejes XYZ + rótulo de rotación (encima de todo, esquinas).
     pintaEjes({ ctx, H, vista });
+    ctx.restore();
 
     // Guarda los segmentos para la prueba de aciertos (hit testing)
     canvas.__isoSegments = segments;
