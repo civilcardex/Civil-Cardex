@@ -142,7 +142,7 @@ export default function RciGuiaModal({
   return (
     // ponytail: sin portal — showModal() pinta en top layer por encima de todo, el portal
     // a body no aporta nada (y quedaba DEBAJO si otro modal estaba abierto).
-    <ModalOverlay zIndex={99999} onClose={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div
         className="guia-rci"
         aria-label="Guía de diseño contra incendio"

@@ -7,30 +7,11 @@ import { COMPONENTS } from './aparatos3dData.ts';
 import { colocarRigLuz, useAparatos3DScene } from './useAparatos3DScene.ts';
 import { useGlbCatalogo } from './useGlbCatalog.ts';
 import { resetVista, vistaIso, vistaOrto, type VistaKey } from './cameraViews.ts';
+import { BOTONES_VISTA, btnVista } from '../shared/viewButtons';
 
 // Visor 3D "Detalle Aparatos" — port del HTML standalone a React + three 0.185 (GLTFLoader y
 // OrbitControls de three/examples sustituyen el parser y controles hechos a mano del original;
 // los GLB en public/models/aparatos/ son byte-exactos del adjunto).
-
-const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
-  { key: 'iso', label: 'ISO' },
-  { key: 'front', label: 'FRENTE' },
-  { key: 'side', label: 'LATERAL' },
-  { key: 'top', label: 'PLANTA' },
-];
-
-const btnVista = (active: boolean): React.CSSProperties => ({
-  background: active ? '#0d1f3c' : '#161b22',
-  border: `1px solid ${active ? '#1f6feb' : '#30363d'}`,
-  color: active ? '#388bfd' : '#e6edf3',
-  fontFamily: MONO_3D,
-  fontSize: '0.68rem',
-  fontWeight: 500,
-  padding: '5px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-  lineHeight: 1,
-});
 
 export default function DetalleAparatosViewer(): React.JSX.Element {
   const wrapRef = useRef<HTMLDivElement>(null);

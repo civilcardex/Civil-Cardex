@@ -518,7 +518,7 @@ export function RciHidraulica({
         ) : null}
       </SubTabsRci>
       {vrpAbierta ? (
-        <ModalOverlay zIndex={60}>
+        <ModalOverlay>
           {' '}
           <div
             aria-label="Instalación típica de la derivación"

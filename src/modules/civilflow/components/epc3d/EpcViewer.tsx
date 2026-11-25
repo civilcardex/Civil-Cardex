@@ -5,35 +5,11 @@ import EpcSidebar from './EpcSidebar.tsx';
 import { MONO_3D } from '../shared/config3d';
 import { useEpc3DScene, type Epc3DApi } from './useEpc3DScene.ts';
 import { vistaIsoEpc, vistaOrtoEpc, type VistaKey } from './viewsEpc.ts';
+import { BOTONES_VISTA, btnVista } from '../shared/viewButtons';
 
 // Visor 3D del Equipo de Presión Constante — port del HTML original al patrón aparatos3d:
 // sidebar con desplegable + canvas + cluster de vistas bottom-left + gizmo bottom-right.
 // Sin botones de zoom (orig. usuario): el scroll del mouse hace zoom.
-
-const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
-  { key: 'iso', label: 'ISO' },
-  { key: 'front', label: 'FRENTE' },
-  { key: 'side', label: 'LATERAL' },
-  { key: 'top', label: 'PLANTA' },
-];
-
-const BTN_VISTA_STYLE = {
-  background: '#161b22',
-  border: '1px solid #30363d',
-  color: '#e6edf3',
-  fontFamily: MONO_3D,
-  fontSize: '0.68rem',
-  fontWeight: 500,
-  padding: '5px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-} as const;
-const BTN_VISTA_ACTIVO = {
-  ...BTN_VISTA_STYLE,
-  borderColor: '#1f6feb',
-  color: '#388bfd',
-  background: '#0d1f3c',
-} as const;
 
 export default function EpcViewer(): React.JSX.Element {
   const [selected, setSelected] = useState<number | null>(null);
@@ -129,7 +105,7 @@ export default function EpcViewer(): React.JSX.Element {
               <button
                 key={b.key}
                 type="button"
-                style={vistaActiva === b.key ? BTN_VISTA_ACTIVO : BTN_VISTA_STYLE}
+                style={btnVista(vistaActiva === b.key)}
                 onClick={() => irVista(b.key)}
               >
                 {b.label}
@@ -138,7 +114,7 @@ export default function EpcViewer(): React.JSX.Element {
             <button
               type="button"
               title="Resetear vista"
-              style={{ ...BTN_VISTA_ACTIVO, color: '#388bfd' }}
+              style={btnVista(true)}
               onClick={() => irVista('iso')}
             >
               ⟳

@@ -71,7 +71,7 @@ export function computeBajanteVentTable(
       storageByPlan[String(p.id)] = d;
     }
   }
-  const [conexiones, ventToSanMap, , components] = buildBajanteGraph(plans, tramosSan, udBase);
+  const [conexiones, ventToSanMap, , components] = buildBajanteGraph(plans, tramosSan);
   const tramoById: Record<string, Tramo> = {};
   // Índice por _key: los .find repetidos (por children, por sanKeys) eran O(n) por consulta.
   const tramoPorClave = new Map<string, Tramo>();

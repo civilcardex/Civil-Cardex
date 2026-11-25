@@ -10,6 +10,12 @@ import { isLdesvioRamalId } from './associateBajanteAcrossFloors';
 import { TRAZOS_PREFIX } from '../constants/storage-keys.ts';
 import { loadFromStorage } from '../services/storageService.ts';
 import type { DrawingData, RawElement } from './drawingSync.ts';
+import {
+  adyDesdeMapa,
+  componentesDeAdy,
+  enlazarSeccionesBajante,
+  orientarComponentes,
+} from './sanGraphShared.ts';
 
 /** Bajante (tubo vertical) tal cual está guardado, con su posición en el plano para poder enlazarlo entre pisos. */
 export type { BajanteRaw } from './drawingSyncTypes.ts';
@@ -220,57 +226,10 @@ export function buildSanConnectivity(
     }
   }
 
-  const bajantesGroups: Record<string, typeof tramosSan> = {};
-  for (const t of tramosSan) {
-    if (t.esBajante && t.id) {
-      if (!bajantesGroups[t.id]) bajantesGroups[t.id] = [];
-      bajantesGroups[t.id].push(t);
-    }
-  }
-
-  for (const sections of Object.values(bajantesGroups)) {
-    sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
-    for (let i = 0; i < sections.length - 1; i++) {
-      const lowerKey = sections[i]._key;
-      const upperKey = sections[i + 1]._key;
-      if (lowerKey && upperKey) {
-        enlazar(lowerKey, upperKey);
-      }
-    }
-  }
-
-  for (const t of tramosSan) {
-    if (t.esBajante && t.descargaEnId && t._key) {
-      const parts = splitPtr(t.descargaEnId, '');
-      const dPlanId = parts[0];
-      const targetRamalId = parts[1];
-      if (targetRamalId) {
-        const targetKey = `${targetRamalId}-${dPlanId}`;
-        const targetExists = tramoPorClave.has(targetKey);
-        if (targetExists) {
-          enlazar(targetKey, t._key);
-        }
-      }
-    }
-  }
-
+  enlazarSeccionesBajante(tramosSan, enlazar);
   // Set por nodo: la adyacencia se consulta y se poda mucho (era .includes/.filter sobre
   // arrays — O(n²) al podar).
-  const adj: Record<string, Set<string>> = {};
-  for (const t of tramosSan) {
-    if (t._key) {
-      adj[t._key] = new Set();
-    }
-  }
-
-  for (const [parentKey, children] of calculoMap) {
-    if (!adj[parentKey]) adj[parentKey] = new Set();
-    for (const childKey of children) {
-      if (!adj[childKey]) adj[childKey] = new Set();
-      adj[parentKey].add(childKey);
-      adj[childKey].add(parentKey);
-    }
-  }
+  const adj = adyDesdeMapa(tramosSan, calculoMap);
 
   const getConnectedNeighbors = (startKey: string): string[] => {
     const results = new Set<string>();
@@ -305,67 +264,8 @@ export function buildSanConnectivity(
     }
   }
 
-  const compVisited = new Set<string>();
-  const components: string[][] = [];
-
-  for (const node of Object.keys(adj)) {
-    if (!compVisited.has(node)) {
-      const comp: string[] = [];
-      const q = [node];
-      compVisited.add(node);
-      while (q.length > 0) {
-        const curr = q.shift()!;
-        comp.push(curr);
-        for (const neigh of adj[curr] || new Set<string>()) {
-          if (!compVisited.has(neigh)) {
-            compVisited.add(neigh);
-            q.push(neigh);
-          }
-        }
-      }
-      components.push(comp);
-    }
-  }
-
-  const getRootScore = (key: string): number => {
-    const tr = tramoPorClave.get(key);
-    if (!tr) return 99999999;
-    const piso = tr.piso || 0;
-    const isBajante = tr.esBajante;
-    const id = tr.id || '';
-    const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
-    const num = match && match[2] ? parseInt(match[2]) : 999;
-    return piso * 100000 + (isBajante ? 0 : 10000) + num;
-  };
-
-  const orientedConexiones: Record<string, string[]> = {};
-  const orientedVisited = new Set<string>();
-
-  for (const comp of components) {
-    let root = comp[0];
-    let minScore = getRootScore(root);
-    for (const node of comp) {
-      const score = getRootScore(node);
-      if (score < minScore) {
-        minScore = score;
-        root = node;
-      }
-    }
-
-    const q = [root];
-    orientedVisited.add(root);
-    while (q.length > 0) {
-      const parent = q.shift()!;
-      if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
-      for (const child of adj[parent] || []) {
-        if (!orientedVisited.has(child)) {
-          orientedVisited.add(child);
-          orientedConexiones[parent].push(child);
-          q.push(child);
-        }
-      }
-    }
-  }
+  const components = componentesDeAdy(adj);
+  const orientedConexiones = orientarComponentes(components, adj, tramoPorClave);
 
   // Corrección de ramas de merge (igual que AF/AC): los puntos de merge acumulan los UD de los
   // alimentadores.

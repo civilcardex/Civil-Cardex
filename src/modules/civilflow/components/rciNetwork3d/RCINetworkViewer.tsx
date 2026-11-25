@@ -6,7 +6,8 @@ import { useRci3DScene, type Rci3DApi } from '../rci3d/useRCI3DScene.ts';
 import { useRciRedCarga } from './useRCINetworkLoad.ts';
 import { useLupa } from '../rci3d/useMagnifier';
 import { vistaOrto, resetVista, type VistaKey } from '../rci3d/viewsRCI.ts';
-import MiniVisorRed, { BOTONES_VISTA, btnVista } from './MiniViewerNetwork';
+import MiniVisorRed from './MiniViewerNetwork';
+import { BOTONES_VISTA, btnVista } from '../shared/viewButtons';
 
 // ponytail: MONO_3D (components/shared/config3d.ts) es 'Geist', NO esta fuente — usarlo
 // cambiaría el render; se deduplica con una const local conservando 'JetBrains Mono'.
@@ -261,7 +262,10 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
       {/* Mini visor abierto: el canvas principal se corre a la derecha del panel
           (HTML syncLayoutForMini; el ResizeObserver re-encuadra). */}
       {miniDetalle != null && selComp && (
-        <div style={{ width: 574, flexShrink: 0, position: 'relative', background: '#0d1117' }}>
+        <div
+          className="iso-component-detail"
+          style={{ width: 574, flexShrink: 0, position: 'relative', background: '#0d1117' }}
+        >
           <MiniVisorRed
             key={miniDetalle}
             titulo={`${selComp.id} — ${selComp.name}`}
@@ -274,7 +278,17 @@ function RciRedInner({ onReintentar }: { onReintentar: () => void }): React.JSX.
       <div
         ref={wrapRef}
         data-tour="iso-canvas"
-        style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
+        // Con el detalle abierto, el visor base pasa a una capa inferior: sus etiquetas
+        // (zIndex 150) y botones no deben tapar ni capturar toques del detalle táctil.
+        style={{
+          flex: 1,
+          minWidth: 0,
+          minHeight: 0,
+          position: 'relative',
+          isolation: miniDetalle ? 'isolate' : undefined,
+          zIndex: miniDetalle ? 0 : undefined,
+          pointerEvents: miniDetalle ? 'none' : undefined,
+        }}
       >
         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 

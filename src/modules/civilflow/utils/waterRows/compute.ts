@@ -48,7 +48,7 @@ export function computeWaterNetworkRows(
     })
     .filter((x): x is AparatoUc => x !== null);
 
-  const adj = buildAdjacency(networkType, tramos, plans);
+  const { adj } = buildAdjacency(networkType, tramos, plans);
   const rootKey = pickRootKey(tramos, adj);
   const { componentTotalMap, qpropMap, tramoParentOf, propiaMap } = computeLoads(
     tramos,

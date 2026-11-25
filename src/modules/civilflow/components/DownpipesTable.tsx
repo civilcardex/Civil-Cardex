@@ -24,7 +24,7 @@ const BajantesTable = memo(function BajantesTable_() {
   const [edit, setEdit] = useState(false);
   const tablaRef = useStickyThead2Offset();
   const { tramosSan, updTramoSan } = useTramos();
-  const { aps, udBase } = useApparatus();
+  const { aps } = useApparatus();
   const { pisos } = usePisos();
   const { plans } = usePlans();
   // ponytail: tick forces storageByPlan refresh after writeBajantePropToDrawing sync event
@@ -82,10 +82,10 @@ const BajantesTable = memo(function BajantesTable_() {
     }
     return mapa;
   }, [tramosSan, storageByPlan]);
-  // Keep buildBajanteGraph only for vent mapping + components (UD now from sanitaryRows)
+  // Grafo vent → san y componentes: las UD (Unidades de Desague) ya vienen de sanitaryRows.
   const [, ventToSanMap, ventRamalDiamMap, components] = useMemo(
-    () => buildBajanteGraph(plans, tramosSan, udBase),
-    [plans, tramosSan, udBase],
+    () => buildBajanteGraph(plans, tramosSan),
+    [plans, tramosSan],
   );
   // #5: Unidades de descarga from drawing same source as SanitaryDesign (componentTotalMap)
   const mergedBase = useMemo(() => {
@@ -164,49 +164,57 @@ const BajantesTable = memo(function BajantesTable_() {
         </div>
       </div>
       <div style={{ padding: '12px' }}>
-        <table
-          ref={tablaRef}
-          className="tbl"
-          style={{ fontSize: 11, tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}
-        >
-          <caption className="visually-hidden">Bajantes de aguas negras y ventilación</caption>
-          <DownpipesHeader />
-          <tbody>
-            {(() => {
-              const banTramos = tramosSan.filter(
-                (t) => t.esBajante && t.net !== 'vent' && t._net !== 'vent',
-              );
-              if (banTramos.length === 0)
-                return (
-                  <tr>
-                    <td
-                      colSpan={23}
-                      style={{
-                        textAlign: 'center',
-                        color: 'var(--txt3)',
-                        padding: '24px 0',
-                        fontSize: 11,
-                      }}
-                    >
-                      No hay bajantes definidos. Marque un tramo como bajante en la tabla de Cálculo
-                      de unidades de descarga.
-                    </td>
-                  </tr>
+        {/* Ancho mínimo legible (23 columnas): en tablet scrollea en vez de aplastarse. */}
+        <div className="tbl-wrap-x">
+          <table
+            ref={tablaRef}
+            className="tbl"
+            style={{
+              fontSize: 11,
+              minWidth: 1150,
+              width: '100%',
+              borderCollapse: 'collapse',
+            }}
+          >
+            <caption className="visually-hidden">Bajantes de aguas negras y ventilación</caption>
+            <DownpipesHeader />
+            <tbody>
+              {(() => {
+                const banTramos = tramosSan.filter(
+                  (t) => t.esBajante && t.net !== 'vent' && t._net !== 'vent',
                 );
-              return banTramos.map((t) => (
-                <DownpipesRow
-                  key={tramoKeyPisoOf(t)}
-                  t={t}
-                  fila={calculaFilaBajante(t, ctxBajante)}
-                  edit={edit}
-                  plans={plans}
-                  updTramoSan={updTramoSan}
-                  storageByPlan={storageByPlan}
-                />
-              ));
-            })()}
-          </tbody>
-        </table>
+                if (banTramos.length === 0)
+                  return (
+                    <tr>
+                      <td
+                        colSpan={23}
+                        style={{
+                          textAlign: 'center',
+                          color: 'var(--txt3)',
+                          padding: '24px 0',
+                          fontSize: 11,
+                        }}
+                      >
+                        No hay bajantes definidos. Marque un tramo como bajante en la tabla de
+                        Cálculo de unidades de descarga.
+                      </td>
+                    </tr>
+                  );
+                return banTramos.map((t) => (
+                  <DownpipesRow
+                    key={tramoKeyPisoOf(t)}
+                    t={t}
+                    fila={calculaFilaBajante(t, ctxBajante)}
+                    edit={edit}
+                    plans={plans}
+                    updTramoSan={updTramoSan}
+                    storageByPlan={storageByPlan}
+                  />
+                ));
+              })()}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );

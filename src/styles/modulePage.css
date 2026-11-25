@@ -104,28 +104,11 @@ main[data-module='roads'] {
   background: #37393e;
 }
 
-.module-structure-block {
-  background: #1a1c20;
-}
-.module-structure-head {
-  background: #1e2024;
-}
-.module-console {
-  font-family: 'Geist', monospace;
-  color: var(--txt3);
-}
-.module-console-accent {
-  color: var(--acc);
-}
-
 .module-specs {
   background: #1e2024;
 }
 .module-specs-head {
   background: #282a2e;
-}
-.module-cta {
-  background: #0c0e12;
 }
 
 /* ManageHero */

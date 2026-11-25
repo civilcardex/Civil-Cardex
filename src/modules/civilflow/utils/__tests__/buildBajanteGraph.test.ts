@@ -44,7 +44,7 @@ describe('buildBajanteGraph', () => {
       ramales: [ramal()],
       bajantes: [bajante({ recibeDeIds: ['RS1'] })],
     });
-    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     // grafo dirigido: 'BAN1-p1' recibe a 'RS1-p1' → componente conexa de ambos
     expect(components).toContainEqual(['BAN1-p1', 'RS1-p1']);
   });
@@ -61,7 +61,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [bajante({ id: 'B1', x: 0, y: 0 }), bajante({ id: 'B2', x: 20, y: 0 })],
     });
-    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     const comp = components.find((c) => c.length === 3)!;
     expect(comp).toContain('B1-p1');
     expect(comp).toContain('B2-p1');
@@ -80,7 +80,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [bajante({ x: 0, y: 0, desplazamientos: { 'Piso 0': { dx: 5, dy: 0 } } })],
     });
-    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     expect(components).toContainEqual(['BAN1-p1', 'RS1-p1']);
   });
 
@@ -96,7 +96,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [bajante({ descargaEnId: 'p1|RS1' })],
     });
-    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     expect(components).toEqual([]); // sin aristas: cada nodo aislado no llega a formarse
   });
 
@@ -120,7 +120,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [],
     });
-    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , , components] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     expect(components).toHaveLength(1);
     expect(components[0]).toHaveLength(2);
   });
@@ -146,7 +146,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [bajante({ id: 'BAN1' }), bajante({ id: 'BV1', net: 'vent', x: 30, y: 0 })],
     });
-    const [, vMap, ventDiams] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, vMap, ventDiams] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     // BV1 está pegado al extremo de RV1 → conectado; RV1 toca el san RS1 → vMap lo señala
     expect([...(vMap.get('BV1-p1') || [])]).toEqual(['RS1-p1']);
     // sin diamPulg ni diametro el ramal de vent no entra al mapa de diámetros
@@ -168,7 +168,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [bajante({ id: 'BV1', net: 'vent', x: 30, y: 0 })],
     });
-    const [, vMap] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, vMap] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     expect([...(vMap.get('BV1-p1') || [])]).toEqual(['RS9-p1']);
   });
 
@@ -196,7 +196,7 @@ describe('buildBajanteGraph', () => {
       ],
       bajantes: [],
     });
-    const [, , ventDiams] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], [], []);
+    const [, , ventDiams] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], []);
     expect(ventDiams).toEqual({ 'RV1-p1': 3, 'RV2-p1': 2 });
   });
 
@@ -205,7 +205,7 @@ describe('buildBajanteGraph', () => {
       tramo({ id: 'BAN1', esBajante: true, _key: 'BAN1-p0', piso: 0 }),
       tramo({ id: 'BAN1', esBajante: true, _key: 'BAN1-p1', piso: 1 }),
     ];
-    const [, , , components] = buildBajanteGraph([], tramosSan, []);
+    const [, , , components] = buildBajanteGraph([], tramosSan);
     expect(components).toHaveLength(1);
     expect(components[0].toSorted()).toEqual(['BAN1-p0', 'BAN1-p1']);
   });
@@ -215,7 +215,7 @@ describe('buildBajanteGraph', () => {
       tramo({ id: 'RS9', tipo: 'ramal', _key: 'RS9-p0', piso: 0 }),
       tramo({ id: 'BAN1', esBajante: true, _key: 'BAN1-p0', piso: 0, descargaEnId: 'p0|RS9' }),
     ];
-    const [, , , components] = buildBajanteGraph([], tramosSan, []);
+    const [, , , components] = buildBajanteGraph([], tramosSan);
     expect(components).toHaveLength(1);
     expect(components[0].toSorted()).toEqual(['BAN1-p0', 'RS9-p0']);
   });
@@ -226,16 +226,14 @@ describe('buildBajanteGraph', () => {
       bajantes: [bajante({ recibeDeIds: ['RS1'] })],
     });
     const tramosSan = [tramo({ _key: 'RS1-p1', piso: 1 })];
-    const [orientado] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], tramosSan, [
-      { id: 'lvm', ud: 2 },
-    ]);
+    const [orientado] = buildBajanteGraph([{ id: 'p1', nivel: 0 }], tramosSan);
     // la raíz es 'RS1-p1' (con tramo: score 110001) — 'BAN1-p1' sin tramo scorea 99999999.
     // Todo nodo dequeued crea su entrada (vacía si no tiene hijos sin visitar).
     expect(orientado).toEqual({ 'RS1-p1': ['BAN1-p1'], 'BAN1-p1': [] });
   });
 
   it('plans sin nivel o sin doc guardado no aportan nada', () => {
-    expect(buildBajanteGraph([{ id: 'pX', nivel: null }], [], [])).toEqual([{}, new Map(), {}, []]);
-    expect(buildBajanteGraph([{ id: 'pY', nivel: 0 }], [], [])).toEqual([{}, new Map(), {}, []]);
+    expect(buildBajanteGraph([{ id: 'pX', nivel: null }], [])).toEqual([{}, new Map(), {}, []]);
+    expect(buildBajanteGraph([{ id: 'pY', nivel: 0 }], [])).toEqual([{}, new Map(), {}, []]);
   });
 });

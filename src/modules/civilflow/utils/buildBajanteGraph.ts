@@ -1,11 +1,16 @@
-import { splitPtr, tramoKeyOf } from './keys.ts';
+import { splitPtr } from './keys.ts';
 import type { BajanteRaw } from './drawingSyncTypes.ts';
 import { leerDocDePlan } from './readPlanDrawing';
 import { pisoLbl } from '../constants';
 import { distToPolyline } from '../lib/shared/geometry';
-import { calcUDparcial, type UDBase } from './componentHelpers.tsx';
 import type { Tramo } from '../context/tramosReducer';
 import type { RawElement } from './drawingSync.ts';
+import {
+  adyDesdeMapa,
+  componentesDeAdy,
+  enlazarSeccionesBajante,
+  orientarComponentes,
+} from './sanGraphShared.ts';
 
 interface PlanEntry {
   id: string | number;
@@ -15,12 +20,12 @@ interface RamalRaw extends RawElement {
   diamPulg?: number;
 }
 
-/** Grafo de vent (Ventilacion) desde planos (conexiones por cercanía + UD (Unidades de Desague) por elemento).
+/** Grafo de vent (Ventilacion) desde planos (conexiones por cercanía + mapeo al bajante san que cubre).
+ *  El otro consumidor del grafo (bajanteVentRows) calcula las UD (Unidades de Desague) aparte.
  *  @param plans - planos con id y nivel.
  *  @param tramosSan - tramos san (Sanitaria).
- *  @param udBase - bases UD.
  *  @returns [conexiones, vMap, ventRamalDiamMap, components]. */
-export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase: UDBase[]) {
+export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[]) {
   // Sets: la pertenencia (¿ya enlazado?) era un .includes sobre un array que crece — O(n²).
   const map = new Map<string, Set<string>>();
   const vMap = new Map<string, Set<string>>();
@@ -201,132 +206,13 @@ export function buildBajanteGraph(plans: PlanEntry[], tramosSan: Tramo[], udBase
     }
   }
 
-  // Añadir conexiones verticales para bajantes (de secciones superiores a inferiores)
-  const bajantesGroups: Record<string, typeof tramosSan> = {};
+  enlazarSeccionesBajante(tramosSan, (padre, hijo) => anadir(map, padre, hijo));
+  const adj = adyDesdeMapa(tramosSan, map);
+  const components = componentesDeAdy(adj);
+  const tramoPorClave = new Map<string, Tramo>();
   for (const t of tramosSan) {
-    if (t.esBajante && t.id) {
-      if (!bajantesGroups[t.id]) bajantesGroups[t.id] = [];
-      bajantesGroups[t.id].push(t);
-    }
+    if (t._key) tramoPorClave.set(t._key, t);
   }
-
-  for (const sections of Object.values(bajantesGroups)) {
-    sections.sort((a, b) => (a.piso || 0) - (b.piso || 0));
-    for (let i = 0; i < sections.length - 1; i++) {
-      const lowerKey = sections[i]._key;
-      const upperKey = sections[i + 1]._key;
-      if (lowerKey && upperKey) {
-        anadir(map, lowerKey, upperKey);
-      }
-    }
-  }
-
-  // Añadir conexiones de descarga (descargaEnId) de bajantes hacia ramales inferiores
-  for (const t of tramosSan) {
-    if (t.esBajante && t.descargaEnId && t._key) {
-      const parts = splitPtr(t.descargaEnId, '');
-      const dPlanId = parts[0];
-      const targetRamalId = parts[1];
-      if (targetRamalId) {
-        const targetKey = `${targetRamalId}-${dPlanId}`;
-        const targetExists = tramosSan.some((x) => x._key === targetKey);
-        if (targetExists) {
-          anadir(map, targetKey, t._key);
-        }
-      }
-    }
-  }
-
-  // Construir lista de adyacencia no dirigida para todos los tramos
-  const adj: Record<string, Set<string>> = {};
-  for (const t of tramosSan) {
-    if (t._key) {
-      adj[t._key] = new Set();
-    }
-  }
-
-  for (const [parentKey, children] of map) {
-    if (!adj[parentKey]) adj[parentKey] = new Set();
-    for (const childKey of children) {
-      if (!adj[childKey]) adj[childKey] = new Set();
-      adj[parentKey].add(childKey);
-      adj[childKey].add(parentKey);
-    }
-  }
-
-  // Encontrar componentes conexas en el grafo completo `adj`
-  const compVisited = new Set<string>();
-  const components: string[][] = [];
-
-  for (const node of Object.keys(adj)) {
-    if (!compVisited.has(node)) {
-      const comp: string[] = [];
-      const q = [node];
-      compVisited.add(node);
-      while (q.length > 0) {
-        const curr = q.shift()!;
-        comp.push(curr);
-        for (const neigh of adj[curr] || new Set<string>()) {
-          if (!compVisited.has(neigh)) {
-            compVisited.add(neigh);
-            q.push(neigh);
-          }
-        }
-      }
-      components.push(comp);
-    }
-  }
-
-  const getRootScore = (key: string): number => {
-    const tr = tramosSan.find((x) => x._key === key);
-    if (!tr) return 99999999;
-    const piso = tr.piso || 0;
-    const isBajante = tr.esBajante;
-    const id = tr.id || '';
-    const match = id.match(/^([a-zA-Z]+)(\d+)?$/);
-    const num = match && match[2] ? parseInt(match[2]) : 999;
-    return piso * 100000 + (isBajante ? 0 : 10000) + num;
-  };
-
-  const orientedConexiones: Record<string, string[]> = {};
-  const orientedVisited = new Set<string>();
-
-  for (const comp of components) {
-    let root = comp[0];
-    let minScore = getRootScore(root);
-    for (const node of comp) {
-      const score = getRootScore(node);
-      if (score < minScore) {
-        minScore = score;
-        root = node;
-      }
-    }
-
-    const q = [root];
-    orientedVisited.add(root);
-    while (q.length > 0) {
-      const parent = q.shift()!;
-      if (!orientedConexiones[parent]) orientedConexiones[parent] = [];
-      for (const child of adj[parent] || []) {
-        if (!orientedVisited.has(child)) {
-          orientedVisited.add(child);
-          orientedConexiones[parent].push(child);
-          q.push(child);
-        }
-      }
-    }
-  }
-
-  // Calcular totales de componentes conexas
-  const tramoById: Record<string, Tramo> = {};
-  for (const t of tramosSan) {
-    const key = tramoKeyOf(t);
-    if (key) tramoById[key] = t;
-  }
-  const parcialMap: Record<string, number> = {};
-  for (const t of tramosSan) {
-    const key = tramoKeyOf(t);
-    if (key) parcialMap[key] = calcUDparcial(t, udBase);
-  }
+  const orientedConexiones = orientarComponentes(components, adj, tramoPorClave);
   return [orientedConexiones, vMap, ventRamalDiamMap, components] as const;
 }

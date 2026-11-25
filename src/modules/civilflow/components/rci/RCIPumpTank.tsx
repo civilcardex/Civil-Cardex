@@ -296,7 +296,7 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
 
       {/* Modal liviano con el esquema del cuarto de bombas (resalta succión o descarga). */}
       {esquema ? (
-        <ModalOverlay zIndex={9999} onClose={() => setEsquema(null)}>
+        <ModalOverlay onClose={() => setEsquema(null)}>
           <div
             aria-label="Esquema del cuarto de bombas"
             style={{

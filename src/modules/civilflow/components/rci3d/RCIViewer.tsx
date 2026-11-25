@@ -7,32 +7,13 @@ import { useRci3DScene, type Rci3DApi } from './useRCI3DScene.ts';
 import { useRciCarga } from './useRCILoad.ts';
 import { resetVista, vistaIso, vistaOrto, type VistaKey } from './viewsRCI.ts';
 import { dibujarEtiquetasRci, resetEtiquetasRci } from './labelsRCI.ts';
+import { BOTONES_VISTA, btnVista } from '../shared/viewButtons';
 
 // Visor 3D "Cuarto de Bombas RCI" — port del HTML standalone a React + three 0.185 con la
 // arquitectura de aparatos3d (escena en hook, carga secuencial GLB, vistas y gizmo). El
 // ensamble completo siempre visible; el desplegable selecciona el componente (foco de su
 // etiqueta + descripción). Etiquetas = canvas overlay con línea guía numerada del original.
 // El wrapper con key permite "Reintentar" tras un fallo de carga: remonta limpio la escena.
-
-const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
-  { key: 'iso', label: 'ISO' },
-  { key: 'front', label: 'FRENTE' },
-  { key: 'side', label: 'LATERAL' },
-  { key: 'top', label: 'PLANTA' },
-];
-
-const btnVista = (active: boolean): React.CSSProperties => ({
-  background: active ? '#0d1f3c' : '#161b22',
-  border: `1px solid ${active ? '#1f6feb' : '#30363d'}`,
-  color: active ? '#388bfd' : '#e6edf3',
-  fontFamily: RCI_MONO,
-  fontSize: '0.68rem',
-  fontWeight: 500,
-  padding: '5px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-  lineHeight: 1,
-});
 
 export default function RciViewer(): React.JSX.Element {
   const [montaje, setMontaje] = useState(0);

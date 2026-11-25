@@ -5,32 +5,13 @@ import { parseGLBRed } from './RCINetworkParser.ts';
 import { cargarGlbBuffer } from '../shared/glbCache';
 import { aspectDe, proyeccionEsquinas } from '../shared/controls3d';
 import type { VistaKey } from '../rci3d/viewsRCI.ts';
+import { BOTONES_VISTA, btnVista } from '../shared/viewButtons';
 
 // Mini visor de detalle (port del HTML Isometrico_RCI_Open_Code_v19 §1378-1621): segunda
 // escena propia con el GLB del componente (rociador/colgante/soportes). Panel FIJO (sin
 // arrastre); frustum culling OFF en el detalle; láminas "SIN" del colgante ocultas; placas
 // de contexto translúcidas por heurística dimensional (caso especial rociador); vistas
 // ISO/FRENTE/LATERAL/PLANTA con PLANTA de up dinámico + zoom por frustum/dolly.
-
-export const BOTONES_VISTA: Array<{ key: VistaKey; label: string }> = [
-  { key: 'iso', label: 'ISO' },
-  { key: 'front', label: 'FRENTE' },
-  { key: 'side', label: 'LATERAL' },
-  { key: 'top', label: 'PLANTA' },
-];
-
-export const btnVista = (active: boolean): React.CSSProperties => ({
-  background: active ? '#0d1f3c' : '#161b22',
-  border: `1px solid ${active ? '#1f6feb' : '#30363d'}`,
-  color: active ? '#388bfd' : '#e6edf3',
-  fontFamily: 'JetBrains Mono, monospace',
-  fontSize: '0.68rem',
-  fontWeight: 500,
-  padding: '5px 10px',
-  borderRadius: 4,
-  cursor: 'pointer',
-  lineHeight: 1,
-});
 
 interface Props {
   titulo: string;

@@ -16,12 +16,40 @@ import type { Tramo } from '../../context/tramosReducer';
 import type { PlanItem } from '../../context/PlansContext.tsx';
 import type { BajanteRaw } from '../waterRowsShared.ts';
 
-/** Construye la adyacencia (clave tramo/plano → vecinos) con las podas de merges y de ciclos. */
+/** ¿Toca algún extremo del ramal el punto dado? Predicado único de cercanía a empalmes — si
+ *  diverge aquí, la columna Otros y el merge discrepan. */
+function tocaEmpalme(o: { pts?: number[][] }, jc: number[], tol: number): boolean {
+  if (!o.pts || o.pts.length < 2) return false;
+  const s = o.pts[0];
+  const e = o.pts[o.pts.length - 1];
+  return (
+    Math.hypot(s[0] - jc[0], s[1] - jc[1]) < tol || Math.hypot(e[0] - jc[0], e[1] - jc[1]) < tol
+  );
+}
+
+/** Participantes del empalme de un ramal: quienes tocan su punto de unión hoy, excepto él mismo.
+ *  La genealogía mergesFrom quedaba stale tras re-splits. Ej: RAC3 con RAC2 y RAC4 -> ['RAC2-P1','RAC4-P1']. */
+export function otrosPorToque(
+  ramales: Array<{ id: string; pts?: number[][] }>,
+  rId: string,
+  planId: string | number,
+  tol = 2.0,
+): string[] {
+  const r = ramales.find((x) => x.id === rId);
+  if (!r?.pts || r.pts.length === 0) return [];
+  const jc = r.pts[0];
+  return ramales
+    .filter((o) => o.id !== rId && tocaEmpalme(o, jc, tol))
+    .map((o) => `${o.id}-${planId}`);
+}
+
+/** Construye la adyacencia (clave tramo/plano → vecinos) con las podas de merges y de ciclos,
+ *  junto con los participantes de cada empalme para la columna "Otros ramales". */
 export function buildAdjacency(
   networkType: 'af' | 'ac',
   tramos: Tramo[],
   plans: PlanItem[],
-): Record<string, Set<string>> {
+): { adj: Record<string, Set<string>>; otrosDisplay: Record<string, string[]> } {
   // ── Grafo de conectividad + árbol de presiones dirigido (espeja el useMemo de WaterNetworkDesign.tsx) ──
   // Set por clave: la pertenencia (¿ya enlazado?) era un .includes sobre un array que crece.
   const calculoMap = new Map<string, Set<string>>();
@@ -39,6 +67,7 @@ export function buildAdjacency(
   // se filtra a la rama con la que le toque el desempate. Así que el conjunto real de "ramas en
   // esta unión" se descubre por coordenada, no se lee solo de mergesFrom.
   const mergeBranches: Record<string, string[]> = {};
+  const otrosDisplay: Record<string, string[]> = {};
   // Cada extremo de ramal, etiquetado con su plano — usado abajo para encontrar uniones SIMPLES
   // (no-mergesFrom) donde 3+ ramales se juntan en una coordenada por dibujo extremo-a-extremo
   // ordinario. Espeja el cycle-pruning de WaterNetworkDesign.tsx — ver el comentario ahí para el
@@ -92,12 +121,7 @@ export function buildAdjacency(
         if (other.id === r.id || other.id === aId || !other.pts || other.pts.length < 2) continue;
         const otherKey = `${other.id}-${plan.id}`;
         if (branchSet.has(otherKey)) continue;
-        const oStart = other.pts[0],
-          oEnd = other.pts[other.pts.length - 1];
-        const touchesJc =
-          Math.hypot(oStart[0] - jc[0], oStart[1] - jc[1]) < TOL_MERGE ||
-          Math.hypot(oEnd[0] - jc[0], oEnd[1] - jc[1]) < TOL_MERGE;
-        if (!touchesJc) continue;
+        if (!tocaEmpalme(other, jc, TOL_MERGE)) continue;
         const otherEnters = entersAt(
           { pts: other.pts, _tribReversed: Boolean(other._tribReversed) },
           jc,
@@ -106,6 +130,52 @@ export function buildAdjacency(
         branchSet.add(otherKey);
       }
       mergeBranches[targetKeyFull] = Array.from(branchSet);
+      // "Otros ramales" de la continuación (caso RAC3-P2): quienes TOCAN el empalme hoy.
+      const continuacionKey = `${r.id}-${plan.id}`;
+      const otros = otrosPorToque(ramales, r.id, plan.id, TOL_MERGE);
+      if (otros.length) otrosDisplay[continuacionKey] = otros;
+    }
+    // Fallback geométrico: uniones extremo-con-extremo SIN mergesFrom no entraban en el loop de
+    // arriba y la columna quedaba vacía aunque la propagación del motor sí las entiende. Misma
+    // tolerancia del motor (0.5px, splits exactos) y mismo plano por construcción. No pisa lo
+    // resuelto por flujo.
+    {
+      const pts: Array<{ key: string; p: number[] }> = [];
+      for (const r of ramales) {
+        if (!r.pts || r.pts.length < 2) continue;
+        const k = `${r.id}-${plan.id}`;
+        pts.push({ key: k, p: r.pts[0] });
+        pts.push({ key: k, p: r.pts[r.pts.length - 1] });
+      }
+      const padre = pts.map((_, i) => i);
+      const hallar = (i: number): number => {
+        const p = padre[i];
+        if (p === undefined || p === i) return i;
+        const r = hallar(p);
+        padre[i] = r;
+        return r;
+      };
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          if (Math.hypot(pts[i].p[0] - pts[j].p[0], pts[i].p[1] - pts[j].p[1]) <= 0.5) {
+            padre[hallar(i)] = hallar(j);
+          }
+        }
+      }
+      const grupos = new Map<number, number[]>();
+      pts.forEach((_, i) => {
+        const r = hallar(i);
+        if (!grupos.has(r)) grupos.set(r, []);
+        grupos.get(r)!.push(i);
+      });
+      for (const grupo of grupos.values()) {
+        const claves = [...new Set(grupo.map((g) => pts[g].key))];
+        if (claves.length < 2) continue;
+        if (claves.some((k) => otrosDisplay[k])) continue; // el flujo ya resolvió
+        for (const k of claves) {
+          otrosDisplay[k] = claves.filter((c) => c !== k);
+        }
+      }
     }
     for (const b of bajantes) {
       if (b.x == null || b.y == null) continue;
@@ -279,5 +349,5 @@ export function buildAdjacency(
     }
   }
 
-  return adj;
+  return { adj, otrosDisplay };
 }

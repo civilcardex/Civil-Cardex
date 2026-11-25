@@ -17,7 +17,7 @@ export function RciHelpModal({
   children: ReactNode;
 }) {
   return (
-    <ModalOverlay onClose={onClose} zIndex={60} ariaLabel={titulo}>
+    <ModalOverlay onClose={onClose} ariaLabel={titulo}>
       <div className="rci-help">
         <header className="rci-help-h">
           <span className="rci-help-badge" aria-hidden="true">

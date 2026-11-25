@@ -13,7 +13,7 @@ import { ModalOverlay } from '../../../../components/shared/ModalShell.tsx';
  *  con el botón o Escape — la clase la fija el código, no el diseñador. */
 function ModalClases({ cerrar }: { cerrar: () => void }) {
   return (
-    <ModalOverlay zIndex={60}>
+    <ModalOverlay>
       <div
         aria-label="¿Qué clase elegir?"
         style={{

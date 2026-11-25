@@ -28,9 +28,6 @@ export function ModalOverlay(props: {
   dismissOnBackdrop?: boolean;
   /** Deja que el navegador enfoque el primer control, en vez del contenedor. */
   nativeInitialFocus?: boolean;
-  /** NO-OP desde la migración a <dialog>: el top layer va encima de todo z-index. Se acepta
-   *  porque 12+ consumidores lo pasan (visores 9999/99999, tabs rci 60) — no borrar. */
-  zIndex?: number;
   /** aria-label del diálogo cuando el consumidor no trae título propio (ModalShell). */
   ariaLabel?: string;
   children: React.ReactNode;

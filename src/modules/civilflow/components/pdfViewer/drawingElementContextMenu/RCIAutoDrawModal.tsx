@@ -80,7 +80,7 @@ export function RciAutoDrawModal({
     // ponytail: sin portal — showModal() ya pinta en top layer; el portal a body no aporta.
     /* ModalOverlay compartida (backdrop-click con guard target===currentTarget) en vez de un
      * overlay propio — cierre por fondo y Escape nativo del <dialog> como todo modal. */
-    <ModalOverlay zIndex={100000} onClose={onClose}>
+    <ModalOverlay onClose={onClose}>
       <div
         aria-label="Dibujar ramales paralelos"
         style={{
