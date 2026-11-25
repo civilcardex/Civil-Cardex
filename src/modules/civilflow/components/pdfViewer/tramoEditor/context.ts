@@ -97,6 +97,11 @@ export const INPUT_CENTER_STYLE: React.CSSProperties = {
   fontSize: 12,
   fontFamily: "'Geist',monospace",
   textAlign: 'center',
+  /* En táctil el SO pinta el control nativo encima de los estilos inline — con appearance
+   *  none el control se ve igual que en PC (ped. usuario 2026-11-25). color-scheme oscurece
+   *  también la LISTA abierta (el popup nativo la pinta blanca con tema claro del SO). */
+  appearance: 'none' as const,
+  colorScheme: 'dark' as const,
 };
 /** Contenedor de casillas en 2 columnas con scroll (tope 120 px de alto) para listas largas. Ej: los aparatos marcados en el ramal. */
 export const CHECK_GRID_STYLE: React.CSSProperties = {
@@ -136,8 +141,12 @@ export const READONLY_CENTER_STYLE: React.CSSProperties = {
 /** Select centrado: mismo desplegable pero con el valor al centro, para las filas de material/Ø del ramal. Ej: el material del ramal de gas. */
 export const SELECT_CENTER_STYLE: React.CSSProperties = {
   width: '100%',
-  padding: '4px 6px',
-  background: '#1e2024',
+  padding: '4px 20px 4px 6px',
+  background:
+    'linear-gradient(45deg, transparent 50%, #8a9496 50%), linear-gradient(135deg, #8a9496 50%, transparent 50%), #1e2024',
+  backgroundPosition: 'calc(100% - 9px) calc(50% - 1px), calc(100% - 5px) calc(50% - 1px), 0 0',
+  backgroundSize: '4px 4px, 4px 4px, auto',
+  backgroundRepeat: 'no-repeat, no-repeat, no-repeat',
   border: '1px solid #3a494a',
   borderRadius: 3,
   color: '#e2e2e8',
@@ -145,6 +154,11 @@ export const SELECT_CENTER_STYLE: React.CSSProperties = {
   fontFamily: "'Geist',monospace",
   cursor: 'pointer',
   textAlign: 'center',
+  textAlignLast: 'center',
+  /* appearance none + flecha SVG propia (la misma de las celdas de las tablas): en táctil el
+   *  control nativo del SO tapaba los estilos y se veía distinto a PC (ped. 2026-11-25). */
+  appearance: 'none' as const,
+  colorScheme: 'dark' as const,
 };
 /** Fila del material en el editor del ramal: reparte nombre y control a los extremos. Ej: 'Ferro cemento 3"' con su Ø al lado. */
 export const MAT_ROW_STYLE: React.CSSProperties = {

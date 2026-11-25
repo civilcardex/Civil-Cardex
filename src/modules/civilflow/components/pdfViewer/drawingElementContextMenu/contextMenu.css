@@ -4,14 +4,29 @@
 
 .dcm-select {
   width: 100%;
-  padding: 4px 6px;
-  background: #1e2024;
+  /* appearance none + flecha propia: en táctil el control nativo del SO tapaba los estilos
+   *  y se veía distinto a PC (ped. usuario 2026-11-25). Flecha SVG igual a las celdas. */
+  appearance: none;
+  padding: 4px 20px 4px 6px;
+  background:
+    linear-gradient(45deg, transparent 50%, #8a9496 50%),
+    linear-gradient(135deg, #8a9496 50%, transparent 50%), #1e2024;
+  background-position:
+    calc(100% - 9px) calc(50% - 1px),
+    calc(100% - 5px) calc(50% - 1px),
+    0 0;
+  background-size:
+    4px 4px,
+    4px 4px,
+    auto;
+  background-repeat: no-repeat, no-repeat, no-repeat;
   border: 1px solid #3a494a;
   border-radius: 3px;
   color: #e2e2e8;
   font-size: 12px;
   font-family: 'Geist', monospace;
   cursor: pointer;
+  color-scheme: dark;
 }
 
 .dcm-select-plain {

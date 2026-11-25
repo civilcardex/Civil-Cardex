@@ -253,3 +253,11 @@ dialog.civ-modal::backdrop {
   border-radius: 0 4px 4px 0;
   background: var(--bg3);
 }
+
+/* Popup de los <select> (la lista abierta la dibuja el SO — en tablet salía blanca): los
+ *  option/optgroup heredan el tema oscuro de la app (ped. usuario 2026-11-25). */
+select option,
+select optgroup {
+  background-color: #1e2024;
+  color: #e2e2e8;
+}
