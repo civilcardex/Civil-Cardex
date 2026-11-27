@@ -547,7 +547,8 @@ create table public.cf_planos_bajantes (
   angulo numeric,
   canal_flow_dir text,
   asoc_links jsonb not null default '{}'::jsonb,
-  alt_deriv numeric
+  alt_deriv numeric,
+  material text
 );
 alter table public.cf_planos_bajantes enable row level security;
 

@@ -1202,6 +1202,7 @@ export interface Database {
           canal_flow_dir: string | null;
           asoc_links: unknown;
           alt_deriv: number | null;
+          material: string | null;
         };
         Insert: {
           id?: number | null;
@@ -1264,6 +1265,7 @@ export interface Database {
           canal_flow_dir?: string | null;
           asoc_links?: unknown;
           alt_deriv?: number | null;
+          material?: string | null;
         };
         Update: {
           id?: number | null;
@@ -1326,6 +1328,7 @@ export interface Database {
           canal_flow_dir?: string | null;
           asoc_links?: unknown;
           alt_deriv?: number | null;
+          material?: string | null;
         };
         Relationships: [];
       };
@@ -2229,6 +2232,8 @@ export interface Database {
           equipos_snap: unknown;
           cuadrillas_snap: unknown;
           perfil_pais_snap: unknown | null;
+          herr_pct_snap: number | null;
+          usar_fp_en_apu_snap: boolean | null;
         };
         Insert: {
           id?: string | null;
@@ -2262,6 +2267,8 @@ export interface Database {
           equipos_snap?: unknown;
           cuadrillas_snap?: unknown;
           perfil_pais_snap?: unknown | null;
+          herr_pct_snap?: number | null;
+          usar_fp_en_apu_snap?: boolean | null;
         };
         Update: {
           id?: string | null;
@@ -2295,6 +2302,8 @@ export interface Database {
           equipos_snap?: unknown;
           cuadrillas_snap?: unknown;
           perfil_pais_snap?: unknown | null;
+          herr_pct_snap?: number | null;
+          usar_fp_en_apu_snap?: boolean | null;
         };
         Relationships: [];
       };
@@ -2486,7 +2495,11 @@ export interface Database {
         Returns: string;
       };
       save_proyecto: {
-        Args: { p_codigo: string; p_nombre: string };
+        Args: { p_codigo: string; p_nombre: string; p_pais: string; p_uso: string };
+        Returns: unknown;
+      };
+      save_cf_network_material: {
+        Args: { p_proyecto_id: string; p_red: string; p_material: string };
         Returns: unknown;
       };
       save_proyecto_core: {
