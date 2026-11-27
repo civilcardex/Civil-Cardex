@@ -1,8 +1,8 @@
 import { useCivilManager } from '../context.tsx';
 import { cargoJornal, fmtMoneda } from '../calc.ts';
 import { NumInput } from '../shared/NumInput.tsx';
-import { ActionIcon } from '../shared/icons.tsx';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
+import { BtnDelRecurso, PieSeccionApu } from './ApuSectionControls.tsx';
 import type { Apu, ApuRecursoMO } from '../types.ts';
 
 interface Props {
@@ -109,14 +109,7 @@ export function ApuSeccionMO({ apu, onChange }: Props) {
                     )}
                   </td>
                   <td className="cm-col-act">
-                    <button
-                      type="button"
-                      className="cm-btn-icon"
-                      onClick={() => del(i)}
-                      aria-label="Eliminar recurso"
-                    >
-                      <ActionIcon name="delete" label="Eliminar recurso" color="var(--err)" />
-                    </button>
+                    <BtnDelRecurso onClick={() => del(i)} />
                   </td>
                 </tr>
               );
@@ -124,15 +117,12 @@ export function ApuSeccionMO({ apu, onChange }: Props) {
           </tbody>
         </table>
       </XlScroll>
-      <div className="cm-xl-foot">
-        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
-          Agregar Recurso
-        </button>
-        <span className="cm-flex-1" />
-        <span className="cm-label-11">
-          Subtotal MO: <b>{fmtMoneda(subtotal)}</b>
-        </span>
-      </div>
+      <PieSeccionApu
+        textoAdd="Agregar Recurso"
+        onAdd={add}
+        etiqueta="Subtotal MO"
+        valor={subtotal}
+      />
     </XlWrap>
   );
 }

@@ -419,9 +419,9 @@ export function calcMapParaPres(
         pres.equipos_snap ?? [],
         pres.insumos_snap ?? [],
         null,
-        state.config.herr_pct,
+        pres.herr_pct_snap ?? state.config.herr_pct,
         factorPrestSnap,
-        state.config.usar_fp_en_apu,
+        pres.usar_fp_en_apu_snap ?? state.config.usar_fp_en_apu,
         esHoraSnap,
       ),
     );
@@ -432,9 +432,9 @@ export function calcMapParaPres(
       pres.equipos_snap ?? [],
       pres.insumos_snap ?? [],
       basicosSnap,
-      state.config.herr_pct,
+      pres.herr_pct_snap ?? state.config.herr_pct,
       factorPrestSnap,
-      state.config.usar_fp_en_apu,
+      pres.usar_fp_en_apu_snap ?? state.config.usar_fp_en_apu,
       esHoraSnap,
     ),
   );

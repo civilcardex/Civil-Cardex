@@ -23,6 +23,7 @@ import {
   civilManagerSave,
   defaultState,
   hayRespaldoAnterior,
+  guardarCmSalida,
   saveCmDraft,
 } from './storage.ts';
 import { captureCmScope, type CmStorageScope } from './storage/session.ts';
@@ -123,7 +124,37 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
     };
   }, []);
 
+  /* Último estado visto (para el flush al salir): el ref se actualiza en el efecto de
+   * guardado (fuera del render). */
+  const ultimoEstado = useRef(state);
+
+  /* FLUSH al salir (H-02): desmontar y pagehide comparten UNA escritura idempotente por
+   * estado; el borrador solo se marca pendiente si quedan colecciones sin confirmar contra
+   * la base. Si IndexedDB falla, se conserva la señal de error (no se afirma que quedó). */
+  const flushHechoDe = useRef<CivilManagerState | null>(null);
   useEffect(() => {
+    const flush = () => {
+      const scope = scopeRef.current;
+      const st = ultimoEstado.current;
+      if (!scope || st === hydratedState.current || flushHechoDe.current === st) return;
+      flushHechoDe.current = st;
+      guardarCmSalida(scope, st).catch((e) => {
+        devError('CivilManagerContext flush al salir:', e);
+        emitErrorGuardado(
+          'civilmanager',
+          'No se pudo conservar el borrador local al salir: la última edición puede no quedar en este dispositivo.',
+        );
+      });
+    };
+    window.addEventListener('pagehide', flush);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      flush();
+    };
+  }, []);
+
+  useEffect(() => {
+    ultimoEstado.current = state;
     const scope = scopeRef.current;
     if (!loadedRef.current || !scope || state === hydratedState.current) return;
     // Borrador a IDB con debounce corto (H-11): escribir TODO el estado en cada tecla
@@ -136,7 +167,13 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
         !state.insumos.length &&
         !state.cuadrillas.length;
       if (nowEmpty && hadDataRef.current) {
+        // Safeguard de hidratación: el borrador local YA quedó escrito arriba (el usuario no
+        // pierde nada), pero a la nube no se envía — aviso VISIBLE (auditoría 2026-11-27).
         devError('CivilManagerContext: guardado de estado vacío bloqueado (safeguard)');
+        emitErrorGuardado(
+          'civilmanager',
+          'Estado vacío: no se envió a la nube. El borrador quedó en este dispositivo.',
+        );
         return;
       }
       // El aviso global queda visible aunque se cierre esta sección mientras guarda.

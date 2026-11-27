@@ -206,6 +206,11 @@ export interface Presupuesto {
   equipos_snap: Equipo[];
   cuadrillas_snap: Cuadrilla[];
   perfil_pais_snap: PerfilPais | null;
+  /** % de herramienta y uso de factores prestacionales congelados AL CERRAR (auditoría
+   *  2026-11-27): el recálculo de un cerrado no usa la config viva. null = histórico sin
+   *  foto (cae a la config vigente, documentado). */
+  herr_pct_snap?: number | null;
+  usar_fp_en_apu_snap?: boolean | null;
 }
 
 /** Fila de una lista de precios exportada/importada (desc legible + categoría para agrupar). */

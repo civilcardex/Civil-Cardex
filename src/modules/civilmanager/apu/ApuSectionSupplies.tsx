@@ -2,8 +2,8 @@ import { filaId } from './rowId';
 import { useCivilManager } from '../context.tsx';
 import { fmtMoneda, parseNum } from '../calc.ts';
 import { NumInput } from '../shared/NumInput.tsx';
-import { ActionIcon } from '../shared/icons.tsx';
 import { XlRowNum, XlScroll, XlWrap } from '../shared/XlTable.tsx';
+import { BtnDelRecurso, PieSeccionApu } from './ApuSectionControls.tsx';
 import type { Apu, ApuRecursoInsumo } from '../types.ts';
 
 interface Props {
@@ -119,14 +119,7 @@ export function ApuSeccionInsumos({ apu, onChange }: Props) {
                   <td>{fmtMoneda(costoU)}</td>
                   <td>{fmtMoneda(costoU * consumo * (1 + desp))}</td>
                   <td className="cm-col-act">
-                    <button
-                      type="button"
-                      className="cm-btn-icon"
-                      onClick={() => del(i)}
-                      aria-label="Eliminar recurso"
-                    >
-                      <ActionIcon name="delete" label="Eliminar recurso" color="var(--err)" />
-                    </button>
+                    <BtnDelRecurso onClick={() => del(i)} />
                   </td>
                 </tr>
               );
@@ -134,15 +127,12 @@ export function ApuSeccionInsumos({ apu, onChange }: Props) {
           </tbody>
         </table>
       </XlScroll>
-      <div className="cm-xl-foot">
-        <button type="button" className="cm-btn cm-btn-ok" onClick={add}>
-          Agregar Insumo
-        </button>
-        <span className="cm-flex-1" />
-        <span className="cm-label-11">
-          Subtotal Insumos: <b>{fmtMoneda(subtotal)}</b>
-        </span>
-      </div>
+      <PieSeccionApu
+        textoAdd="Agregar Insumo"
+        onAdd={add}
+        etiqueta="Subtotal Insumos"
+        valor={subtotal}
+      />
     </XlWrap>
   );
 }

@@ -86,6 +86,8 @@ export function migrateState(
         equipos_snap: p.equipos_snap ?? [],
         cuadrillas_snap: p.cuadrillas_snap ?? [],
         perfil_pais_snap: p.perfil_pais_snap ?? null,
+        herr_pct_snap: p.herr_pct_snap ?? null,
+        usar_fp_en_apu_snap: p.usar_fp_en_apu_snap ?? null,
       }))
     : base.presupuestos;
   return {
@@ -205,6 +207,8 @@ const TABLE_COLUMNS: Record<string, string[]> = {
     'equipos_snap',
     'cuadrillas_snap',
     'perfil_pais_snap',
+    'herr_pct_snap',
+    'usar_fp_en_apu_snap',
   ],
 };
 // FKs (Foreign Key, llave foránea) anulables: '' no existe en la tabla referenciada y
@@ -220,7 +224,7 @@ const NULLABLE_FK_EMPTY_TO_NULL: Record<string, string[]> = {
 const NULLABLE: Record<string, string[]> = {
   cm_equipos: ['proveedor_id'],
   cm_insumos: ['proveedor_id', 'apu_basico_id'],
-  cm_presupuestos: ['parent_id', 'perfil_pais_snap'],
+  cm_presupuestos: ['parent_id', 'perfil_pais_snap', 'herr_pct_snap', 'usar_fp_en_apu_snap'],
 };
 
 /**

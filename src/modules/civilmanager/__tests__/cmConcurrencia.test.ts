@@ -22,7 +22,6 @@ vi.mock('../storage/idb.ts', () => ({
     version: string | null,
     pending: boolean,
   ) => drafts.set(key(value), { state, version, pending }),
-  borradorPendiente: async (value: CmStorageScope) => drafts.get(key(value))?.pending ?? false,
   hayRespaldoLegado: async () => false,
 }));
 

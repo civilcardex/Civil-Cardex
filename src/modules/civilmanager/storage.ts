@@ -1,5 +1,5 @@
-import { borradorPendiente, hayRespaldoLegado, loadFromIdb, saveToIdb } from './storage/idb.ts';
-import { loadFromSupabase, saveToSupabase } from './storage/rpc.ts';
+import { hayRespaldoLegado, loadFromIdb, saveToIdb } from './storage/idb.ts';
+import { cmPendientesDe, fijarBaseCm, loadFromSupabase, saveToSupabase } from './storage/rpc.ts';
 import { captureCmScope, cmScopeKey, type CmStorageScope } from './storage/session.ts';
 import type { CivilManagerState } from './types.ts';
 
@@ -15,8 +15,16 @@ export async function saveCmDraft(scope: CmStorageScope, state: CivilManagerStat
   await saveToIdb(scope, state, null, true);
 }
 
-/** ¿Hay un borrador sin confirmar para este proyecto? (banner de conflicto, H-02). */
-export const hayBorradorPendiente = borradorPendiente;
+/** Borrador de SALIDA (H-02): pending solo si quedan colecciones sin confirmar contra la
+ *  base — salir tras un guardado aceptado NO vuelve a marcar pendiente lo confirmado.
+ *  @throws si IndexedDB falla: el llamador conserva la señal de error. */
+export async function guardarCmSalida(
+  scope: CmStorageScope,
+  state: CivilManagerState,
+): Promise<void> {
+  const pendiente = cmPendientesDe(scope, state).length > 0;
+  await saveToIdb(scope, state, null, pendiente);
+}
 
 /** ¿Existe el respaldo legado de la era sin proyecto? (aviso one-shot, H-08). */
 export const hayRespaldoAnterior = hayRespaldoLegado;
@@ -29,15 +37,20 @@ export async function civilManagerLoad(scope: CmStorageScope): Promise<CivilMana
     remote = await loadFromSupabase(scope);
   } catch (error) {
     if (!draft) throw error;
+    fijarBaseCm(scope, null); // sin base: el próximo guardado envía el estado completo
     return draft.state;
   }
   if (!remote) throw new Error('Proyecto no encontrado o sin acceso.');
+  /* La base confirmada es SIEMPRE lo que tiene el servidor (H-01): si hay borrador pendiente,
+   * sus colecciones difieren de esta base y el primer guardado las incluye. */
+  fijarBaseCm(scope, remote.state);
   if (draft?.pending) return draft.state;
   await saveToIdb(scope, remote.state, null, false);
   return remote.state;
 }
 
-/** Encola el guardado con el proyecto capturado al editar, incluso si cambia la ruta. */
+/** Encola el guardado con el proyecto capturado al editar, incluso si cambia la ruta.
+ *  El delta parcial se calcula contra la base confirmada AL EJECUTAR (H-01, dentro del RPC). */
 export async function civilManagerSave(
   state: CivilManagerState,
   capturedScope?: CmStorageScope,

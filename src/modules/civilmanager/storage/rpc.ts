@@ -1,5 +1,5 @@
 import { supabase } from '../../../lib/supabase';
-import { captureCmScope, type CmStorageScope } from './session.ts';
+import { captureCmScope, type CmStorageScope, cmScopeKey } from './session.ts';
 import { limpiarFilas, migrateState } from './serialize.ts';
 import { readCmSnapshot } from '../dto.ts';
 import type { CivilManagerState } from '../types.ts';
@@ -81,17 +81,87 @@ async function verificarScopeActual(scope: CmStorageScope): Promise<void> {
   }
 }
 
-/** Guarda el estado completo (last-write-wins, ped. usuario 2026-11-24): se omite el reloj
- *  (p_updated_at default null = sin check) — el borrador local SIEMPRE pisa la nube. */
+/** Claves de colección + preferencias que puede traer el payload (save parcial 2026-11-27). */
+const CLAVES_PAYLOAD = [
+  'factoresPrestaciones',
+  'cargos',
+  'proveedores',
+  'cuadrillas',
+  'equipos',
+  'insumos',
+  'apus',
+  'presupuestos',
+  'config',
+  'config_listas',
+  'categorias_apu',
+] as const;
+
+/** Base CONFIRMADA por cuenta+proyecto (H-01): lo que SE SABE que está en el servidor. El
+ *  delta del guardado se calcula contra esto AL EJECUTAR cada operación de la cola, y solo
+ *  avanza con las colecciones que Supabase aceptó. null = sin base → payload completo. */
+const basesConfirmadas = new Map<string, CivilManagerState>();
+
+/** Siembra/repone la base confirmada tras una CARGA (lo que devolvió el servidor). */
+export function fijarBaseCm(scope: CmStorageScope, state: CivilManagerState | null): void {
+  const key = cmScopeKey(scope);
+  if (!key) return;
+  if (state) basesConfirmadas.set(key, state);
+  else basesConfirmadas.delete(key);
+}
+
+/** Colecciones del estado que la base confirmada NO conoce todavía (H-02): vacío = todo
+ *  confirmado. Ej: tras guardar y sin nuevas ediciones devuelve [] (el borrador de salida
+ *  no debe volver a marcarse pendiente). */
+export function cmPendientesDe(scope: CmStorageScope, state: CivilManagerState): string[] {
+  const key = cmScopeKey(scope);
+  const base = key ? basesConfirmadas.get(key) : undefined;
+  if (!base) return [...CLAVES_PAYLOAD]; // sin base: nada confirmado en el servidor
+  const full = payloadCmDeEstado(state, scope.userId, scope.proyectoId);
+  const baseFull = payloadCmDeEstado(base, scope.userId, scope.proyectoId);
+  return CLAVES_PAYLOAD.filter((k) => JSON.stringify(full[k]) !== JSON.stringify(baseFull[k]));
+}
+
+/** Guarda el estado (last-write-wins, ped. usuario 2026-11-24: sin reloj, el borrador local
+ *  SIEMPRE pisa la nube). El delta se calcula contra la base confirmada AL EJECUTAR (H-01:
+ *  una pestaña vieja deja de reponer filas que nunca editó y volver al valor original sí se
+ *  envía). Al aceptar Supabase, la base avanza SOLO con las colecciones enviadas.
+ *  @returns las claves de colección incluidas en el payload aceptado. */
 export async function saveToSupabase(
   state: CivilManagerState,
   scope: CmStorageScope,
-): Promise<void> {
+): Promise<string[]> {
   const { userId, proyectoId: proyectoUid } = scope;
   await verificarScopeActual(scope);
+  const key = cmScopeKey(scope);
+  const base = key ? (basesConfirmadas.get(key) ?? null) : null;
+  const completo = payloadCmDeEstado(state, userId, proyectoUid);
+  let p_state: Record<string, unknown> = completo;
+  let enviadas: string[] = [...CLAVES_PAYLOAD];
+  if (base) {
+    const baseFull = payloadCmDeEstado(base, userId, proyectoUid);
+    p_state = {};
+    enviadas = [];
+    for (const k of CLAVES_PAYLOAD)
+      if (JSON.stringify(completo[k]) !== JSON.stringify(baseFull[k])) {
+        p_state[k] = completo[k];
+        enviadas.push(k);
+      }
+  }
   const { error } = await supabase.rpc('cm_save_state', {
     p_proyecto_id: proyectoUid,
-    p_state: payloadCmDeEstado(state, userId, proyectoUid),
+    p_state,
   });
   if (error) throw new Error(`cm_save_state: ${error.message}`);
+  // Aceptado: la base avanza SOLO con lo enviado (las colecciones omitidas conservan la suya).
+  if (key) {
+    const previa = basesConfirmadas.get(key);
+    if (previa) {
+      const avanzada = { ...previa } as Record<string, unknown>;
+      for (const k of enviadas) avanzada[k] = completo[k];
+      basesConfirmadas.set(key, avanzada as unknown as CivilManagerState);
+    } else {
+      basesConfirmadas.set(key, state);
+    }
+  }
+  return enviadas;
 }

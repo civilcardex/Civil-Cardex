@@ -62,6 +62,8 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       cuadrillas_snap: state.cuadrillas,
       perfil_pais_snap:
         state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ?? null,
+      herr_pct_snap: state.config.herr_pct,
+      usar_fp_en_apu_snap: state.config.usar_fp_en_apu,
     };
     patch({ presupuestos: [...state.presupuestos, nuevo] });
     onSelect(nuevo.id);
@@ -103,6 +105,8 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
             perfil_pais_snap:
               state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ??
               p.perfil_pais_snap,
+            herr_pct_snap: state.config.herr_pct,
+            usar_fp_en_apu_snap: state.config.usar_fp_en_apu,
           };
         }
         return { ...p, [k]: v };
