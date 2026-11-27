@@ -1,6 +1,0 @@
-{
-  // Deno 2 no auto-instala deps npm: el SDK de Paddle (usado por las edge functions de
-  // pagos) se resuelve aquí para CI/edición. El deploy de Edge Functions resuelve npm:
-  // por su cuenta — no afecta a Vercel.
-  "nodeModulesDir": "auto"
-}
