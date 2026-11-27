@@ -25,6 +25,9 @@ interface ProyectoCoreData {
 interface ProyectoDataRow extends Partial<ProyectoCoreData> {
   plans_meta?: PlanMeta[];
   redesActivas?: string[];
+  /** Nombre de la fila cf_proyectos (fuente de verdad del rename). Puede diferir del nombre
+   *  guardado en la ficha general; al reabrir manda este si no está vacío. */
+  nombreProyecto?: string;
 }
 
 // Formas de fila devueltas por el RPC get_proyecto_data(proyecto_id) — lee en una sola
@@ -275,6 +278,17 @@ export async function saveProyectoCoreData(
   }
 }
 
+/** Guarda la elección de una red antes de que el proyecto tenga niveles. */
+export function saveMaterialDeRed(proyectoId: string, red: string, material: string) {
+  return conSesion('save-material-red', () =>
+    supabase.rpc('save_cf_network_material', {
+      p_proyecto_id: proyectoId,
+      p_red: red,
+      p_material: material,
+    }),
+  );
+}
+
 /**
  * Actualiza solo la columna `redes_activas` del proyecto vía RPC seguro — no toca el resto
  * de los datos del proyecto. Lo usa el toggle "Redes activas"/"Equipos activos", que es
@@ -495,8 +509,22 @@ export async function loadProyectoDataConError(
     if (!data) return { data: null, error: null };
 
     const result = data as GetProyectoDataResult;
+    /* Nombre de cf_proyectos: el rename vive SOLO ahí, la ficha general puede quedar vieja.
+       Si esta lectura falla no se bloquea la apertura (se cae al nombre de la ficha). */
+    let nombreProyecto = '';
+    try {
+      const { data: fila, error: errNombre } = await supabase
+        .from(CF_TABLES.proyectos)
+        .select('nombre')
+        .eq('id', proyectoId)
+        .maybeSingle();
+      if (!errNombre) nombreProyecto = String(fila?.nombre ?? '').trim();
+    } catch (eNombre) {
+      devError('proyectoDataService load nombre:', eNombre);
+    }
     return {
       data: {
+        nombreProyecto: nombreProyecto || undefined,
         pisos: (result.pisos ?? []).map((p) => ({
           id: p.id,
           n: p.n,

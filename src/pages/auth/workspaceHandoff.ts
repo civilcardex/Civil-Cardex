@@ -78,10 +78,20 @@ export async function abrirProyectoCf({
     // write lands on a key nobody reads.
     if (data) {
       if (data.pisos) saveToStorage('civilflow_pisos', data.pisos as Piso[]);
+      /* El nombre del proyecto se restaura desde cf_proyectos (ahí escribe el rename); la
+         ficha general es solo el respaldo si esa fila llega vacía. */
+      const nombreProyecto =
+        String(data.nombreProyecto ?? '').trim() ||
+        String(data.proy?.nombre ?? '').trim() ||
+        String(proy.nombre ?? '').trim();
       const proyToSave =
         data.proy && Object.keys(data.proy).length
-          ? { ...PROY_DEFAULTS, ...(data.proy as Partial<Proyecto>) }
-          : { ...PROY_DEFAULTS, nombre: proy.nombre };
+          ? {
+              ...PROY_DEFAULTS,
+              ...(data.proy as Partial<Proyecto>),
+              nombre: nombreProyecto || PROY_DEFAULTS.nombre,
+            }
+          : { ...PROY_DEFAULTS, nombre: nombreProyecto || proy.nombre };
       saveToStorage('civilflow_proy', proyToSave);
       if (data.mats && Object.keys(data.mats).length) saveToStorage('civilflow_mats', data.mats);
       if (data.profs && data.profs.length) saveToStorage('civilflow_profs', data.profs);

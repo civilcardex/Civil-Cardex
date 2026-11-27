@@ -98,31 +98,57 @@ export async function downloadPlanPDF(
   }
 }
 
+/** Reintenta una operación de borrado (auditoría 2026-11-27, Alta 4): 3 intentos con espera
+ *  creciente. true = sin error; false = agotados (la UI avisa al usuario). */
+async function conReintentos(op: () => Promise<string | null>): Promise<boolean> {
+  for (let intento = 1; intento <= 3; intento++) {
+    /* H-06 (remediación 2026-11-27): un RECHAZO transitorio de red también cuenta como
+     * intento fallido y consume su reintento — antes un throw cortaba el bucle entero. */
+    let err: string | null;
+    try {
+      err = await op();
+    } catch (e) {
+      err = e instanceof Error ? e.message : String(e);
+    }
+    if (!err) return true;
+    devError(`pdfStorageService delete (intento ${intento}/3):`, err);
+    if (intento < 3) await new Promise((r) => setTimeout(r, 250 * intento));
+  }
+  return false;
+}
+
 /** Borra la fila de metadatos del plano en cf_planos vía RPC dueño-only. La limpieza legítima
  *  de un plano eliminado va POR AQUÍ: el autosave con lista vacía ya no borra nada en BD
- *  (save_planos_meta con lista vacía es no-op — migración 20260918000000). */
-export async function deletePlanMeta(planId: number): Promise<void> {
+ *  (save_planos_meta con lista vacía es no-op — migración 20260918000000).
+ *  @returns true si el RPC respondió sin error. */
+export async function deletePlanMeta(planId: number): Promise<boolean> {
   try {
-    const { error } = await supabase.rpc('delete_plano_meta', { p_plano_id: planId });
-    if (error) devError('pdfStorageService deletePlanMeta:', error.message);
+    return await conReintentos(async () => {
+      const { error } = await supabase.rpc('delete_plano_meta', { p_plano_id: planId });
+      return error ? error.message : null;
+    });
   } catch (e) {
     devError('pdfStorageService deletePlanMeta exception:', e);
+    return false;
   }
 }
 
-/** Borra el binario del bucket (par de deletePlanMeta). Ej: al eliminar un plano, se van fila de metadatos y PDF. */
-export async function deletePlanPDF(proyectoId: string, planId: number): Promise<void> {
+/** Borra el binario del bucket (par de deletePlanMeta). Ej: al eliminar un plano, se van fila
+ *  de metadatos y PDF.
+ *  @returns true si Storage respondió sin error (y había sesión). */
+export async function deletePlanPDF(proyectoId: string, planId: number): Promise<boolean> {
   try {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (!session) return;
-
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .remove([objectPath(await ownerDe(proyectoId, session.user.id), proyectoId, planId)]);
-    if (error) devError('pdfStorageService delete:', error.message);
+    if (!session) return false;
+    const ruta = objectPath(await ownerDe(proyectoId, session.user.id), proyectoId, planId);
+    return await conReintentos(async () => {
+      const { error } = await supabase.storage.from(BUCKET).remove([ruta]);
+      return error ? error.message : null;
+    });
   } catch (e) {
     devError('pdfStorageService delete exception:', e);
+    return false;
   }
 }

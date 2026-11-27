@@ -91,6 +91,23 @@ describe('persistencia RCI por proyecto', () => {
     expect(alertas).not.toHaveBeenCalled();
   });
 
+  it('preserva las fichas parciales y la altura histórica al guardar con almacenamiento en No', async () => {
+    const estado = ejemploVerificacion();
+    estado.clas.almacen = 'No';
+    estado.clas.arrumeH = 2.5;
+    estado.clas.zonasAlmacenamiento = [
+      { id: 'z1', piso: 'piso-1', nombre: 'Repuestos', arrume: '2.1' },
+      { id: 'z2', piso: 'piso-1', nombre: 'Archivo' },
+    ];
+    await expect(saveRciDatos('p1', estado)).resolves.toBe(true);
+    const loaded = await loadRciDatos('p1');
+    expect(loaded?.clas).toMatchObject({
+      almacen: 'No',
+      arrumeH: 2.5,
+      zonasAlmacenamiento: estado.clas.zonasAlmacenamiento,
+    });
+  });
+
   it('B: load sin fila → null', async () => {
     await expect(loadRciDatos('p-vacio')).resolves.toBeNull();
   });
