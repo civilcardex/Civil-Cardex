@@ -5,6 +5,7 @@
  *  (20.29 psi) y R2 se equilibra a 56.51 gpm. */
 import type { CSSProperties } from 'react';
 import { SecRci } from './RCIUI.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
 import { filasDetalleNudo, filasNudos, fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import type { RedResult } from '../../lib/rci/types.ts';
@@ -39,7 +40,7 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
         </div>
       ) : (
         <>
-          <div style={{ overflowX: 'auto' }}>
+          <TableScroll label="Nudos de cálculo">
             <table
               className="tbl"
               style={{
@@ -146,7 +147,7 @@ export function PanelNudosRci({ rd }: { rd: RedResult }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
           <p style={{ margin: '6px 2px 0', fontSize: 11, color: 'var(--txt3)', lineHeight: 1.45 }}>
             En cada nudo gobierna la mayor presión requerida. Los demás aportes reciben esa presión
             y descargan más: Q = K eq · √P. Por eso el «Q equilibrado» de un ramal puede ser mayor
@@ -180,7 +181,7 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
                 · Ø {d.dn}
                 {d.C !== null ? ` · C = ${d.C}` : ''}
               </h4>
-              <div style={{ overflowX: 'auto' }}>
+              <TableScroll label="Detalle del recorrido hidráulico">
                 <table
                   className="tbl"
                   style={{
@@ -310,7 +311,7 @@ export function PanelDetalleRci({ rd }: { rd: RedResult }) {
                     )}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </div>
           ))}
         </>

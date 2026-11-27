@@ -9,6 +9,7 @@ import { useCloseViewer } from '../useCloseViewer.ts';
 import { renderYVer } from '../../../../../test/render.tsx';
 import { saveToStorage, loadFromStorage } from '../../../services/storageService.ts';
 import { RCI_ESTADO_VIVO_KEY } from '../../../constants/storage-keys.ts';
+import { EV_RCI_VIVO_SAVED } from '../../../utils/fixtureEvents.ts';
 import PlanoEngine from '../../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanItem } from '../../../context/PlansContext.tsx';
 
@@ -71,9 +72,14 @@ describe('useActiveNetState', () => {
 });
 
 describe('useDmuroRciInjection', () => {
-  it('inyecta el Dmuro del piso activo al engine y reacciona a cambios', async () => {
+  it('inyecta el máximo del riesgo solo con S del piso activo y reacciona a cambios', async () => {
     saveToStorage(RCI_ESTADO_VIVO_KEY, {
-      pisos: { rows: [{ planId: '9', riesgo: 'Riesgo ordinario G1' }] },
+      pisos: {
+        rows: [
+          { planId: '8', S: 3 },
+          { planId: '9', riesgo: 'Riesgo extra G1' },
+        ],
+      },
     });
     const holder: { engine: PlanoEngine | null } = { engine: null };
     function Probe() {
@@ -84,11 +90,24 @@ describe('useDmuroRciInjection', () => {
       return null;
     }
     await renderYVer(<Probe />);
-    expect((holder.engine as unknown as { dmuroRci: number | null }).dmuroRci).toBe(2.3);
+    expect(holder.engine?.dmuroRci).toBeNull();
+    saveToStorage(RCI_ESTADO_VIVO_KEY, {
+      pisos: { rows: [{ planId: '9', riesgo: 'Riesgo extra G1', S: '3,2' }] },
+    });
+    window.dispatchEvent(new Event(EV_RCI_VIVO_SAVED));
+    expect(holder.engine?.dmuroRci).toBe(1.6);
+    saveToStorage(RCI_ESTADO_VIVO_KEY, {
+      pisos: { rows: [{ planId: '9', riesgo: 'Riesgo extra G1', S: '' }] },
+    });
+    window.dispatchEvent(new Event(EV_RCI_VIVO_SAVED));
+    expect(holder.engine?.dmuroRci).toBeNull();
   });
 
-  it('sin riesgo en la fila cae al riesgo leve: DMR = S máx / 2 = 2,3 (doctrina inalterable)', async () => {
-    saveToStorage(RCI_ESTADO_VIVO_KEY, {});
+  it('con S y sin riesgo en la fila usa el riesgo global', async () => {
+    saveToStorage(RCI_ESTADO_VIVO_KEY, {
+      clas: { riesgo: 'Riesgo extra G1' },
+      pisos: { rows: [{ planId: '9', S: 3 }] },
+    });
     const holder: { engine: PlanoEngine | null } = { engine: null };
     function Probe() {
       const engineRef = useRef<PlanoEngine | null>(null);
@@ -98,8 +117,7 @@ describe('useDmuroRciInjection', () => {
       return null;
     }
     await renderYVer(<Probe />);
-    // Sin riesgo elegido cae al riesgo leve: DMR inalterable = S máx 4,6 / 2 = 2,3 m.
-    expect((holder.engine as unknown as { dmuroRci: number | null }).dmuroRci).toBe(2.3);
+    expect(holder.engine?.dmuroRci).toBe(1.5);
   });
 });
 

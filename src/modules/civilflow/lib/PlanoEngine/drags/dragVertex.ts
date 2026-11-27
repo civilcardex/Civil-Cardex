@@ -15,6 +15,10 @@ export function dragVertex(engine: IPlanoEngineCore, x: number, y: number, ctx: 
     let p = engine.toPlane(x, y);
     const idx = engine.ptDrag!.ptIdx;
     const isEndpoint = idx === 0 || idx === r.pts.length - 1;
+    /* El arrastre arranca con la misma holgura con la que se agarró el vértice (sin salto). */
+    if (!engine.ptDrag!.accMedSlide) {
+      p = { x: p.x - (engine.ptDrag!.offX || 0), y: p.y - (engine.ptDrag!.offY || 0) };
+    }
 
     // Accesorio a mitad de ramal (rociador rci): REORDENAR, no arrastrar la geometría (ped.
     // usuario 2026-11-20). Proyectar el cursor sobre el ramal ORIGINAL (backup del mouse-down)

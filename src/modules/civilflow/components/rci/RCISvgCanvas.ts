@@ -3,7 +3,7 @@
  *  var(--x): reciben colores resueltos (temaResuelto()).
  *  Ej: dibujaRectFuegoDibujo(ctx, w, h, rect, temaResuelto()). */
 import type { BombaResult } from '../../lib/rci/types';
-import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
+import { puntoEnORectangulo } from '../../lib/shared/geometry.ts';
 import { COL_RCI, fmtNum, niceStep, type TemaRci } from './RCISvgTheme.tsx';
 /* ---------------- Canvas: rectángulo de fuego y curva de la bomba ---------------- */
 
@@ -174,7 +174,7 @@ export function dibujaRectFuegoDibujo(
   g.stroke();
 
   /* Envolvente de los rociadores DENTRO del área (gris claro). */
-  const dentro = rect.rocPts.filter((p) => puntoEnPoligono(p, rect.ptsM));
+  const dentro = rect.rocPts.filter((p) => puntoEnORectangulo(p, rect.ptsM));
   if (dentro.length > 1) {
     let bMinX = Infinity,
       bMinY = Infinity,
@@ -193,7 +193,7 @@ export function dibujaRectFuegoDibujo(
 
   /* Roociadores del dibujo: verde = dentro del rectángulo, gris = fuera. */
   for (const p of rect.rocPts) {
-    const adentro = puntoEnPoligono(p, rect.ptsM);
+    const adentro = puntoEnORectangulo(p, rect.ptsM);
     g.beginPath();
     g.arc(X(p[0]), Y(p[1]), 5, 0, Math.PI * 2);
     g.fillStyle = adentro ? tema.ok : tema.muted;
@@ -205,7 +205,7 @@ export function dibujaRectFuegoDibujo(
 
   g.fillStyle = tema.muted;
   g.fillText(
-    `${rect.rocPts.length} rociadores del dibujo · ${dentro.length} dentro del área definida`,
+    `${rect.rocPts.length} rociadores que fluyen · ${dentro.length} en operación`,
     pad.l,
     18,
   );

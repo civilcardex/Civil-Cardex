@@ -4,11 +4,13 @@
  *  que la red quede realmente unida y su longitud entre al cálculo de pérdidas.
  *  Ej: sembrarRociadores(eng, 'RRCI1', 3.2) deja un rociador en la cabeza y uno cada 3,2 m. */
 import type { IPlanoEngineCore, PlanoRamal } from './PlanoState.ts';
+import { AVISO_S_DMR } from '../rci/tables.ts';
 import { cmToPlanePx, factorMPorPx } from './planoCoords.ts';
 import { calculateRamalLength } from './ramalMeasure.ts';
 import { nextFreeRamalId } from './planoNumbering.ts';
 import { _firstSegmentAngle } from './drawingAngles.ts';
-import { distSegSeg, MIN_MURO_M } from '../shared/geometry.ts';
+import { distSegSeg, distToSegment, MIN_MURO_M } from '../shared/geometry.ts';
+import { RCI_S_CIRCLES_KEY } from '../../constants/storage-keys.ts';
 
 /** Recorre la polilínea desde pts[0] y devuelve el punto (y el índice de inserción) que está a
  *  `distPx` px acumulados. null si la distancia se pasa del final. */
@@ -81,49 +83,16 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
       const q = m ? r.pts[+m[1]] : null;
       return !!q && Math.hypot(q[0] - x, q[1] - y) < 1;
     });
-  /* TRAMO RECTO MÁS LARGO (ped. usuario 2026-11-13): la siembra ocurre SOLO dentro de la
-   * corrida colineal más larga del ramal — tras una curva o ángulo recto no continúa. Cada
-   * cambio de dirección (dot < 0.98) cierra una corrida; corridas de un solo segmento también
-   * compiten. */
-  let mejorIni = 0;
-  let mejorLen = -1;
-  let runIni = 0;
-  let runLen = 0;
-  let dirAnt: { x: number; y: number } | null = null;
+  /* CÍRCULOS DE RADIO S SOBRE LOS CENTROS (ped. usuario): la siembra ya NO se encierra en la
+   * corrida recta más larga. Se recorre TODA la polilínea y cada nuevo rociador queda a S del
+   * anterior, aunque el punto caiga en el SIGUIENTE SEGMENTO (el círculo de radio S centrado
+   * en el último rociador corta la polilínea ahí). Las curvas/ángulos ya no cortan la serie. */
+  let totalPx = 0;
   for (let i = 0; i < r.pts.length - 1; i++) {
-    const segLen = Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
-    const d = {
-      x: (r.pts[i + 1][0] - r.pts[i][0]) / (segLen || 1),
-      y: (r.pts[i + 1][1] - r.pts[i][1]) / (segLen || 1),
-    };
-    const colineal = !!dirAnt && Math.abs(d.x * dirAnt.x + d.y * dirAnt.y) >= 0.98;
-    if (!colineal) {
-      if (runLen > mejorLen) {
-        mejorLen = runLen;
-        mejorIni = runIni;
-      }
-      runIni = i;
-      runLen = 0;
-    }
-    runLen += segLen;
-    dirAnt = d;
+    totalPx += Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
   }
-  if (runLen > mejorLen) {
-    mejorLen = runLen;
-    mejorIni = runIni;
-  }
-  // Distancia acumulada al inicio del tramo ganador:
-  let rectoInicio = 0;
-  let acc = 0;
-  for (let i = 0; i < r.pts.length - 1; i++) {
-    const segLen = Math.hypot(r.pts[i + 1][0] - r.pts[i][0], r.pts[i + 1][1] - r.pts[i][1]);
-    if (i === mejorIni) rectoInicio = acc;
-    acc += segLen;
-  }
-  /* Puntos a insertar (dist, x, y) cada pasoPx DENTRO del tramo recto ganador, sin llegar a
-   * su fin. Posiciones ya sembradas se saltan (idempotencia). */
   const inserciones: Array<{ x: number; y: number; idx: number; dist: number }> = [];
-  for (let d = rectoInicio + pasoPx; d < rectoInicio + mejorLen - 1e-6; d += pasoPx) {
+  for (let d = pasoPx; d < totalPx - 1e-6; d += pasoPx) {
     const p = puntoADistancia(r.pts, d);
     if (p && !yaSembrado(p.x, p.y)) inserciones.push(p);
   }
@@ -136,7 +105,34 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
   let pts = r.pts.slice();
   let accMed = { ...(r.accMed || {}) };
   let offset = 0;
+  let omitidos = 0;
   for (const ins of inserciones.toSorted((a, b) => a.dist - b.dist)) {
+    /* El círculo S puede aterrizar JUSTO en un vértice existente (esquina entre segmentos):
+       no se duplica el vértice, solo se marca ese vértice con el rociador. */
+    const idxExistente = ins.idx + offset;
+    const existente = pts[idxExistente];
+    const anterior = pts[idxExistente - 1];
+    /* Tolerancia de 0,01 px de plano: la distancia acumulada por sumas sucesivas de S puede
+       caer unos float por encima de la esquina y el punto ya no coincide exactamente. */
+    const enVertice = (p: number[] | undefined): boolean =>
+      !!p && Math.hypot(p[0] - ins.x, p[1] - ins.y) < 1e-2;
+    const vertice = enVertice(existente)
+      ? idxExistente
+      : enVertice(anterior)
+        ? idxExistente - 1
+        : -1;
+    if (vertice >= 0) {
+      /* H-11 (remediación 2026-11-27): vértice con accesorio ya registrado (codo, tee u otro
+       * rociador) NO se pisa — esa posición se omite y se informa al final. */
+      const clave = `accMed${vertice}`;
+      if (!accMed[clave]) {
+        accMed[clave] = 'rociador';
+      } else {
+        omitidos++;
+        continue;
+      }
+      continue;
+    }
     const idx = ins.idx + offset;
     pts = [...pts.slice(0, idx), [ins.x, ins.y], ...pts.slice(idx)];
     accMed = shiftAccMed(accMed, idx, 1);
@@ -150,6 +146,10 @@ export function sembrarRociadores(engine: IPlanoEngineCore, ramalId: string, sM:
     ...(pusoInicio ? { accesorioInicio: 'rociador' } : {}),
     totalL: +calculateRamalLength(pts, engine).toFixed(3),
   });
+  if (omitidos > 0)
+    engine._emitStatus(
+      `${omitidos} posición(es) con accesorio existente: no se sembró rociador ahí.`,
+    );
   renumeraRociadores(engine);
   engine.render();
   engine._markDirty();
@@ -194,6 +194,75 @@ export function renumeraRociadores(engine: IPlanoEngineCore): void {
  *  'rociadorMontanteNF#5'). */
 export function rociadorFluye(v: string | undefined): boolean {
   return !!v && /rociador/i.test(v) && !/NF(?:#|$)/.test(v);
+}
+
+/** Fija el estado «Fluye» de UN rociador sin tocar su tipo ni su consecutivo ROC-N. El flag NF
+ *  va justo antes del '#'. Ej: 'rociadorMontante#7' + false → 'rociadorMontanteNF#7'; el número
+ *  7 no cambia, aunque el rociador deje de contarse para el cálculo. */
+export function fijarFluyeRociador(v: string, fluye: boolean): string {
+  const [base, num] = v.split('#');
+  const tipo = base.replace(/NF$/, '');
+  if (!/rociador/i.test(tipo)) return v;
+  return `${tipo}${fluye ? '' : 'NF'}${num ? `#${num}` : ''}`;
+}
+
+/** ¿Están visibles los círculos guía de radio S en este motor? */
+export function circulosSVisibles(engine: IPlanoEngineCore): boolean {
+  return engine.sCirclesVisible !== false;
+}
+
+/** Enciende/apaga los círculos S desde el menú contextual o el panel del ramal. Se recuerda en
+ *  sessionStorage para que el visor arranque igual. Devuelve el nuevo estado. */
+export function alternarCirculosS(engine: IPlanoEngineCore): boolean {
+  const visible = !circulosSVisibles(engine);
+  engine.sCirclesVisible = visible;
+  if (typeof sessionStorage !== 'undefined')
+    sessionStorage.setItem(RCI_S_CIRCLES_KEY, String(visible));
+  engine.render();
+  return visible;
+}
+
+/** Etiqueta ROC-N de un rociador de extremo (inicio/fin), sacada de su consecutivo `#`.
+ *  Ej: 'rociadorMontante#7' → 'ROC-7'. null si el accesorio no es un rociador numerado. */
+export function numeroRociador(v: string | undefined): string | null {
+  const m = /^(?:rociador(?:NF)?|rociador(?:Montante|Seco|Oculto|Area)(?:NF)?)#(\d+)$/.exec(
+    String(v || ''),
+  );
+  return m ? `ROC-${m[1]}` : null;
+}
+
+/** Al CREAR un rociador con muro marcado pero sin S: avisa y NO deja colocar el accesorio.
+ *  El dato está en RCI → Tipologías → Pisos del edificio (columna S); las verificaciones enlazan
+ *  ahí con `go: ['tipologias','pisos']`. Devuelve true si bloqueó la acción. */
+export function avisoSinSConMuro(engine: IPlanoEngineCore): boolean {
+  const conMuro = (engine.guideLines || []).some((g) => g.esMuro === true);
+  if (!conMuro || (engine.sRci != null && engine.sRci > 0)) return false;
+  engine.triggerAlert('Define S para verificar la distancia entre muro y rociador', AVISO_S_DMR);
+  return true;
+}
+
+/** ¿Este RAMAL tiene al menos un rociador sembrado? (base 'rociador'/'rociadorMontante' en
+ *  extremos y accMed, con o sin NF ni # — la misma detección del renderer de círculos S).
+ *  Ej: el botón «Ocultar círculos S» solo aparece con el ramal seleccionado con rociadores. */
+export function ramalConRociadores(r: PlanoRamal | undefined | null): boolean {
+  if (!r || r.net !== 'rci') return false;
+  const esRoc = (v: unknown): boolean => {
+    const base = String(v || '')
+      .split('#')[0]
+      .replace(/NF$/, '');
+    return base === 'rociador' || base === 'rociadorMontante';
+  };
+  return (
+    esRoc(r.accesorioInicio) ||
+    esRoc(r.accesorioFin) ||
+    Object.values(r.accMed || {}).some((v) => esRoc(String(v)))
+  );
+}
+
+/** Valor guardado al CREAR un rociador: entra como «No fluye» hasta que el usuario lo active.
+ *  Ej: elegir «Rociador montante» guarda 'rociadorMontanteNF' (y luego el consecutivo '#N'). */
+export function valorRociadorNuevo(accId: string): string {
+  return /rociador/i.test(accId) && !/NF(?:#|$)/.test(accId) ? `${accId}NF` : accId;
 }
 
 /** Distancia en px entre rociadores VECINOS a lo largo de un ramal (orden vértice): devuelve
@@ -373,8 +442,13 @@ export function crearRamalesParalelos(
   /* VERIFICACIÓN MUROS antes de crear nada. Dos violaciones independientes: MÍNIMO (copia a
    * < 0,10 m de un muro — gana SIEMPRE sobre el máximo, sea cual sea el orden en que se
    * detecten) y MÁXIMO (muro de la banda del grupo sin cobertura a ≤ Dmuro). */
+  /* VERIFICACIÓN MUROS antes de crear nada. Dos violaciones independientes: MÍNIMO (copia a
+   * < 0,10 m de un muro — gana SIEMPRE sobre el máximo, sea cual sea el orden en que se
+   * detecten) y MÁXIMO (muro de la banda del grupo sin cobertura a ≤ Dmuro). El chequeo de
+   * DMR vive SOLO en el dibujo (ped. usuario 2026-11-27). */
   const muros = engine.guideLines.filter((g) => g.esMuro && g.pts && g.pts.length >= 2);
   if (muros.length) {
+    if (dm == null) return { ids: [], error: AVISO_S_DMR };
     let peorMin = Infinity;
     for (const c of candidatos) {
       for (const muro of muros) {
@@ -390,9 +464,8 @@ export function crearRamalesParalelos(
     }
     if (dm && dm > 0) {
       /* Muros de la BANDA del grupo: solo los que las copias podrían cubrir (a ≤ 2·Dmuro de
-       * alguna copia) se exigen aquí — los lejanos esperan su propio ramal y los juzga la
-       * verificación de tabla. El ramal más cercano incluye el base, las copias y los
-       * ramales rci existentes. */
+       * alguna copia) se exigen aquí — los lejanos esperan su propio ramal. El ramal más
+       * cercano incluye el base, las copias y los ramales rci existentes. */
       const polis = [
         base.pts,
         ...candidatos.map((c) => c.pts),
@@ -412,7 +485,7 @@ export function crearRamalesParalelos(
       if (peor > 0) {
         return {
           ids: [],
-          error: `Los ramales no se pueden crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje un ramal más cerca de ese muro o aumente la DMR en RCI → Tipologías → Pisos del edificio.`,
+          error: `Los ramales no se pueden crear: un muro de su zona quedaría a ${peor.toFixed(2).replace('.', ',')} m del ramal más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Dibuje un ramal más cerca de ese muro.`,
         };
       }
     }
@@ -434,10 +507,12 @@ export function crearRamalesParalelos(
 /** Chequeo EN VIVO al terminar/mover un trazo rci (ped. usuario). Dos reglas:
  *  MÍNIMO — el trazo no puede quedar pegado ni cruzar un muro: a < MIN_MURO_M (0,10 m,
  *  NFPA 13) de CUALQUIER muro → alerta (la violación clara, independiente del Dmuro).
- *  MÁXIMO — SOLO el muro MÁS CERCANO al trazo (vertical u horizontal, da igual) debe quedar
- *  a ≤ Dmuro del ramal rci más cercano (el nuevo incluido): si el trazo es ese ramal, él
- *  mismo lo cubre; si otro ramal ya está más cerca, ese lo cubre y el trazo no bloquea. El
- *  Dmuro llega inyectado (engine.dmuroRci); null → el máximo no aplica.
+ *  MÁXIMO — DIRECCIONAL (ped. usuario 2026-11-27): trazo HORIZONTAL vs muro VERTICAL se mide
+ *  con los EXTREMOS del trazo (el ramal debe LLEGAR a ≤ Dmuro del muro vertical más cercano a
+ *  cada lado); trazo VERTICAL vs muro HORIZONTAL, ídem con sus extremos; trazo PARALELO al
+ *  muro se mide con la distancia perpendicular del cuerpo. Multisegmento: la regla aplica POR
+ *  SEGMENTO según su propia dirección. La excusa («otro ramal ya cubre ese muro») se mide
+ *  igual, con la misma regla direccional. El chequeo de DMR vive SOLO en el dibujo.
  *  Ej: muro en banda a 2,65 m del trazo con Dmuro 1,70 → mensaje y trazo no creado. */
 export function chequeoMurosTrazo(
   engine: IPlanoEngineCore,
@@ -446,6 +521,7 @@ export function chequeoMurosTrazo(
 ): string | null {
   const muros = engine.guideLines.filter((g) => g.esMuro && g.pts && g.pts.length >= 2);
   if (!muros.length) return null;
+  if (dm == null) return AVISO_S_DMR;
   /* MÍNIMO contra TODOS los muros (pegarse/cruzar es violación independientemente del Dmuro). */
   const minPx = cmToPlanePx(engine.scaleM, MIN_MURO_M * 100);
   for (const muro of muros) {
@@ -456,36 +532,94 @@ export function chequeoMurosTrazo(
     }
   }
   if (!(dm && dm > 0)) return null;
-  /* MÁXIMO (doctrina del usuario, 2026-11-13): PROXIMIDAD del trazado a los muros que tiene
-   * cerca. Por cada TRAMO del trazado nuevo se mira su segmento de muro más cercano y ese
-   * muro debe quedar a ≤ Dmuro del trazo. Sin cobertura de muestreo ni grupo BFS: en el
-   * salón grande, el trazado pegado al muro superior pasa (su cercano está a ≤ Dmuro) y NO
-   * bloquean las verticales/inferior lejanos ni las partes bajas descubiertas de un muro
-   * cercano — esas las cubrirá el ramal que las trace. El MÍNIMO de 0,10 m sigue contra
-   * TODOS los muros. Ej: trazo a 2,65 m del único muro con Dmuro 1,70 → bloquea. */
+  /* MÁXIMO POR SEGMENTO Y POR EJE (ped. usuario, ramal multisegmento): CADA tramo se comprueba
+   * contra los muros PARALELOS a él — horizontal contra horizontales, vertical contra
+   * verticales. Así un tramo horizontal puede cumplir y el vertical quedar lejos del muro
+   * vertical: eso bloquea, aunque el vertical esté pegado al ramal horizontal. Un muro se
+   * excusa solo si OTRO ramal está a ≤ Dmuro DE ESE MURO. Muros a más de 3·Dmuro esperan su
+   * propio ramal (salón grande). El MÍNIMO de 0,10 m sigue contra TODOS los muros. */
+  const dmPx = cmToPlanePx(engine.scaleM, dm * 100);
   let peor = 0;
-  const tramos = ptsNuevos.length - 1;
-  /* La red rci ya dibujada TAMBIÉN sirve de referencia (ped. usuario 2026-11-13: ramales que
-   * conectan con la red existente no deben bloquear aunque estén lejos de los muros). El
-   * trazado evaluado SE EXCLUYE: al mover (dragUp) el ramal ya vive en engine.ramales y sin
-   * esto se cubriría a sí mismo a distancia 0 — el chequeo del máximo jamás aplicaría. */
+  const aristas = muros.flatMap(({ pts }) => pts.slice(1).map((b, i) => [pts[i], b]));
+  /* El trazado evaluado SE EXCLUYE de la red existente: al mover (dragUp) el ramal ya vive en
+   * engine.ramales y sin esto se cubriría a sí mismo a distancia 0. */
   const redPx = engine.ramales
     .filter((r) => r.net === 'rci' && r.pts && r.pts.length >= 2 && r.pts !== ptsNuevos)
     .map((r) => r.pts);
-  for (let ti = 0; ti < tramos; ti++) {
-    const tramo = [ptsNuevos[ti], ptsNuevos[ti + 1]];
-    let dc = Infinity;
-    for (const muro of muros) {
-      const d = distPoli(muro.pts, tramo);
-      if (d < dc) dc = d;
+  const tramos = ptsNuevos.slice(1).map((b, i) => [ptsNuevos[i], b]);
+  const otros = redPx.flatMap((pts) => pts.slice(1).map((b, i) => [pts[i], b]));
+  /* Distancia arista↔tramo SEGÚN LA DIRECCIÓN relativa (ped. usuario 2026-11-27):
+   *  - paralelos: distancia perpendicular entre segmentos (cuerpo del ramal);
+   *  - perpendiculares: desde los EXTREMOS del tramo hasta el muro (el ramal debe LLEGAR);
+   *  - diagonal: distancia real entre segmentos. Ej: trazo horizontal a 2 m de un muro
+   *    vertical se juzga con dónde TERMINA el trazo, no con su cuerpo. */
+  /* Coseno director entre dos segmentos (0 = perpendiculares, 1 = paralelos). */
+  const cosCon = (s1: number[][], s2: number[][]): number => {
+    const l1 = Math.hypot(s1[1][0] - s1[0][0], s1[1][1] - s1[0][1]) || 1;
+    const l2 = Math.hypot(s2[1][0] - s2[0][0], s2[1][1] - s2[0][1]) || 1;
+    return Math.abs(
+      ((s1[1][0] - s1[0][0]) * (s2[1][0] - s2[0][0]) +
+        (s1[1][1] - s1[0][1]) * (s2[1][1] - s2[0][1])) /
+        (l1 * l2),
+    );
+  };
+  const dArista = (edge: number[][], t: number[][]): number => {
+    const cos = cosCon(edge, t);
+    if (cos >= 0.85) return distSegSeg(edge[0], edge[1], t[0], t[1]); // paralelos: perpendicular del cuerpo
+    if (cos <= 0.15)
+      // perpendiculares: EXTREMOS del tramo contra el muro
+      return Math.min(distToSegment(t[0], edge[0], edge[1]), distToSegment(t[1], edge[0], edge[1]));
+    return distSegSeg(edge[0], edge[1], t[0], t[1]); // diagonal: distancia real
+  };
+  /* Perpendiculares: SOLO los muros INMEDIATAMENTE más cercanos (ped. usuario 2026-11-27).
+   * Por cada tramo y cada lado (delante/detrás a lo largo de SU dirección) se juzga la arista
+   * perpendicular más cercana; las lejanas del mismo lado esperan su propio ramal. Las aristas
+   * que quedan ENMEDIO del recorrido del tramo se juzgan siempre. */
+  const juzgar = new Set<number>();
+  const perpIdx: number[] = [];
+  for (let i = 0; i < aristas.length; i++)
+    if (tramos.some((t) => cosCon(aristas[i], t) <= 0.15)) perpIdx.push(i);
+  for (const t of tramos) {
+    const u = [t[1][0] - t[0][0], t[1][1] - t[0][1]];
+    const lu2 = u[0] * u[0] + u[1] * u[1] || 1;
+    const proy = (p: number[]): number => ((p[0] - t[0][0]) * u[0] + (p[1] - t[0][1]) * u[1]) / lu2;
+    const tMin = Math.min(proy(t[0]), proy(t[1]));
+    const tMax = Math.max(proy(t[0]), proy(t[1]));
+    const mejor: Record<'fin' | 'inicio', { i: number; d: number }> = {
+      fin: { i: -1, d: Infinity },
+      inicio: { i: -1, d: Infinity },
+    };
+    for (const i of perpIdx) {
+      const [a, b] = aristas[i];
+      const pa = proy(a);
+      const pb = proy(b);
+      const lado =
+        Math.max(pa, pb) <= tMin + 1e-9 ? 'inicio' : Math.min(pa, pb) >= tMax - 1e-9 ? 'fin' : null; // enmedio del recorrido: se juzga
+      if (lado === null) {
+        juzgar.add(i);
+        continue;
+      }
+      const d = dArista(aristas[i], t);
+      if (d < mejor[lado].d) mejor[lado] = { i, d };
     }
-    for (const r of redPx) {
-      const d = distPoli(r, tramo);
-      if (d < dc) dc = d;
-    }
-    const dM = engine.pxToM(dc);
-    if (dM > dm + 1e-9 && dM > peor) peor = dM;
+    for (const lado of ['fin', 'inicio'] as const)
+      if (mejor[lado].i >= 0) juzgar.add(mejor[lado].i);
+  }
+  for (let i = 0; i < aristas.length; i++) {
+    const edge = aristas[i];
+    const esPerp = perpIdx.includes(i);
+    if (esPerp && !juzgar.has(i)) continue; // muro lejano del mismo lado: espera su ramal
+    let d = Infinity;
+    for (const tramo of tramos) d = Math.min(d, dArista(edge, tramo));
+    if (d <= dmPx + 1e-9) continue;
+    if (!esPerp && d > 3 * dmPx + 1e-9) continue;
+    /* Excusa SOLO en pares paralelos: otro ramal rci corre junto al muro y lo cubre. En los
+     * PERPENDICULARES la cobertura se exige AL TRAZO NUEVO con sus extremos — la esquina o el
+     * extremo de la red existente NO tapa un muro vertical entero (ped. usuario 2026-11-27). */
+    if (!esPerp && otros.some((tramo) => dArista(edge, tramo) <= dmPx + 1e-9)) continue;
+    peor = Math.max(peor, d);
   }
   if (peor === 0) return null;
-  return `El trazo no se puede crear: queda a ${peor.toFixed(2).replace('.', ',')} m del muro más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Traza el ramal a ≤ ${String(dm).replace('.', ',')} m de los muros o aumente la DMR en RCI → Tipologías → Pisos del edificio.`;
+  const peorM = engine.pxToM(peor);
+  return `El trazo no se puede crear: queda a ${peorM.toFixed(2).replace('.', ',')} m del muro más cercano y la distancia máxima a muro (DMR) es de ${String(dm).replace('.', ',')} m. Traza el ramal a ≤ ${String(dm).replace('.', ',')} m de los muros.`;
 }

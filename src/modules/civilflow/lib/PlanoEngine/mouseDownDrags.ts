@@ -455,10 +455,15 @@ export function _trySelRamalDrag(
       }
 
       engine._dragBackupPts = structuredClone(sel.pts);
+      /* Conserva la holgura del agarre: si el clic cayó a 8 px del vértice, ese vértice no salta
+       * al centro del cursor al empezar a arrastrar. */
+      const clicPlano = engine.toPlane(x, y);
       engine.ptDrag = {
         id: sel.id,
         ptIdx: i,
         slideConstraint,
+        offX: clicPlano.x - sel.pts[i][0],
+        offY: clicPlano.y - sel.pts[i][1],
         linkedPts: codoLinks.length > 0 ? codoLinks : undefined,
       };
       return true;

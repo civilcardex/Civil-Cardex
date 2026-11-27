@@ -36,6 +36,7 @@ import { fmt } from '../../utils/rci/RCIRowsModel2.ts';
 import { PanelNudosRci, PanelDetalleRci, VACIO } from './RCIHydraulicNodes.tsx';
 import { VrpSvg } from './RCISvgFloorplan.tsx';
 import { HidSummary } from './RCIHidSummary.tsx';
+import { TipologyHeader } from './RCITypologyHeader.tsx';
 import RciRamalesTable from './RCIRamalesTable.tsx';
 import RciTramosTable from './RCITramosTable.tsx';
 import { cOf } from '../../lib/rci/hydraulics.ts';
@@ -181,6 +182,8 @@ export function RciHidraulica({
   const [editRam, toggleEditRam] = useEditarTabla();
   const [editTram, toggleEditTram] = useEditarTabla();
   const rd = tip?.rd ?? null;
+  /** Criterios EFECTIVOS de la tipología seleccionada (no la configuración de Entradas). */
+  const ro = tip?.roc ?? R.roc;
   /* Techo de la tipología (para el desglose planta+bajada cuando la fila no lo trae). */
   const techo = tip ? tip.roc.HtFt / 3.28084 : 5.3;
   const altDeriv = Number(estado.mont.hD) || 2.5;
@@ -194,7 +197,7 @@ export function RciHidraulica({
   const fijosT = useMemo(() => fijosPorId(grisRed?.tramos), [grisRed]);
   const raiz = String(red?.raiz || '').trim() || 'D';
   const nudosLista = nudosDeRed(red, raiz);
-  const C = cOf(red?.mat || 'Acero SCH 40', estado.clas.sistema, estado.cmat);
+  const C = cOf(red?.mat, tip?.g.sistema || estado.clas.sistema);
   const strip = stripDerivacion(rd);
   const zRamTxt =
     red && red.zRam !== undefined && red.zRam !== null && red.zRam !== '' ? String(red.zRam) : '';
@@ -344,7 +347,7 @@ export function RciHidraulica({
   /* Footer de totales: dibujados y con flujo contra lo que exige el área de diseño. */
   /* Doctrina «fluyen todos los dibujados»: pasarse del mínimo CUMPLE, no es REVISAR (el
    * motor y el resumen ya usan >=). Ej: 16 dibujados con flujo y 7 requeridos -> CUMPLE. */
-  const okN = rd ? rd.flTot >= R.roc.Nreq : false;
+  const okN = rd ? rd.flTot >= ro.Nreq : false;
 
   return (
     <>
@@ -362,7 +365,7 @@ export function RciHidraulica({
           <SecRci
             id="hidraulica"
             titulo="Ramales del piso"
-            nota={tip ? `tipología ${tip.g.id}` : 'sin red para este piso'}
+            nota={<TipologyHeader ctx={ctx} modo="header" />}
             icono="/iconos/ramales_piso.webp"
             extra={<EditTablaBtn on={editRam} onToggle={toggleEditRam} />}
           >
@@ -399,7 +402,7 @@ export function RciHidraulica({
                   style={{ fontSize: 13, color: 'var(--txt)' }}
                   title="C de Hazen-Williams del material (solo lectura)"
                 >
-                  C = {C}
+                  C = {C ?? 'Sin dato verificado'}
                 </b>
               </div>
               <label style={HB}>
@@ -426,7 +429,7 @@ export function RciHidraulica({
               setRamal={setRamal}
               zRamTxt={zRamTxt}
               okN={okN}
-              roc={R.roc}
+              roc={ro}
             />
             <StripRci q={strip ? strip.Q : null} p={strip ? strip.P : null} />
           </SecRci>

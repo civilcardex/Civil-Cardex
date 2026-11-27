@@ -1,0 +1,81 @@
+.rci-zones {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  width: min(100%, 70rem);
+}
+
+.rci-zone {
+  min-inline-size: 0;
+  border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--rci);
+  border-radius: 0.375rem;
+  background: var(--bg3);
+  padding: 0.75rem;
+}
+
+.rci-zone legend {
+  padding-inline: 0.375rem;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+}
+
+.rci-zone-status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.rci-zone-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: 0.875rem;
+  margin-block-start: 0.625rem;
+}
+
+.rci-zone-field {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  min-inline-size: 0;
+}
+
+.rci-zone-field label {
+  font-size: 12px;
+  color: var(--txt2);
+  font-weight: 600;
+}
+
+.rci-zone-field :is(input, select) {
+  width: 100%;
+  min-height: 2rem;
+  /* Celda escribible identificable (ped. 2026-11-27): borde propio + foco acento. */
+  border: 1px solid var(--line);
+  border-radius: var(--r, 6px);
+  background: var(--bg3);
+  padding: 2px 8px;
+}
+.rci-zone-field :is(input, select):focus-visible {
+  border-color: var(--rci);
+  outline: none;
+}
+
+.rci-zone-field small {
+  color: var(--txt2);
+  line-height: 1.4;
+}
+
+.rci-zones summary {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (pointer: coarse) {
+  .rci-zones :is(button, input, select, summary) {
+    min-height: 3rem;
+    font-size: max(1rem, 1em);
+  }
+}

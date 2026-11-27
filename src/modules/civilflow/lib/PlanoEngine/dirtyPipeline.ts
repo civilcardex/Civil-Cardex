@@ -43,6 +43,11 @@ export function chequearPresionGlobal(engine: IPlanoEngineCore): void {
 /** Marca el trabajo como sucio: recalcula conexiones de red y accesorios, guarda un snapshot
  *  de historial y dispara el callback onDirty (que es quien guarda a disco/BD). */
 export function markDirty(engine: IPlanoEngineCore): void {
+  /* H-12 (remediación 2026-11-27): revisión global del motor — cada edición (geometría,
+   * accesorios, conexiones) la avanza y las cachés por instancia (ej: sentido de flujo RCI)
+   * se invalidan sin reconstruir claves costosas por fotograma. */
+  const eng = engine as IPlanoEngineCore & { _revRciFlujo?: number };
+  eng._revRciFlujo = (eng._revRciFlujo ?? 0) + 1;
   engine._dirty = true;
   // ponytail: los cálculos de red/contadores NO deben romper el guardado. El callback
   // _onDirtyCb (PdfViewer) es quien hace saveWork()+saveTrazosToDB(); si un cálculo lanza

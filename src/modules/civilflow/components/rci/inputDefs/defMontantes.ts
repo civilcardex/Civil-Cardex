@@ -2,7 +2,9 @@
  *  montantes, cotas de gabinete y derivación. Ej: mont.hS fija la válvula del gabinete entre
  *  0,90 y 1,50 m sobre el NPT (Nivel de Piso Terminado). */
 import type { DefCampo } from '../RCIGroupTable.tsx';
-import { CLASES_SP, DIAMETROS, MATERIALES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
+import { CLASES_SP, MATERIALES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
+import { DIAMETROS_MONTANTE } from '../../../utils/rci/rowsModel/defaults.ts';
+import { RCI_STANDPIPE_MIN } from '../../../lib/rci/tables.ts';
 
 export const GRUPO_MONTANTES: DefCampo[] = [
   {
@@ -42,7 +44,7 @@ export const GRUPO_MONTANTES: DefCampo[] = [
     uni: 'pulg',
     dep: 'local.exigeSP',
     ayu: 'Mín. 4"; combinado 6" salvo cálculo hidráulico. El diámetro de cálculo es el del montante (abajo)',
-    rango: () => ({ min: 4 }),
+    rango: () => ({ min: RCI_STANDPIPE_MIN }),
   },
   {
     path: 'sp.zMinSalida',
@@ -59,12 +61,12 @@ export const GRUPO_MONTANTES: DefCampo[] = [
     path: 'mont.mat',
     lbl: 'Material del montante',
     opts: MATERIALES,
-    ayu: 'Su C sale de la tabla de Tubería',
+    ayu: 'Su diámetro interior y coeficiente de fricción se leen del Catálogo maestro.',
   },
   {
     path: 'mont.dn',
     lbl: 'Diámetro del montante',
-    opts: DIAMETROS,
+    opts: DIAMETROS_MONTANTE,
     fmtValor: (v) => String(v).replace(/ /g, '-'),
     ayu: (r, e) =>
       r.edif.dnM

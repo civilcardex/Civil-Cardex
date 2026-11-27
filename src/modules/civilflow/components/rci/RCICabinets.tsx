@@ -6,6 +6,7 @@
  *  la salida más remota y cierra con 127.36 psi en la brida de la bomba. */
 import type { CSSProperties } from 'react';
 import { SecRci, SubTabsRci, KvTabla, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
 import { kvSiamesa } from '../../utils/rci/RCIRowsModel.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
@@ -178,7 +179,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
               nota={`Clase ${estado.sp.clase} (NFPA 14)`}
               icono="/iconos/montantes_nfpa14.webp"
             >
-              <div style={{ overflowX: 'auto' }}>
+              <TableScroll label="Gabinetes del piso">
                 <table
                   className="tbl"
                   style={{
@@ -350,7 +351,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </TableScroll>
             </SecRci>
           ) : (
             <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--txt2)' }}>
@@ -361,13 +362,13 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
         ) : null}
         {activa === 'siamesa' ? (
           <SecRci id="siamesa" titulo="Siamesa" icono="/iconos/siamesa.webp">
-            <KvTabla filas={kvSiamesa(sia)} />
+            <KvTabla label="Resultados de la siamesa" filas={kvSiamesa(sia)} />
             {sia && pasosSia.length ? (
               <div style={{ marginTop: 8 }}>
                 <h5 style={{ margin: '0 0 4px', fontSize: 11.5, color: 'var(--txt2)' }}>
                   Ruta de la salida más remota a la siamesa
                 </h5>
-                <div style={{ overflowX: 'auto' }}>
+                <TableScroll label="Ruta del montante de gabinetes">
                   <table
                     className="tbl"
                     style={{
@@ -454,7 +455,7 @@ export default function RciGabinetes({ ctx }: { ctx: RciCtx }) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </TableScroll>
                 <p
                   style={{
                     margin: '6px 2px 0',

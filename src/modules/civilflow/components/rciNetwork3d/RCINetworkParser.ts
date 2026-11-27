@@ -1,4 +1,5 @@
 import type { Three } from '../rci3d/useRCI3DScene.ts';
+import { leerChunksGlb, leerAccesorGlb } from '../shared/glbBinReader.ts';
 
 // Parser GLB del HTML Isometrico_RCI_Open_Code_v19 (port fiel, §431+): los GLB de la RED
 // traen jerarquía de nodos con transforms de AutoCAD — a diferencia de los del cuarto de
@@ -84,64 +85,13 @@ export interface GLBParseResult {
 
 /** Decodifica el GLB (JSON+BIN chunks) y reconstruye jerarquía + meshes con materiales. */
 export function parseGLBRed(THREE: Three, buffer: ArrayBuffer): GLBParseResult {
-  const dv = new DataView(buffer);
-  let offset = 12;
-  let jsonChunk: {
-    meshes: Array<{
-      primitives: Array<{
-        attributes: Record<string, number | undefined>;
-        indices?: number;
-        material?: number;
-      }>;
-    }>;
-    accessors: Array<{
-      bufferView: number;
-      byteOffset?: number;
-      count: number;
-      type: string;
-      componentType: number;
-    }>;
-    bufferViews: Array<{ byteOffset?: number }>;
-    materials?: Array<{ pbrMetallicRoughness?: { baseColorFactor?: number[] } }>;
-    nodes?: Array<{
-      name?: string;
-      matrix?: number[];
-      translation?: number[];
-      rotation?: number[];
-      scale?: number[];
-      children?: number[];
-      mesh?: number;
-    }>;
-    scenes?: Array<{ nodes?: number[] }>;
-    scene?: number;
-  } | null = null;
-  let binChunk: ArrayBuffer | null = null;
-  const totalLen = dv.getUint32(8, true);
-  while (offset < totalLen) {
-    const clen = dv.getUint32(offset, true);
-    const ctype = dv.getUint32(offset + 4, true);
-    const cdata = buffer.slice(offset + 8, offset + 8 + clen);
-    if (ctype === 0x4e4f534a) jsonChunk = JSON.parse(new TextDecoder().decode(cdata));
-    if (ctype === 0x004e4942) binChunk = cdata;
-    offset += 8 + clen;
-  }
-  const json = jsonChunk as NonNullable<typeof jsonChunk>;
-  const accessors = json.accessors || [];
-  const bufferViews = json.bufferViews || [];
+  const { json, bin: binChunk } = leerChunksGlb(buffer);
+  if (!json || !binChunk) return { group: new THREE.Group() };
 
-  const compSize = (ct: number) => (ct === 5126 ? 4 : ct === 5125 ? 4 : ct === 5123 ? 2 : 1);
-  const readAcc = (idx: number): Float32Array | Uint32Array | Uint16Array | Uint8Array => {
-    const acc = accessors[idx];
-    const bv = bufferViews[acc.bufferView];
-    const off = (bv.byteOffset || 0) + (acc.byteOffset || 0);
-    const n = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[acc.type] || 1;
-    const tot = acc.count * n;
-    const sl = (binChunk as ArrayBuffer).slice(off, off + tot * compSize(acc.componentType));
-    if (acc.componentType === 5126) return new Float32Array(sl);
-    if (acc.componentType === 5125) return new Uint32Array(sl);
-    if (acc.componentType === 5123) return new Uint16Array(sl);
-    return new Uint8Array(sl);
-  };
+  // readAcc delega en el lector COMPARTIDO (glbBinReader): chunk-walk + accessors con
+  // byteStride eran ~45 líneas idénticas en los 3 parsers (EP, cuarto, red RCI).
+  const readAcc = (idx: number): Float32Array | Uint32Array | Uint16Array | Uint8Array =>
+    leerAccesorGlb(json, idx, binChunk);
 
   const gltfMats = json.materials || [];
   const builtMats = gltfMats.map((m) => {

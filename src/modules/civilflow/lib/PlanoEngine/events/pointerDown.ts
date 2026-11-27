@@ -85,6 +85,18 @@ export function handlePointerDown(engine: EngineFull, e: MouseEvent | TouchEvent
     return;
   }
 
+  if (
+    (engine.tool === 'line' || engine.tool === 'mon' || engine.tool === 'baj') &&
+    engine._ramalDefaults?.requiereMaterial &&
+    !engine._ramalDefaults.material
+  ) {
+    engine.triggerAlert(
+      'Falta elegir el material',
+      'Elige el material de la red en Parámetros de diseño antes de dibujar.',
+    );
+    return;
+  }
+
   const p = engine.toPlane(x, y);
 
   if (engine.tool === 'sel') {

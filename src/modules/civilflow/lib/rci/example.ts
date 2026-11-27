@@ -70,7 +70,7 @@ export const ejemploVerificacion = (): RciState => ({
     margenNpsh: 0.5,
     qjockey: 2.0,
   },
-  tanque: { vextra: 0 },
+  tanque: { vextra: 0, vconsumo: 0 },
   sia: {
     n: 1,
     entradas: 2,

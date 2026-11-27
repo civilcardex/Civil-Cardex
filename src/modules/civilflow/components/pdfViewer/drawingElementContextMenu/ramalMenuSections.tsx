@@ -18,6 +18,11 @@ import type { DrawingElementContextMenuContextValue } from './context.ts';
 import { convertirARamal, convertirATributario, tribCandidatesDe } from './ramalMenuConvert.ts';
 import { ramalHasInterconnections } from './ramalMenuHelpers.ts';
 import { MidRamalAccessorySelector } from './midRamalAccessorySelector.tsx';
+import {
+  alternarCirculosS,
+  circulosSVisibles,
+  ramalConRociadores,
+} from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 
 /** Lo que estas secciones tocan del menú contextual: motor, estado/cierre del menú,
  *  selección activa y las acciones portaladas al raíz (modal UC, inversión). */
@@ -39,12 +44,34 @@ type RamalMenuCtx = Pick<
  *  cambio de dirección (con posible traslado de UC (Unidades de Consumo)).
  *  Ej: «⇄ Invertir dirección del flujo» da vuelta el ramal en su sitio. */
 export function RamalDirectionSection({ ctx, ramal }: { ctx: RamalMenuCtx; ramal: PlanoRamal }) {
+  const [circulos, setCirculos] = useState(() =>
+    ctx.engineRef.current ? circulosSVisibles(ctx.engineRef.current) : true,
+  );
   return (
     <div className="dcm-sep">
-      {/* Invertir dirección: AHORA TAMBIÉN en rci (ped. usuario 2026-11-13): la flecha define
-       *  la ruta crítica y el usuario debe poder corregirla. Sin interconexiones (igual que
-       *  en las demás redes). */}
-      {!ramalHasInterconnections(ctx.engineRef.current, ramal) && (
+      {/* Solo si ESTE ramal tiene al menos un rociador (ped. usuario 2026-11-27): con el ramal
+       *  vacío los círculos no pintan nada aquí y el botón estorbaba. El ramal vivo del motor
+       *  manda (el del menú es la foto de la selección). */}
+      {ramal.net === 'rci' &&
+      ramalConRociadores(ctx.engineRef.current?.ramales.find((x) => x.id === ramal.id)) ? (
+        <button
+          type="button"
+          aria-pressed={circulos}
+          className={circulos ? 'dcm-action-btn dcm-reversed' : 'dcm-action-btn'}
+          onClick={() => {
+            const eng = ctx.engineRef.current;
+            if (!eng) return;
+            setCirculos(alternarCirculosS(eng));
+          }}
+        >
+          {circulos ? 'Ocultar círculos S' : 'Mostrar círculos S'}
+        </button>
+      ) : null}
+      {/* Invertir dirección SIEMPRE en rci (ped. usuario): tras sembrar rociadores los nuevos
+       *  vértices pueden tocar otro ramal y el gate de interconexiones escondía el botón justo
+       *  cuando el usuario necesitaba corregir la flecha. El flip directo invierte el ramal en
+       *  su sitio; el modal con traslado de UC sigue siendo solo de af/ac/gas. */}
+      {(ramal.net === 'rci' || !ramalHasInterconnections(ctx.engineRef.current, ramal)) && (
         <button
           type="button"
           onClick={() => {

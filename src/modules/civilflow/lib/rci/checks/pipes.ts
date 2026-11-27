@@ -4,7 +4,7 @@
  * Hazen-Williams según NFPA 13, velocidad en tramos y presión en cada nudo. Ej: un accesorio
  * "Tee 45" sin catálogo → "Sin catálogo: Tee 45" en REVISAR.
  */
-import { CDEF } from '../tables';
+import { cOf, PIPES, canonicalRciPipeMaterial } from '../tables';
 import { fmtEs as f1 } from '../fmtEs.ts';
 import { num } from '../hydraulics';
 import type { ChecksCtx } from './helpers';
@@ -32,20 +32,47 @@ export function verificarTuberias(ctx: ChecksCtx): void {
         ['s', 'Seco'],
       ]
         .map(([k, s]) => {
-          const v = num((st.cmat as Record<string, Record<string, unknown>>)[m][k]);
-          return v !== null && v > 0 && v !== CDEF(m, s)
-            ? `${m} ${s.toLowerCase()}: ${v} (NFPA ${CDEF(m, s)})`
+          const v = num((st.cmat as Record<string, Record<string, unknown>>)[m]?.[k]);
+          const vigente = cOf(m, s);
+          return v !== null && v > 0 && v !== vigente
+            ? `${m} ${s.toLowerCase()}: ${v} → ${vigente ?? 'sin C aplicable'}`
             : null;
         })
         .filter((x): x is string => x !== null),
     );
     add(
-      'Coeficiente C de Hazen-Williams según NFPA 13',
+      'Coeficientes históricos no aplicados al cálculo',
       dif.length ? 'REVISAR' : 'CUMPLE',
-      dif.length ? dif.join('; ') : 'Valores de NFPA 13 cap. 28',
-      'NFPA 13-2025 cap. 28',
-      'Se adoptó un C distinto del de la norma. Justifíquelo en la memoria (tubería existente, material listado, exigencia de la autoridad) o deje el campo vacío para usar el de NFPA 13.',
-      ['entradas', 'tub.Vmax'],
+      dif.length ? dif.join('; ') : 'Se usa el Catálogo maestro',
+      'Catálogo maestro',
+      'El valor guardado se conserva como referencia; los resultados usan el coeficiente del Catálogo maestro.',
+      ['catalogo'],
+    );
+  }
+  addR('Tuberías con datos en el Catálogo maestro', 'Catálogo maestro', ['catalogo'], (rows) => {
+    const faltantes = [
+      ...new Set(rows.flatMap((r) => (!r.ok && r.err?.startsWith('Catálogo:') ? [r.err] : []))),
+    ];
+    return {
+      st: faltantes.length || rows.length === 0 ? 'PENDIENTE' : 'CUMPLE',
+      val: faltantes.length
+        ? faltantes.join('; ')
+        : rows.length
+          ? 'Sin faltantes de catálogo'
+          : 'Sin tuberías calculadas',
+      guide: 'Revisa el material, el diámetro y el sistema en el Catálogo maestro.',
+    };
+  });
+  if (st.bomba.matSuc || st.bomba.dnSuc) {
+    const material = canonicalRciPipeMaterial(st.bomba.matSuc);
+    const valido = !!PIPES[material]?.[st.bomba.dnSuc] && cOf(material, 'Húmedo') !== null;
+    add(
+      'Tubería de succión con datos de catálogo',
+      valido ? 'CUMPLE' : 'PENDIENTE',
+      valido ? material : 'Combinación sin datos verificados',
+      'Catálogo maestro',
+      'Completa material y diámetro en Succión y NPSH. La succión calcula como sistema húmedo.',
+      ['catalogo'],
     );
   }
   addR('Velocidad en todos los tramos ≤ criterio', 'Criterio de diseño', ['hidraulica'], (rs) => {

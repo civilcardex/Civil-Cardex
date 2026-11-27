@@ -18,8 +18,10 @@ export function drawValveSymbols(a: AccSimboloArgs): boolean {
     // ramal (accMed/extremo con id 'rociador').
     const circR = rad * 1.2; // (ped. usuario 2026-11-13: símbolo de rociador más grande)
     const arm = circR * 0.98;
-    ctx.fillStyle = noFluye ? '#8ab4d6' : '#ffffff';
-    ctx.strokeStyle = '#000000';
+    /* Círculo LLENO = rociador que fluye (participa del cálculo); HUeco = no fluye. El color
+       azul-gris marca el inactivo sin perder la X negra de la simbología. */
+    ctx.fillStyle = noFluye ? '#ffffff' : '#8ab4d6';
+    ctx.strokeStyle = noFluye ? '#8ab4d6' : '#000000';
     ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1);
     ctx.lineCap = 'butt';
     ctx.lineJoin = 'round';

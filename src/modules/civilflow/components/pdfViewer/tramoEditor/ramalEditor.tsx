@@ -28,6 +28,12 @@ import {
 } from './context.ts';
 import { CaudalField } from './flowField.tsx';
 import { dec, sanitizarInputDecimal } from '../../../utils/parseDecimal.ts';
+import { useEffect, useState } from 'react';
+import {
+  alternarCirculosS,
+  circulosSVisibles,
+  ramalConRociadores,
+} from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 
 /** Editor del ramal seleccionado: material, diámetro, pendiente, desnivel vertical y número
  *  de descargas en simultáneo. */
@@ -66,6 +72,12 @@ export function RamalEditor({
 }) {
   const isGas = activeNet === 'gas';
   const isVen = activeNet === 'vent';
+  const [circulosS, setCirculosS] = useState(() =>
+    engineRef.current ? circulosSVisibles(engineRef.current) : true,
+  );
+  useEffect(() => {
+    setCirculosS(engineRef.current ? circulosSVisibles(engineRef.current) : true);
+  }, [engineRef, selElement?.id]);
   // El ramal seleccionado puede pertenecer legítimamente a una red distinta de la activa en la barra
   // (p. ej. sigue seleccionado tras cambiar de pestaña de red) — su material debe tomarse siempre
   // del catálogo de SU propia red, no de la red que la barra esté mostrando en ese momento.
@@ -119,6 +131,35 @@ export function RamalEditor({
       >
         Datos específicos
       </div>
+      {/* Solo si ESTE ramal tiene al menos un rociador (ped. usuario 2026-11-27); el vivo del
+       *  motor manda por si el rociador se acaba de asignar. */}
+      {matNet === 'rci' &&
+      ramalConRociadores(
+        selElement ? engineRef.current?.ramales.find((x) => x.id === selElement.id) : null,
+      ) ? (
+        <button
+          type="button"
+          aria-pressed={circulosS}
+          onClick={() => {
+            const eng = engineRef.current;
+            if (!eng) return;
+            setCirculosS(alternarCirculosS(eng));
+          }}
+          style={{
+            width: '100%',
+            minBlockSize: 28,
+            marginBottom: 8,
+            border: `1px solid ${circulosS ? '#22D3EE' : 'var(--line, #3a494a)'}`,
+            borderRadius: 4,
+            background: circulosS ? 'rgba(34,211,238,.12)' : 'var(--bg3, #1e2024)',
+            color: circulosS ? '#22D3EE' : '#9BA8AA',
+            fontSize: 11.5,
+            cursor: 'pointer',
+          }}
+        >
+          {circulosS ? 'Ocultar círculos guía S' : 'Mostrar círculos guía S'}
+        </button>
+      ) : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {isGas ? (
           <div>

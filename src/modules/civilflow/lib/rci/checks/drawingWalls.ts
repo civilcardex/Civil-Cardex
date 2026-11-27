@@ -1,107 +1,100 @@
 /**
- * Verificaciones de dibujo (piso activo del visor): distancia de cada muro marcado al ramal rci
- * más cercano ≤ Dmuro y distancia mínima ramal–muro ≥ 0,10 m (NFPA 13). Sin dibujo no aplican.
- * Ej: 1 muro a 0,35 m con Dmuro 0,30 → "1 de 2 muro(s) descubiertos" en NO CUMPLE.
+ * Verificaciones de dibujo (piso activo del visor): distancia MÍNIMA del centro de cada
+ * rociador estándar al muro (0,10 m, NFPA 13) y el CRUCE de tubería con muro (§9.5.3). La DMR
+ * (distancia MÁXIMA a muro) ya NO se verifica en esta tabla (ped. usuario 2026-11-27): se
+ * chequea SOLO en el dibujo, en vivo al crear/mover el ramal (RCIAutoDraw.chequeoMurosTrazo).
+ * Ej: centro a 0,05 m del muro → "1 de 1 rociador(es) pegados" en NO CUMPLE.
  */
 import { fmtEs as f1 } from '../fmtEs.ts';
-import { HZ } from '../tables';
-import { distSegSeg, MIN_MURO_M } from '../../shared/geometry.ts';
-import type { ChecksCtx } from './helpers';
+import { distToSegment, segmentosSeCruzan, MIN_MURO_M } from '../../shared/geometry.ts';
+import type { CentroRociador, ChecksCtx } from './helpers';
 
-/** Las 2 verificaciones geométricas contra el dibujo del piso activo (muros vs ramales rci). */
-export function verificarMurosDibujo(ctx: ChecksCtx): void {
-  const { st, R, add, dibujo } = ctx;
-  /* Distancia de ramales a muros (ped. usuario): cada guía marcada como MURO del piso activo
-     debe quedar a ≤ DMR (distancia máx. de rociador a muro, columna DMR de Pisos del edificio)
-     del ramal rci más cercano. La geometría llega del doc de trazos del piso activo ya convertida
-     a METROS (compute la pasa opcionalmente); sin dibujo no aplica. */
-  if (dibujo) {
-    /* DMR del piso ACTIVO — INALTERABLE (ped. usuario 2026-11-18: la DMR es siempre un
-       rango, no se define): mitad de la S máxima del riesgo del piso, la misma que el
-       motor del visor aplica en vivo (useDmuroRciInjection). Sin fila/riesgo → riesgo
-       leve. NUNCA queda PENDIENTE por dato faltante. */
-    const tipAct = R.edif.active;
-    const riesgo =
-      (tipAct ? st.pisos.rows[tipAct.g.rep]?.riesgo : '') || st.clas.riesgo || 'Riesgo leve';
-    const hz = HZ[riesgo] || HZ['Riesgo leve'];
-    const dm = hz.s / 2;
-    if (!dibujo.ramPts.length) {
-      add(
-        'Distancia de ramales a muros ≤ DMR',
-        'PENDIENTE',
-        `Sin ramales rci en el piso activo (${dibujo.muros.length} muro(s) marcados)`,
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, ${riesgo})`,
-        'Dibuje los ramales de la red en el piso activo.',
-        ['rociadores', 'rectangulo'],
-      );
-    } else if (!dibujo.muros.length) {
-      add(
-        'Distancia de ramales a muros ≤ DMR',
-        'PENDIENTE',
-        'Sin muros marcados',
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, ${riesgo})`,
-        'Marque muros con la herramienta Guía (menú → Definir como muro).',
-        ['rociadores', 'rectangulo'],
-      );
-    } else {
-      /* POR MURO (regla del campo «Dmuro»): cada MURO debe quedar a ≤ Dmuro del ramal rci más
-         cercano — los ramales interiores NO se juzgan (no tienen muro que cubrir junto a
-         ellos; exigírselo a un recinto ancho haría la red imdibujable). Una pasada calcula la
-         distancia ramal↔muro de la que salen las dos filas. */
-      let peor = 0;
-      let descubiertos = 0;
-      for (const muro of dibujo.muros) {
-        let mejor = Infinity;
-        for (const pts of dibujo.ramPts) {
-          for (let i = 0; i < muro.length - 1; i++) {
-            for (let j = 0; j < pts.length - 1; j++) {
-              mejor = Math.min(mejor, distSegSeg(muro[i], muro[i + 1], pts[j], pts[j + 1]));
-            }
-          }
-        }
-        if (mejor > peor) peor = mejor;
-        if (mejor > dm + 1e-9) descubiertos++;
-      }
-      add(
-        'Distancia de ramales a muros ≤ DMR',
-        descubiertos ? 'NO CUMPLE' : 'CUMPLE',
-        `${descubiertos} de ${dibujo.muros.length} muro(s) descubiertos · peor ${f1(peor, 2)} m`,
-        `NFPA 13-2025 cap. 10 — cada muro a ≤ ${f1(dm, 2)} m del ramal rci más cercano (DMR = S máx./2 = ${f1(dm, 2)} m, inalterable)`,
-        descubiertos
-          ? 'Acerque un ramal al muro señalado: la distancia al ramal más cercano no puede superar la DMR (mitad de la S máxima del riesgo).'
-          : '',
-        ['rociadores', 'rectangulo'],
-      );
+/** Norma y doctrina compartidas por las dos filas de muro. */
+const NORMA =
+  'NFPA 13-2025 §§9.5.3 y 10.2.6 — centro del rociador estándar (colgante/montante) a ≥ 0,10 m del muro. Círculos de radio S = guía visual.';
 
-      /* MÍNIMO por ramal: ningún ramal puede quedar pegado ni cruzar un muro — distancia
-         ramal↔muro ≥ MIN_MURO_M (0,10 m, NFPA 13). Fila propia para no mezclar con el máximo. */
-      let pegados = 0;
-      let menor = Infinity;
-      for (const pts of dibujo.ramPts) {
-        let mejor = Infinity;
-        for (const muro of dibujo.muros) {
-          for (let i = 0; i < muro.length - 1; i++) {
-            for (let j = 0; j < pts.length - 1; j++) {
-              mejor = Math.min(mejor, distSegSeg(muro[i], muro[i + 1], pts[j], pts[j + 1]));
-            }
-          }
-        }
-        if (mejor < menor) menor = mejor;
-        if (mejor < MIN_MURO_M - 1e-9) pegados++;
-      }
-      add(
-        'Distancia mínima ramal–muro ≥ 0,10 m',
-        pegados ? 'NO CUMPLE' : 'CUMPLE',
-        `${pegados} de ${dibujo.ramPts.length} ramal(es) pegados · menor ${f1(menor, 2)} m`,
-        'NFPA 13-2025 cap. 10 — distancia mínima ramal–muro 0,10 m (ni pegado ni cruzando el muro)',
-        pegados
-          ? 'Aleje el ramal señalado del muro: la distancia mínima ramal–muro es de 0,10 m (NFPA 13).'
-          : '',
-        ['rociadores', 'rectangulo'],
-      );
+/** Distancia perpendicular del centro al muro más cercano (m). Sin muros → Infinity. */
+function distanciaCentroMuro(c: CentroRociador, muros: number[][][]): number {
+  let mejor = Infinity;
+  for (const muro of muros) {
+    for (let i = 0; i < muro.length - 1; i++) {
+      mejor = Math.min(mejor, distToSegment([c.x, c.y], muro[i], muro[i + 1]));
     }
   }
+  return mejor;
 }
 
-// distSegSeg (distancia mínima entre dos segmentos, con test de cruce) vive en
-// lib/shared/geometry — única copia compartida con el chequeo EN VIVO del visor (rciAutoDraw).
+/** Las verificaciones geométricas contra el dibujo del piso activo (rociadores/muros/ramales). */
+export function verificarMurosDibujo(ctx: ChecksCtx): void {
+  const { add, dibujo } = ctx;
+  if (!dibujo) return;
+
+  /* El llamador (RCIDesign) entrega los centros reales leídos de los accesorios del doc de
+   * trazos: incluye inicio, fin y TODOS los accMed, es decir los rociadores sembrados en cada
+   * segmento de un ramal multisegmento. Los llamadores que solo pasan ramPts usan TODOS sus
+   * vértices (no solo el extremo inicial) como centros candidatos — así la DMR también se
+   * verifica a lo largo de los segmentos posteriores. */
+  /* H-05 (remediación 2026-11-27): `rocPts: []` es una lista EXPLÍCITAMENTE vacía (el visor
+   * ya resolvió que no hay rociadores) — NO se cae a los vértices del ramal como centros
+   * ficticios. El fallback a ramPts solo aplica cuando el llamador no trajo rocPts (undefined). */
+  const centros: CentroRociador[] =
+    dibujo.rocPts !== undefined
+      ? dibujo.rocPts
+      : dibujo.ramPts.flatMap((pts) =>
+          pts.map((p) => ({
+            x: p[0],
+            y: p[1],
+            tipo: 'colgante' as const,
+            fluye: true,
+            ramalId: '',
+          })),
+        );
+  const estandar = centros.filter((c) => c.tipo === 'colgante' || c.tipo === 'montante');
+
+  /* CRUCE de tubería con muro se cuenta PRIMERO: es una fila INDEPENDIENTE (§9.5.3) y esos
+     muros se excluyen de la regla de distancia máxima (no se juzga dos veces lo mismo). */
+  const aristas = dibujo.muros.flatMap((muro) =>
+    muro.slice(1).map((b, j) => ({ a: muro[j], b, cruzada: false })),
+  );
+  let cruces = 0;
+  for (const pts of dibujo.ramPts) {
+    for (let j = 0; j < pts.length - 1; j++) {
+      for (const arista of aristas) {
+        if (segmentosSeCruzan(pts[j], pts[j + 1], arista.a, arista.b)) {
+          cruces++;
+          arista.cruzada = true;
+        }
+      }
+    }
+  }
+
+  if (!dibujo.muros.length) return; // sin muros no hay nada que medir (la DMR vive en el dibujo)
+
+  /* MÍNIMO (centro del rociador estándar): ni pegado ni cruzando el muro. */
+  if (estandar.length) {
+    const medidas = estandar.map((c) => ({ c, d: distanciaCentroMuro(c, dibujo.muros) }));
+    const pegados = medidas.filter((m) => m.d < MIN_MURO_M - 1e-9);
+    const menor = Math.min(...medidas.map((m) => m.d));
+    add(
+      'Distancia mínima ramal–muro ≥ 0,10 m',
+      pegados.length ? 'NO CUMPLE' : 'CUMPLE',
+      `${pegados.length} de ${estandar.length} rociador(es) pegados · menor ${f1(menor, 2)} m`,
+      NORMA,
+      pegados.length
+        ? 'Aleje el rociador señalado del muro: la distancia mínima centro–muro es de 0,10 m.'
+        : '',
+      ['rociadores', 'rectangulo'],
+    );
+  }
+
+  /* CRUCE de tubería con muro: fila INDEPENDIENTE (§9.5.3), no se mezcla con la distancia
+     mínima del rociador. Un cruce es NO CUMPLE aunque el rociador esté bien separado. */
+  add(
+    'Cruce de tubería con muro',
+    cruces ? 'NO CUMPLE' : 'CUMPLE',
+    `${cruces} cruce(s) tubería–muro en el piso activo`,
+    'NFPA 13-2025 §9.5.3 — la tubería no debe cruzar un muro marcado; se informa aparte de la distancia del rociador.',
+    cruces ? 'Recorte o re-route el tramo que atraviesa el muro marcado.' : '',
+    ['rociadores', 'rectangulo'],
+  );
+}

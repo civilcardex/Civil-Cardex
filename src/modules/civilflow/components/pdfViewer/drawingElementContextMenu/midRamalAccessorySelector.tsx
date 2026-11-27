@@ -18,6 +18,9 @@ import {
   renumeraRociadores,
   verificaSRociadores,
   rociadorFluye,
+  fijarFluyeRociador,
+  valorRociadorNuevo,
+  avisoSinSConMuro,
 } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 import { emitAparatosClear, EV_APARATOS_CLEAR, EV_STORAGE } from '../../../utils/fixtureEvents.ts';
 import { MidRamalAparatos } from './MidRamalAparatos.tsx';
@@ -147,6 +150,20 @@ export function MidRamalAccessorySelector({
             aria-label="Accesorio en cuerpo del ramal"
             onChange={(e) => {
               const accId = e.target.value;
+              /* Los rociadores NUEVOS entran como «No fluye» (ped. plan 2026-11-27); el usuario
+                 los activa con la casilla Fluye. Los que ya existían conservan su estado. */
+              const accEscrito =
+                element.net === 'rci' && !valExistente ? valorRociadorNuevo(accId) : accId;
+              if (
+                element.net === 'rci' &&
+                !valExistente &&
+                /rociador/i.test(accEscrito) &&
+                engineRef.current &&
+                avisoSinSConMuro(engineRef.current)
+              ) {
+                e.target.blur();
+                return;
+              }
               // Suelta el foco: si queda en el <select>, el Ctrl+Z del motor no llega (el
               // keydown se aborta sobre selects) y el usuario no puede deshacer la asignación.
               e.target.blur();
@@ -203,7 +220,7 @@ export function MidRamalAccessorySelector({
               if (campoExtremo) {
                 /* Rociador en EXTREMO (ped. usuario 2026-11-19): vive en accesorioInicio/Fin —
                  *  elegir escribe ese campo, «Ninguno» lo quita. El vértice NO se toca. */
-                eng.updateElementById(element.id, { [campoExtremo]: accId });
+                eng.updateElementById(element.id, { [campoExtremo]: accEscrito });
                 let rechazadoS = false;
                 if (element.net === 'rci' && accId && /rociador/i.test(accId)) {
                   renumeraRociadores(eng);
@@ -218,7 +235,7 @@ export function MidRamalAccessorySelector({
                 }
                 setSelElement(null);
                 // El panel debe mostrar lo que quedó en el engine, no el valor rechazado.
-                const extremoFinal = rechazadoS ? valExtremo : accId;
+                const extremoFinal = rechazadoS ? valExtremo : accEscrito;
                 setContextMenuState((prev) =>
                   prev
                     ? { ...prev, element: { ...prev.element, [campoExtremo]: extremoFinal } }
@@ -227,7 +244,7 @@ export function MidRamalAccessorySelector({
               } else if (existingKey) {
                 const newAccMed = { ...(fresh.accMed || {}) };
                 if (accId) {
-                  newAccMed[existingKey] = accId;
+                  newAccMed[existingKey] = accEscrito;
                 } else {
                   delete newAccMed[existingKey];
                 }
@@ -265,7 +282,7 @@ export function MidRamalAccessorySelector({
                   const idx = parseInt(m[1], 10);
                   shiftedAccMed[`accMed${idx >= newIdx ? idx + 1 : idx}`] = v as string;
                 }
-                shiftedAccMed[`accMed${newIdx}`] = accId;
+                shiftedAccMed[`accMed${newIdx}`] = accEscrito;
                 eng.updateElementById(element.id, { pts: newPts, accMed: shiftedAccMed });
                 // Rechazo de S (ped. usuario 2026-11-19: el dibujo NO debe permitir violar la
                 // separación exacta): si viola, se deshace — vértice y accMed vuelven a como
@@ -343,31 +360,42 @@ export function MidRamalAccessorySelector({
            * en el cálculo — el flag NF se añade/quita ANTES del '#' en cualquier tipo
            * ('rociador#N' ↔ 'rociadorNF#N', 'rociadorMontante#N' ↔ 'rociadorMontanteNF#N').
            * El tipo elegido JAMÁS se pierde: el desplegable muestra el base sin NF. */}
-          {element.net === 'rci' && existingKey && /rociador/i.test(accMed[existingKey]) && (
+          {element.net === 'rci' && valExistente && /rociador/i.test(valExistente) && (
             <label className="dcm-fluye">
               <input
                 type="checkbox"
-                checked={rociadorFluye(accMed[existingKey])}
+                checked={rociadorFluye(valExistente)}
                 onChange={(e) => {
                   const eng = engineRef.current;
                   if (!eng) return;
                   const fresh = ramalVivoDelPlanoCargado(eng, element.id);
                   if (!fresh) return;
-                  const am = { ...(fresh.accMed || {}) };
-                  const v = am[existingKey] || '';
-                  const num = v.split('#')[1] || '';
-                  // El tipo base SIEMPRE se conserva (colgante, montante…): el flag NF solo se
-                  // añade/quita antes del '#' — nunca se pierde la selección del desplegable.
-                  const base = v.split('#')[0].replace(/NF$/, '');
-                  am[existingKey] =
-                    (e.target.checked ? base : `${base}NF`) + (num ? `#${num}` : '');
-                  eng.updateElementById(element.id, { accMed: am });
-                  renumeraRociadores(eng);
-                  eng.render();
-                  eng._markDirty();
-                  setContextMenuState((prev) =>
-                    prev ? { ...prev, element: { ...prev.element, accMed: am } } : null,
-                  );
+                  /* Solo cambia el rociador pulsado (inicio, fin o intermedio, incluidos los
+                     auto-dibujados): ni el tipo ni el consecutivo ROC-N se renombran. */
+                  const fluye = e.target.checked;
+                  if (campoExtremo) {
+                    const v = fresh[campoExtremo] || '';
+                    const nuevo = fijarFluyeRociador(v, fluye);
+                    eng.updateElementById(element.id, { [campoExtremo]: nuevo });
+                    renumeraRociadores(eng);
+                    eng.render();
+                    eng._markDirty();
+                    setContextMenuState((prev) =>
+                      prev
+                        ? { ...prev, element: { ...prev.element, [campoExtremo]: nuevo } }
+                        : null,
+                    );
+                  } else if (existingKey) {
+                    const am = { ...(fresh.accMed || {}) };
+                    am[existingKey] = fijarFluyeRociador(am[existingKey] || '', fluye);
+                    eng.updateElementById(element.id, { accMed: am });
+                    renumeraRociadores(eng);
+                    eng.render();
+                    eng._markDirty();
+                    setContextMenuState((prev) =>
+                      prev ? { ...prev, element: { ...prev.element, accMed: am } } : null,
+                    );
+                  }
                 }}
               />
               Fluye en el cálculo

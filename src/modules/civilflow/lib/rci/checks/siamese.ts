@@ -5,7 +5,7 @@
  */
 import { PIPES } from '../tables';
 import { fmtEs as f1 } from '../fmtEs.ts';
-import { num } from '../hydraulics';
+import { isSi, num } from '../hydraulics';
 import type { ChecksCtx } from './helpers';
 
 /** Las 7 verificaciones de la siamesa; solo aplican si hay siamesa calculada (R.sia). */
@@ -43,13 +43,14 @@ export function verificarSiamesa(ctx: ChecksCtx): void {
       'Use tubería de 4" o mayor entre la siamesa y el sistema.',
       ['entradas', 'sia.dn'],
     );
-    const okV = (num(S.chq) || 0) >= 1 && S.cierre !== 'Sí';
+    const cierre = isSi(S.cierre);
+    const okV = (num(S.chq) || 0) >= 1 && !cierre;
     add(
       'Siamesa: cheque listado y sin válvula de cierre',
       okV ? 'CUMPLE' : 'NO CUMPLE',
-      `${num(S.chq) || 0} cheque(s)${S.cierre === 'Sí' ? ' · con válvula de cierre' : ''}`,
+      `${num(S.chq) || 0} cheque(s)${cierre ? ' · con válvula de cierre' : ''}`,
       'NFPA 14-2024',
-      `${(num(S.chq) || 0) < 1 ? 'Instale un cheque listado en la tubería de la siamesa. ' : ''}${S.cierre === 'Sí' ? 'No se permite válvula de cierre entre la siamesa y el sistema.' : ''}`,
+      `${(num(S.chq) || 0) < 1 ? 'Instale un cheque listado en la tubería de la siamesa. ' : ''}${cierre ? 'No se permite válvula de cierre entre la siamesa y el sistema.' : ''}`,
       ['entradas', (num(S.chq) || 0) < 1 ? 'sia.chq' : 'sia.cierre'],
     );
     add(

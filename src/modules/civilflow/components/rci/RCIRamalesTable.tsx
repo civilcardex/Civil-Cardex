@@ -138,7 +138,7 @@ export function RciRamalesTable({
         role="region"
         aria-label="Tabla de ramales del piso"
         tabIndex={0}
-        style={{ minWidth: 0, maxWidth: '100%', overflowX: 'auto', overscrollBehaviorX: 'contain' }}
+        className="cf-table-scroll"
       >
         {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
         <table

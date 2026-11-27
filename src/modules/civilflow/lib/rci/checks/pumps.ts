@@ -100,16 +100,22 @@ export function verificarBombas(ctx: ChecksCtx): void {
       : `Use succión de ${bo.DsucMin}" o mayor para ${bo.Qnom} gpm.`,
     ['entradas', 'bomba.dnSuc'],
   );
-  const npshr = num(st.bomba.npshr) || 0,
+  const npshr = num(st.bomba.npshr),
     mg = num(st.bomba.margenNpsh) || 0;
   add(
     'NPSH disponible ≥ NPSH requerido + margen',
-    sinSuc ? 'PENDIENTE' : bo.NPSHd >= npshr + mg ? 'CUMPLE' : 'NO CUMPLE',
-    sinSuc ? 'Sin datos de succión' : `${f1(bo.NPSHd)} ≥ ${f1(npshr + mg)} m`,
+    sinSuc || npshr === null ? 'PENDIENTE' : bo.NPSHd >= npshr + mg ? 'CUMPLE' : 'NO CUMPLE',
+    sinSuc
+      ? 'Sin datos de succión'
+      : npshr === null
+        ? 'Sin NPSH requerido'
+        : `${f1(bo.NPSHd)} ≥ ${f1(npshr + mg)} m`,
     'Fabricante / NFPA 20-2025',
     sinSuc
       ? 'Sin catálogo para la succión no hay NPSH disponible: revise matSuc/dnSuc.'
-      : `Faltan ${f1(npshr + mg - bo.NPSHd)} m de NPSH. Pase a succión positiva, acorte la succión y reduzca accesorios, aumente el diámetro o elija una bomba con menor NPSHr.`,
+      : npshr === null
+        ? 'Ingresa el NPSH requerido a partir de la curva del fabricante.'
+        : `Faltan ${f1(npshr + mg - bo.NPSHd)} m de NPSH. Pase a succión positiva, acorte la succión y reduzca accesorios, aumente el diámetro o elija una bomba con menor NPSHr.`,
     ['entradas', 'bomba.npshr'],
   );
   {

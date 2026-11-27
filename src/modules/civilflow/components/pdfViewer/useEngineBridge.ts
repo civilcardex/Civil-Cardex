@@ -4,6 +4,8 @@ import PlanoEngine, { type ToolType, type TramoType } from '../../lib/PlanoEngin
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import type { MaterialItem } from '../../context/ProjectContext.tsx';
 import { pisoLbl, DEFAULT_PENDIENTE_PCT } from '../../constants';
+import { materialInicialRed } from '../../constants/defaults.ts';
+import { NETS_WITH_MULTIPLE_MATERIALS } from '../../pages/catalog/catalogData.ts';
 import { limpiarStoresDeBorrado } from './aparatosDeleteSweep.ts';
 import { emitAparatosClear } from '../../utils/fixtureEvents.ts';
 import type { ProbedElement } from './tramoEditor/context.ts';
@@ -30,7 +32,7 @@ export function useEngineBridge(args: {
   gridOn: boolean;
   mats: Record<string, MaterialItem[]>;
   diamSel: Record<string, string>;
-  gasMatSel: Record<string, string>;
+  materialProyecto?: string;
   selectedNivel: number | null;
   pisos: Piso[];
 }) {
@@ -46,7 +48,7 @@ export function useEngineBridge(args: {
     gridOn,
     mats,
     diamSel,
-    gasMatSel,
+    materialProyecto,
     selectedNivel,
     pisos,
   } = args;
@@ -95,22 +97,16 @@ export function useEngineBridge(args: {
       ? { ...floorObj, label: pisoLbl(floorObj.n), npt: Number(floorObj.npt) }
       : null;
     eng.nptLevels = pisos.map((p) => ({ label: pisoLbl(p.n), npt: Number(p.npt) }));
-    // Gas tiene varias opciones reales de material (según MATERIALES_POR_RED) — a diferencia de
-    // las redes de un solo material, NO debe pre-rellenar un default silenciosamente; el usuario
-    // tiene que elegir uno activamente, igual que haría cualquier otra red multimaterial si
-    // tuviera más de una opción canónica.
-    // rci (Red Contra Incendio) igual: nace con material VACÍO (ped. usuario) — el diseñador
-    // rci siembra el suyo ('Acero SCH 40', que sí es clave de PIPES) y los nombres del catálogo
-    // del dibujo ('A.C. SCH 40') no existen en el motor de cálculo.
-    const matName =
-      activeNet === 'gas' || activeNet === 'rci'
-        ? gasMatSel[activeNet] || ''
-        : (mats?.[activeNet] && mats[activeNet][0]?.val) || '';
+    const requiereMaterial = NETS_WITH_MULTIPLE_MATERIALS.has(activeNet);
+    const matName = materialInicialRed(
+      activeNet,
+      requiereMaterial ? materialProyecto : materialProyecto || mats[activeNet]?.[0]?.val,
+    );
     // Fix issue #3: tributario no hereda diámetro 4" por defecto — solo inodoro lo requiere
     const dRaw = activeNet === 'gas' ? diamSel[activeNet] || '' : diamSel[activeNet] || '';
     const d = tipoTramo === 'tributario' ? '' : dRaw;
     const p = activeNet === 'san' || activeNet === 'll' ? DEFAULT_PENDIENTE_PCT : 0;
-    eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p });
+    eng.setRamalDefaults({ material: matName, diametro: d, pendiente: p, requiereMaterial });
   }, [
     tool,
     activeNet,
@@ -121,7 +117,7 @@ export function useEngineBridge(args: {
     diamSel,
     selectedNivel,
     pisos,
-    gasMatSel,
+    materialProyecto,
     engineRef,
   ]);
 

@@ -3,7 +3,19 @@
  * equivalentes y el ruteo fila a fila. Ej: pipeRow de una tee de 4" con 500 gpm suma 6.10 m
  * equivalentes (LEQ) corregidos por el diámetro interno real del material.
  */
-import { CDEF, GPM_M3S, LEQ, FIT, NOM, PIPES, PSI_M, cfOf, type EspAcc } from './tables';
+import {
+  cOf,
+  canonicalRciPipeMaterial,
+  GPM_M3S,
+  LEQ,
+  FIT,
+  NOM,
+  PIPES,
+  PSI_M,
+  cfOf,
+  type EspAcc,
+} from './tables';
+export { cOf } from './tables';
 import type { CalcCtx, FilaRoute, PipeRowRes, RouteResult, TuberiaRow } from './types';
 
 /** Convierte un campo de entrada ("", null, número) en número; null si no es usable.
@@ -13,7 +25,7 @@ export function num(v: unknown): number | null {
 }
 
 /** ¿El valor de entrada es "Sí"? Los selectores del HTML guardan "Sí"/"No". */
-export const isSi = (v: unknown): boolean => v === 'Sí';
+export const isSi = (v: unknown): boolean => v === 'Sí' || v === true || v === 'Si';
 
 /** Techo entero tolerante: ceilE(3.0000000001) = 3, ceilE(3.1) = 4. Evita falsos +1 por
  *  redondeo binario al dividir el área de diseño entre el área por rociador. */
@@ -33,8 +45,7 @@ export function pfUnit(Q: number, C: number, idmm: number): number {
 }
 
 /** Nóminales de 1" o más disponibles en un material (para el diámetro automático). */
-const nomSizes = (mat: string | undefined): string[] =>
-  NOM.filter((n) => PIPES[mat!] && PIPES[mat!][n] && PIPES[mat!][n].inch >= 1);
+const nomSizes = (mat: string): string[] => NOM.filter((n) => (PIPES[mat]?.[n]?.inch ?? 0) >= 1);
 
 /**
  * Diámetro automático: el menor de 1" o más cuya velocidad no supere Vmax.
@@ -43,12 +54,13 @@ const nomSizes = (mat: string | undefined): string[] =>
  * @returns el nominal comercial. Ej: 53.92 gpm con Vmax 6 en acero SCH 40 da '1 1/4"'.
  */
 export function suggestDn(Q: number, mat: string | undefined, Vmax: number): string {
-  const sizes = nomSizes(mat);
+  const clave = canonicalRciPipeMaterial(mat);
+  const sizes = nomSizes(clave);
   for (const n of sizes) {
-    const V = (Q * GPM_M3S) / ((Math.PI * Math.pow(PIPES[mat!][n].id / 1000, 2)) / 4);
+    const V = (Q * GPM_M3S) / ((Math.PI * Math.pow(PIPES[clave][n].id / 1000, 2)) / 4);
     if (V <= Vmax + 1e-9) return n;
   }
-  return sizes[sizes.length - 1];
+  return sizes[sizes.length - 1] ?? '';
 }
 
 /* Accesorios especiales: "VA+DF", "2VG", "VA, 2 DF" → [{cod, n}] */
@@ -112,24 +124,23 @@ export function espLoss(
   return { leq, dp, unk, det };
 }
 
-/** C de Hazen-Williams efectivo de una tubería: el adoptado en st.cmat o el de NFPA 13. */
-export const cOf = (mat: string | undefined, sistema: string, cmat: CalcCtx['cmat']): number => {
-  const o = cmat && mat ? cmat[mat] : undefined,
-    v = o ? num(sistema === 'Seco' ? o.s : o.h) : null;
-  return v !== null && v > 0 ? v : CDEF(mat, sistema);
-};
-
 /** Calcula una tubería individual: fricción (con longitudes equivalentes corregidas por el
  *  diámetro interno real y el C del material), desnivel Pe y velocidad V. Ej: la fila de T2
  *  (B→C) del ejemplo da Lt = 15.01 m y Pf = 6.00 psi. */
 export function pipeRow(row: TuberiaRow, P: number, Q: number, ctx: CalcCtx): PipeRowRes {
   const sistema = ctx.sistema;
-  const pipe = PIPES[row.mat!] && PIPES[row.mat!][row.dn!];
-  if (!pipe) return { ok: false, err: 'Diámetro no disponible para el material' };
+  const mat = canonicalRciPipeMaterial(row.mat);
+  const pipe = PIPES[mat]?.[row.dn!];
+  if (!pipe) return { ok: false, err: 'Catálogo: diámetro no disponible para el material' };
   const L = num(row.L);
   if (L === null || L < 0) return { ok: false, err: 'Falta la longitud' };
   const id = pipe.id;
-  const C = cOf(row.mat, sistema, ctx.cmat);
+  const C = cOf(mat, sistema);
+  if (C === null)
+    return {
+      ok: false,
+      err: `Catálogo: ${mat} sin C aplicable en sistema ${sistema.toLowerCase() || 'sin definir'}`,
+    };
   const ref40 = PIPES['Acero SCH 40'][row.dn!].id;
   const leqBase = FIT.reduce((s, f, i) => s + (num(row[f]) || 0) * LEQ[row.dn!][i], 0);
   const es = espLoss(row.esp, ctx.esp, id, Q);

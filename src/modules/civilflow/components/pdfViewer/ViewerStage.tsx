@@ -27,7 +27,7 @@ import PdfCanvas from './PdfCanvas.tsx';
 import { ViewerMobileChrome } from './ViewerMobileChrome.tsx';
 import TextInputOverlay from './TextInputOverlay.tsx';
 import DrawingElementContextMenu from './drawingElementContextMenu';
-import ConfirmDialog from './ConfirmDialog.tsx';
+import { ConfirmModal } from '../../../../components/shared/ConfirmModal.tsx';
 import AccesorioModal from './FittingModal.tsx';
 import { PdfViewerRightSidebar } from './PdfViewerRightSidebar.tsx';
 
@@ -523,7 +523,22 @@ export function ViewerStage(props: ViewerStageProps) {
           triggerConfirm={triggerConfirm}
           tablet={coarsePointer}
         />
-        <ConfirmDialog confirmState={confirmState} setConfirmState={setConfirmState} />
+        {/* Confirmación del visor (borrar/limpiar) sobre el modal compartido: mismos
+         *  rótulos y tono (confirmLabel 'Eliminar' → botón peligro). El backdrop NO
+         *  cierra (como el dialog viejo): solo Cancelar/Escape/aceptar. */}
+        {confirmState.isOpen ? (
+          <ConfirmModal
+            title={confirmState.title}
+            message={confirmState.message}
+            confirmLabel={confirmState.confirmLabel || 'Eliminar'}
+            onConfirm={() => {
+              confirmState.onConfirm();
+              setConfirmState((prev) => ({ ...prev, isOpen: false }));
+            }}
+            onClose={() => setConfirmState((prev) => ({ ...prev, isOpen: false }))}
+            minWidth={360}
+          />
+        ) : null}
         <AccesorioModal
           modalState={accesorioModal}
           onClose={() => setAccesorioModal((prev) => ({ ...prev, isOpen: false }))}
@@ -572,25 +587,6 @@ export function ViewerStage(props: ViewerStageProps) {
           drawnElements={drawnElements}
           /* Tarjetas de edición por elemento: igual que «Opciones», solo tablets. */
           onEditElement={coarsePointer ? openSelectedOptions : undefined}
-          onDeleteElement={(id, label, onDeleted) => {
-            const engine = engineRef.current;
-            const plan = currentIdRef.current;
-            const locked = () => engine?._lockedNets.has(activeNet);
-            if (!engine || locked() || loadingPlanRef.current) return;
-            triggerConfirm('Borrar elemento', `¿Borrar ${label} del plano?`, () => {
-              if (
-                engineRef.current !== engine ||
-                currentIdRef.current !== plan ||
-                locked() ||
-                loadingPlanRef.current ||
-                !engine.getElementsByNet(activeNet).some((element) => element.id === id)
-              )
-                return;
-              engine.selectById(id);
-              engine.deleteSelected();
-              onDeleted();
-            });
-          }}
         />
 
         <button

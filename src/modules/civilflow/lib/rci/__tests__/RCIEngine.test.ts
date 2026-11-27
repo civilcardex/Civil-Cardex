@@ -9,11 +9,54 @@
  */
 import { describe, it, expect } from 'vitest';
 import { compute, clasificar, ejemploVerificacion, type PipeCalc } from '../index';
+import { pipeRow } from '../hydraulics.ts';
+import { PIPES } from '../tables.ts';
+import { diamListPorMaterial } from '../../../constants/engineeringDataMaterials.ts';
 
 /** El proyecto de ejemplo del HTML, sin ninguna mutación. */
 const st = ejemploVerificacion();
 const tips = clasificar(st);
 const R = compute(st, tips);
+
+it('comparte diámetro CAD y C de catálogo, y cambia el cálculo con el sistema', () => {
+  const ctx = {
+    cmat: { 'Acero SCH 40': { h: 150, s: 150 } },
+    K: 5.6,
+    Pmin: 7,
+    sistema: 'Húmedo',
+    Vmax: 6,
+    Pcomp: 175,
+    PreqSP: 100,
+    claseSP: 'Clase I',
+    branches: {},
+  };
+  const acero = { mat: 'Acero SCH 40', dn: '4"', L: 6 };
+  const humedo = pipeRow(acero, 100, 250, ctx) as PipeCalc;
+  const seco = pipeRow(acero, 100, 250, { ...ctx, sistema: 'Seco' }) as PipeCalc;
+  expect(humedo.C).toBe(120);
+  expect(seco.C).toBe(100);
+  expect(seco.Pf).toBeGreaterThan(humedo.Pf);
+  const c900 = pipeRow({ ...acero, mat: 'PVC C900 DR18' }, 100, 250, ctx) as PipeCalc;
+  expect(c900.id).toBe(108.34);
+  expect(c900.C).toBe(150);
+  expect(diamListPorMaterial('PVC C900 RDE 18')[0].id).toBe(c900.id);
+  expect(PIPES['CPVC SDR 13,5']['2"'].id).toBe(50.9);
+  expect(
+    pipeRow({ mat: 'CPVC SDR 13,5', dn: '2"', L: 6 }, 7, 50, { ...ctx, sistema: 'Seco' }),
+  ).toMatchObject({ ok: false, err: expect.stringContaining('sin C aplicable') });
+});
+
+it('distingue el consumo faltante del cero y conserva la reserva de incendio', () => {
+  const next = ejemploVerificacion();
+  next.tanque = { vextra: 3 };
+  expect(compute(next, clasificar(next)).tanque.Vtotal).toBeNull();
+  next.tanque.vconsumo = 0;
+  expect(compute(next, clasificar(next)).tanque.Vtotal).toBeCloseTo(R.tanque.Vincendio + 3);
+  next.tanque.vconsumo = 10.5;
+  const tanque = compute(next, clasificar(next)).tanque;
+  expect(tanque.Vincendio).toBe(R.tanque.Vincendio);
+  expect(tanque.Vtotal).toBeCloseTo(tanque.Vincendio + 13.5);
+});
 
 const cerca = (x: number | null | undefined, esperado: number, tol = 0.05): void => {
   expect(x).not.toBeUndefined();
@@ -193,7 +236,7 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     expect(R.tanque.tip).toBe('T1');
   });
 
-  it('verificaciones: el ejemplo cierra 43 CUMPLE con T2 en 2½" (diámetro calculado)', () => {
+  it('verificaciones: el ejemplo cierra 43 CUMPLE con T2 en 2½" y sin almacenamiento', () => {
     expect(R.checks).toHaveLength(43);
     expect(R.count).toEqual({ CUMPLE: 43 });
     expect(R.checks.filter((v) => v.st !== 'CUMPLE')).toEqual([]);
@@ -212,30 +255,82 @@ describe('rciEngine · contrato con el ejemplo de verificación del HTML', () =>
     expect(nc[0].guide).toContain('diámetro');
   });
 
-  it('verificación de almacenamiento exige G2 y se recalcula al cambiar el riesgo del piso', () => {
+  it('verificación de almacenamiento: la restricción G2 aplica SOLO al piso con Sí', () => {
     const stAlmacen = ejemploVerificacion();
-    stAlmacen.clas.almacen = 'Sí';
-    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo ordinario G1'));
+    /* Almacenamiento POR PISO (2026-11-27): solo el piso marcado «Sí» se evalúa. */
+    stAlmacen.pisos.rows[0].almacen = 'Sí';
+    stAlmacen.pisos.rows[0].riesgo = 'Riesgo ordinario G1';
+    stAlmacen.pisos.rows[1].riesgo = 'Riesgo leve';
 
+    const lab = 'Riesgo NFPA 13 compatible con almacenamiento';
     const checkG1 = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
-      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
+      (check) => check.lab === lab,
     );
     expect(checkG1?.st).toBe('NO CUMPLE');
     expect(checkG1?.val).toContain('Riesgo ordinario G1');
     expect(checkG1?.guide).toContain('Riesgo ordinario G2');
+    expect(checkG1?.go).toEqual(['tipologias', 'piso:0:almacen']);
 
-    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo ordinario G2'));
-    const checkG2 = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
-      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
-    );
-    expect(checkG2?.st).toBe('CUMPLE');
-    expect(checkG2?.val).toContain('Riesgo ordinario G2');
+    /* G2 en el piso con Sí: sin aviso — y el piso SIN almacenamiento no genera fila alguna
+       aunque su riesgo sea leve. */
+    stAlmacen.pisos.rows[0].riesgo = 'Riesgo ordinario G2';
+    expect(
+      compute(stAlmacen, clasificar(stAlmacen)).checks.find((check) => check.lab === lab),
+    ).toBeUndefined();
 
-    stAlmacen.pisos.rows.forEach((piso) => (piso.riesgo = 'Riesgo leve'));
+    stAlmacen.pisos.rows[0].riesgo = 'Riesgo leve';
     const checkLeve = compute(stAlmacen, clasificar(stAlmacen)).checks.find(
-      (check) => check.lab === 'Riesgo NFPA 13 compatible con almacenamiento',
+      (check) => check.lab === lab,
     );
     expect(checkLeve?.st).toBe('NO CUMPLE');
+  });
+
+  it('revisa las zonas del piso con Sí, avisa huérfanas y suspende todo con No', () => {
+    const estado = ejemploVerificacion();
+    const piso = estado.pisos.rows[0];
+    Object.assign(piso, { planId: 'piso-1', riesgo: 'Riesgo ordinario G2', htecho: 4 });
+    piso.almacen = 'Sí';
+    estado.clas.zonasAlmacenamiento = [
+      {
+        id: 'z1',
+        piso: 'piso-1',
+        nombre: 'Repuestos',
+        tipo: 'Arrume bajo',
+        mercancia: 'Clase I',
+        disposicion: 'Apilado en bloque sobre piso',
+        embalaje: 'En cartón',
+        pale: 'Madera',
+        arrume: '2',
+        repisa: 'Por determinar', // no aplica y no deja la ficha pendiente
+      },
+      { id: 'z2', piso: 'eliminado', nombre: 'Archivo' },
+    ];
+    const revisar = () =>
+      compute(estado).checks.filter((v) => v.lab.startsWith('Almacenamiento ·'));
+    /* Solo las fichas del piso con Sí; la huérfana sale en SU fila «por reasignar». */
+    expect(revisar()).toMatchObject([
+      {
+        lab: 'Almacenamiento · Repuestos',
+        st: 'PENDIENTE',
+        val: 'Datos completos · requiere revisión técnica',
+        go: ['tipologias', 'piso:0:zonas'],
+      },
+    ]);
+    expect(
+      compute(estado).checks.filter((v) => v.lab === 'Zonas de almacenamiento por reasignar'),
+    ).toMatchObject([
+      { st: 'PENDIENTE', val: '1 ficha(s)', go: ['tipologias', 'zonas-reasignar'] },
+    ]);
+    /* Sin fichas en el piso con Sí: PENDIENTE con acceso a la celda Zonas. */
+    estado.clas.zonasAlmacenamiento = [];
+    expect(revisar()).toMatchObject([
+      { lab: 'Almacenamiento · P3', st: 'PENDIENTE', go: ['tipologias', 'piso:0:zonas'] },
+    ]);
+    /* Con «No» no se evalúa ningún piso; las fichas conservadas (no se borran). */
+    piso.almacen = 'No';
+    estado.clas.zonasAlmacenamiento = [{ id: 'z2', piso: 'eliminado', nombre: 'Archivo' }];
+    expect(revisar()).toEqual([]);
+    expect(estado.clas.zonasAlmacenamiento).toHaveLength(1);
   });
 
   it('compute es determinista: dos corridas dan el mismo resultado (puro, sin estado global)', () => {

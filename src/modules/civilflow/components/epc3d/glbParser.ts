@@ -1,4 +1,5 @@
 import type * as THREE_NS from 'three';
+import { leerChunksGlb, leerAccesorGlb, type GltfJson } from '../shared/glbBinReader.ts';
 
 // Port del parser GLB propio del HTML original ("EPC CIVILCARDEX SEP 16 2026 VF").
 // Ponytail: NO se usa GLTFLoader — el HTML asigna materiales PBR por heurística de color
@@ -145,88 +146,27 @@ export function getMaterial(
   });
 }
 
-interface GltfJson {
-  accessors?: Array<{
-    bufferView: number;
-    type: string;
-    count: number;
-    componentType: number;
-    byteOffset?: number;
-  }>;
-  bufferViews?: Array<{ byteOffset?: number; byteLength: number }>;
-  materials?: Array<{ pbrMetallicRoughness?: { baseColorFactor?: number[] } }>;
-  meshes?: Array<{
-    primitives: Array<{ attributes: Record<string, number>; indices?: number; material?: number }>;
-  }>;
-  nodes?: Array<{
-    name?: string;
-    matrix?: number[];
-    translation?: number[];
-    rotation?: number[];
-    scale?: number[];
-    mesh?: number;
-    children?: number[];
-  }>;
-  scenes?: Array<{ nodes?: number[] }>;
-  scene?: number;
-}
-
 /** Convierte un GLB en un Group con UN mesh por material (primitivas fusionadas, transforms horneados). */
 export async function parseGLB(
   THREE: typeof THREE_NS,
   buffer: ArrayBuffer,
 ): Promise<THREE_NS.Group> {
-  const dv = new DataView(buffer);
-  let offset = 12;
-  let jsonChunk: GltfJson | null = null;
-  let binChunk: ArrayBuffer | null = null;
-  const totalLen = dv.getUint32(8, true);
-  while (offset < totalLen) {
-    const clen = dv.getUint32(offset, true);
-    const ctype = dv.getUint32(offset + 4, true);
-    const cdata = buffer.slice(offset + 8, offset + 8 + clen);
-    if (ctype === 0x4e4f534a) jsonChunk = JSON.parse(new TextDecoder().decode(cdata)) as GltfJson;
-    if (ctype === 0x004e4942) binChunk = cdata;
-    offset += 8 + clen;
-  }
-  const json = jsonChunk ?? {};
-  if (!binChunk) throw new Error('GLB sin chunk binario');
-
-  const accessors = json.accessors ?? [];
-  const bufferViews = json.bufferViews ?? [];
-
-  function readAcc(idx: number): Float32Array | Uint32Array | Uint16Array | Uint8Array {
-    const acc = accessors[idx];
-    const bv = bufferViews[acc.bufferView];
-    const off = (bv.byteOffset ?? 0) + (acc.byteOffset ?? 0);
-    const n = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[acc.type] ?? 1;
-    const tot = acc.count * n;
-    const sl = binChunk!.slice(
-      off,
-      off +
-        tot *
-          (acc.componentType === 5126 || acc.componentType === 5125
-            ? 4
-            : acc.componentType === 5123
-              ? 2
-              : 1),
-    );
-    if (acc.componentType === 5126) return new Float32Array(sl);
-    if (acc.componentType === 5125) return new Uint32Array(sl);
-    if (acc.componentType === 5123) return new Uint16Array(sl);
-    return new Uint8Array(sl);
-  }
+  const { json: jsonTalCual, bin } = leerChunksGlb(buffer);
+  if (!bin || !jsonTalCual) throw new Error('GLB sin chunk binario');
+  const json: GltfJson = jsonTalCual;
+  const readAcc = (idx: number): Float32Array | Uint32Array | Uint16Array | Uint8Array =>
+    leerAccesorGlb(json, idx, bin);
 
   // Geometría de una primitiva: solo position/normal/index (lo que fusiona igual para todas)
   function buildGeom(prim: {
-    attributes: Record<string, number>;
+    attributes: Record<string, number | undefined>;
     indices?: number;
   }): THREE_NS.BufferGeometry {
     const geom = new THREE.BufferGeometry();
-    const pos = readAcc(prim.attributes.POSITION);
+    const pos = readAcc(prim.attributes.POSITION!);
     geom.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
     if (prim.attributes.NORMAL != null) {
-      const nor = readAcc(prim.attributes.NORMAL);
+      const nor = readAcc(prim.attributes.NORMAL!);
       geom.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(nor), 3));
     }
     if (prim.indices != null) {

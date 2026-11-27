@@ -12,11 +12,46 @@ import { pickTeeBranchDir } from './teeUtils.ts';
 import { drawExtremeAccessorySymbol } from './renderAccessorySymbols.ts';
 import { dibujaCuerpoRamal, dibujaEtiquetaRamal } from './ramalBody.ts';
 import { pintaAccesoriosExtremos } from './ramalJunctions.ts';
+import { flujoRciDelPlano, sentidoRciDesdeFin } from './rciFlow.ts';
 
 export { pickTeeBranchDir };
 
 /** Índice red→config: evita buscar en NETS por cada ramal dibujado (antes O(ramales×redes)). */
 const NET_POR_ID = new Map(NETS.map((n) => [n.id, n]));
+
+/** Texto digitado en Inicio/Final de un ramal RCI, pintado EN SU EXTREMO (ped. usuario):
+ *  lo escribe el usuario en «Datos del tramo» y es lo que alimenta la columna Fin de la tabla
+ *  de Ramales del piso. El ROC-N consecutivo ya lo pinta el glifo del rociador: aquí solo se
+ *  dibuja el texto del usuario, nunca el sugerido (placeholder). */
+function pintaTextosExtremosRci(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore): void {
+  ctx.save();
+  ctx.font = `bold ${Math.max(11, 12 * engine.zoom)}px ${'sans-serif'}`;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#000000';
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 2.5 * engine.zoom;
+  for (const r of engine.ramales) {
+    if (r.net !== 'rci' || engine._hiddenNets.has(r.net) || r.pts.length < 2) continue;
+    for (const idx of [0, r.pts.length - 1]) {
+      const txt = String(idx === 0 ? r.ini || '' : r.fin || '')
+        .trim()
+        .toUpperCase();
+      if (!txt) continue;
+      const pt = r.pts[idx];
+      const vecino = r.pts[idx === 0 ? 1 : idx - 1];
+      const len = Math.hypot(pt[0] - vecino[0], pt[1] - vecino[1]) || 1;
+      const nx = (pt[0] - vecino[0]) / len;
+      const ny = (pt[1] - vecino[1]) / len;
+      const c = engine.toCvs(pt[0], pt[1]);
+      const x = c.x + nx * 13 * engine.zoom;
+      const y = c.y + ny * 13 * engine.zoom;
+      ctx.textAlign = nx > 0.2 ? 'left' : nx < -0.2 ? 'right' : 'center';
+      ctx.strokeText(txt, x, y);
+      ctx.fillText(txt, x, y);
+    }
+  }
+  ctx.restore();
+}
 
 /** Memo de snapCandidates del trazo activo (un dibujo a la vez): lista cacheada por firma.
  *  WeakMap por MOTOR (no singleton de módulo): dos visores vivos no se pisan el cache. */
@@ -40,6 +75,10 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // bajantesSan/hayPuntoSan construidos UNA vez por cambio de geometría — antes estos 4
   // (filters + flatMap + Map de ~4000 claves) se reconstruían en CADA render, pan/zoom incluido.
   const indiceF = indiceFrame(engine);
+  const flujoRci =
+    engine.ramales.some((r) => r.net === 'rci') && !engine._hiddenNets.has('rci')
+      ? flujoRciDelPlano(engine)
+      : null;
   const firmaFrame = indiceF.firma;
   // Memoria del des-tapado: con la misma geometría y el mismo zoom el sitio elegido por cada
   // etiqueta no cambia (se guarda como desplazamiento desde su centro, que el paneo no mueve),
@@ -50,6 +89,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   engine.ramales.forEach((r) => {
     if (engine._hiddenNets.has(r.net)) return;
     const net = NET_POR_ID.get(r.net);
+    const invertirRci = r.net === 'rci' && !!flujoRci && sentidoRciDesdeFin(r, flujoRci);
     const col = net ? net.col : '#e2e2e8';
     const sel = r.id === engine.selId;
     const isPadre = r.id === padreId;
@@ -63,8 +103,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
     dibujaCuerpoRamal(ctx, engine, r, col, sel, isPadre, isTributarioMode);
 
     if (r.label || r.totalL || r.material || r.diametro || r.pendiente) {
-      // rci incluida (ped. usuario): la flecha de flujo del ramal define la RUTA CRÍTICA —
-      // el extractor RCI conecta el ramal por su COLA (pts[0], lado de aguas arriba).
+      // La flecha RCI sale de la conexión hacia el extremo remoto.
       const FLOW_NETS = ['san', 'll', 'af', 'ac', 'gas', 'rci'];
       const showFlow = FLOW_NETS.includes(r.net) && r.pts.length >= 2;
       let flowDx = 0,
@@ -83,7 +122,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
         const a = engine.toCvs(r.pts[useIdx][0], r.pts[useIdx][1]);
         const b = engine.toCvs(r.pts[useIdx + 1][0], r.pts[useIdx + 1][1]);
         const flip =
-          r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))
+          invertirRci ||
+          (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net)))
             ? -1
             : 1;
         flowDx = (b.x - a.x) * flip;
@@ -109,6 +149,7 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
       ventRamales: indiceF.ventRamales,
       hayPuntoSanCercano: indiceF.hayPuntoSan,
       bajantesSan: indiceF.bajantesSan,
+      invertirRci,
     });
   });
 
@@ -121,6 +162,8 @@ export function renderRamales(ctx: CanvasRenderingContext2D, engine: IPlanoEngin
   // (p. ej. un ramal vent que comparte el punto final de un ramal san) pinta encima del
   // símbolo de accesorio de un ramal anterior en ese mismo punto. (ramalJunctions.ts)
   pintaAccesoriosExtremos(ctx, engine, declutter);
+  // Etiquetas de extremo escritas por el usuario (Inicio/Final), sobre todo el resto.
+  pintaTextosExtremosRci(ctx, engine);
 
   // Símbolos de aparato (fixture) en los extremos — pase extraído a renderAparatoSymbols.ts
   // (con su cache de imágenes de nivel de módulo).

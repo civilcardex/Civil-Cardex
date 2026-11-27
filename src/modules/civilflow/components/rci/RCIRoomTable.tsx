@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
-import { BTN, IN, NOTA, TDC12, type EditarRci } from './RCICmatTable.tsx';
+import { BTN, IN, NOTA, TDC12, type EditarRci } from './RCIInputTableStyles.ts';
 import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
@@ -30,22 +30,45 @@ const FC_CUARTO: [string, string][] = [
 /** Tubería del cuarto de bombas (st.mont.cuarto): de la base del montante a la brida de
  *  descarga (CB). Una fila con la longitud total, sus accesorios y el desnivel; los resultados
  *  (pérdidas y presión en la brida) viven en la pestaña Bomba y tanque. */
+/** Fila Base→CB del HTML de referencia (MONT_DEF): SIEMPRE visible aunque el estado aún no
+ *  la haya sembrado — su primera edición la crea en el estado (ped. usuario 2026-11-26). */
+const FILA_BASE: Record<string, unknown> = {
+  ni: 'Base',
+  nf: 'CB',
+  mat: 'Acero SCH 10',
+  dn: 'auto',
+  L: 5,
+  tee: 1,
+  comp: 1,
+  ret: 1,
+  esp: '',
+  leqOtros: '',
+  zi: 0,
+  zf: 0,
+};
+
 function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }) {
   const [edit, toggleEdit] = useEditarTabla();
   const [esquema, setEsquema] = useState(false);
-  const filas = estado.mont.cuarto || [];
+  const filasReales = estado.mont.cuarto || [];
+  /* El tramo Base→CB SIEMPRE va (el HTML de referencia lo siembra por defecto). Si el
+   *  estado aún no lo creó, se muestra la fila base y su primera edición la siembra. */
+  const filas = filasReales.length ? filasReales : [FILA_BASE];
   const setC =
     (i: number, k: string, esNum = false) =>
     (v: string) =>
-      editar((e) => ({
-        ...e,
-        mont: {
-          ...e.mont,
-          cuarto: e.mont.cuarto.map((r, j) =>
-            j === i ? { ...r, [k]: esNum && v !== '' ? Number(v) : v } : r,
-          ),
-        },
-      }));
+      editar((e) => {
+        const actual = e.mont.cuarto.length ? e.mont.cuarto : [{ ...FILA_BASE }];
+        return {
+          ...e,
+          mont: {
+            ...e.mont,
+            cuarto: actual.map((r, j) =>
+              j === i ? { ...r, [k]: esNum && v !== '' ? Number(v) : v } : r,
+            ),
+          },
+        };
+      });
   return (
     <section className="card" style={{ width: 'fit-content', maxWidth: '100%' }}>
       <div className="card-h" style={{ padding: '6px 12px' }}>
@@ -70,16 +93,8 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
             type="button"
             onClick={() => setEsquema(true)}
             aria-label="Ver esquema del cuarto de bombas"
-            style={{
-              ...BTN,
-              border: 0,
-              background: 'none',
-              color: 'var(--steel)',
-              textDecoration: 'underline',
-              padding: 0,
-              marginLeft: 8,
-              fontSize: 11,
-            }}
+            className="rci-scheme-link"
+            style={{ marginInlineStart: 8 }}
           >
             Ver esquema
           </button>
@@ -163,7 +178,7 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
                   </td>
                 );
                 return (
-                  <tr key={i}>
+                  <tr key={String(r.ni ?? '') + i}>
                     <td style={{ ...TDC12, fontWeight: 700 }}>{String(r.ni || 'Base')}</td>
                     <td style={{ ...TDC12, fontWeight: 700 }}>{String(r.nf || 'CB')}</td>
                     <td style={TDC12}>
@@ -222,7 +237,6 @@ function TablaCuarto({ estado, editar }: { estado: RciState; editar: EditarRci }
                         <input
                           type="text"
                           value={String(r.esp ?? '')}
-                          placeholder="p. ej. VA"
                           aria-label={`Accesorios especiales de la fila ${i + 1} del cuarto`}
                           onChange={(e) => setC(i, 'esp')(e.target.value)}
                           style={{ ...IN, width: 80 }}

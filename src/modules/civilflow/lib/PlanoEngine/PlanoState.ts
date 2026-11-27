@@ -140,6 +140,7 @@ export interface PlanoRamal {
 /** Bajante o montante (tubería vertical) que conecta los niveles del edificio. */
 export interface PlanoBajante {
   id: string;
+  material?: string;
   net: string;
   tipo: string;
   code: string;
@@ -334,6 +335,7 @@ export interface PlanoActiveArea {
 /** Lo que se le pone a una tubería nueva cuando el usuario no elige nada: el material, el diámetro
  *  y la pendiente que heredan las siguientes. Ej: material 'PVC-PR' -> RAF4 nace con él. */
 export interface PlanoRamalDefaults {
+  requiereMaterial?: boolean;
   material: string;
   diametro: string;
   pendiente: number;
@@ -404,11 +406,14 @@ export interface IPlanoEngineCore {
   tipoTramo: string;
   scaleM: number;
   definedScaleM: number;
-  /** Dmuro (distancia máx. ramal↔muro del RCI, tabla Datos del rociador) INYECTADO por la
-   *  capa React (PdfViewer lo lee del espejo local del módulo RCI): el motor jamás lee
-   *  storage — recibe el valor. null/undefined = chequeo de muros apagado. Ej: 1.7 → los
-   *  trazos rci se validan contra 1,7 m. */
+  /** Distancia máxima muro–rociador (m) que el visor pasa al motor por piso.
+   *  Ej.: 1,7 m activa el chequeo; null indica que falta S (separación entre rociadores). */
   dmuroRci?: number | null;
+  /** Separación S (m) del piso activo: dibuja los círculos guía de radio S alrededor de cada
+   *  rociador estándar. null = sin S (no se pintan y el aviso de muro queda pendiente). */
+  sRci?: number | null;
+  /** Círculos guía de radio S visibles en el lienzo (se pueden ocultar desde el menú/panel). */
+  sCirclesVisible?: boolean;
   canv: HTMLCanvasElement;
   cw: HTMLElement;
   dpr: number;
@@ -499,6 +504,9 @@ export interface IPlanoEngineCore {
     ptIdx: number;
     slideConstraint?: { otherId: string; segmentIdx: number };
     accMedSlide?: { ax: number; ay: number; bx: number; by: number };
+    /** Holgura del agarre (m): el clic cerca del vértice no lo hace saltar al cursor. */
+    offX?: number;
+    offY?: number;
     linkedPts?: { id: string; ptIdx: number }[];
   } | null;
   areaDrag: { id: string; startX: number; startY: number } | null;

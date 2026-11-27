@@ -16,6 +16,7 @@ import {
 } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
 import { filasVerificaciones, GRUPOS_CHECK, grupoDeCheck } from '../../utils/rci/RCIRowsModel.ts';
+import TableScroll from '../shared/TableScroll.tsx';
 import { RUTA_DE } from '../../utils/rci/RCIRowsModelExtras.ts';
 import type { Verificacion } from '../../lib/rci/types.ts';
 
@@ -49,7 +50,7 @@ function irAlDato(v: Verificacion, irA: (tab: TabRci, sub?: string, campo?: stri
 function TablaChecks({ filas }: { filas: { v: Verificacion; i: number }[] }) {
   const { irA } = useNavRci();
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <TableScroll label="Tabla de verificaciones">
       <table className="tbl" style={{ fontSize: 11, borderCollapse: 'collapse', width: '100%' }}>
         <thead>
           <tr>
@@ -106,7 +107,11 @@ function TablaChecks({ filas }: { filas: { v: Verificacion; i: number }[] }) {
                 {v.guide || '—'}
               </td>
               <td style={TDC}>
-                {v.go && v.go.length ? (
+                {v.go?.[0] === 'catalogo' ? (
+                  <a href="/catalogomaestro#coef-friccion-rci" target="_blank" rel="noopener">
+                    Ver catálogo
+                  </a>
+                ) : v.go && v.go.length ? (
                   <button
                     type="button"
                     onClick={() => irAlDato(v, irA)}
@@ -128,7 +133,7 @@ function TablaChecks({ filas }: { filas: { v: Verificacion; i: number }[] }) {
           ))}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

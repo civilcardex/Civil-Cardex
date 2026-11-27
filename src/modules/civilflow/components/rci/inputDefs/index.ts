@@ -70,5 +70,5 @@ export function notaDeps(campos: DefCampo[]): string {
   return partes.join('\n\n');
 }
 
-export { NOTA_SUB, ICONO_SUB } from './notasSub.ts';
+export { ICONO_SUB } from './iconsSub.ts';
 export { FILAS_CLASE } from './classRows.ts';

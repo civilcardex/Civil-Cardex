@@ -179,11 +179,23 @@ export const GRUPO_JOCKEY: DefCampo[] = [
 
 export const GRUPO_TANQUE: DefCampo[] = [
   {
-    path: 'tanque.vextra',
-    lbl: 'Volumen adicional (otros usos / reserva)',
+    path: 'tanque.vconsumo',
+    lbl: 'Volumen de consumo del edificio',
     num: true,
     uni: 'm³',
+    rango: () => ({ min: 0 }),
     ayu: (r) =>
-      `Se suma al volumen contra incendio (${Math.max(r.tanque.Vroc, r.tanque.Vsp).toFixed(1)} m³); total ${r.tanque.V.toFixed(1)} m³`,
+      `Ingreso manual. Cero = sin reserva de consumo; vacío = total pendiente. Reserva contra incendio: ${r.tanque.Vincendio.toFixed(1)} m³. Total: ${r.tanque.Vtotal === null ? 'pendiente' : `${r.tanque.Vtotal.toFixed(1)} m³`}.`,
+  },
+  {
+    path: 'tanque.vextra',
+    lbl: 'Volumen adicional (sin incluir consumo)',
+    num: true,
+    uni: 'm³',
+    rango: () => ({ min: 0 }),
+    ayu: (r) =>
+      r.tanque.Vextra > 0 && (r.tanque.Vconsumo ?? 0) > 0
+        ? 'Revisa que el volumen adicional guardado no incluya el consumo y se sume dos veces.'
+        : 'Conserva reservas históricas u otros usos. No vuelvas a sumar el consumo.',
   },
 ];

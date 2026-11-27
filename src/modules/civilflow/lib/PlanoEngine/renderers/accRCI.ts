@@ -13,6 +13,9 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   // Tipo base sin consecutivo ni flag NF ('rociadorMontanteNF#7' → 'rociadorMontante'):
   // el glifo es el mismo si fluye o no — el estado NF lo muestra la etiqueta en azul-gris.
   const tipo = accType.split('#')[0].replace(/NF$/, '');
+  /* Rociador que NO fluye = círculo HUeco (borde azul-gris); el que fluye = círculo LLENO
+     azul-gris. Igual criterio que el rociador colgante (accValves). */
+  const noFluye = /NF(?:#|$)/.test(accType);
   // Mismo tamaño que las válvulas (rad × 1.25): la familia se lee pareja sobre el trazo.
   const r = a.rad * 1.25;
 
@@ -20,7 +23,7 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
    *  (rad×1.25×1.2) — los 4 especiales miden LO MISMO que el colgante; sus internos guardan
    *  proporción (×4/3 sobre los factores viejos de 0.9). */
   if (tipo === 'rociadorMontante') {
-    estilo(ctx, engine);
+    estilo(ctx, engine, 1, noFluye);
     anillo(ctx, c.x, c.y, r * 1.2);
     cruzDiagonal(ctx, c.x, c.y, r * 1.2);
     ctx.fillStyle = '#000000';
@@ -32,7 +35,7 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   }
 
   if (tipo === 'rociadorSeco') {
-    estilo(ctx, engine);
+    estilo(ctx, engine, 1, noFluye);
     anillo(ctx, c.x, c.y, r * 1.53);
     anillo(ctx, c.x, c.y, r * 1.2);
     anillo(ctx, c.x, c.y, r * 0.43);
@@ -43,7 +46,7 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   }
 
   if (tipo === 'rociadorOculto') {
-    estilo(ctx, engine);
+    estilo(ctx, engine, 1, noFluye);
     // Anillo discontinuo: el rociador queda escondido bajo el cielorraso.
     ctx.save();
     ctx.setLineDash([r * 0.37, r * 0.29]);
@@ -58,7 +61,7 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   }
 
   if (tipo === 'rociadorArea') {
-    estilo(ctx, engine);
+    estilo(ctx, engine, 1, noFluye);
     anillo(ctx, c.x, c.y, r * 1.2);
     anillo(ctx, c.x, c.y, r * 0.43);
     // La X va AL FINAL y cruza por encima del circulito central, como en el PDF de
@@ -141,10 +144,15 @@ export function drawRciSymbols(a: AccSimboloArgs): boolean {
   return false;
 }
 
-/** Trazo base de los glifos rci: negro, relleno blanco y el grosor de las válvulas. */
-function estilo(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore, grosor = 1): void {
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#000000';
+/** Trazo base de los glifos rci: lleno si fluye, hueco si no, y el grosor de las válvulas. */
+function estilo(
+  ctx: CanvasRenderingContext2D,
+  engine: IPlanoEngineCore,
+  grosor = 1,
+  noFluye = false,
+): void {
+  ctx.fillStyle = noFluye ? '#ffffff' : '#8ab4d6';
+  ctx.strokeStyle = noFluye ? '#8ab4d6' : '#000000';
   ctx.lineWidth = 0.35 * engine.zoom * (engine.lineWidthScale || 1) * grosor;
   ctx.lineCap = 'butt';
   ctx.lineJoin = 'round';

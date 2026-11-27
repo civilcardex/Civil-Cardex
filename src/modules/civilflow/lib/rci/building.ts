@@ -4,7 +4,13 @@
  * piso hasta la brida de la bomba, más la ruta de gabinetes. Ej: los 3 pisos del ejemplo
  * comparten criterios y planta → una sola tipología T1 con representativo P3 (el más alto).
  */
-import { NOM, PIPES } from './tables';
+import {
+  NOM,
+  PIPES,
+  RCI_STANDPIPE_MIN,
+  RCI_STANDPIPE_DEFAULT,
+  canonicalRciPipeMaterial,
+} from './tables';
 import { isSi, num, route, suggestDn } from './hydraulics';
 import { criterios } from './criteria';
 import { computeRed } from './network';
@@ -223,12 +229,10 @@ export function edificio(
   QreqSP: number,
 ): Edificio {
   const M: MontCfg = Object.assign(
-    { mat: 'Acero SCH 10', dn: 'auto', hS: 1.2, hD: 2.5, zBase: 0, holgura: 0, cuarto: [] },
+    { mat: '', dn: RCI_STANDPIPE_DEFAULT, hS: 1.2, hD: 2.5, zBase: 0, holgura: 0, cuarto: [] },
     st.mont || {},
   );
-  /* Celdas vacías (ped. usuario 2026-11-20): los selects nacen sin opción — el montante cae a
-   *  su material de referencia al calcular (el Object.assign solo cubre claves AUSENTES). */
-  M.mat = M.mat || 'Acero SCH 10';
+  M.mat = canonicalRciPipeMaterial(M.mat);
   const P = st.pisos || {
       zBomba: 0,
       activa: '',
@@ -291,8 +295,10 @@ export function edificio(
   const typ: Record<string, TipCalc> = {};
   groups.forEach((g) => {
     const red = (st.redes || {})[g.planta];
-    const act = g.id === activeId,
-      rocT = act ? roc : g.roc || roc,
+    /* Criterios SIEMPRE del piso base de la tipología (ped. plan 2026-11-27): la activa ya no
+     * toma prestados los globales de Entradas, así su resultado no cambia al seleccionarla y
+     * los campos vacíos heredan de la configuración del proyecto (no de la tipología anterior). */
+    const rocT = g.roc || roc,
       /* Riesgo se clasifica por piso: incluso la tipología activa debe conservar el de su
        * representante, para que sus cálculos y verificaciones reaccionen al cambio en Pisos. */
       riesgo = g.riesgo || st.clas.riesgo;
@@ -304,7 +310,9 @@ export function edificio(
       hD: num(M.hD) ?? 2.5,
       K: rocT.K,
       Pmin: rocT.Pmin,
-      sistema: act ? ctx.sistema : g.sistema || ctx.sistema,
+      /* El sistema también sale del piso base (vacío = configuración del proyecto), igual que
+       * los criterios: seleccionar la tipología no puede cambiar su hidráulica. */
+      sistema: g.sistema || ctx.sistema,
       branches: {},
     });
     const raiz = String(red.raiz || 'D').trim() || 'D';
@@ -358,14 +366,16 @@ export function edificio(
       .map((t) => t.Q || 0),
     spOn ? QreqSP : 0,
   );
-  let dnM = M.dn && M.dn !== 'auto' ? M.dn : suggestDn(qMax, M.mat, ctx.Vmax);
-  if ((!M.dn || M.dn === 'auto') && spOn) {
-    const minIn = num(st.sp.diam) || 4;
-    const i0 = NOM.findIndex(
-      (n) => PIPES[M.mat] && PIPES[M.mat][n] && PIPES[M.mat][n].inch >= minIn - 1e-9,
+  let dnM = M.dn || RCI_STANDPIPE_DEFAULT;
+  if (dnM === 'auto') {
+    const candidato = suggestDn(qMax, M.mat, ctx.Vmax);
+    const minIn = Math.max(
+      RCI_STANDPIPE_MIN,
+      spOn ? (num(st.sp.diam) ?? RCI_STANDPIPE_MIN) : RCI_STANDPIPE_MIN,
     );
-    if (i0 >= 0 && PIPES[M.mat] && PIPES[M.mat][dnM] && PIPES[M.mat][dnM].inch < minIn)
-      dnM = NOM[i0];
+    const tamanos = PIPES[M.mat];
+    const requerido = Math.max(minIn, tamanos?.[candidato]?.inch ?? 0);
+    dnM = NOM.find((n) => (tamanos?.[n]?.inch ?? 0) >= requerido) ?? '';
   }
   const cuarto: TuberiaRow[] = (M.cuarto || []).map((r) => Object.assign({}, r));
   const pf: PisoOut[] = floors.map((f) => {

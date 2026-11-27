@@ -5,6 +5,7 @@
  *  (F9, mismo criterio que RciRamalesTable). Ej: <RciTramosTable trams={trams} ... />. */
 import type { CSSProperties } from 'react';
 import { anchoValor, celdaEditable } from './RCIEditableCell.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { TH10 } from '../../styles/sharedTableStyles.ts';
 import { DIAMETROS, MATERIALES } from '../../utils/rci/RCIRowsModel.ts';
 import type { FilaTramoRci } from '../../utils/rci/RCIRowsModel.ts';
@@ -44,7 +45,7 @@ export function RciTramosTable({
   altDeriv: number;
 }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
+    <TableScroll label="Tabla de tramos del piso">
       <table
         className="tbl tbl-sep"
         style={{
@@ -314,7 +315,7 @@ export function RciTramosTable({
           )}
         </tbody>
       </table>
-    </div>
+    </TableScroll>
   );
 }
 

@@ -11,6 +11,13 @@ import { diamPulgFromLabel } from '../../utils/diamInchesFromLabel.ts';
 import { inchPartOfDiametro } from '../../lib/PlanoEngine/drawingUtils.ts';
 import { matchDiamOption } from '../../utils/diamOptionMatch.ts';
 import { codoPolarityOk, codoNivelPermitidoEn } from '../../lib/PlanoEngine/PlanoEngineDrawing.ts';
+import {
+  rociadorFluye,
+  fijarFluyeRociador,
+  valorRociadorNuevo,
+  renumeraRociadores,
+  avisoSinSConMuro,
+} from '../../lib/PlanoEngine/RCIAutoDraw.ts';
 import { hasTeeAtPoint } from '../../lib/PlanoEngine/ventElbowTeeFix';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 import type { PlanoRamal } from '../../lib/PlanoEngine/PlanoState.ts';
@@ -118,19 +125,29 @@ export default function ExtremeAccessoryEditor({
           }
         }
         const oldVal = selElement[field] || '';
-        const updates: Record<string, unknown> = { [field]: val };
+        /* RCI: rociador nuevo = «No fluye»; al cambiar de tipo se conserva el estado anterior. */
+        const valor = selElement.net === 'rci' && !oldVal ? valorRociadorNuevo(val) : val;
+        if (
+          selElement.net === 'rci' &&
+          !oldVal &&
+          /rociador/i.test(valor) &&
+          engineRef.current &&
+          avisoSinSConMuro(engineRef.current)
+        )
+          return;
+        const updates: Record<string, unknown> = { [field]: valor };
         const fieldDiam: 'diametroInicio' | 'diametroFin' =
           field === 'accesorioInicio' ? 'diametroInicio' : 'diametroFin';
         // Al asignar accesorio: sifón siempre 2", resto hereda o 2"
-        if (val && !oldVal) {
-          if (val === 'sifon') updates[fieldDiam] = '2"';
+        if (valor && !oldVal) {
+          if (valor === 'sifon') updates[fieldDiam] = '2"';
           else {
             const resolvedFromRamal = matchDiamOption(diamList, selElement.diametro);
             updates[fieldDiam] = resolvedFromRamal || '2" — 50 mm';
           }
         }
         // Ítem 3: propagar el diámetro del accesorio al ramal si este estaba vacío.
-        if (val && !selElement.diametro) {
+        if (valor && !selElement.diametro) {
           const accDiam = updates[fieldDiam] as string | undefined;
           if (accDiam) updates.diametro = accDiam;
         }
@@ -145,7 +162,7 @@ export default function ExtremeAccessoryEditor({
         // accesorio queda duplicado (p. ej. una reducción contada dos veces en el resumen).
         // Sin gate de plans: con el contexto aún cargando el accesorio quedaba sin conteo y
         // había que asignarlo dos veces (ver midRamalAccessorySelector).
-        if (val !== oldVal) {
+        if (valor !== oldVal) {
           const effPlans =
             plans ??
             (engineRef.current._loadedPlanId != null
@@ -158,7 +175,7 @@ export default function ExtremeAccessoryEditor({
             selElement.id,
             field,
             oldVal,
-            val,
+            valor,
             effPlans,
             contarSifonesDe(vivo),
           );
@@ -196,6 +213,24 @@ export default function ExtremeAccessoryEditor({
       engineRef.current._markDirty();
     };
 
+  /** Opciones «Fluye» del panel de tablet: el consecutivo ROC-N no cambia al marcar/desmarcar. */
+  const onFluyeChange =
+    (field: 'accesorioInicio' | 'accesorioFin') => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const eng = engineRef.current;
+      if (!eng) return;
+      const vivo = eng.ramales.find((r) => r.id === selElement.id);
+      const actual = (vivo?.[field] || selElement[field] || '') as string;
+      const nuevo = fijarFluyeRociador(actual, e.target.checked);
+      eng.updateElementById(selElement.id, { [field]: nuevo });
+      renumeraRociadores(eng);
+      eng.render();
+      eng._markDirty();
+      setSelElement({ ...selElement, [field]: nuevo });
+    };
+  const baseSinFlag = (raw: string | undefined): string =>
+    String(raw || '')
+      .replace(/NF(?=#|$)/, '')
+      .split('#')[0];
   const diamOptions = diamList.map((d) => ({ n: d.n, label: d.n }));
   const diamValue = (raw: string | undefined) => matchDiamOption(diamList, raw);
 
@@ -240,7 +275,7 @@ export default function ExtremeAccessoryEditor({
         <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
         <div style={{ marginBottom: 4 }}>
           <select
-            value={selElement.accesorioInicio || ''}
+            value={baseSinFlag(selElement.accesorioInicio)}
             aria-label="Accesorio inicio"
             onChange={onAccChange('accesorioInicio')}
             style={ExtremeAccessoryEditor_S1}
@@ -253,6 +288,16 @@ export default function ExtremeAccessoryEditor({
             ))}
           </select>
         </div>
+        {activeNet === 'rci' && /rociador/i.test(selElement.accesorioInicio || '') && (
+          <label className="dcm-fluye" style={{ fontSize: 11 }}>
+            <input
+              type="checkbox"
+              checked={rociadorFluye(selElement.accesorioInicio)}
+              onChange={onFluyeChange('accesorioInicio')}
+            />
+            Fluye en el cálculo
+          </label>
+        )}
         {selElement.accesorioInicio && diamOptions.length > 0 && (
           <div style={{ marginBottom: 4 }}>
             <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>
@@ -293,7 +338,7 @@ export default function ExtremeAccessoryEditor({
         <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>Seleccionar Accesorio</div>
         <div style={{ marginBottom: 4 }}>
           <select
-            value={selElement.accesorioFin || ''}
+            value={baseSinFlag(selElement.accesorioFin)}
             aria-label="Accesorio fin"
             onChange={onAccChange('accesorioFin')}
             style={ExtremeAccessoryEditor_S4}
@@ -306,6 +351,16 @@ export default function ExtremeAccessoryEditor({
             ))}
           </select>
         </div>
+        {activeNet === 'rci' && /rociador/i.test(selElement.accesorioFin || '') && (
+          <label className="dcm-fluye" style={{ fontSize: 11 }}>
+            <input
+              type="checkbox"
+              checked={rociadorFluye(selElement.accesorioFin)}
+              onChange={onFluyeChange('accesorioFin')}
+            />
+            Fluye en el cálculo
+          </label>
+        )}
         {selElement.accesorioFin && diamOptions.length > 0 && (
           <div style={{ marginBottom: 4 }}>
             <div style={{ fontSize: 12, color: '#9BA8AA', marginBottom: 2 }}>

@@ -87,7 +87,6 @@ export function useEpc3DScene({
       // three moderno", fill -10,5,-6; ColorManagement NO se toca aquí).
       const base = await montarEscena(canvasEl, {
         maxDistance: 200,
-        shadowType: 'pcf',
         fillPos: [-10, 5, -6],
         // Escena estática: el mapa de sombras se renderiza UNA vez tras la carga, no por frame.
         sombrasEstaticas: true,

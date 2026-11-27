@@ -56,10 +56,10 @@ function RciRamalRow_({ f, i, piso, editRam, setRamal, zRamTxt }: RciRamalRowPro
         {nombreDibujoDe(f, piso)}
       </th>
       <td className="c" style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}>
-        {f.rocIni !== null ? `Roc ${f.rocIni}` : '—'}
+        {f.iniDibujo || (f.rocIni !== null ? `ROC-${f.rocIni}` : '—')}
       </td>
       <td className="c" style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}>
-        {f.con || '—'}
+        {f.finDibujo || f.con.toUpperCase() || '—'}
       </td>
       <td className="c" style={{ ...TDC, background: 'var(--bg3)', color: 'var(--txt3)' }}>
         {f.dib ?? '—'}

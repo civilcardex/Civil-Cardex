@@ -19,8 +19,9 @@ import { datosRectangulo } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { fmtNum, temaResuelto } from './RCISvgSchemas.tsx';
 import { dibujaRectFuegoDibujo } from './RCISvgCanvas.ts';
 import { rciTxt } from '../../constants/rciCountryStandards.ts';
-import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
+import { puntoEnORectangulo } from '../../lib/shared/geometry.ts';
 import type { Criterios } from '../../lib/rci/types.ts';
+import { TipologyHeader } from './RCITypologyHeader.tsx';
 
 /** Sub-pestañas de la pestaña Rociadores: los ids 'datos' y 'criterios' son los de
  *  SUBS_POR_TAB['rociadores'] que resuelve RUTA_DE; 'rectangulo' es la tercera sección del
@@ -156,7 +157,6 @@ function DatosRociador({ ctx }: { ctx: RciCtx }) {
   return (
     <GrupoTabla
       titulo="Datos del rociador"
-      nota="QR, K y Pmin son la base de la tipología activa; S, L y DMR se digitan por piso en Tipologías → Pisos del edificio"
       icono="/iconos/datos_rociador.webp"
       campos={campos}
       estado={estado}
@@ -180,7 +180,8 @@ function CriteriosDiseno({
   qrTxt: string;
   sistemaTxt: string;
 }) {
-  /** Mini-card titulada con su kv (patrón .card/.card-head del HTML). */
+  /** Mini-card titulada con su kv (patrón .card/.card-head del HTML). Con `unidad` la unidad
+   *  sale en su propia columna (Parámetro · Valor · Unidad · Referencia, ped. 2026-11-27). */
   const tarjeta = (titulo: string, filas: KvRci[], titulos = false) => (
     <section className="card" style={{ margin: 0 }}>
       <div className="card-h" style={{ padding: '6px 10px' }}>
@@ -189,7 +190,13 @@ function CriteriosDiseno({
         </h3>
       </div>
       <div style={{ padding: 4 }}>
-        <KvTabla filas={filas} titulos={titulos} />
+        <KvTabla
+          label={titulo}
+          filas={filas}
+          titulos={titulos}
+          unidad={titulos}
+          labels={{ l: 'Parámetro', v: 'Valor', u: 'Unidad', n: 'Referencia' }}
+        />
       </div>
     </section>
   );
@@ -282,7 +289,9 @@ function RectanguloFuego({ ro, rect }: { ro: Criterios; rect?: RciCtx['rectFuego
         const largo = Math.max(maxX - minX, maxY - minY);
         const corto = Math.min(maxX - minX, maxY - minY);
         const nr = rect.ramalesDentro.length;
-        const nroc = rect.rocPts.length;
+        /* «En operación» = solo los que FLUYEN (rocPts ya viene filtrado) y cuyo centro cae
+           dentro del rectángulo o sobre su borde. */
+        const nroc = rect.rocPts.filter((p) => puntoEnORectangulo(p, rect.ptsM)).length;
         const porRamal = nr > 0 ? nroc / nr : 0;
         return [
           {
@@ -351,8 +360,8 @@ function RectanguloFuego({ ro, rect }: { ro: Criterios; rect?: RciCtx['rectFuego
             }}
           >
             Alimentado del rectángulo DEFINIDO en el dibujo · área {fmtNum(rect.areaM2, 1)} m² ·{' '}
-            {rect.rocPts.length} rociadores del dibujo (
-            {rect.rocPts.filter((p) => puntoEnPoligono(p, rect.ptsM)).length} dentro)
+            {rect.rocPts.length} rociadores que fluyen (
+            {rect.rocPts.filter((p) => puntoEnORectangulo(p, rect.ptsM)).length} en operación)
           </div>
         ) : null}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -370,7 +379,13 @@ function RectanguloFuego({ ro, rect }: { ro: Criterios; rect?: RciCtx['rectFuego
           ) : null}
         </div>
         <div style={{ marginTop: 10 }}>
-          <KvTabla filas={filas} />
+          <KvTabla
+            label="Resultados del rectángulo de fuego"
+            filas={filas}
+            titulos
+            unidad
+            labels={{ l: 'Rectángulo', v: 'Valor', u: 'Unidad', n: 'Nota' }}
+          />
         </div>
       </div>
     </div>
@@ -391,7 +406,7 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
   /* La tipología activa del piso: la que pinta criterios y rectángulo (la red se calcula igual
      para toda la tipología). Sin tipología (piso "Sin rociadores") cae a los criterios globales. */
   const tip = R.edif.active;
-  const ro = tip ? tip.roc : R.roc;
+  const { ro, qrTxt, sistemaTxt } = criteriosActivos(ctx);
   const nOp = tip && tip.rd ? tip.rd.Nop : null;
   const subs = SUBS;
 
@@ -405,12 +420,7 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
       ) : null}
       {activa === 'criterios' ? (
         <CardLectura titulo="Criterios de diseño" icono="/iconos/criterios_diseno.webp">
-          <CriteriosDiseno
-            ro={ro}
-            nOp={nOp}
-            qrTxt={ctx.estado.clas.qr}
-            sistemaTxt={ctx.estado.clas.sistema}
-          />
+          <CriteriosDiseno ro={ro} nOp={nOp} qrTxt={qrTxt} sistemaTxt={sistemaTxt} />
         </CardLectura>
       ) : null}
       {activa === 'rectangulo' ? (
@@ -422,32 +432,54 @@ export function RciRociadores({ ctx }: { ctx: RciCtx }) {
   );
 }
 
+/** Criterios efectivos de la tipología activa: SIEMPRE del piso base (qr/sistema incluidos);
+ *  sin tipología caen a la configuración del proyecto. No copia datos del piso que se abandona. */
+function criteriosActivos(ctx: RciCtx): {
+  ro: Criterios;
+  qrTxt: string;
+  sistemaTxt: string;
+} {
+  const tip = ctx.R.edif.active;
+  const base = tip ? ctx.estado.pisos.rows[tip.g.base] : undefined;
+  return {
+    ro: tip ? tip.roc : ctx.R.roc,
+    qrTxt: String(base?.qr ?? ctx.estado.clas.qr ?? ''),
+    sistemaTxt: String(base?.sistema || tip?.g.sistema || ctx.estado.clas.sistema || ''),
+  };
+}
+
 /** Sub «Criterios de diseño» como página propia de Tipologías (v1.7.82: la referencia las
  *  tiene AQUÍ, no en una pestaña Rociadores aparte). */
 export function RciCriterios({ ctx }: { ctx: RciCtx }) {
   const tip = ctx.R.edif.active;
-  const ro = tip ? tip.roc : ctx.R.roc;
   const nOp = tip && tip.rd ? tip.rd.Nop : null;
+  const { ro, qrTxt, sistemaTxt } = criteriosActivos(ctx);
+  if (ctx.tips.groups.length === 0 && ctx.estado.pisos.rows.length > 0) {
+    return <TipologyHeader ctx={ctx} />;
+  }
   return (
-    <CardLectura titulo="Criterios de diseño" icono="/iconos/criterios_diseno.webp">
-      <CriteriosDiseno
-        ro={ro}
-        nOp={nOp}
-        qrTxt={ctx.estado.clas.qr}
-        sistemaTxt={ctx.estado.clas.sistema}
-      />
-    </CardLectura>
+    <div>
+      <TipologyHeader ctx={ctx} />
+      <CardLectura titulo="Criterios de diseño" icono="/iconos/criterios_diseno.webp">
+        <CriteriosDiseno ro={ro} nOp={nOp} qrTxt={qrTxt} sistemaTxt={sistemaTxt} />
+      </CardLectura>
+    </div>
   );
 }
 
 /** Sub «Rectángulo de fuego» como página propia de Tipologías (v1.7.82). */
 export function RciRectFuego({ ctx }: { ctx: RciCtx }) {
-  const tip = ctx.R.edif.active;
-  const ro = tip ? tip.roc : ctx.R.roc;
+  const { ro } = criteriosActivos(ctx);
+  if (ctx.tips.groups.length === 0 && ctx.estado.pisos.rows.length > 0) {
+    return <TipologyHeader ctx={ctx} />;
+  }
   return (
-    <CardLectura titulo="Rectángulo de fuego" icono="/iconos/rectangulo_fuego.webp">
-      <RectanguloFuego ro={ro} rect={ctx.rectFuego} />
-    </CardLectura>
+    <div>
+      <TipologyHeader ctx={ctx} />
+      <CardLectura titulo="Rectángulo de fuego" icono="/iconos/rectangulo_fuego.webp">
+        <RectanguloFuego ro={ro} rect={ctx.rectFuego} />
+      </CardLectura>
+    </div>
   );
 }
 

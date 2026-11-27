@@ -211,7 +211,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           }
 
           const cosVal = branches[0].x * uB.x + branches[0].y * uB.y;
-          const isTee = Math.abs(cosVal) < 0.15;
+          const isTee = branches.length === 1 && Math.abs(cosVal) < 0.15;
           // En agua fría y caliente no existen las "yees" (uniones en Y a 45°) — solo tees de 90°.
           // Un ángulo de 45° ni siquiera debería poder dibujarse (lo bloquean los chequeos de
           // ángulo), pero por si acaso queda algún dato viejo de antes de esa restricción, se
@@ -223,7 +223,7 @@ function renderJunctions(ctx: CanvasRenderingContext2D, engine: IPlanoEngineCore
           // teeSube/teeBaja/etc.) se salta el tick genérico — ese caso ya tiene su propio glifo
           // en renderRamales.ts. Una tee af/ac SIN accesorio asignado (teeDirecto, el caso común
           // al conectar dos ramales) sí pasa, para no quedarse sin ningún símbolo.
-          if ((isTee && (!isAfAc || !hasTeeMarkerAt(P))) || isYee) {
+          if ((isTee && !hasTeeMarkerAt(P)) || isYee) {
             junctions.push({ P, uA, uB, branches, isTee, isYee });
           }
         }

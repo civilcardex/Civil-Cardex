@@ -4,7 +4,7 @@
  *  Ej: 'VA' (válvula de alarma) con modo LD y valor 50 aparece en el panel de accesorios. */
 import { EditTablaBtn, useEditarTabla } from './RCIUI.tsx';
 import { celdaEditable } from './RCIEditableCell.tsx';
-import { BTN, INC, NOTAC, TDCC, TH_TUBERIA, type EditarRci } from './RCICmatTable.tsx';
+import { BTN, INC, NOTAC, TDCC, TH_TUBERIA, type EditarRci } from './RCIInputTableStyles.ts';
 import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import type { EspAcc } from '../../lib/rci/tables.ts';
 import type { RciState } from '../../lib/rci/types.ts';

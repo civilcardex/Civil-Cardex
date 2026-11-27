@@ -8,6 +8,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 import type { RciResult, RciState, Tips } from '../../lib/rci/types.ts';
 import type { KvRci } from '../../utils/rci/RCIRowsModel.ts';
+import TableScroll from '../shared/TableScroll.tsx';
 
 /** Contexto que cada sección de RciDesign recibe: estado vivo, resultado del compute y el
  *  editor de amarillos (merge → recompute → debounced save los hace RciDesign). */
@@ -20,6 +21,9 @@ export interface RciCtx {
   edit: boolean;
   /** Aplica un cambio amarillo al estado (inmutable). */
   editar: (fn: (e: RciState) => RciState) => void;
+  /** Cambia la tipología activa Y el piso del visor al representativo de esa tipología, para
+   *  que los dos desplegables («Piso activo» y «T2 · Piso 2») siempre coincidan. */
+  seleccionarTipologia?: (id: string) => void;
   /** Rectángulo de fuego DEFINIDO en el dibujo del piso activo (área marcada esRectFuego):
    *  polígono y rociadores en metros. Presente solo si el usuario lo marcó y hay piso activo —
    *  la pestaña Rociadores prefiere esta info a la teórica. */
@@ -165,13 +169,9 @@ export function TabBarRci({
         }}
       >
         {TABS_RCI.map((t) => {
-          // La pestaña «Guía de diseño» abre el MODAL (nunca queda activa): color de la RED
-          // (--rci) pero MÁS BRILLANTE (mezcla con blanco, ped. usuario 2026-11-17), con
-          // RELLENO de ese color y letra NEGRA — el borde lo acompaña. Los demás tabs: patrón
-          // activo/inactivo de siempre.
+          // La guía abre el modal sin cambiar la pestaña activa.
           const esGuia = t.id === 'guia';
           const activa = !esGuia && tab === t.id;
-          const rciBrillo = 'color-mix(in oklab, var(--rci) 75%, white)';
           return (
             <button
               type="button"
@@ -182,10 +182,14 @@ export function TabBarRci({
               style={{
                 flexShrink: 0,
                 padding: '6px 16px',
-                border: `1.5px solid ${esGuia ? rciBrillo : activa ? 'var(--rci)' : 'var(--line)'}`,
+                border: `1.5px solid ${esGuia ? 'color-mix(in srgb, var(--rci) 65%, var(--line))' : activa ? 'var(--rci)' : 'var(--line)'}`,
                 borderRadius: 'var(--r)',
-                background: esGuia ? rciBrillo : activa ? 'rgba(179,19,27,0.10)' : 'var(--bg3)',
-                color: esGuia ? '#000' : activa ? 'var(--rci)' : 'var(--txt2)',
+                background: esGuia
+                  ? 'color-mix(in srgb, var(--rci) 12%, var(--bg3))'
+                  : activa
+                    ? 'rgba(179,19,27,0.10)'
+                    : 'var(--bg3)',
+                color: esGuia ? 'var(--txt)' : activa ? 'var(--rci)' : 'var(--txt2)',
                 cursor: 'pointer',
                 fontSize: 12,
                 fontFamily: 'var(--body)',
@@ -404,7 +408,7 @@ export function SecRci({
 }: {
   id: string;
   titulo: string;
-  nota?: string;
+  nota?: React.ReactNode;
   extra?: React.ReactNode;
   /** Ruta pública del icono decorativo (22×22, a la izquierda del título). */
   icono?: string;
@@ -477,106 +481,128 @@ export function ChipEstado({
 }
 
 /** Tabla de resultados etiqueta/valor/nota (kv). Ej: <KvTabla filas={kvBombaTanque(...)} />.
+ *  Con `unidad` la unidad sale en SU columna (Parámetro · Valor · Unidad · Referencia, ped.
+ *  2026-11-27) y «—» cuando la fila no tiene unidad; sin ella queda inline tras el valor.
  *  fontSize uniforme con el estándar de GrupoTabla (14; la nota queda en 13.5). */
 export function KvTabla({
   filas,
+  label,
   fontSize = 14,
   titulos = false,
+  unidad = false,
+  labels,
 }: {
   filas: KvRci[];
+  label: string;
   fontSize?: number;
   titulos?: boolean;
+  unidad?: boolean;
+  /** Etiquetas del encabezado (titulos). Ej: { l: 'Parámetro', v: 'Valor', u: 'Unidad', n: 'Referencia' }. */
+  labels?: { l?: string; v?: string; u?: string; n?: string };
 }) {
+  const hdr = {
+    l: labels?.l ?? 'Concepto',
+    v: labels?.v ?? 'Valor',
+    u: labels?.u ?? 'Unidad',
+    n: labels?.n ?? 'Detalle',
+  };
+  const th = (t: string, title: string): React.ReactElement => (
+    <th
+      scope="col"
+      style={{
+        fontSize: 12,
+        padding: '3px 6px',
+        textAlign: 'center',
+        color: 'var(--txt3)',
+        fontWeight: 600,
+      }}
+      title={title}
+    >
+      {t}
+    </th>
+  );
   return (
-    <table className="tbl" style={{ fontSize, width: '100%', borderCollapse: 'collapse' }}>
-      {titulos ? (
-        <thead>
-          <tr>
-            <th
-              scope="col"
-              style={{
-                fontSize: 12,
-                padding: '3px 6px',
-                textAlign: 'center',
-                color: 'var(--txt3)',
-                fontWeight: 600,
-              }}
-              title="Criterio de la tipología activa calculado por NFPA 13 (2025): área, rociadores exigidos, rectángulo de fuego, caudales y duración"
-            >
-              Concepto
-            </th>
-            <th
-              scope="col"
-              style={{
-                fontSize: 12,
-                padding: '3px 6px',
-                textAlign: 'center',
-                color: 'var(--txt3)',
-                fontWeight: 600,
-              }}
-              title="Resultado del cálculo para tu proyecto (unidades en la celda: ft², m, gpm, psi, min)"
-            >
-              Valor
-            </th>
-            <th
-              scope="col"
-              style={{
-                fontSize: 12,
-                padding: '3px 6px',
-                textAlign: 'center',
-                color: 'var(--txt3)',
-                fontWeight: 600,
-              }}
-              title="De dónde sale el valor: tabla de NFPA 13, datos de tu red dibujada o margen adoptado — gris = calculado, no editable"
-            >
-              Detalle
-            </th>
-          </tr>
-        </thead>
-      ) : null}
-      <tbody>
-        {filas.map((k) => (
-          <tr key={k.l}>
-            <td
-              style={{
-                padding: '3px 6px',
-                borderBottom: '1px solid var(--line)',
-                color: 'var(--txt2)',
-                fontSize,
-                whiteSpace: 'nowrap',
-              }}
-              title={k.nota || undefined}
-            >
-              {k.l}
-            </td>
-            <td
-              style={{
-                padding: '3px 6px',
-                borderBottom: '1px solid var(--line)',
-                fontFamily: 'var(--mono)',
-                fontWeight: 600,
-                color: 'var(--txt)',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {k.v}
-              {k.u ? <span style={{ color: 'var(--txt3)', fontWeight: 400 }}> {k.u}</span> : null}
-            </td>
-            <td
-              style={{
-                padding: '3px 6px',
-                borderBottom: '1px solid var(--line)',
-                color: 'var(--txt3)',
-                fontSize: fontSize - 0.5,
-              }}
-            >
-              {k.nota || ''}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <TableScroll label={label}>
+      <table className="tbl" style={{ fontSize, width: '100%', borderCollapse: 'collapse' }}>
+        {titulos ? (
+          <thead>
+            <tr>
+              {th(
+                hdr.l,
+                'Criterio de la tipología activa calculado por NFPA 13 (2025): área, rociadores exigidos, rectángulo de fuego, caudales y duración',
+              )}
+              {th(
+                hdr.v,
+                'Resultado del cálculo para tu proyecto (unidades en su columna: ft², m, gpm, psi, min)',
+              )}
+              {unidad ? th(hdr.u, 'Unidad del valor; «—» si la fila no lleva unidad') : null}
+              {th(
+                hdr.n,
+                'De dónde sale el valor: tabla de NFPA 13, datos de tu red dibujada o margen adoptado — gris = calculado, no editable',
+              )}
+            </tr>
+          </thead>
+        ) : null}
+        <tbody>
+          {filas.map((k) => (
+            <tr key={k.l}>
+              <td
+                style={{
+                  padding: '3px 6px',
+                  borderBottom: '1px solid var(--line)',
+                  color: 'var(--txt2)',
+                  fontSize,
+                  whiteSpace: 'nowrap',
+                }}
+                title={k.nota || undefined}
+              >
+                {k.l}
+              </td>
+              <td
+                style={{
+                  padding: '3px 6px',
+                  borderBottom: '1px solid var(--line)',
+                  fontFamily: 'var(--mono)',
+                  fontWeight: 600,
+                  color: 'var(--txt)',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {k.v}
+                {!unidad && k.u ? (
+                  <span style={{ color: 'var(--txt3)', fontWeight: 400 }}> {k.u}</span>
+                ) : null}
+              </td>
+              {unidad ? (
+                <td
+                  style={{
+                    padding: '3px 6px',
+                    borderBottom: '1px solid var(--line)',
+                    color: 'var(--txt2)',
+                    fontSize,
+                    textAlign: 'center',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {k.u ?? '—'}
+                </td>
+              ) : null}
+              <td
+                style={{
+                  padding: '3px 6px',
+                  borderBottom: '1px solid var(--line)',
+                  color: 'var(--txt3)',
+                  fontSize: fontSize - 0.5,
+                }}
+              >
+                {k.nota || ''}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableScroll>
   );
 }
 

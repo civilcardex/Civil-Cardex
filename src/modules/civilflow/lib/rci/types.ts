@@ -42,6 +42,9 @@ export interface TuberiaRow {
   zr?: NumIn;
   zc?: NumIn;
   con?: string;
+  /** Texto visible del extremo de dibujo; no es la clave hidráulica del nudo. */
+  finDibujo?: string;
+  iniDibujo?: string;
   /* Geometría REAL del dibujo (ped. usuario 2026-11-20): posición de arco (m) de cada
    *  rociador que fluye medida desde la punta remota del ramal y del punto de conexión.
    *  calcRamal usa estos tramos reales entre rociadores; ausentes = fallback a S/brazo. */
@@ -102,6 +105,7 @@ export interface RciLocal {
 export interface RciClas {
   almacen: string;
   arrumeH: NumIn;
+  zonasAlmacenamiento?: ZonaAlmacenamientoRci[];
   riesgo: string;
   sistema: string;
   qr: string;
@@ -109,6 +113,29 @@ export interface RciClas {
   constr: string;
   techoIncl: string;
   ocultoComb: string;
+}
+
+/** Ficha parcial de un sector: ej. «Bodega» vinculada al identificador estable del piso. */
+export interface ZonaAlmacenamientoRci {
+  id: string;
+  piso: string;
+  nombre: string;
+  tipo?: string;
+  mercancia?: string;
+  disposicion?: string;
+  repisa?: string;
+  embalaje?: string;
+  pale?: string;
+  expansion?: string;
+  encapsulado?: string;
+  detalle?: string;
+  arrume?: string;
+  techo?: string;
+  recinto?: string;
+  area?: string;
+  pila?: string;
+  separacion?: string;
+  unaPila?: string;
 }
 
 /** Datos del rociador de la tipología activa: K (factor K, gpm/psi½), Pmin (presión mínima en
@@ -182,6 +209,7 @@ export interface RciBomba {
  *  vextra=5 suma 5 m³ al V total de NFPA 22. */
 interface RciTanque {
   vextra: NumIn;
+  vconsumo?: NumIn;
 }
 
 /** Siamesa (conexión de bomberos a la calle): n.º de entradas y rosca, altura sobre el NPT
@@ -270,6 +298,12 @@ export interface PisoRow {
   npt: NumIn;
   uso?: string;
   planta: string;
+  /** «Piso tipo» digitado por el usuario (A, B…). Nace VACÍO y NO es la planta de cálculo:
+   *  `planta` sigue siendo el id del plano que usa el motor para buscar su red. */
+  pisoTipo?: string;
+  /** Almacenamiento por piso: '' = Por definir, 'No', 'Sí'. Con 'Sí' el riesgo mínimo es
+   *  G2 y las fichas del piso (clas.zonasAlmacenamiento con piso = planId) se revisan. */
+  almacen?: string;
   riesgo: string;
   sistema: string;
   htecho: NumIn;
@@ -700,6 +734,10 @@ export interface TanqueResult {
   dur: number;
   Vroc: number;
   Vsp: number;
+  Vincendio: number;
+  Vconsumo: number | null;
+  Vextra: number;
+  Vtotal: number | null;
   V: number;
 }
 

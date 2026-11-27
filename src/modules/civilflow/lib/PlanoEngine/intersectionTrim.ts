@@ -1,4 +1,99 @@
 import { sameNetGroup } from './drawingAngles.ts';
+import { REDES_PRESION } from './nodos.ts';
+import type { PlanoRamal } from './PlanoState.ts';
+
+type TuboTee = Pick<PlanoRamal, 'id' | 'net' | 'pts' | 'tipo'> & Partial<Pick<PlanoRamal, 'piso'>>;
+
+interface TeeDibujo {
+  rama: TuboTee;
+  tronco: TuboTee;
+  punto: number[];
+  /** Vértice interior ya existente; si no, segmento que contiene la unión. */
+  vertice: number | null;
+  segmento: number;
+}
+
+/** Detecta una tee de presión: extremo libre contra dos brazos colineales, en el plano cargado. */
+export function clasificarTeeDibujo(
+  nuevo: TuboTee,
+  ramales: readonly TuboTee[],
+  dentroDeCaja: (p: number[]) => boolean,
+): { tee: TeeDibujo | null; ambigua: boolean } {
+  if (!REDES_PRESION.has(nuevo.net) || nuevo.pts.length < 2) return { tee: null, ambigua: false };
+  const tol = 0.5;
+  const cerca = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1]) < tol;
+  const candidatos: TeeDibujo[] = [];
+  const examinar = (rama: TuboTee, tronco: TuboTee) => {
+    if (rama.tipo === 'ramal' && tronco.tipo === 'tributario') return;
+    const fin = rama.pts.length - 1;
+    for (const e of [0, fin]) {
+      const p = rama.pts[e],
+        q = rama.pts[e === 0 ? 1 : fin - 1];
+      if (cerca(p, q) || dentroDeCaja(p)) continue;
+      if (cerca(p, tronco.pts[0]) || cerca(p, tronco.pts.at(-1)!)) continue;
+      for (let i = 0; i < tronco.pts.length - 1; i++) {
+        const a = tronco.pts[i],
+          b = tronco.pts[i + 1];
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1];
+        const len = Math.hypot(dx, dy);
+        if (len < tol) continue;
+        const v = i > 0 && cerca(a, p) ? i : null;
+        if (i + 1 < tronco.pts.length - 1 && cerca(b, p)) continue; // lo evalúa el segmento siguiente
+        const t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (len * len);
+        if (
+          v === null &&
+          (t <= tol / len ||
+            t >= 1 - tol / len ||
+            Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy) >= tol)
+        )
+          continue;
+        if (v !== null) {
+          const prev = tronco.pts[v - 1];
+          const px = a[0] - prev[0],
+            py = a[1] - prev[1];
+          if (px * dx + py * dy <= 0.99 * len * Math.hypot(px, py)) continue;
+        }
+        const rx = q[0] - p[0],
+          ry = q[1] - p[1];
+        if (Math.abs(dx * rx + dy * ry) >= 0.15 * len * Math.hypot(rx, ry)) continue;
+        candidatos.push({ rama, tronco, punto: p, vertice: v, segmento: i });
+      }
+    }
+  };
+  const locales = ramales.filter(
+    (r) =>
+      r.id !== nuevo.id &&
+      r.net === nuevo.net &&
+      r.pts.length >= 2 &&
+      (!r.piso || !nuevo.piso || r.piso === nuevo.piso),
+  );
+  for (const r of locales) {
+    examinar(nuevo, r);
+    examinar(r, nuevo);
+  }
+  const tee = candidatos[0];
+  if (!tee) return { tee: null, ambigua: false };
+  const hayOtroBrazo = locales.some(
+    (r) =>
+      r.id !== tee.rama.id &&
+      r.id !== tee.tronco.id &&
+      r.pts.some((a, i) => {
+        const b = r.pts[i + 1];
+        if (!b) return false;
+        const dx = b[0] - a[0],
+          dy = b[1] - a[1],
+          len = Math.hypot(dx, dy);
+        if (len < tol) return cerca(a, tee.punto);
+        const [x, y] = tee.punto;
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / len ** 2));
+        return cerca([x, y], [a[0] + t * dx, a[1] + t * dy]);
+      }),
+  );
+  return candidatos.length > 1 || hayOtroBrazo
+    ? { tee: null, ambigua: true }
+    : { tee, ambigua: false };
+}
 
 /**
  * Recorte de un trazo nuevo en su primera intersección real con otro ramal de la misma red.
@@ -25,6 +120,7 @@ interface CruceRecorte {
 interface OpcionesRecorte {
   /** Ids que no cuentan como host (el propio trazo, o el ramal del que se desvía). */
   ignorarIds?: Array<string | null | undefined>;
+  piso?: string;
   /** Distancia mínima (px) desde el inicio del trazo para considerar un corte. Evita cortar el
    *  arranque del trazo, que siempre "toca" el ramal del que sale. Por defecto 2. */
   minDesdeInicio?: number;
@@ -64,7 +160,7 @@ function corteCuerpo(
 /** Primer cruce real del trazo con otro ramal de su red, medido desde su inicio. */
 export function primerCruceEstricto(
   pts: number[][],
-  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
+  ramales: Array<{ id: string; net?: string; pts?: number[][]; piso?: string }>,
   net: string,
   opts: OpcionesRecorte = {},
 ): CruceRecorte | null {
@@ -81,6 +177,7 @@ export function primerCruceEstricto(
     const largo = Math.hypot(b[0] - a[0], b[1] - a[1]);
     for (const r of ramales) {
       if (ignorar.has(r.id) || !r.pts || r.pts.length < 2) continue;
+      if (opts.piso && r.piso && r.piso !== opts.piso) continue;
       if (!sameNetGroup(String(r.net || ''), net)) continue;
       for (let j = 0; j < r.pts.length - 1; j++) {
         const hit = corteCuerpo(a, b, r.pts[j], r.pts[j + 1]);
@@ -118,7 +215,7 @@ interface ResultadoRecorte {
 /** Corta el trazo en su primer cruce con otro ramal de la red y devuelve los puntos finales. */
 export function recortarEnPrimerCruce(
   pts: number[][],
-  ramales: Array<{ id: string; net?: string; pts?: number[][] }>,
+  ramales: Array<{ id: string; net?: string; pts?: number[][]; piso?: string }>,
   net: string,
   opts: OpcionesRecorte = {},
 ): ResultadoRecorte {

@@ -86,6 +86,21 @@ export const HZ: Record<string, HzEntry> = {
 /** Riesgos que quedan por debajo del mínimo de almacenamiento (G2) que exige el proyecto. */
 export const RIESGOS_BAJO_MINIMO_ALMACENAMIENTO = new Set(['Riesgo leve', 'Riesgo ordinario G1']);
 
+export const AVISO_S_DMR =
+  'Define S para verificar la distancia entre muro y rociador. S (separación entre rociadores) se define en Contra incendio → Tipologías → Pisos del edificio.';
+
+/** Habilita la distancia máxima muro–rociador si el piso tiene S (separación entre rociadores).
+ *  Ej.: con S = 3 m y un máximo permitido de 4,6 m, el límite a muro sigue siendo 2,3 m. */
+export function distanciaMaximaMuroRci(
+  s: number | string | null | undefined,
+  riesgo: string,
+): number | null {
+  const separacion = Number(typeof s === 'string' ? s.replace(',', '.') : s);
+  return Number.isFinite(separacion) && separacion > 0
+    ? Math.min(separacion, (HZ[riesgo] || HZ['Riesgo leve']).s) / 2
+    : null;
+}
+
 /** Diámetros nominales (pulgadas, como texto comercial: '2 1/2"') en orden creciente. */
 export const NOM: string[] = [
   '1/2"',
@@ -106,6 +121,8 @@ export const NOM: string[] = [
 ];
 /** Índice de cada nominal en NOM (NOM.indexOf del HTML, resuelto una vez). */
 const NOM_IDX = new Map<string, number>(NOM.map((n, i) => [n, i]));
+export const RCI_STANDPIPE_MIN = 4;
+export const RCI_STANDPIPE_DEFAULT = '4"';
 export const INCH: number[] = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 3.5, 4, 5, 6, 8, 10, 12];
 /** Diámetro exterior en mm para cada nominal (acero). */
 export const OD: number[] = [
@@ -140,31 +157,89 @@ NOM.forEach((n, i) => {
   PIPES['Acero SCH 40'][n] = { inch: INCH[i], od: OD[i], e: W40[i], id: OD[i] - 2 * W40[i] };
   PIPES['Acero SCH 10'][n] = { inch: INCH[i], od: OD[i], e: W10[i], id: OD[i] - 2 * W10[i] };
 });
-const C900_ROWS: [string, number, number, number][] = [
-  ['4"', 121.9, 8.71, 6.78],
-  ['6"', 175.3, 12.52, 9.73],
-  ['8"', 229.9, 16.41, 12.78],
-  ['10"', 281.9, 20.14, 15.67],
-  ['12"', 335.3, 23.95, 18.62],
+// Pavco Wavin, manual de protección contra incendios, p. 5: exterior, pared mínima e interior publicado.
+const C900_ROWS: [string, number, number, number, number, number][] = [
+  ['4"', 121.9, 8.71, 6.78, 104.48, 108.34],
+  ['6"', 175.3, 12.52, 9.73, 150.26, 155.84],
+  ['8"', 229.9, 16.41, 12.78, 197.08, 204.34],
+  ['10"', 281.9, 20.14, 15.67, 241.62, 250.56],
+  ['12"', 335.3, 23.95, 18.62, 287.4, 298.06],
 ];
-C900_ROWS.forEach(([n, od, e14, e18]) => {
+C900_ROWS.forEach(([n, od, e14, e18, id14, id18]) => {
   const inch = INCH[NOM_IDX.get(n)!];
-  PIPES['PVC C900 RDE 14'][n] = { inch, od, e: e14, id: od - 2 * e14 };
-  PIPES['PVC C900 RDE 18'][n] = { inch, od, e: e18, id: od - 2 * e18 };
+  PIPES['PVC C900 RDE 14'][n] = { inch, od, e: e14, id: id14 };
+  PIPES['PVC C900 RDE 18'][n] = { inch, od, e: e18, id: id18 };
 });
-/* CPVC listado para rociadores (ASTM F442, SDR 13,5): Ø exterior y espesor en mm */
+// CPVC (policloruro de vinilo clorado), manual p. 27: diámetros promedio en mm.
 const CPVC_ROWS: [string, number, number][] = [
-  ['3/4"', 26.67, 1.98],
-  ['1"', 33.4, 2.46],
-  ['1 1/4"', 42.16, 3.12],
-  ['1 1/2"', 48.26, 3.58],
-  ['2"', 60.33, 4.47],
-  ['2 1/2"', 73.03, 5.41],
-  ['3"', 88.9, 6.58],
+  ['3/4"', 26.7, 22.2],
+  ['1"', 33.4, 28.0],
+  ['1 1/4"', 42.2, 35.4],
+  ['1 1/2"', 48.3, 40.6],
+  ['2"', 60.3, 50.9],
+  ['2 1/2"', 73.0, 61.5],
+  ['3"', 88.9, 75.0],
 ];
-CPVC_ROWS.forEach(([n, od, e]) => {
-  PIPES['CPVC SDR 13,5'][n] = { inch: INCH[NOM_IDX.get(n)!], od, e, id: od - 2 * e };
+CPVC_ROWS.forEach(([n, od, id]) => {
+  PIPES['CPVC SDR 13,5'][n] = { inch: INCH[NOM_IDX.get(n)!], od, e: (od - id) / 2, id };
 });
+
+const MANUAL_PIPES = 'https://pavcowavin.com.co/download/2';
+const NFPA13_PIPES =
+  'https://www.nfpa.org/product/nfpa-13-standard-for-the-installation-of-sprinkler-systems/p0013code/nfpa-13-standard-for-the-installation-of-sprinkler-systems-2025/1325';
+const aceroRci = {
+  familia: 'Acero al carbono',
+  humedo: 120,
+  seco: 100,
+  rugosidad: null,
+  presion: 'Según producto listado',
+  fuente: NFPA13_PIPES,
+  referencia: 'NFPA 13, cap. 28',
+  aplicacion: 'Seco convencional. Otras condiciones requieren verificación.',
+};
+const pvcRci = {
+  familia: 'PVC',
+  humedo: 150,
+  seco: null,
+  rugosidad: 0.0015,
+  fuente: MANUAL_PIPES,
+  referencia: 'Pavco Wavin, pp. 4–5',
+  aplicacion: 'Alimentación subterránea según listado; no habilita uso aéreo.',
+};
+export const RCI_PIPE_CATALOG = {
+  'Acero SCH 40': { ...aceroRci, serie: 'SCH 40' },
+  'Acero SCH 10': { ...aceroRci, serie: 'SCH 10' },
+  'PVC C900 RDE 14': { ...pvcRci, serie: 'AWWA C900 RDE 14', presion: '305 psi a 23 °C' },
+  'PVC C900 RDE 18': { ...pvcRci, serie: 'AWWA C900 RDE 18', presion: '235 psi a 23 °C' },
+  'CPVC SDR 13,5': {
+    familia: 'CPVC',
+    serie: 'ASTM F442 SDR 13,5',
+    humedo: 150,
+    seco: null,
+    rugosidad: 0.0015,
+    presion: '175 psi a 65 °C',
+    fuente: MANUAL_PIPES,
+    referencia: 'Pavco Wavin, pp. 27–28',
+    aplicacion: 'Rociadores húmedos dentro del alcance del listado; no aplica en seco.',
+  },
+};
+
+export function canonicalRciPipeMaterial(mat: string | undefined): string {
+  switch (mat) {
+    case 'A.C. SCH 40':
+      return 'Acero SCH 40';
+    case 'A.C. SCH 10':
+      return 'Acero SCH 10';
+    case 'PVC C900 DR14':
+      return 'PVC C900 RDE 14';
+    case 'PVC C900 DR18':
+      return 'PVC C900 RDE 18';
+    case 'CPVC CPVC-CI':
+      return 'CPVC SDR 13,5';
+    default:
+      return mat ?? '';
+  }
+}
 
 /** Longitudes equivalentes NFPA 13 (m), acero SCH 40 con C=120: [45°, 90° estándar, 90° radio
  *  largo, tee con giro, mariposa, compuerta, retención]. Ej: LEQ['4"'][3] = 6.10 m por una tee. */
@@ -191,10 +266,13 @@ export const FIT = ['c45', 'c90', 'clr', 'tee', 'mar', 'comp', 'ret'];
 /** Factor de Hazen-Williams relativo a C=120. Ej: cfOf(100) = 0.713 (un tubo más rugoso pierde menos longitud equivalente). */
 export const CF: Record<number, number> = { 100: 0.713, 120: 1.0, 130: 1.16, 140: 1.33, 150: 1.51 };
 
-/** Coeficiente C de Hazen-Williams por defecto: NFPA 13 cap. 28 (acero 120 húmedo / 100 seco;
- *  plástico listado 150), o el que adopte el diseñador en st.cmat. */
-export const CDEF = (mat?: string, sistema?: string): number =>
-  String(mat || '').startsWith('Acero') ? (sistema === 'Seco' ? 100 : 120) : 150;
+/** Coeficiente del catálogo para ese sistema; vacío si no existe respaldo. Ej.: acero seco → 100. */
+export function cOf(mat: string | undefined, sistema: string): number | null {
+  const clave = canonicalRciPipeMaterial(mat);
+  if (!Object.hasOwn(RCI_PIPE_CATALOG, clave)) return null;
+  const serie = RCI_PIPE_CATALOG[clave as keyof typeof RCI_PIPE_CATALOG];
+  return sistema === 'Seco' ? serie.seco : sistema === 'Húmedo' ? serie.humedo : null;
+}
 
 /** Factor de corrección por rugosidad para longitudes equivalentes. Ej: cfOf(150) = 1.51. */
 export const cfOf = (C: number): number => CF[C] || Math.pow(C / 120, 1.85);

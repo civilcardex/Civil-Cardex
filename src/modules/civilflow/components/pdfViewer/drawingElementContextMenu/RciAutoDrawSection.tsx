@@ -84,9 +84,12 @@ export function RciAutoDrawSection({
     if (!eng) return;
     const s = numDe(rciSL.s);
     if (!(s > 0)) {
+      const conMuros = (eng.guideLines || []).some((g: { esMuro?: boolean }) => g.esMuro);
       eng.triggerAlert(
         'Sin separación S',
-        'Defina S en RCI → Tipologías → Pisos del edificio (columna S) y vuelva a intentarlo.',
+        conMuros
+          ? 'Define S para verificar la distancia entre muro y rociador. Está en RCI → Tipologías → Pisos del edificio (columna S).'
+          : 'Defina S en RCI → Tipologías → Pisos del edificio (columna S) y vuelva a intentarlo.',
       );
       return;
     }

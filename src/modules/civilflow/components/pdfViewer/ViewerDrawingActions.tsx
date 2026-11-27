@@ -9,8 +9,7 @@ interface Props {
   onUndo: () => void;
   onOptions?: (button: HTMLButtonElement) => void;
   /** Punta táctil (tablet): la franja se reduce a «Opciones» (acceso al menú contextual, que
-   *  en PC es el clic derecho). Terminar/Cancelar/Coordenadas y Deshacer/Guardar son SOLO de
-   *  escritorio (ped. usuario 2026-11-25). */
+   *  en PC es el clic derecho). Terminar queda en escritorio; Cancelar también en tablet. */
   tablet?: boolean;
 }
 
@@ -25,6 +24,9 @@ export function ViewerDrawingActions({
 }: Props) {
   const [message, setMessage] = useState('');
 
+  /* H-10 (remediación 2026-11-27): entrada de puntos POR COORDENADAS, recuperada como opción
+   * accesible del visor de ESCRITORIO (crear/completar un ramal sin puntero). Los límites del
+   * plano se validan y el error se anuncia en el output aria-live. */
   function addPoint(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const engine = engineRef.current;
@@ -71,6 +73,7 @@ export function ViewerDrawingActions({
         <>
           <button
             type="button"
+            className="viewer-trace-action"
             disabled={disabled}
             onClick={() => {
               const engine = engineRef.current;
@@ -82,18 +85,9 @@ export function ViewerDrawingActions({
               setMessage('Trazado finalizado.');
             }}
           >
-            Terminar
+            <span>Terminar</span>
           </button>
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={() => {
-              engineRef.current?.cancelRamal();
-              setMessage('Trazado cancelado.');
-            }}
-          >
-            Cancelar
-          </button>
+          {/* Accesible con teclado (H-10): X/Y + Enter agrega el punto sin puntero. */}
           <details>
             <summary>Trazar por coordenadas</summary>
             <form onSubmit={addPoint} noValidate>
@@ -108,28 +102,27 @@ export function ViewerDrawingActions({
           </details>
         </>
       )}
-      {/* RESTAURADO (ped. usuario 2026-11-25): «Cancelar» también en tablet — sin teclado ni
-       *  clic derecho, era la única vía para descartar un trazado equivocado. «Terminar» y
-       *  «Coordenadas» siguen siendo solo de escritorio (doble toque y panel de tablet). */}
-      {drawing && tablet && (
+      {drawing && (
         <button
           type="button"
+          className="viewer-trace-action"
           disabled={disabled}
           onClick={() => {
             engineRef.current?.cancelRamal();
             setMessage('Trazado cancelado.');
           }}
         >
-          Cancelar
+          <span>Cancelar</span>
         </button>
       )}
       {onOptions && (
         <button
           type="button"
+          className="viewer-trace-action"
           disabled={disabled}
           onClick={(event) => onOptions(event.currentTarget)}
         >
-          Opciones
+          <span>Opciones</span>
         </button>
       )}
       {/* Deshacer/Guardar SOLO escritorio: en tablet la franja se reduce a «Opciones» — el

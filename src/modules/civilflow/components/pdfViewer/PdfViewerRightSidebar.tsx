@@ -55,7 +55,6 @@ interface PdfViewerRightSidebarProps {
   loadingPlanRef: React.MutableRefObject<boolean>;
   drawnElements: import('../../lib/PlanoEngine/PlanoState.ts').ElementItem[];
   onEditElement?: (button: HTMLButtonElement) => void;
-  onDeleteElement: (id: string, label: string, onDeleted: () => void) => void;
 }
 
 /** Contenedor presentacional (todo por props): monta cada panel según la selección y el nivel (el 🟢 marca plano confirmado). */
@@ -99,7 +98,6 @@ export function PdfViewerRightSidebar({
   loadingPlanRef,
   drawnElements,
   onEditElement,
-  onDeleteElement,
 }: PdfViewerRightSidebarProps) {
   return (
     <div
@@ -252,7 +250,6 @@ export function PdfViewerRightSidebar({
               selectedId={selElement?.id}
               engineRef={engineRef}
               onEdit={onEditElement}
-              onDelete={onDeleteElement}
             />
           )}
 

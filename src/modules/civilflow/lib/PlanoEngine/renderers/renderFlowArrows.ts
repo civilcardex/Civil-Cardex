@@ -11,6 +11,7 @@ interface FrameFlechas {
   ventRamales: RamalRender[];
   hayPuntoSanCercano: (x: number, y: number) => boolean;
   bajantesSan: IPlanoEngineCore['bajantes'];
+  invertirRci?: boolean;
 }
 
 interface LabelFlowArgs {
@@ -283,7 +284,10 @@ export function renderEndpointFlowArrows(
     let startIdx = 0;
     let nextIdx = 1;
 
-    if (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net))) {
+    if (
+      frame.invertirRci ||
+      (r._tribReversed && (r.tipo === 'tributario' || ['af', 'ac', 'gas'].includes(r.net)))
+    ) {
       startIdx = r.pts.length - 1;
       nextIdx = r.pts.length - 2;
     }

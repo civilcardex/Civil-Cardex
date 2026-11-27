@@ -5,6 +5,12 @@ import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { calculateRamalLength, _statusMsg } from '../ramalMeasure.ts';
 import { maxDiametroLabel } from '../PlanoEngineDrawing.ts';
 import { flowEndsAt, flowStartsAt } from '../flowChecks.ts';
+import {
+  canonicalRciPipeMaterial,
+  PIPES,
+  RCI_STANDPIPE_DEFAULT,
+  RCI_STANDPIPE_MIN,
+} from '../../rci/tables.ts';
 
 // El bajante solo pertenece a san/vent/ll, el montante solo a gas/ac/af/rci — misma regla que
 // aplican la barra de herramientas (isToolDisabledForNet en PdfViewerToolbar.tsx) y los atajos
@@ -16,6 +22,18 @@ import { flowEndsAt, flowStartsAt } from '../flowChecks.ts';
  *  extracción de diseño rci la usa para dimensionar la bajada + 2 codos de cada derivación
  *  (el motor SOLO la almacena). Ej: MRCI1 nace con altDeriv 2.5 -> derivaciones a 2.5 m. */
 export const ALT_DERIV_RCI_DEFAULT = 2.5;
+
+function aceptaMaterialMontante(engine: IPlanoEngineCore, red: string): boolean {
+  if (red !== 'rci' || !engine._ramalDefaults?.requiereMaterial) return true;
+  const material = canonicalRciPipeMaterial(engine._ramalDefaults.material);
+  if (Object.values(PIPES[material] ?? {}).some((p) => p.inch >= RCI_STANDPIPE_MIN)) return true;
+  engine.triggerAlert(
+    'Material de montante no disponible',
+    'Elige en Parámetros de diseño un material con diámetro de 4" o más en el Catálogo maestro.',
+  );
+  return false;
+}
+
 /** Crea un montante (la tubería vertical que SUBE entre pisos: MAF, MAC, MG...) donde hiciste clic
  *  y lo engancha a las tuberías cercanas, marcando el codo por donde entrega el agua. */
 export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: number): void {
@@ -23,6 +41,7 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     engine._emitStatus('Montante no disponible para esta red');
     return;
   }
+  if (!aceptaMaterialMontante(engine, engine.activeNet)) return;
   if (engine.snapMode) {
     const sp = engine.snapToExisting(px, py);
     if (sp) {
@@ -77,6 +96,8 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
   }
   // Item 3: montante de ventilación nuevo → 2" por defecto si no hay ramal que lo defina.
   if (engine.activeNet === 'vent' && !defDNominal) defDNominal = '2"';
+  if (engine.activeNet === 'rci')
+    defDNominal = maxDiametroLabel(RCI_STANDPIPE_DEFAULT, defDNominal);
   engine.bajantes.push({
     id: monId,
     net: engine.activeNet,
@@ -101,7 +122,12 @@ export function handleMontanteDown(engine: IPlanoEngineCore, px: number, py: num
     asocManual: [...assocRamales],
     // Solo rci (Red Contra Incendio): altura de derivación (m sobre npt (nivel de piso
     // topográfico)) que la extracción de diseño rci consumirá — af/ac/gas no la usan.
-    ...(engine.activeNet === 'rci' ? { altDeriv: ALT_DERIV_RCI_DEFAULT } : {}),
+    ...(engine.activeNet === 'rci'
+      ? {
+          altDeriv: ALT_DERIV_RCI_DEFAULT,
+          material: engine._ramalDefaults?.material || undefined,
+        }
+      : {}),
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,
@@ -172,6 +198,7 @@ export function handleCreateMontanteMidBody(
     engine._emitStatus('Montante no disponible para esta red');
     return;
   }
+  if (!aceptaMaterialMontante(engine, r.net)) return;
 
   const newIdx = segmentIdx + 1;
   const newPts = r.pts.map((p) => [...p]);
@@ -211,13 +238,21 @@ export function handleCreateMontanteMidBody(
     nptBase: engine.nivelActual?.npt ?? 0,
     nptCima: engine.nivelActual?.npt ?? 0,
     hVert: 0,
-    dNominal: r.diametro || '',
+    dNominal:
+      r.net === 'rci'
+        ? maxDiametroLabel(RCI_STANDPIPE_DEFAULT, r.diametro || '')
+        : r.diametro || '',
     recibeDeIds: [r.id],
     alimentaIds: [],
     asocManual: [r.id],
     // Solo rci (Red Contra Incendio): altura de derivación (m sobre npt (nivel de piso
     // topográfico)) — espejo de la creación por barra.
-    ...(r.net === 'rci' ? { altDeriv: ALT_DERIV_RCI_DEFAULT } : {}),
+    ...(r.net === 'rci'
+      ? {
+          altDeriv: ALT_DERIV_RCI_DEFAULT,
+          material: engine._ramalDefaults?.material || r.material || undefined,
+        }
+      : {}),
     descargaEnId: null,
     ucAcum: 0,
     ucExtra: 0,

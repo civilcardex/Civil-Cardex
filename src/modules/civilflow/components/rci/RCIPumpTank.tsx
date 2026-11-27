@@ -85,7 +85,7 @@ function CardKv({
           ) : undefined
         }
       >
-        <KvTabla filas={filas} />
+        <KvTabla label={titulo} filas={filas} />
       </SecRci>
     </div>
   );
@@ -146,16 +146,6 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
   const activa =
     navTab === 'bomba' && navSub && SUBS.some((s) => s.id === navSub) ? navSub : SUBS[0].id;
   const setSub = (s: string) => irA('bomba', s);
-
-  // Escape cierra el modal del esquema (listener a nivel documento, patrón HelpPanel).
-  useEffect(() => {
-    if (!esquema) return;
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setEsquema(null);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [esquema]);
 
   return (
     <>
@@ -294,45 +284,48 @@ export function RciBombaTanque({ ctx }: { ctx: RciCtx }) {
         )}
       </SubTabsRci>
 
-      {/* Modal liviano con el esquema del cuarto de bombas (resalta succión o descarga). */}
-      {esquema ? (
-        <ModalOverlay onClose={() => setEsquema(null)}>
-          <div
-            aria-label="Esquema del cuarto de bombas"
-            style={{
-              background: 'var(--bg2)',
-              border: '1px solid var(--line)',
-              borderRadius: 8,
-              width: 'min(1180px, calc(100dvw - 32px))', // <dialog> padre fit-content: un 100% colapsa
-              maxHeight: 'calc(100dvh - 32px)',
-              overflowY: 'auto',
-              boxShadow: '0 12px 30px rgba(0,0,0,.5)',
-              padding: 14,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <h3 style={{ margin: 0, fontSize: 14, color: 'var(--txt)' }}>
-                Esquema del cuarto de bombas
-              </h3>
-              <span style={{ fontSize: 11, color: 'var(--txt3)' }}>
-                {esquema === 'suc'
-                  ? 'Resaltado: succión (datos de Succión y NPSH)'
-                  : 'Resaltado: descarga (datos de las tablas de demanda)'}
-              </span>
-              <button
-                type="button"
-                onClick={() => setEsquema(null)}
-                aria-label="Cerrar esquema"
-                style={{ ...BTN_MIN, marginLeft: 'auto', fontSize: 13, padding: '2px 8px' }}
-              >
-                ✕
-              </button>
-            </div>
-            <PumpSvg modo={esquema} />
-          </div>
-        </ModalOverlay>
-      ) : null}
+      {esquema ? <PumpRoomDiagram modo={esquema} onClose={() => setEsquema(null)} /> : null}
     </>
+  );
+}
+
+/** Esquema compartido por Entradas y resultados: resalta succión o descarga. */
+export function PumpRoomDiagram({ modo, onClose }: { modo: 'suc' | 'desc'; onClose: () => void }) {
+  return (
+    <ModalOverlay onClose={onClose} ariaLabel="Esquema del cuarto de bombas">
+      <div
+        style={{
+          background: 'var(--bg2)',
+          border: '1px solid var(--line)',
+          borderRadius: 8,
+          width: 'min(1180px, calc(100dvw - 32px))', // <dialog> padre fit-content: un 100% colapsa
+          maxHeight: 'calc(100dvh - 32px)',
+          overflowY: 'auto',
+          boxShadow: '0 12px 30px rgba(0,0,0,.5)',
+          padding: 14,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <h3 style={{ margin: 0, fontSize: 14, color: 'var(--txt)' }}>
+            Esquema del cuarto de bombas
+          </h3>
+          <span style={{ fontSize: 11, color: 'var(--txt3)' }}>
+            {modo === 'suc'
+              ? 'Resaltado: succión (datos de Succión y NPSH)'
+              : 'Resaltado: descarga (datos de las tablas de demanda)'}
+          </span>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar esquema"
+            style={{ ...BTN_MIN, marginLeft: 'auto', fontSize: 13, padding: '2px 8px' }}
+          >
+            ✕
+          </button>
+        </div>
+        <PumpSvg modo={modo} />
+      </div>
+    </ModalOverlay>
   );
 }
 

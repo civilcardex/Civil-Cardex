@@ -1,5 +1,6 @@
 import type { IPlanoEngineCore } from '../PlanoState.ts';
 import { rotatedRectCorners } from '../HitTester.ts';
+import { cmToCanvasPx } from '../planoCoords.ts';
 import {
   snapGuidePoint,
   snapGuideSegmentToRamal,
@@ -73,6 +74,49 @@ export function renderGuideLines(ctx: CanvasRenderingContext2D, engine: IPlanoEn
       g._labelBox = undefined;
     }
   });
+
+  /* CÍRCULOS GUÍA DE RADIO S (RCI, ped. usuario): con muro marcado se dibuja un círculo tenue
+   * alrededor de cada rociador estándar (colgante/montante). Es una AYUDA VISUAL para sembrar el
+   * siguiente rociador en el siguiente segmento y para leer la distancia al muro; la verificación
+   * real mide el centro, no el círculo (ver checks/drawingWalls.ts). */
+  const s = engine.sRci;
+  if (
+    s == null ||
+    !(s > 0) ||
+    engine.sCirclesVisible === false ||
+    !engine.guideLines.some((g) => g.esMuro)
+  )
+    return;
+  const r = cmToCanvasPx({ scaleM: engine.scaleM, zoom: engine.zoom }, s * 100);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(34,211,238,0.55)';
+  ctx.fillStyle = 'rgba(34,211,238,0.04)';
+  ctx.lineWidth = Math.max(1, engine.zoom * 0.8);
+  ctx.setLineDash([5 * engine.zoom, 4 * engine.zoom]);
+  for (const ramal of engine.ramales || []) {
+    if (ramal.net !== 'rci' || !ramal.pts) continue;
+    const centros: Array<[string | undefined, number[] | undefined]> = [
+      [ramal.accesorioInicio, ramal.pts[0]],
+      [ramal.accesorioFin, ramal.pts[ramal.pts.length - 1]],
+    ];
+    for (const [k, v] of Object.entries(ramal.accMed || {})) {
+      const m = /^accMed(\d+)$/.exec(k);
+      if (m) centros.push([v, ramal.pts[+m[1]]]);
+    }
+    for (const [valor, pt] of centros) {
+      const base = String(valor || '')
+        .split('#')[0]
+        .replace(/NF$/, '');
+      if (base !== 'rociador' && base !== 'rociadorMontante') continue;
+      if (!pt) continue;
+      const c = engine.toCvs(pt[0], pt[1]);
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 // Ítem 3 (guías): el círculo cyan de conexión es SOLO del trazo en curso (ghost) — una guía ya

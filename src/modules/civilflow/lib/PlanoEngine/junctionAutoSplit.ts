@@ -44,6 +44,7 @@ import {
 export function autoSplitJunctionAndSumFlow(
   engine: IPlanoEngineCore,
   incoming: PlanoRamal,
+  tee?: { tronco: { id: string }; punto: number[]; vertice: number | null; segmento: number },
 ): boolean {
   if (!incoming.pts || incoming.pts.length < 2) return false;
   const TOL = 0.5;
@@ -51,7 +52,7 @@ export function autoSplitJunctionAndSumFlow(
   // extremos entre redes aquí.
   const sameNetGroup = (a: string, b: string) =>
     a === b || ((a === 'san' || a === 'vent') && (b === 'san' || b === 'vent'));
-  const endpoints = [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
+  const endpoints = tee ? [tee.punto] : [incoming.pts[0], incoming.pts[incoming.pts.length - 1]];
   for (const ep of endpoints) {
     // ¿El punto coincide TAMBIÉN con el vértice de un ramal normal? Entonces la
     // conexión real es ramal-a-ramal; un tributario que comparte ese vértice (p.ej.
@@ -62,6 +63,7 @@ export function autoSplitJunctionAndSumFlow(
       if (
         ex.id !== incoming.id &&
         sameNetGroup(ex.net, incoming.net) &&
+        (!ex.piso || !incoming.piso || ex.piso === incoming.piso) &&
         ex.tipo !== 'tributario' &&
         !!ex.pts &&
         ex.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)
@@ -73,8 +75,10 @@ export function autoSplitJunctionAndSumFlow(
     const alsoNormalRamalHere = !!normalRamalId;
     for (const existing of engine.ramales) {
       if (existing.id === incoming.id || !sameNetGroup(existing.net, incoming.net)) continue;
+      if (existing.piso && incoming.piso && existing.piso !== incoming.piso) continue;
+      if (tee && existing.id !== tee.tronco.id) continue;
       if (!existing.pts || existing.pts.length < 2) continue;
-      if (existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
+      if (!tee && existing.pts.some(([x, y]) => Math.hypot(x - ep[0], y - ep[1]) < TOL)) {
         // Unión extremo-con-extremo (o extremo-sobre-vértice) — no es una tee de cuerpo medio,
         // así que no hay nada que dividir, pero un tributario que aterriza aquí debe ser su propio
         // padre y nada más. Sin esto, LLEGAR a un vértice del ramal equivocado (a diferencia de
@@ -126,8 +130,8 @@ export function autoSplitJunctionAndSumFlow(
         }
         continue;
       }
-      let segIdx = -1;
-      for (let i = 0; i < existing.pts.length - 1; i++) {
+      let segIdx = tee?.segmento ?? -1;
+      for (let i = 0; !tee && i < existing.pts.length - 1; i++) {
         const [ax, ay] = existing.pts[i],
           [bx, by] = existing.pts[i + 1];
         const dx = bx - ax,
@@ -282,8 +286,19 @@ export function autoSplitJunctionAndSumFlow(
           incoming.net === 'san' || incoming.net === 'll' ? epIsStart : !epIsStart;
       }
 
-      const downstreamPts = [[ep[0], ep[1]], ...existing.pts.slice(segIdx + 1)];
-      existing.pts = [...existing.pts.slice(0, segIdx + 1), [ep[0], ep[1]]];
+      const vertice = tee?.vertice ?? null;
+      const inicioContinuacion = segIdx + 1;
+      const upstreamPts = [...existing.pts.slice(0, vertice ?? inicioContinuacion), ep];
+      const downstreamPts = [ep, ...existing.pts.slice(inicioContinuacion)];
+      const accDown: Record<string, string> = {};
+      const accUp: Record<string, string> = {};
+      for (const [key, val] of Object.entries(existing.accMed || {})) {
+        const idx = Number(/^accMed(\d+)$/.exec(key)?.[1]);
+        if (idx >= inicioContinuacion) accDown[`accMed${idx - inicioContinuacion + 1}`] = val;
+        else accUp[key] = val;
+      }
+      existing.accMed = accUp;
+      existing.pts = upstreamPts;
       existing.totalL = calculateRamalLength(existing.pts, engine);
       // Re-centrar la etiqueta de `existing` sobre su cuerpo ahora truncado — antes conservaba
       // el labelX/labelY que tenía para el ramal COMPLETO pre-división, que tras el corte podía
@@ -319,7 +334,11 @@ export function autoSplitJunctionAndSumFlow(
       const farDiametro = existing.diametroFin;
       const farAparato = existing.aparatoFin;
       const farSifonLabel = existing.sifonLabelFin;
-      existing.accesorioFin = '';
+      const farFin = existing.fin;
+      const keyUnion = `accMed${vertice}`;
+      existing.accesorioFin = vertice === null ? '' : accUp[keyUnion] || '';
+      if (vertice !== null) delete accUp[keyUnion];
+      existing.fin = '';
       existing.diametroFin = '';
       existing.aparatoFin = '';
       existing.sifonLabelFin = undefined;
@@ -365,10 +384,10 @@ export function autoSplitJunctionAndSumFlow(
         diametro: maxDiametroLabel(existing.diametro, incoming.diametro),
         uc: preSplitExistingUc + preSplitIncomingUc,
         ini: '',
-        fin: '',
+        fin: farFin,
         accesorioInicio: '',
         accesorioFin: farAccesorio || '',
-        accMed: {},
+        accMed: accDown,
         diametroInicio: '',
         diametroFin: farDiametro || '',
         aparatoInicio: '',
@@ -474,6 +493,7 @@ export function autoSplitJunctionAndSumFlow(
       // invertir el nuevo / re-enraizar el existente. Undo agrupado, aviso no bloqueante.
       if (
         REDES_PRESION.has(incoming.net || '') &&
+        incoming.net !== 'rci' &&
         conflictoDosEntradas(engine, ep, incoming, incoming.net || '')
       ) {
         void resolverConflictoSentido(engine, ep, incoming, existing, async () => {

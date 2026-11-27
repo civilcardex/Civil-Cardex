@@ -2,6 +2,13 @@
    botones de dirección, paneles y etiquetas — look único del menú.
    Antes vivía como consts MENU_* y ASSOC_* exportadas desde context.ts. */
 
+/* «Quitar definición»: botón NEUTRO (fondo del panel, borde sutil) — ya no grita en rojo.
+   Mismo área táctil, foco visible para teclado. NO borra el área dibujada: solo quita la marca. */
+.dcm-quitar-definicion:focus-visible {
+  outline: 2px solid var(--acc2, #8ab4d6);
+  outline-offset: 2px;
+}
+
 .dcm-select {
   width: 100%;
   /* appearance none + flecha propia: en táctil el control nativo del SO tapaba los estilos

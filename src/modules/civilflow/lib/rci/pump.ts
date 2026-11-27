@@ -54,6 +54,7 @@ export function siamesaCalc(st: RciState, R: RciResult, ctx: CalcCtx): SiaResult
     },
     st.sia || {},
   );
+  if (S.cierre === '') S.cierre = 'No';
   const E = R.edif,
     nOut = E.outs.length,
     up = E.gabRows.slice(0, nOut);
@@ -66,7 +67,7 @@ export function siamesaCalc(st: RciState, R: RciResult, ctx: CalcCtx): SiaResult
     qFijo: '',
     qExtra: extra,
     /* Siamesa vacía → materiales/diámetro de referencia al calcular (los selects nacen vacíos). */
-    mat: S.mat || 'Acero SCH 10',
+    mat: S.mat,
     dn: S.dn || '4"',
     L: num(S.L) ?? 0,
     c90: num(S.c90) || 0,
@@ -110,7 +111,7 @@ export function bombaPerfilCalc(
   const b = st.bomba;
   const pipeS = PIPES[b.matSuc] && PIPES[b.matSuc][b.dnSuc];
   const IDs = pipeS ? pipeS.id : NaN;
-  const Cs = cOf(b.matSuc, 'Húmedo', st.cmat);
+  const Cs = cOf(b.matSuc, 'Húmedo') ?? NaN;
   const leqS = pipeS
     ? ((num(b.c90) || 0) * LEQ[b.dnSuc][1] +
         (num(b.tee) || 0) * LEQ[b.dnSuc][3] +
@@ -295,11 +296,18 @@ export function tanqueCalc(st: RciState, R: RciResult, hz: HzEntry): TanqueResul
       0.003785411784
     : (R.alim.Qend + (isSi(st.mang.mangTanque) ? hz.hose : 0)) * dur * 0.003785411784;
   const Vsp = R.bomba.D2 ? R.bomba.D2.Q * 30 * 0.003785411784 : 0;
+  const Vincendio = Math.max(Vroc, Vsp);
+  const Vextra = num(st.tanque.vextra) ?? 0;
+  const Vconsumo = num(st.tanque.vconsumo);
   return {
     tip: vG ? vG.t.g.id : null,
     dur,
     Vroc,
     Vsp,
-    V: Math.max(Vroc, Vsp) + (num(st.tanque.vextra) || 0),
+    Vincendio,
+    Vextra,
+    Vconsumo,
+    Vtotal: Vconsumo === null || Vconsumo < 0 || Vextra < 0 ? null : Vincendio + Vconsumo + Vextra,
+    V: Vincendio + Vextra,
   };
 }

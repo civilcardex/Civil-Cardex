@@ -25,6 +25,17 @@ import { _trySelBajanteDrag, _trySelDimDrag, _trySelRamalDrag } from './mouseDow
 
 export { collectConnectedGraph } from './mouseDownDrags.ts';
 
+/** Radio de golpe de un tirador de vértice, en PÍXELES DE PANTALLA (12 ratón / 20 táctil),
+ *  independiente del zoom. Se divide por zoom para comparar en coordenadas de plano.
+ *  Ej: zoom 2 → tolerancia 6 unidades de plano con ratón, 10 con dedo. */
+function tolTirador(engine: { zoom: number }): number {
+  const tactil =
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: coarse)').matches
+      : false;
+  return (tactil ? 20 : 12) / (engine.zoom || 1);
+}
+
 /** Primer clic con la herramienta sel: reparte el golpe entre etiquetas de bajante, fantasmas, cotas, guías, textos, áreas, vértices/extremos de ramal y cuerpos — con prioridad fija; activa el arrastre que corresponda. */
 export function handleSelectDown(
   engine: IPlanoEngineCore,
@@ -243,7 +254,7 @@ export function handleSelectDown(
       // esa esquina (redimensionar) en vez de mover el polígono completo. Este fast-path
       // capturaba el clic ANTES del loop de áreas y nunca dejaba llegar al chequeo.
       {
-        const tol = 8 / (engine.zoom || 1);
+        const tol = tolTirador(engine);
         let hitIdx = -1;
         sel.pts.forEach((pt, idx) => {
           if (hitIdx < 0 && Math.hypot(pt[0] - tp.x, pt[1] - tp.y) < tol) hitIdx = idx;
@@ -377,7 +388,7 @@ export function handleSelectDown(
         // PUNTO 5 (orig. usuario): clic sobre un VÉRTICE del área seleccionada → arrastrar
         // esa esquina (redimensionar) en vez de mover el polígono completo. Tolerancia ~8px.
         {
-          const tol = 8 / (engine.zoom || 1);
+          const tol = tolTirador(engine);
           let hitIdx = -1;
           a.pts.forEach((pt, idx) => {
             if (hitIdx < 0 && Math.hypot(pt[0] - tp.x, pt[1] - tp.y) < tol) hitIdx = idx;

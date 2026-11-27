@@ -163,12 +163,18 @@ export function getRamalesPadre(engine: IPlanoEngineCore): PlanoRamal[] {
  *  tener que repetirlos en cada ramal nuevo. */
 export function setRamalDefaults(
   engine: IPlanoEngineCore,
-  d: Partial<{ material: string; diametro: string; pendiente: number }> | null,
+  d: Partial<{
+    material: string;
+    diametro: string;
+    pendiente: number;
+    requiereMaterial: boolean;
+  }> | null,
 ): void {
   engine._ramalDefaults = {
     material: d?.material || '',
     diametro: d?.diametro || '',
     pendiente: typeof d?.pendiente === 'number' ? d.pendiente : 0,
+    requiereMaterial: d?.requiereMaterial,
   };
 }
 

@@ -84,21 +84,23 @@ export function RectFuegoMenu() {
       <button
         type="button"
         onClick={toggle}
+        className={marca ? 'dcm-quitar-definicion' : undefined}
         style={{
-          border: marca ? 'none' : '1.5px solid var(--rci, #f87171)',
-          background: marca ? 'var(--rci, #f87171)' : 'transparent',
-          color: marca ? '#fff' : 'var(--rci, #f87171)',
+          border: marca ? '1px solid var(--line)' : '1.5px solid var(--rci, #f87171)',
+          background: marca ? 'var(--bg3)' : 'transparent',
+          color: marca ? 'var(--txt2)' : 'var(--rci, #f87171)',
           borderRadius: 6,
           padding: '5px 10px',
           fontSize: 12,
           fontWeight: 600,
           cursor: 'pointer',
           width: '100%',
+          minBlockSize: 36,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 7,
-          boxShadow: marca ? '0 2px 8px rgba(248,113,113,.35)' : 'none',
+          boxShadow: 'none',
         }}
       >
         <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">

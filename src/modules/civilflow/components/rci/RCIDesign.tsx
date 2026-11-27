@@ -31,11 +31,12 @@ import type { PisoRciFuente } from '../../utils/rci/extract.ts';
 import { sembrarRci } from '../../utils/rci/RCIRowsModel.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { clasificar, compute, num } from '../../lib/rci/index.ts';
-import type { DibujoPiso } from '../../lib/rci/checks.ts';
+import type { CentroRociador, DibujoPiso } from '../../lib/rci/checks.ts';
 import type { RciState, TipCalc } from '../../lib/rci/types.ts';
 import { escalaDeDoc } from '../../utils/planScale.ts';
 import { factorMPorPx } from '../../lib/PlanoEngine/planoCoords.ts';
-import { puntoEnPoligono } from '../../lib/shared/geometry.ts';
+import { puntoEnORectangulo } from '../../lib/shared/geometry.ts';
+import { rociadorFluye } from '../../lib/PlanoEngine/RCIAutoDraw.ts';
 import type { DrawingData } from '../../utils/drawingSyncTypes.ts';
 import type { Piso } from '../../lib/shared/projectTypes.ts';
 import {
@@ -83,8 +84,19 @@ function primeraSub(tab: TabRci): string | null {
  *  meta.pais = 'Perú'; segunda pasada → no-op. */
 function aplicarPerfilPais(e: RciState, pais: string | undefined): RciState {
   const nuevo = (pais || 'Colombia').trim();
-  if ((e.meta.pais || '').trim() === nuevo) return e;
   const p = perfilRciDe(nuevo);
+  if ((e.meta.pais || '').trim() === nuevo) {
+    const { exigeSP, exigeRoc, reqSismo } = e.local;
+    return {
+      ...e,
+      local: {
+        ...e.local,
+        exigeSP: exigeSP === '' || exigeSP == null ? p.exigeSP : exigeSP,
+        exigeRoc: exigeRoc === '' || exigeRoc == null ? p.exigeRoc : exigeRoc,
+        reqSismo: reqSismo === '' || reqSismo == null ? (p.reqSismo ? 'Sí' : 'No') : reqSismo,
+      },
+    };
+  }
   const L = { ...e.local };
   L.codLocal = p.codLocal;
   L.exigeRoc = p.exigeRoc;
@@ -243,17 +255,52 @@ function RciDesign() {
       TRAZOS_PREFIX + planIdActivo,
       null,
     ) as unknown as {
-      ramales?: Array<{ net?: string; tipo?: string; pts?: number[][] }>;
+      ramales?: Array<{
+        id?: string;
+        net?: string;
+        tipo?: string;
+        pts?: number[][];
+        accesorioInicio?: string;
+        accesorioFin?: string;
+        accMed?: Record<string, string>;
+      }>;
       guideLines?: Array<{ esMuro?: boolean; pts?: number[][] }>;
     } | null;
     if (!doc) return null;
     const mPorPx = factorMPorPx(escalaDeDoc(planIdActivo) ?? 0.5);
     const conv = (pts: number[][]): number[][] => pts.map(([x, y]) => [x * mPorPx, y * mPorPx]);
+    /* Centros REALES de los rociadores (inicio/fin/cuerpo, fluyan o no). Los círculos de radio
+       S se trazan sobre estos centros; la verificación de muro mide la perpendicular desde
+       cada centro, no desde el ramal. */
+    const rocPts: CentroRociador[] = [];
+    const tipoDe = (v: string): CentroRociador['tipo'] => {
+      const base = v.split('#')[0].replace(/NF$/, '');
+      if (base === 'rociadorMontante') return 'montante';
+      if (base === 'rociador') return 'colgante';
+      return 'otro';
+    };
+    for (const r of doc.ramales || []) {
+      if (r.net !== 'rci' || r.tipo === 'tributario' || !r.pts) continue;
+      const id = r.id || '';
+      const añadir = (v: string | undefined, pt: number[] | undefined): void => {
+        if (!v || !/rociador/i.test(v) || !pt) return;
+        const [x, y] = conv([pt])[0];
+        rocPts.push({ x, y, tipo: tipoDe(v), fluye: rociadorFluye(v), ramalId: id });
+      };
+      añadir(r.accesorioInicio, r.pts[0]);
+      añadir(r.accesorioFin, r.pts[r.pts.length - 1]);
+      for (const [k, v] of Object.entries(r.accMed || {})) {
+        const m = k.match(/^accMed(\d+)$/);
+        if (m) añadir(v, r.pts[+m[1]]);
+      }
+    }
     return {
+      planId: planIdActivo,
       muros: (doc.guideLines || []).filter((g) => g.esMuro).map((g) => conv(g.pts || [])),
       ramPts: (doc.ramales || [])
         .filter((r) => r.net === 'rci' && r.tipo === 'ramal')
         .map((r) => conv(r.pts || [])),
+      rocPts,
     };
     // ponytail: trazosTick es la dependencia viva — el doc se re-lee de localStorage por tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,6 +321,7 @@ function RciDesign() {
         pts?: number[][];
         accMed?: Record<string, string>;
         accesorioInicio?: string;
+        accesorioFin?: string;
       }>;
       areas?: Array<{ esRectFuego?: boolean; net?: string; pts?: number[][]; areaM2?: number }>;
     } | null;
@@ -289,27 +337,24 @@ function RciDesign() {
     for (const r of doc.ramales || []) {
       if (r.net !== 'rci' || r.tipo === 'tributario' || !r.pts) continue;
       ramPtsM.push(conv(r.pts));
-      /* TODOS los rociadores del ramal entran a rocPts (no pre-filtrados): quien clasifica
-       * dentro/fuera es el CONSUMIDOR con puntoEnPoligono — así el canvas puede pintar grises
-       * y el banner mostrar «N de M dentro». ramalesDentro sí filtra (su semántica es esa). */
+      /* Solo los rociadores que FLUYEN cuentan como «en operación». El centro dentro O sobre el
+       * borde del área se considera cubierto (ray casting + tolerancia en el borde). Se incluyen
+       * inicio, fin e intermedios (incluidos los auto-dibujados). */
       let rociadoresDentro = 0;
       const posDe = (pt: number[] | undefined): number[] | null => (pt ? conv([pt])[0] : null);
-      const inicioM =
-        r.accesorioInicio && /rociador/i.test(r.accesorioInicio) ? posDe(r.pts[0]) : null;
-      if (inicioM) {
-        rocPts.push(inicioM);
-        if (puntoEnPoligono(inicioM, ptsM)) rociadoresDentro++;
-      }
+      const suma = (pt: number[] | null): void => {
+        if (!pt) return;
+        rocPts.push(pt);
+        if (puntoEnORectangulo(pt, ptsM)) rociadoresDentro++;
+      };
+      suma(rociadorFluye(r.accesorioInicio) ? posDe(r.pts[0]) : null);
+      suma(rociadorFluye(r.accesorioFin) ? posDe(r.pts[r.pts.length - 1]) : null);
       const acc = r.accMed || {};
       for (const [k, v] of Object.entries(acc)) {
-        if (!/rociador/i.test(v)) continue;
+        if (!rociadorFluye(v)) continue;
         const m = k.match(/^accMed(\d+)$/);
         const idx = m ? +m[1] : -1;
-        const ptM = posDe(r.pts[idx]);
-        if (ptM) {
-          rocPts.push(ptM);
-          if (puntoEnPoligono(ptM, ptsM)) rociadoresDentro++;
-        }
+        suma(posDe(r.pts[idx]));
       }
       if (rociadoresDentro > 0 && r.id) ramalesDentro.push(r.id);
     }
@@ -334,23 +379,31 @@ function RciDesign() {
   }, [estado]);
 
   const idxActivo = planIdActivo ? idxPorPlanId.get(planIdActivo) : undefined;
-  /* Sufijo del piso activo (ped. usuario 2026-11-20): «RRCI5» → «RRCI5-P1». El nombre de la
-   *  fila de piso es «Piso 1»/«Sótano 1»/«Cubierta» → se abrevia a P1/S1/C. */
-  const pisoSufijo = (() => {
-    const nom = idxActivo != null ? String(estado?.pisos.rows[idxActivo]?.nombre ?? '') : '';
+  /** Abrevia el nombre de piso para las etiquetas de ramal: «Piso 1» → «P1», «Sótano 1» → «S1». */
+  const sufijoDePiso = (nom: string): string => {
     const m = /^Piso (\d+)$/.exec(nom);
     if (m) return `P${m[1]}`;
     const so = /^Sótano (\d+)$/.exec(nom);
     if (so) return `S${so[1]}`;
     return nom === 'Cubierta' ? 'C' : nom;
-  })();
-  const tipIdActivo = tips && idxActivo !== undefined ? (tips.tipOf[idxActivo] ?? null) : null;
-  const tipActivo: TipCalc | null = R && tipIdActivo ? (R.edif.typ[tipIdActivo] ?? null) : null;
-  const redActiva = planIdActivo && estado ? estado.redes[planIdActivo] : undefined;
-  const grisRed = planIdActivo ? gris.estado.redes[planIdActivo] : undefined;
-  const pisoNombre = planIdActivo
-    ? fuentes.find((f) => f.planId === planIdActivo)?.label || 'Piso'
-    : '';
+  };
+  /* La tipología activa es UNA sola para Criterios, Rectángulo e Hidráulica (ped. plan
+   *  2026-11-27): sale de pisos.activa, no del piso del visor. Hidráulica calcula sobre el
+   *  piso REPRESENTATIVO de esa tipología (su red es la que se pinta y edita). */
+  const tipActivo: TipCalc | null = R ? (R.edif.active ?? null) : null;
+  const planCalculo = tipActivo ? tipActivo.g.planta : planIdActivo;
+  const idxCalculo = tipActivo ? tipActivo.g.rep : (idxActivo ?? null);
+  const pisoSufijo = sufijoDePiso(
+    idxCalculo != null ? String(estado?.pisos.rows[idxCalculo]?.nombre ?? '') : '',
+  );
+  const redActiva = planCalculo && estado ? estado.redes[planCalculo] : undefined;
+  const grisRed = planCalculo ? gris.estado.redes[planCalculo] : undefined;
+  const pisoNombre =
+    idxCalculo != null
+      ? String(estado?.pisos.rows[idxCalculo]?.nombre ?? 'Piso')
+      : planIdActivo
+        ? fuentes.find((f) => f.planId === planIdActivo)?.label || 'Piso'
+        : '';
 
   /** Seleccionar piso marca también la tipología activa del cálculo (la que usa Entradas). */
   const elegirPiso = (pid: string) => {
@@ -359,6 +412,31 @@ function RciDesign() {
     const tipId = tips && idx !== undefined ? tips.tipOf[idx] : null;
     if (tipId && estadoRef.current && estadoRef.current.pisos.activa !== tipId) {
       editar((e) => ({ ...e, pisos: { ...e.pisos, activa: tipId } }));
+    }
+  };
+
+  /* Sincronía inversa: si el visor/RCI cambia el PISO activo (p. ej. al cargar otro plano),
+     la tipología activa pasa a ser la de ESE piso. Así «Piso 1» y «T2 · Piso 2» no quedan
+     descuadrados al abrir el proyecto. */
+  useEffect(() => {
+    if (!planIdActivo || !tips) return;
+    const idx = idxPorPlanId.get(planIdActivo);
+    const tipId = idx !== undefined ? tips.tipOf[idx] : null;
+    if (tipId && estadoRef.current && estadoRef.current.pisos.activa !== tipId) {
+      editar((e) => ({ ...e, pisos: { ...e.pisos, activa: tipId } }));
+    }
+  }, [planIdActivo, tips, idxPorPlanId, editar]);
+
+  /** Seleccionar TIPOLOGÍA mueve también el «Piso activo» al piso representativo de esa
+   *  tipología: los dos desplegables siempre apuntan al mismo piso/red. */
+  const seleccionarTipologia = (id: string): void => {
+    const g = tips?.groups.find((x) => x.id === id);
+    const idx = g ? g.rep : null;
+    const fila = idx !== null ? estado?.pisos.rows[idx] : null;
+    const pid = String(fila?.planId || g?.planta || '');
+    if (pid) setPlanActivo(pid);
+    if (estadoRef.current?.pisos.activa !== id) {
+      editar((e) => ({ ...e, pisos: { ...e.pisos, activa: id } }));
     }
   };
 
@@ -394,7 +472,15 @@ function RciDesign() {
 
   /* RciCtx exige `edit`: queda fijo en false — la edición por tabla (useEditarTabla propio)
      reemplazó al botón EDITAR global de la barra; nadie ya lee el flag global. */
-  const ctx: RciCtx = { estado, R, tips, edit: false, editar, rectFuego: rectFuego ?? undefined };
+  const ctx: RciCtx = {
+    estado,
+    R,
+    tips,
+    edit: false,
+    editar,
+    seleccionarTipologia,
+    rectFuego: rectFuego ?? undefined,
+  };
   const avisosGris = gris.avisos.map((a) => `${a.piso}: ${a.msg}`);
   const noCumplen = R.count['NO CUMPLE'] || 0;
   /* El selector de piso activo vive donde el contenido depende del piso: desde Hidráulica en
@@ -537,16 +623,13 @@ function RciDesign() {
           </div>
         </div>
         {/* Contenido de la pestaña activa (cada página maneja sus sub-pestañas verticales). */}
-        <div
-          data-rci-tab-content
-          style={{ flex: 1, minHeight: 0, overflowY: 'auto', paddingRight: 2 }}
-        >
+        <div data-rci-tab-content className="cf-network-sheet" style={{ paddingRight: 2 }}>
           {tab === 'entradas' ? <RciInputs ctx={ctx} /> : null}
           {tab === 'tipologias' ? <RciTipologias ctx={ctx} /> : null}
           {tab === 'hidraulica' ? (
             <RciHidraulica
               ctx={ctx}
-              planId={planIdActivo}
+              planId={planCalculo || null}
               pisoLbl={pisoSufijo}
               tip={tipActivo}
               red={redActiva}

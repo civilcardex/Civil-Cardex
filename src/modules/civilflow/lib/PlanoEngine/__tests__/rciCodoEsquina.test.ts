@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { finishRamal } from '../PlanoEngineDrawing.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
@@ -61,6 +61,49 @@ function makeEngine(net: string, ramales: PlanoRamal[]): IPlanoEngineCore {
   };
   return engine as IPlanoEngineCore;
 }
+
+describe('finishRamal — DMR en el dibujo', () => {
+  it('un muro marcado impide confirmar sin S; con S el mismo ramal pasa', () => {
+    const engine = makeEngine('rci', []);
+    const alert = vi.fn();
+    engine.triggerAlert = alert;
+    engine.scaleM = 0.5;
+    engine.pxToM = (px) => px * 0.01;
+    engine.guideLines.push({
+      id: 'GL1',
+      net: 'rci',
+      esMuro: true,
+      pts: [
+        [0, 0],
+        [200, 0],
+      ],
+    });
+    const draw = () => {
+      engine.activeRamal = {
+        net: 'rci',
+        tipo: 'ramal',
+        padre: null,
+        pts: [
+          [0, 80],
+          [200, 80],
+        ],
+      } as never;
+      finishRamal(engine);
+    };
+
+    draw();
+    expect(alert).toHaveBeenCalledWith(
+      'Verificación de DMR pendiente',
+      expect.stringContaining('Define S para verificar la distancia'),
+    );
+    expect(engine.ramales).toHaveLength(0);
+
+    engine.dmuroRci = 2.3;
+    draw();
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(engine.ramales).toHaveLength(1);
+  });
+});
 
 describe('finishRamal — codo 90° auto en esquina L de rci', () => {
   it('ramal vertical que nace en el extremo del horizontal: ambos extremos libres reciben codo90rc', () => {

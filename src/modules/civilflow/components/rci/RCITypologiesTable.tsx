@@ -4,6 +4,7 @@
  *  Ej: <TablaTipologias grupos={tips.groups} rows={estado.pisos.rows} typ={R.edif.typ} onRep={setRep} />. */
 import type { CSSProperties } from 'react';
 import { ChipEstado, SecRci } from './RCIUI.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import { rangoTipologia } from '../../utils/rci/RCIRowsModelExtras.ts';
 import { colorTip } from './RCISvgSchemas.tsx';
@@ -79,8 +80,8 @@ function TablaTipologias({
     '',
   ];
   return (
-    <SecRci id="tipos" titulo="Tipologías" icono="/iconos/tipologias.webp">
-      <div style={{ overflowX: 'auto' }}>
+    <SecRci id="tipos" titulo="Resumen de tipologías" icono="/iconos/tipologias.webp">
+      <TableScroll label="Tabla de tipologías">
         <table
           className="tbl"
           style={{
@@ -203,7 +204,7 @@ function TablaTipologias({
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
       <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--txt3)' }}>
         ★ Representativo: por defecto el piso más alto (recibe menos presión). * Alturas de techo
         distintas dentro de la tipología.

@@ -4,7 +4,7 @@
  * presión requerida; los demás aportes se equilibran con su K equivalente (Q = K·√P).
  * Ej: en el nudo A del ejemplo gobierna R1 con 20.29 psi y R2 se equilibra a esa presión.
  */
-import { NOM, PIPES } from './tables';
+import { canonicalRciPipeMaterial, NOM, PIPES } from './tables';
 import { num, route, suggestDn } from './hydraulics';
 import type {
   CalcCtx,
@@ -29,7 +29,7 @@ export function calcRamal(
   ctx: CalcCtx,
 ): { rows: TuberiaRow[]; res: RouteResult } {
   const r = x.rEff || x.r,
-    mat = r.mat || 'Acero SCH 40',
+    mat = canonicalRciPipeMaterial(r.mat),
     S = num(r.S) || ro.S,
     n = x.fl;
   const zr = num(r.zr) || 0,
@@ -172,12 +172,12 @@ export function computeRed(
       (nodes[nm] = nodes[nm] || { nombre: nm, inflows: [], out: null });
   rams.forEach((x) => {
     if (x.fl <= 0) return;
-    if (porNudo) {
+    if (porNudo || (!x.r.mat && red!.mat)) {
       const zr = num(x.r.zr) ?? zRam;
       x.rEff = Object.assign({}, x.r, {
-        mat: x.r.mat || red!.mat || 'Acero SCH 40',
+        mat: x.r.mat || red!.mat,
         zr,
-        zc: zNode(String(x.r.con || '').trim()),
+        zc: porNudo ? zNode(String(x.r.con || '').trim()) : x.r.zc,
       });
     }
     const c = calcRamal(x, ro, ctx);
@@ -261,8 +261,7 @@ export function computeRed(
         {},
         y.t,
         { ni: y.de, nf: y.a },
-        /* Material vacío → el de la red → el de referencia (los selects nacen vacíos). */
-        { mat: y.t.mat || red!.mat || 'Acero SCH 40' },
+        { mat: y.t.mat || red!.mat },
         porNudo ? { zi: zNode(y.de), zf: zNode(y.a) } : {},
       );
       y.res = route([row], nd.P!, nd.Q!, ctx, 'alim');

@@ -9,6 +9,7 @@ import type { SelectCallback, StatusCallback, UpdateCallback } from './PlanoStat
 import { initNetCounts } from './PlanoState.ts';
 import { PlanoHistory } from './PlanoHistory.ts';
 import { setupCanvasEvents } from './events/canvasSetup.ts';
+import { RCI_S_CIRCLES_KEY } from '../../constants/storage-keys.ts';
 
 /** Vista del motor que necesita la inicialización: EngineFull más los callbacks que el
  *  constructor deja en null (los métodos on* los llenan después) y los handlers crudos que
@@ -66,6 +67,11 @@ export function initEngineState(
   engine.tipoTramo = 'ramal';
   engine.snapMode = true;
   engine.gridMode = true;
+  /* Círculos S: visibles por defecto; el usuario puede ocultarlos y se recuerda en la sesión. */
+  engine.sCirclesVisible =
+    typeof sessionStorage === 'undefined'
+      ? true
+      : sessionStorage.getItem(RCI_S_CIRCLES_KEY) !== 'false';
   engine.scaleM = 0.5;
   engine.definedScaleM = 0;
   engine.pageW = 0;

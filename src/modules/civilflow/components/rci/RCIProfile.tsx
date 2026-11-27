@@ -6,6 +6,7 @@
  *  estática de 170.62 psi cerca de los 175 psi de los componentes. */
 import { SecRci, SubTabsRci, type RciCtx, type SubItemRci, useNavRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
+import TableScroll from '../shared/TableScroll.tsx';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
 import {
   accionPerfil,
@@ -173,7 +174,7 @@ export default function RciPerfil({ ctx }: { ctx: RciCtx }) {
             titulo="Presiones piso a piso"
             icono="/iconos/presiones_piso_piso.webp"
           >
-            <div style={{ overflowX: 'auto' }}>
+            <TableScroll label="Perfil de presiones por piso">
               <table
                 className="tbl"
                 style={{
@@ -381,7 +382,7 @@ export default function RciPerfil({ ctx }: { ctx: RciCtx }) {
                   )}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             <p
               style={{ margin: '6px 2px 0', fontSize: 11, color: 'var(--txt3)', lineHeight: 1.45 }}
             >

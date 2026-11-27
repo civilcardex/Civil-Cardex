@@ -13,12 +13,26 @@ import type {
   Verificacion,
 } from '../types';
 
+/** Centro real de un rociador dibujado (coordenadas en METROS). El `tipo` distingue los
+ *  estándar (colgante/montante, a los que aplica la distancia perpendicular al muro) de los
+ *  especiales (seco/oculto/área): estos últimos son una excepción no modelada → pendiente. */
+export interface CentroRociador {
+  x: number;
+  y: number;
+  tipo: 'colgante' | 'montante' | 'otro';
+  fluye: boolean;
+  ramalId: string;
+}
+
 /** Geometría del piso activo del visor para las verificaciones que dependen del dibujo:
  *  muros = polilíneas de guías marcadas esMuro; ramPts = polilíneas de ramales rci (tipo
- *  ramal, sin tributarios). Coordenadas ya convertidas a METROS por el llamador. */
+ *  ramal, sin tributarios); rocPts = centros reales de los rociadores. Coordenadas ya
+ *  convertidas a METROS por el llamador. */
 export interface DibujoPiso {
+  planId?: string;
   muros: number[][][];
   ramPts: number[][][];
+  rocPts?: CentroRociador[];
 }
 
 /* Tipologías a verificar: en el edificio, todas las que tienen criterios (y red, para las de la red);
@@ -116,11 +130,12 @@ export function crearAddR(tB: TpsItem[], multi: boolean, add: AddFn): AddRFn {
     );
     const bad = it.filter((x) => x.st !== 'CUMPLE'),
       sh = multi || bad.some((x) => x.t.bld);
-    const go2 = bad.length
-      ? bad[0].t.bld
-        ? ['entradas', 'mont.dn']
-        : [go[0], go[1] || '', bad[0].t.id]
-      : go;
+    const go2 =
+      bad.length && go[0] !== 'catalogo'
+        ? bad[0].t.bld
+          ? ['entradas', 'mont.dn']
+          : [go[0], go[1] || '', bad[0].t.id]
+        : go;
     add(
       lab,
       w.st,

@@ -56,6 +56,7 @@ export function verificarDatosEntrada(ctx: ChecksCtx): void {
     neg(b.margen, 'Margen de presión de la bomba', 'bomba.margen');
     neg(b.lSuc, 'Longitud de succión', 'bomba.lSuc');
     neg((st.tanque || {}).vextra, 'Volumen adicional del tanque', 'tanque.vextra');
+    neg(st.tanque?.vconsumo, 'Volumen de consumo del edificio', 'tanque.vconsumo');
     neg((st.mang || {}).duracion, 'Duración', 'mang.duracion');
     if (num(st.roc.K) !== null && num(st.roc.K)! <= 0)
       bad.push(`Factor K = ${f1(num(st.roc.K), 1)}`);

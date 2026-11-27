@@ -158,8 +158,12 @@ export default class PlanoEngine implements IPlanoEngineCore {
   scaleM!: number;
   definedScaleM!: number;
   workVersion?: number;
-  /** Dmuro (RCI) inyectado por la capa React (ver IPlanoEngineCore.dmuroRci): null = apagado. */
+  /** Distancia máxima muro–rociador del piso (m); null = falta definir S (separación entre rociadores). */
   dmuroRci: number | null = null;
+  /** S (m) del piso activo para los círculos guía de rociadores. null = sin S. */
+  sRci: number | null = null;
+  /** Círculos guía de radio S (defecto: visibles; se guarda en sessionStorage). */
+  sCirclesVisible = true;
   pageW!: number;
   pageH!: number;
 

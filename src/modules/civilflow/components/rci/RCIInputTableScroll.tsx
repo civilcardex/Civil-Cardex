@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import TableScroll from '../shared/TableScroll.tsx';
 
 /** Lleva al dato indicado por una verificación. Si solo se puede leer, enfoca su fila. */
 export function focusRciInput(field: string): boolean {
@@ -14,17 +15,6 @@ export function focusRciInput(field: string): boolean {
 }
 
 /** Da a cada tabla su propia zona de desplazamiento. Ej.: recorrer los accesorios con el teclado. */
-/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- permite desplazar la región con teclado */
 export function RciInputTableScroll({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div
-      role="region"
-      aria-label={label}
-      tabIndex={0}
-      style={{ maxWidth: '100%', overflowX: 'auto' }}
-    >
-      {children}
-    </div>
-  );
+  return <TableScroll label={label}>{children}</TableScroll>;
 }
-/* eslint-enable jsx-a11y/no-noninteractive-tabindex */

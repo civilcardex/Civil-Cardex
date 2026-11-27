@@ -32,7 +32,7 @@ import {
 } from './drawingUtils.ts';
 import { distToPolyline } from '../shared/geometry';
 import { detectarCanalEnExtremos } from './channelAssociation';
-import { recortarEnPrimerCruce } from './intersectionTrim.ts';
+import { clasificarTeeDibujo, recortarEnPrimerCruce } from './intersectionTrim.ts';
 import { mergeExtensionPorExtremoConFallback } from './finishRamalMergeExtreme.ts';
 import { chequeoMurosTrazo } from './RCIAutoDraw.ts';
 
@@ -334,17 +334,34 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   /* Distancia de ramales a muros EN VIVO (ped. usuario): los muros de la BANDA del trazo (a
      ≤ 2·Dmuro de él) deben quedar a ≤ Dmuro del ramal rci más cercano (el nuevo incluido).
      Si alguno queda descubierto → modal de alerta y el trazo NO se crea (aborto limpio;
-     el estado no cambió — sin _markDirty, que dispararía un autosave inútil). */
+     el estado no cambió — sin _markDirty, que dispararía un autosave inútil). El chequeo de
+     DMR vive SOLO en el dibujo (ped. usuario 2026-11-27). */
   if (r.net === 'rci' && !isTrib) {
     const errMuro = chequeoMurosTrazo(engine, r.pts, engine.dmuroRci);
     if (errMuro) {
-      engine.triggerAlert('Distancia a muro', errMuro);
+      engine.triggerAlert(
+        engine.dmuroRci == null ? 'Verificación de DMR pendiente' : 'Distancia a muro',
+        errMuro,
+      );
       engine.activeRamal = null;
       engine.render();
       return;
     }
   }
 
+  const clasificacionTee = clasificarTeeDibujo(r, engine.ramales, (p) =>
+    puntoEnCaja(engine, p, r.net),
+  );
+  if (clasificacionTee.ambigua) {
+    engine.triggerAlert(
+      'Conexión en tee ambigua',
+      'El punto toca más de dos trazos. Conecta a un solo ramal.',
+    );
+    engine.activeRamal = null;
+    engine.render();
+    return;
+  }
+  let tee = clasificacionTee.tee;
   engine.ramales.push(r);
   // RECORTE EN EL PRIMER CRUCE (orig. usuario: "recortar siempre el excedente en la
   // intersección, no rechazar"): si el trazo se pasó del punto de unión, se corta JUSTO en el
@@ -354,6 +371,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   {
     const recorte = recortarEnPrimerCruce(r.pts, engine.ramales, r.net, {
       ignorarIds: [r.id],
+      piso: r.piso,
       dentroDeCaja: (p) => puntoEnCaja(engine, p, r.net),
     });
     if (recorte.invalido) {
@@ -370,6 +388,7 @@ export function finishRamal(engine: IPlanoEngineCore): void {
     if (recorte.cortado) {
       r.pts = recorte.pts;
       r.totalL = +calculateRamalLength(r.pts, engine).toFixed(3);
+      tee = clasificarTeeDibujo(r, engine.ramales, (p) => puntoEnCaja(engine, p, r.net)).tee;
     }
   }
   // Redes de presión (af/ac/gas/rci): las 3 verificaciones vivas BLOQUEAN el dibujo —
@@ -407,7 +426,8 @@ export function finishRamal(engine: IPlanoEngineCore): void {
   // Regla "Los ramales no se conectan a tributarios": autoSplitJunctionAndSumFlow devuelve si la
   // conexión fue bloqueada — aquí se hace cumplir retirando el ramal recién terminado (antes la
   // alerta salía y el ramal quedaba dibujado igualmente).
-  if (autoSplitJunctionAndSumFlow(engine, r)) {
+  const ramaTee = tee && engine.ramales.find((x) => x.id === tee.rama.id);
+  if (autoSplitJunctionAndSumFlow(engine, ramaTee || r, ramaTee && tee ? tee : undefined)) {
     engine.ramales = engine.ramales.filter((x) => x.id !== r.id);
     engine.activeRamal = null;
     engine.render();
@@ -601,6 +621,12 @@ export function checkCrossRamalAngle(
   for (const r of engine.ramales) {
     if (r.id === skipId || !r.pts || r.pts.length < 2) continue;
     const netId = r.net || engine.activeNet;
+    const netActivo = engine.activeRamal?.net ?? engine.activeNet;
+    if (
+      netId !== netActivo &&
+      !(['san', 'vent'].includes(netId) && ['san', 'vent'].includes(netActivo))
+    )
+      continue;
     // Aterrizar en una caja no es una tee con los trazos vecinos: solo entran a la misma
     // caja, no se conectan entre sí (orig. usuario) — sin validación de ángulo de llegada.
     if (puntoEnCaja(engine, pB, netId)) continue;

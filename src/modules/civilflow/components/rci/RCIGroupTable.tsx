@@ -3,17 +3,16 @@
  *  naturaleza (TAGS_RCI: qué fija la norma y qué decide el diseñador) y la ayuda SIEMPRE
  *  visible en la columna Observación (además del title de la etiqueta). Ej:
  *  <GrupoTabla titulo="Normativa" campos={GRUPOS.normativa} estado={estado} R={R} editar={editar} grande />. */
-import { Fragment, useState, type CSSProperties } from 'react';
+import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
 import { EditTablaBtn, TagRci, useEditarTabla, type RciCtx } from './RCIUI.tsx';
 import { celdaEditable, IN_CELDA } from './RCIEditableCell.tsx';
 import { RciInputTableScroll } from './RCIInputTableScroll.tsx';
 import { TD, TH } from '../../styles/sharedTableStyles.ts';
 import type { RciResult, RciState } from '../../lib/rci/types.ts';
+import { isSi } from '../../lib/rci/hydraulics.ts';
 
 /* Naturaleza de cada dato (TAGS del HTML): qué fija la norma y qué decide el diseñador. */
 export const TAGS_RCI: Record<string, string> = {
-  'clas.almacen': 'Proyecto',
-  'clas.arrumeH': 'Proyecto',
   'clas.riesgo': 'Norma',
   'clas.sistema': 'Proyecto',
   'clas.qr': 'Criterio',
@@ -66,6 +65,7 @@ export const TAGS_RCI: Record<string, string> = {
   'bomba.margenNpsh': 'Criterio',
   'bomba.qjockey': 'Rango',
   'tanque.vextra': 'Criterio',
+  'tanque.vconsumo': 'Proyecto',
   'local.zonaSis': 'Proyecto',
   'local.cp': 'Norma',
   'local.losaRestr': 'Proyecto',
@@ -143,19 +143,6 @@ const OBS_TD: CSSProperties = {
   whiteSpace: 'normal',
   maxWidth: 520,
 };
-/** Botón chico dentro de la celda Observación: abre el modal de la clave d.abreModal. */
-const BTN_OBS: CSSProperties = {
-  border: '1px solid var(--line)',
-  background: 'var(--bg3)',
-  color: 'var(--txt2)',
-  borderRadius: 4,
-  padding: '1px 6px',
-  fontSize: 12,
-  cursor: 'pointer',
-  marginLeft: 6,
-  whiteSpace: 'nowrap',
-  verticalAlign: 'middle',
-};
 /** Control de valor activo: caja tipo sanitario (IN_CELDA) con el tamaño de esta tabla (14);
  *  el width va por fila con anchoValor (el del valor) para que activar EDITAR no ensanche la columna. */
 const CTRL: CSSProperties = {
@@ -190,11 +177,8 @@ function IconoDep() {
   );
 }
 
-/** Props de GrupoTabla: lo que la tarjeta necesita para pintarse y editarse. nota queda
- *  aceptada por compatibilidad con los llamadores, pero el header muestra SOLO el título. */
 interface PropsGrupo {
   titulo: string;
-  nota?: string;
   /** Ruta pública del icono decorativo del header (ej. '/iconos/montantes_nfpa14.webp'). */
   icono?: string;
   campos: DefCampo[];
@@ -221,8 +205,7 @@ interface PropsGrupo {
   /** Abre el modal pedido por un campo con `abreModal` (la clave llega como parámetro).
    *  Ej: (clave) => clave === 'clases' && setModalClases(true). */
   onAbrirModal?: (clave: string) => void;
-  /** Aceptada por compatibilidad; el tamaño grande y las columnas compactas son siempre. */
-  grande?: boolean;
+  extra?: ReactNode;
 }
 
 /** Un grupo de campos como tarjeta (section.card): cabecera card-h con título 15px gris +
@@ -240,6 +223,7 @@ export function GrupoTabla({
   R,
   editar,
   onAbrirModal,
+  extra,
   minAncho,
   anchoContenido,
   anchoPreferido,
@@ -267,8 +251,9 @@ export function GrupoTabla({
   /** Cambio de un campo numérico con rango: valida y solo persiste lo válido. */
   const onChangeNum = (d: DefCampo, v: string) => {
     const rg = d.rango?.(estado, R) ?? null;
+    const normalized = v.trim().replace(',', '.');
     if (rg && v !== '') {
-      const n = parseFloat(v.replace(',', '.'));
+      const n = /^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized) ? Number(normalized) : NaN;
       const fuera =
         isNaN(n) || (rg.min !== undefined && n < rg.min) || (rg.max !== undefined && n > rg.max);
       if (fuera) {
@@ -281,7 +266,7 @@ export function GrupoTabla({
     setDraft(null);
     setErrPath(null);
     setErrMsg('');
-    setP(d.path)(v);
+    setP(d.path)(normalized);
   };
   /** Sale del input con borrador inválido: se descarta y la celda vuelve al valor persistido
    *  (el wiring value={draft?.path === d.path ? draft.val : v} lo pinta solo). NUNCA se
@@ -292,9 +277,11 @@ export function GrupoTabla({
     setErrMsg('');
   };
   /** Lee un path 'seccion.hoja' del estado (ej: 'local.exigeSP'). */
-  const get = (path: string): string | number => {
+  const get = (path: string): string | number | boolean => {
     const [sec, hoja] = path.split('.');
-    const grp = (estado as unknown as Record<string, Record<string, string | number>>)[sec];
+    const grp = (estado as unknown as Record<string, Record<string, string | number | boolean>>)[
+      sec
+    ];
     return (grp && grp[hoja]) ?? '';
   };
   /** Escribe un path 'seccion.hoja' de forma inmutable (mismo gesto que el set(path) del HTML). */
@@ -371,7 +358,8 @@ export function GrupoTabla({
             </span>
           ) : null}
         </h3>
-        <div style={{ marginLeft: 'auto' }}>
+        <div className="rci-input-actions">
+          {extra}
           <EditTablaBtn on={edit} onToggle={toggleEdit} />
         </div>
       </div>
@@ -420,10 +408,11 @@ export function GrupoTabla({
             </thead>
             <tbody>
               {campos.map((d) => {
-                const off = d.soloLectura || (d.dep ? String(get(d.dep)) !== 'Sí' : false);
+                const off = d.soloLectura || (d.dep ? !isSi(get(d.dep)) : false);
                 const ayu = typeof d.ayu === 'function' ? d.ayu(R, estado) : d.ayu;
                 const set = edit && !off ? setP(d.path) : undefined;
-                const v = String(get(d.path) ?? '');
+                const valor = get(d.path);
+                const v = typeof valor === 'boolean' ? (valor ? 'Sí' : 'No') : String(valor ?? '');
                 /* Opciones [valor, etiqueta]: los pares tal cual, o cada opción simple como su
                  * propia etiqueta. Ej: clas.constr guarda el value corto y muestra el largo. */
                 const pares: readonly (readonly [string, string])[] =
@@ -455,11 +444,17 @@ export function GrupoTabla({
                           d.opts || d.optsPar ? (
                             <select
                               data-campo={d.path}
+                              aria-label={d.lbl}
                               value={v}
                               onChange={(e) => set?.(e.target.value)}
                               title={titulo}
                               style={{ ...ctrlS, width: anchoCtl }}
                             >
+                              {v && !pares.some(([value]) => value === v) ? (
+                                <option value={v} disabled>
+                                  {v} (guardado; revisar)
+                                </option>
+                              ) : null}
                               {pares.map(([val, lbl]) => (
                                 <option key={val} value={val}>
                                   {val === '' ? '— / Auto' : lbl}
@@ -469,6 +464,7 @@ export function GrupoTabla({
                           ) : (
                             <input
                               data-campo={d.path}
+                              aria-label={d.lbl}
                               /* Con rango: type="text" + inputMode decimal (misma vía que el
                                * modal de dibujo automático) — el number nativo en locale en
                                * devuelve '' para «2,5» (coma) y el valor inválido burlaba el
@@ -500,7 +496,12 @@ export function GrupoTabla({
                       <td style={obsS}>
                         {ayu}
                         {abrirModal ? (
-                          <button type="button" onClick={abrirModal} style={BTN_OBS}>
+                          <button
+                            type="button"
+                            onClick={abrirModal}
+                            className="rci-scheme-link"
+                            style={{ marginLeft: 6 }}
+                          >
                             ¿Qué clase elegir?
                           </button>
                         ) : null}

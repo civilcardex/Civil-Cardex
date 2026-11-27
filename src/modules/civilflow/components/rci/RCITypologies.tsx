@@ -7,14 +7,7 @@
  *  DMR se digitan por piso en la tabla de esta pestaña. Ej: marcar P3 con
  *  «★ aquí» calcula la red de T1 sobre el NPT de P3. */
 import { type CSSProperties } from 'react';
-import {
-  AvisosRci,
-  SecRci,
-  SubTabsRci,
-  useNavRci,
-  type RciCtx,
-  type SubItemRci,
-} from './RCIUI.tsx';
+import { SecRci, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { filasTipologias, resumenTipologias } from '../../utils/rci/RCIRowsModel.ts';
 import { ElevSvg } from './RCISvgBuilding.tsx';
 import { TablaPisos } from './RCIFloorsTable.tsx';
@@ -26,7 +19,7 @@ import type { NumIn, PisoRow, Tips } from '../../lib/rci/types.ts';
  *  que manda los «Ir al dato» de pisos a la sub 'pisos'). Ej: setSub('corte') muestra el ElevSvg. */
 const SUBS: SubItemRci[] = [
   { id: 'pisos', titulo: 'Pisos del edificio' },
-  { id: 'tipos', titulo: 'Tipologías y avisos' },
+  { id: 'tipos', titulo: 'Resumen de tipologías' },
   { id: 'criterios', titulo: 'Criterios de diseño' },
   { id: 'rectangulo', titulo: 'Rectángulo de fuego' },
   { id: 'corte', titulo: 'Corte esquemático' },
@@ -90,13 +83,6 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
   const activa = nav.sub ?? SUBS[0].id;
   const filas = filasTipologias(estado, tips);
   const resumen = resumenTipologias(tips, R.edif);
-  /** Avisos del bloque homónimo: tipologías cuyo planta no tiene red calculada. */
-  const avisosSinRed = resumen
-    .filter((t) => !t.conRed)
-    .map(
-      (t) =>
-        `${t.id} (${t.pisos}) sin red calculada: revise que la planta tenga trazos RCI con montante conectado.`,
-    );
 
   const setPiso = (i: number, k: keyof PisoRow) => (v: string) =>
     editar((e) => ({
@@ -113,6 +99,7 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
     <SubTabsRci subs={SUBS} sub={activa} setSub={(id) => irA('tipologias', id)}>
       {activa === 'pisos' ? (
         <TablaPisos
+          ctx={ctx}
           globalEstado={estado}
           filas={filas}
           nota={`${filas.length} piso(s) · ${resumen.length} tipología(s)`}
@@ -128,12 +115,6 @@ export function RciTipologias({ ctx }: { ctx: RciCtx }) {
             typ={R.edif.typ}
             onRep={setRep}
           />
-          {/* Avisos: solo cuando hay tipologías sin red (sin aviso no hay bloque vacío). */}
-          {avisosSinRed.length ? (
-            <SecRci id="avisos" titulo="Avisos" nota="tipologías sin red">
-              <AvisosRci avisos={avisosSinRed} />
-            </SecRci>
-          ) : null}
         </div>
       ) : null}
       {activa === 'criterios' ? <RciCriterios ctx={ctx} /> : null}

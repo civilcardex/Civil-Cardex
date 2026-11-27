@@ -7,6 +7,7 @@
  *  Ej: con reqSismo "No" muestra el vacío con el botón que salta a Entradas → Normativa local. */
 import { SecRci, KvTabla, SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { TH, TD } from '../../styles/sharedTableStyles.ts';
+import TableScroll from '../shared/TableScroll.tsx';
 import { num } from '../../lib/rci/hydraulics.ts';
 import { zonaSis } from '../../lib/rci/index.ts';
 import {
@@ -281,7 +282,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
             nota="Indicativo: con las longitudes de la red; se confirma en el plano"
             icono="/iconos/riostras_tipologia.webp"
           >
-            <div style={{ overflowX: 'auto' }}>
+            <TableScroll label="Verificación sísmica por tramo">
               <table
                 className="tbl"
                 style={{ fontSize: 12, borderCollapse: 'collapse', width: '100%' }}
@@ -346,7 +347,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </TableScroll>
             <div
               style={{
                 display: 'grid',
@@ -361,6 +362,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
                   Montantes y cuarto de bombas
                 </h5>
                 <KvTabla
+                  label="Montantes y cuarto de bombas"
                   filas={[
                     {
                       l: 'Riostras de cuatro vías',
@@ -390,6 +392,7 @@ export function RciSismo({ ctx }: { ctx: RciCtx }) {
                   Holguras de paso por diámetro
                 </h5>
                 <KvTabla
+                  label="Holguras de paso por diámetro"
                   filas={K.holg.map((h) => ({
                     l: h.dn,
                     v: `+ ${h.mm} mm`,

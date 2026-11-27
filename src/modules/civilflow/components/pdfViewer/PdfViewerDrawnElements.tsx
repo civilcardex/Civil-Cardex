@@ -1,5 +1,5 @@
 /** Lista lateral "Elementos de red": agrupa lo dibujado de la red activa (bajantes, ramales, tributarios...), permite seleccionar cada uno y desplegar su detalle (longitud, diámetro, pendiente). Ej: clic en RAF1 aquí = clic sobre RAF1 en el plano. */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import PlanoEngine, { type ElementItem } from '../../lib/PlanoEngine/PlanoEngine.ts';
 
 interface PdfViewerDrawnElementsProps {
@@ -8,7 +8,6 @@ interface PdfViewerDrawnElementsProps {
   selectedId?: string;
   engineRef: React.MutableRefObject<PlanoEngine | null>;
   onEdit?: (button: HTMLButtonElement) => void;
-  onDelete: (id: string, label: string, onDeleted: () => void) => void;
 }
 
 const GROUP_ORDER = [
@@ -38,12 +37,8 @@ export default function PdfViewerDrawnElements({
   selectedId,
   engineRef,
   onEdit,
-  onDelete,
 }: PdfViewerDrawnElementsProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const heading = useRef<HTMLHeadingElement>(null);
-  const buttons = useRef(new Map<string, HTMLButtonElement>());
-  const [deleted, setDeleted] = useState<{ previous: ElementItem[]; index: number } | null>(null);
   const toggle = (id: string) => {
     setExpanded((prev) => {
       const n = new Set(prev);
@@ -70,20 +65,10 @@ export default function PdfViewerDrawnElements({
     ...GROUP_ORDER.filter((k) => groups.has(k)),
     ...[...groups.keys()].filter((k) => !(GROUP_ORDER as readonly string[]).includes(k)),
   ];
-  useEffect(() => {
-    if (!deleted || drawnElements === deleted.previous) return;
-    const next = Array.from(buttons.current.values())
-      .filter((button) => button.isConnected)
-      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
-    (next[Math.min(deleted.index, next.length - 1)] ?? heading.current)?.focus();
-    setDeleted(null);
-  }, [deleted, drawnElements]);
 
   return (
     <div style={{ padding: '10px 12px 8px', borderBottom: '1px solid #3a494a' }}>
       <h2
-        ref={heading}
-        tabIndex={-1}
         style={{
           fontFamily: "'Geist',monospace",
           fontSize: 12,
@@ -141,10 +126,6 @@ export default function PdfViewerDrawnElements({
                   >
                     <button
                       type="button"
-                      ref={(button) => {
-                        if (button) buttons.current.set(el.id, button);
-                        else buttons.current.delete(el.id);
-                      }}
                       aria-label={`Seleccionar ${el.label || el.id} (${el.tipo || el.type})`}
                       aria-current={el.id === selectedId ? 'true' : undefined}
                       onClick={() => {
@@ -239,20 +220,6 @@ export default function PdfViewerDrawnElements({
                             Editar
                           </button>
                         )}
-                        <button
-                          type="button"
-                          aria-label={`Borrar ${el.label || el.id}`}
-                          onClick={() => {
-                            const index = orderedKeys
-                              .flatMap((key) => groups.get(key) ?? [])
-                              .findIndex((item) => item.id === el.id);
-                            onDelete(el.id, el.label || el.id, () =>
-                              setDeleted({ previous: drawnElements, index }),
-                            );
-                          }}
-                        >
-                          Borrar
-                        </button>
                       </div>
                     )}
                     <button

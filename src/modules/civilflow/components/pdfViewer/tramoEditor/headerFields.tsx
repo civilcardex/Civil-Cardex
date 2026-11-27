@@ -8,6 +8,24 @@ import type {
   PlanoTextAnnotation,
 } from '../../../lib/PlanoEngine/PlanoState.ts';
 import { useTramoEditorContext, INPUT_50_STYLE, INPUT_STYLE, READONLY_STYLE } from './context.ts';
+import { numeroRociador } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
+
+/** Texto que se VE en Inicio/Final: si hay rociador en el extremo manda su ROC-N consecutivo
+ *  (ped. usuario 2026-11-27, antes ganaba lo digitado); sin rociador, el texto digitado.
+ *  El ROC-N es solo visual: nunca se guarda en ini/fin. */
+function vistaExtremo(valor: string | undefined, accesorio: string | undefined): string {
+  return numeroRociador(accesorio) || String(valor || '').trim();
+}
+
+/** Convierte lo que el usuario escribe sobre un ROC-N mostrado en texto puramente digitado. */
+function textoUsuario(raw: string, derivada: string | null): string {
+  const v = String(raw || '');
+  if (!derivada) return v;
+  if (v === derivada) return ''; // no cambió el valor autogenerado
+  if (derivada.startsWith(v)) return ''; // lo está borrando
+  if (v.startsWith(derivada)) return v.slice(derivada.length); // escribió a continuación
+  return v;
+}
 
 /** Cabecera del editor de tramos para un BAJANTE (columna vertical de drenaje): solo el campo
  *  de código, aplicado al elemento seleccionado del motor (ej: BAN1-P1). */
@@ -89,21 +107,23 @@ export function RectFuegoFields() {
       <button
         type="button"
         onClick={toggle}
+        className={marca ? 'dcm-quitar-definicion' : undefined}
         style={{
-          border: marca ? 'none' : '1.5px solid var(--rci, #f87171)',
-          background: marca ? 'var(--rci, #f87171)' : 'transparent',
-          color: marca ? '#fff' : 'var(--rci, #f87171)',
+          border: marca ? '1px solid var(--line)' : '1.5px solid var(--rci, #f87171)',
+          background: marca ? 'var(--bg3)' : 'transparent',
+          color: marca ? 'var(--txt2)' : 'var(--rci, #f87171)',
           borderRadius: 6,
           padding: '6px 12px',
           fontSize: 12,
           fontWeight: 600,
           cursor: 'pointer',
           width: '100%',
+          minBlockSize: 36,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: 7,
-          boxShadow: marca ? '0 2px 8px rgba(248,113,113,.35)' : 'none',
+          boxShadow: 'none',
         }}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
@@ -436,12 +456,19 @@ export function RamalHeaderFields() {
             Inicio
           </div>
           <input
-            value={selElement.ini || ''}
-            placeholder="— inicial —"
+            /* Con rociador el ROC-N es la identidad del extremo: se muestra de solo lectura. */
+            value={vistaExtremo(selElement.ini, selElement.accesorioInicio)}
+            placeholder="- inicial -"
             aria-label="Conexión de inicio"
+            readOnly={Boolean(numeroRociador(selElement.accesorioInicio))}
+            title={
+              numeroRociador(selElement.accesorioInicio)
+                ? 'Consecutivo automático del rociador (no editable)'
+                : undefined
+            }
             onChange={(e) => {
               if (engineRef.current) {
-                const v = e.target.value;
+                const v = textoUsuario(e.target.value, numeroRociador(selElement.accesorioInicio));
                 engineRef.current.updateSelected({ ini: v });
                 setSelElement({ ...selElement, ini: v });
               }
@@ -463,12 +490,19 @@ export function RamalHeaderFields() {
             Final
           </div>
           <input
-            value={selElement.fin || ''}
-            placeholder="— final —"
+            /* Ídem: ROC-N del rociador de fin, de solo lectura cuando existe. */
+            value={vistaExtremo(selElement.fin, selElement.accesorioFin)}
+            placeholder="- final -"
             aria-label="Conexión de fin"
+            readOnly={Boolean(numeroRociador(selElement.accesorioFin))}
+            title={
+              numeroRociador(selElement.accesorioFin)
+                ? 'Consecutivo automático del rociador (no editable)'
+                : undefined
+            }
             onChange={(e) => {
               if (engineRef.current) {
-                const v = e.target.value;
+                const v = textoUsuario(e.target.value, numeroRociador(selElement.accesorioFin));
                 engineRef.current.updateSelected({ fin: v });
                 setSelElement({ ...selElement, fin: v });
               }

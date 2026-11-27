@@ -4,6 +4,9 @@ import {
   crearRamalesParalelos,
   verificaSRociadores,
   renumeraRociadores,
+  alternarCirculosS,
+  circulosSVisibles,
+  ramalConRociadores,
 } from '../RCIAutoDraw.ts';
 import type { IPlanoEngineCore, PlanoRamal } from '../PlanoState.ts';
 
@@ -50,6 +53,18 @@ function ramalDe(id: string, pts: number[][]): PlanoRamal {
   } as PlanoRamal;
 }
 
+describe('círculos guía S', () => {
+  it('se pueden ocultar y volver a mostrar, repintando el visor', () => {
+    const eng = motorDe([]);
+    expect(circulosSVisibles(eng)).toBe(true);
+    expect(alternarCirculosS(eng)).toBe(false);
+    expect(circulosSVisibles(eng)).toBe(false);
+    expect(eng.render).toHaveBeenCalled();
+    expect(alternarCirculosS(eng)).toBe(true);
+    expect(circulosSVisibles(eng)).toBe(true);
+  });
+});
+
 describe('sembrarRociadores', () => {
   it('siembra ⌊L/S⌋+1 rociadores desde el inicio del trazo (extremo + accMed cada S)', () => {
     // 10 m con S = 2.5 m → rociador en 0, 2.5, 5, 7.5 (el de 10 caería sobre el fin) = 4.
@@ -63,6 +78,26 @@ describe('sembrarRociadores', () => {
     expect(r.accesorioInicio).toBe('rociador#1');
     const marcadores = Object.values(r.accMed || {}).filter((v) => /^rociador#/.test(v));
     expect(marcadores).toHaveLength(3);
+  });
+
+  it('con varios segmentos continúa por el SIGUIENTE con círculos de radio S (sin cortar en la esquina)', () => {
+    // Dos tramos de 10 m en L (horizontal + vertical). S = 2,5 m → 4 en cada tramo; el de
+    // 10 m cae en la esquina (vértice existente, no duplicado). Total = 1 inicio + 7 cuerpo.
+    const r = ramalDe('RRCI-L', [
+      [0, 0],
+      [755.9, 0],
+      [755.9, 755.9],
+    ]);
+    const eng = motorDe([r]);
+    const n = sembrarRociadores(eng, 'RRCI-L', 2.5);
+    expect(n).toBe(8);
+    expect(r.accesorioInicio).toBe('rociador#1');
+    const marcadores = Object.values(r.accMed || {}).filter((v) => /^rociador#/.test(v));
+    expect(marcadores).toHaveLength(7);
+    // La esquina [755.9,0] ya era vértice: lleva rociador (#4) sin duplicar el vértice.
+    expect(r.accMed?.accMed3).toBe('rociador#4');
+    // 3 vértices originales + 6 puntos nuevos (la esquina NO se duplica).
+    expect(r.pts).toHaveLength(9);
   });
 
   it('con accesorioInicio propio (ej: codo) el retorno NO cuenta un rociador fantasma', () => {
@@ -252,6 +287,143 @@ describe('crearRamalesParalelos', () => {
 import { chequeoMurosTrazo } from '../RCIAutoDraw.ts';
 
 describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
+  it('EXTREMOS vs muro perpendicular: se juzga SIN banda de 3·Dmuro (el ramal debe LLEGAR)', () => {
+    // Trazo horizontal y muro vertical lejos (10,58 m > 3·Dmuro): igual bloquea porque el
+    // extremo del trazo no llega a ≤ Dmuro del muro vertical más cercano (ped. 2026-11-27).
+    const eng = motorDe(
+      [],
+      [
+        {
+          id: 'GL-V',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [1200, 0],
+            [1200, 500],
+          ],
+        },
+      ],
+    );
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [0, 100],
+          [400, 100],
+        ],
+        1.7,
+      ),
+    ).toContain('10,58 m');
+    // Y simétrico: trazo VERTICAL vs muro horizontal lejano, con los extremos.
+    const eng2 = motorDe(
+      [],
+      [
+        {
+          id: 'GL-H',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 1200],
+            [800, 1200],
+          ],
+        },
+      ],
+    );
+    expect(
+      chequeoMurosTrazo(
+        eng2,
+        [
+          [400, 100],
+          [400, 800],
+        ],
+        1.7,
+      ),
+    ).toContain('5,29 m');
+  });
+
+  it('TODAS LAS DIRECCIONES: muro VERTICAL se juzga aunque el trazo sea horizontal', () => {
+    // (ped. usuario 2026-11-27: los muros inmediatamente más cercanos en CUALQUIER dirección
+    // se juzgan — antes solo se medían contra los muros PARALELOS a cada tramo.)
+    const eng = motorDe(
+      [],
+      [
+        {
+          id: 'GL-V',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [620, 0],
+            [620, 500],
+          ],
+        },
+      ],
+    );
+    // Trazo horizontal a 220 px (2,91 m) del muro vertical > Dmuro 1,7 → bloquea.
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [0, 100],
+          [400, 100],
+        ],
+        1.7,
+      ),
+    ).toContain('2,91 m');
+    // Cerca del muro (80 px = 1,06 m ≤ 1,7) → pasa.
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [0, 80],
+          [540, 80],
+        ],
+        1.7,
+      ),
+    ).toBeNull();
+  });
+
+  it('muro en L: la red existente NO excusa el muro vertical (el trazo debe LLEGAR)', () => {
+    // (ped. usuario 2026-11-27, captura): el extremo del ramal existente junto a la esquina
+    // NO tapa el muro vertical entero — el trazo nuevo debe llegar a ≤ Dmuro con los suyos.
+    const pts = [
+      [50, 80],
+      [380, 80],
+      [380, 290],
+    ];
+    const eng = motorDe(
+      [
+        ramalDe('RRCI1', [
+          [0, 250],
+          [550, 250],
+        ]),
+      ],
+      [
+        {
+          id: 'GL-L',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [620, 0],
+            [620, 500],
+          ],
+        },
+      ],
+    );
+    expect(chequeoMurosTrazo(eng, pts, 1.7)).toContain('3,17 m');
+    // Un trazo que SÍ llega (extremo a 1,19 m ≤ Dmuro del muro vertical) pasa.
+    expect(
+      chequeoMurosTrazo(
+        eng,
+        [
+          [50, 80],
+          [530, 80],
+          [530, 290],
+        ],
+        1.7,
+      ),
+    ).toBeNull();
+  });
   it('muro sin ramal cerca → mensaje con la distancia y el Dmuro', () => {
     // Escala 0.5: 1 m = 75,59 px. Muro en y=0; trazo nuevo en y=200 px (2,65 m). El trazado
     // NO está en engine.ramales: finishRamal corre ANTES del push (como en producción).
@@ -456,10 +628,10 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
     ).toBeNull();
   });
 
-  it('RED EXISTENTE como referencia: el trazo pegado al ramal ya dibujado pasa aunque esté lejos del muro', () => {
+  it('RED EXISTENTE lejana NO excusa: pegarse al ramal no sustituye la distancia al muro', () => {
     // Muro en y=0 y ramal rci existente en y=300 (a 3,97 m del muro). El trazo nuevo pegado
-    // AL RAMAL (y=310) queda a 4,10 m del muro pero a 0,13 m de la red: pasa (ped. usuario:
-    // los ramales que conectan con la red existente no bloquean por lejanía de muros).
+    // AL RAMAL (y=310) queda a 4,10 m del muro: la red cercana NO cubre ese muro, así que
+    // bloquea (ped. usuario: se comprueba el eje del muro, no la cercanía entre trazos).
     const eng = motorDe(
       [
         ramalDe('RRCI1', [
@@ -487,11 +659,58 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
       ],
       1.7,
     );
-    expect(err).toBeNull();
+    expect(err).toBeTruthy();
+    expect(err).toContain('4,10 m del muro más cercano');
   });
 
-  it('MÍNIMO: trazo pegado a un muro (< 0,10 m) → alerta aunque el Dmuro no aplique', () => {
-    // Muro en y=0; trazo a 3 px ≈ 0,04 m (< 0,10). Dmuro incluso null → la mínima aplica igual.
+  it('ramal multisegmento: el tramo VERTICAL lejos del muro vertical bloquea aunque el horizontal cumpla', () => {
+    // Muro inferior y=0, muro vertical x=620. El tramo horizontal va a 100 px (1,32 m del
+    // inferior → cumple) y llega hasta x=350; el tramo vertical queda a 270 px ≈ 3,57 m del
+    // muro vertical (dentro de la banda 3·Dmuro = 5,1 m) y sin ramal que lo cubra. Antes el
+    // ramal horizontal cercano al tramo lo excusaba y dejaba crear el trazo.
+    const eng = motorDe(
+      [
+        ramalDe('RRCI1', [
+          [0, 100],
+          [350, 100],
+        ]),
+      ],
+      [
+        {
+          id: 'GL-INF',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [0, 0],
+            [1000, 0],
+          ],
+        },
+        {
+          id: 'GL-VER',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [620, 0],
+            [620, 500],
+          ],
+        },
+      ],
+    );
+    const err = chequeoMurosTrazo(
+      eng,
+      [
+        [0, 100],
+        [350, 100],
+        [350, 350],
+      ],
+      1.7,
+    );
+    expect(err).toBeTruthy();
+    expect(err).toContain('3,57 m del muro más cercano');
+  });
+
+  it('MÍNIMO: trazo pegado a un muro (< 0,10 m) → alerta', () => {
+    // Muro en y=0; trazo a 3 px ≈ 0,04 m (< 0,10).
     const eng = motorDe(
       [],
       [
@@ -512,7 +731,7 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         [0, 3],
         [400, 3],
       ],
-      null,
+      1.7,
     );
     expect(err).toBeTruthy();
     expect(err).toContain('distancia mínima a muro es de 0,10 m');
@@ -545,7 +764,7 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
     expect(err).toContain('0,00 m');
   });
 
-  it('sin muros o sin Dmuro → null (no bloquea)', () => {
+  it('sin muros marcados no necesita S', () => {
     const eng = motorDe([
       ramalDe('RRCI1', [
         [0, 0],
@@ -585,6 +804,37 @@ describe('chequeoMurosTrazo (en vivo al terminar el trazo rci)', () => {
         1.7,
       ),
     ).toBeNull();
+  });
+});
+
+describe('ramalConRociadores (botón círculos S por ramal)', () => {
+  it('con rociadores en extremos o accMed → true; ramal vacío → false', () => {
+    const conRoc = ramalDe('RRCI1', [
+      [0, 0],
+      [100, 0],
+    ]);
+    conRoc.accMed = { accMed1: 'rociadorMontante#3' };
+    expect(ramalConRociadores(conRoc)).toBe(true);
+    const cabeza = ramalDe('RRCI2', [
+      [0, 0],
+      [100, 0],
+    ]);
+    cabeza.accesorioInicio = 'rociadorNF#4';
+    expect(ramalConRociadores(cabeza)).toBe(true);
+    expect(
+      ramalConRociadores(
+        ramalDe('RRCI3', [
+          [0, 0],
+          [100, 0],
+        ]),
+      ),
+    ).toBe(false);
+    const otro = ramalDe('RRCI4', [
+      [0, 0],
+      [100, 0],
+    ]);
+    otro.net = 'af';
+    expect(ramalConRociadores(otro)).toBe(false);
   });
 });
 

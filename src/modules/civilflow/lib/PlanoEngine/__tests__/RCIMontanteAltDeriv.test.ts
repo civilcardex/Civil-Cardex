@@ -74,6 +74,18 @@ function makeEngine(
 }
 
 describe('montante rci: altDeriv por defecto + código MRCI', () => {
+  it('no crea un montante si el material de proyecto no ofrece 4 pulgadas', () => {
+    const { engine, alerts } = makeEngine([], 'rci');
+    engine._ramalDefaults = {
+      material: 'CPVC SDR 13,5',
+      pendiente: 0,
+      diametro: '',
+      requiereMaterial: true,
+    };
+    handleMontanteDown(engine, 40, 0);
+    expect(engine.bajantes).toHaveLength(0);
+    expect(alerts).toHaveLength(1);
+  });
   it('creado en EXTREMO de ramal rci → nace con altDeriv 2.5, code MRCI1, id MRCI1_rci', () => {
     // RRCI1: el montante cae sobre pts[0] (extremo de arranque).
     const rrci1 = mkRamal('RRCI1', 'rci', [
@@ -89,6 +101,7 @@ describe('montante rci: altDeriv por defecto + código MRCI', () => {
     expect(mon?.code).toBe('MRCI1');
     expect(mon?.id).toBe('MRCI1_rci');
     expect(mon?.altDeriv).toBe(2.5);
+    expect(mon?.dNominal).toBe('4"');
     // El montante queda asociado al ramal (recibeDeIds + asocManual) como en af/ac.
     expect(mon?.recibeDeIds).toEqual(['RRCI1']);
   });

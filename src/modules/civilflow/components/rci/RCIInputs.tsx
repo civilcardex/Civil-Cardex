@@ -11,12 +11,12 @@ import { useEffect, useState } from 'react';
 import { useMediaQuery } from '../../../../hooks/useMediaQuery.ts';
 import { SubTabsRci, useNavRci, type RciCtx, type SubItemRci } from './RCIUI.tsx';
 import { GrupoTabla } from './RCIGroupTable.tsx';
-import { GRUPOS, ICONO_SUB, NOTA_SUB, notaDeps } from './RCIInputDefs.ts';
+import { GRUPOS, ICONO_SUB, notaDeps } from './RCIInputDefs.ts';
 import { SUBS_POR_TAB } from '../../utils/rci/RCIRowsModelExtras.ts';
-import { TablaCmat } from './RCICmatTable.tsx';
 import { TablaEsp } from './RCISpecialAccTable.tsx';
 import { ModalClases } from './RCIClassesModal.tsx';
 import { TablaCuarto } from './RCIRoomTable.tsx';
+import { PumpRoomDiagram } from './RCIPumpTank.tsx';
 
 const SUB_POR_ID = new Map(SUBS_POR_TAB.entradas.map((s) => [s.id, s]));
 const SUBS_AJUSTADAS = new Set(['siamesa', 'seleccion', 'succion', 'jockey', 'tanque']);
@@ -43,6 +43,7 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
   };
 
   const [clasesAbiertas, setClasesAbiertas] = useState(false);
+  const [succionAbierta, setSuccionAbierta] = useState(false);
   /* Escape cierra el modal (listener a nivel documento, patrón HelpPanel). */
   useEffect(() => {
     if (!clasesAbiertas) return;
@@ -66,8 +67,6 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
          *  esa sub vuelve al alineado a la izquierda original (ped. usuario posterior). */}
         <section style={{ padding: '2px 0 0' }}>
           {sub === 'tuberia' ? (
-            /* Tubería y mangueras AL LADO del coeficiente C de Hazen-Williams; el catálogo de
-             * accesorios especiales, debajo. Sin centrar: como estaba antes (ped. usuario). */
             <>
               <div
                 style={{
@@ -79,7 +78,6 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
               >
                 <GrupoTabla
                   titulo={SUB_POR_ID.get(sub)?.l || sub}
-                  nota={NOTA_SUB[sub]}
                   icono={ICONO_SUB[sub]}
                   campos={GRUPOS[sub] || []}
                   estado={estado}
@@ -89,9 +87,6 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                   depNota={notaDeps(GRUPOS[sub] || [])}
                   letraGrande
                 />
-                <TablaCmat estado={estado} editar={editar} />
-              </div>
-              <div style={{ marginTop: 16 }}>
                 <TablaEsp estado={estado} editar={editar} />
               </div>
             </>
@@ -110,7 +105,6 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 anchoContenido={anchoContenido}
                 anchoPreferido={sub === 'succion' ? 1200 : undefined}
                 titulo={SUB_POR_ID.get(sub)?.l || sub}
-                nota={NOTA_SUB[sub]}
                 icono={ICONO_SUB[sub]}
                 campos={GRUPOS[sub] || []}
                 estado={estado}
@@ -120,6 +114,18 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
                 depNota={notaDeps(GRUPOS[sub] || [])}
                 compacta={portatil && !anchoContenido}
                 portatil={portatil}
+                extra={
+                  sub === 'succion' ? (
+                    <button
+                      type="button"
+                      className="rci-scheme-link"
+                      aria-label="Ver esquema del cuarto de bombas"
+                      onClick={() => setSuccionAbierta(true)}
+                    >
+                      Ver esquema
+                    </button>
+                  ) : undefined
+                }
               />
               {sub === 'seleccion' ? <TablaCuarto estado={estado} editar={editar} /> : null}
             </div>
@@ -127,6 +133,9 @@ export default function RciInputs({ ctx }: { ctx: RciCtx }) {
         </section>
       </SubTabsRci>
       {clasesAbiertas ? <ModalClases cerrar={() => setClasesAbiertas(false)} /> : null}
+      {succionAbierta && sub === 'succion' ? (
+        <PumpRoomDiagram modo="suc" onClose={() => setSuccionAbierta(false)} />
+      ) : null}
     </>
   );
 }

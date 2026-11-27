@@ -12,6 +12,7 @@ import { canJoinTributario, puntoEnCaja } from './junctionAutoSplit.ts';
 import { cancelRamal, finishArea, reverseRamalEndpoints } from './drawingUtils.ts';
 import { commitOpenGuide } from './guideLines.ts';
 import { isLdesvioRamalId } from '../../utils/crossFloorStorage.ts';
+import { clasificarTeeDibujo } from './intersectionTrim.ts';
 
 /** Las herramientas del visor: sel (seleccionar), line (tubería), dim (cota), text, baj (bajante), mon (montante), pan, area, erase, segdel/delm (borrar segmento/montante), red_pub, cont (contador), calent, canal, caja, gab (gabinete) y guide (línea guía). */
 export type ToolType =
@@ -62,6 +63,7 @@ export function setTool(engine: IPlanoEngineCore, t: ToolType): void {
  *  no permita (tolerancia 0.5°). */
 export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number): void {
   let pt: { x: number; y: number } = { x: px, y: py };
+  let conectandoTee = false;
   if (!engine.activeRamal) {
     // Feature orig. #5: el padre de un tributario se autodetecta al conectar el trazo — ya no
     // se exige seleccionar padre manualmente.
@@ -545,7 +547,23 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
 
-    // Chequear intersección de segmentos con ramales existentes de la misma red
+    const propuesta = {
+      ...engine.activeRamal,
+      id: engine.activeRamal.id ?? '',
+      piso: String(engine.nivelActual?.n ?? ''),
+      pts: [...engine.activeRamal.pts, [pt.x, pt.y]],
+    };
+    const union = clasificarTeeDibujo(propuesta, engine.ramales, (p) =>
+      puntoEnCaja(engine, p, propuesta.net),
+    );
+    if (union.ambigua) {
+      engine.triggerAlert(
+        'Conexión en tee ambigua',
+        'El punto toca más de dos trazos. Conecta a un solo ramal.',
+      );
+      return;
+    }
+    // Una tee confirmable no es un cruce. Los demás encuentros se validan normalmente.
     {
       const ppts = engine.activeRamal.pts;
       const lastIdx = ppts.length - 1;
@@ -554,6 +572,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         const segEnd = [pt.x, pt.y] as number[];
         for (const r of engine.ramales) {
           if (r.net !== engine.activeRamal.net) continue;
+          if (r.piso && propuesta.piso && r.piso !== propuesta.piso) continue;
           if (r.id === engine.activeRamal.id) continue;
           if (!r.pts || r.pts.length < 2) continue;
           for (let si = 0; si < r.pts.length - 1; si++) {
@@ -561,6 +580,13 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
             // una caja de la red (los trazos solo entran a ella, no se conectan entre sí)
             // no dispara la alerta.
             const hit = segmentIntersectionPoint(segStart, segEnd, r.pts[si], r.pts[si + 1]);
+            if (
+              hit &&
+              union.tee &&
+              (r.id === union.tee.rama.id || r.id === union.tee.tronco.id) &&
+              Math.hypot(hit[0] - union.tee.punto[0], hit[1] - union.tee.punto[1]) < 0.5
+            )
+              continue;
             if (hit && !puntoEnCaja(engine, hit, engine.activeRamal.net)) {
               // Un tributario que cruza cualquier ramal distinto a su padre es la violación de
               // padre, no un cruce genérico — este chequeo geométrico corrió ANTES de que el
@@ -597,6 +623,7 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
         }
       }
     }
+    conectandoTee = !!union.tee;
     engine.activeRamal.pts.push([pt.x, pt.y]);
     engine.activeRamal.totalL = calculateRamalLength(engine.activeRamal.pts, engine);
 
@@ -633,7 +660,8 @@ export function handleLineDown(engine: IPlanoEngineCore, px: number, py: number)
       }
     }
   }
-  engine._emitStatus(_statusMsg(engine));
+  const estado = _statusMsg(engine);
+  engine._emitStatus(conectandoTee ? `Conexión en tee · ${estado}` : estado);
   engine.render();
 }
 

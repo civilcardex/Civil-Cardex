@@ -120,10 +120,14 @@ export function dragUpRamalBody(engine: IPlanoEngineCore): void {
       /* Distancia de ramales a muros EN VIVO también al MOVER un trazo ya dibujado (ped.
          usuario): si el ramal movido deja un muro de su BANDA (a ≤ 2·Dmuro de él) a >
          Dmuro del ramal más cercano, el movimiento se revierte con la alerta. El ramal ya
-         está movido en engine.ramales — chequeoMurosTrazo evalúa el estado post-movimiento. */
+         está movido en engine.ramales — chequeoMurosTrazo evalúa el estado post-movimiento.
+         El chequeo de DMR vive SOLO en el dibujo (ped. usuario 2026-11-27). */
       const errMuro = chequeoMurosTrazo(engine, ram.pts, engine.dmuroRci);
       if (errMuro) {
-        engine.triggerAlert('Distancia a muro', errMuro);
+        engine.triggerAlert(
+          engine.dmuroRci == null ? 'Verificación de DMR pendiente' : 'Distancia a muro',
+          errMuro,
+        );
         if (origPts) {
           ram.pts = origPts;
           engine._markDirty();

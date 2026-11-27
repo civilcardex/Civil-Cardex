@@ -1,6 +1,6 @@
-/** Campos de la sub-pestaña CLASIFICACIÓN: riesgo NFPA, tipo de sistema, almacenamiento y
- *  construcción del techo — lo que decide el área de diseño. Ej: clas.almacen «Sí» exige
- *  Riesgo ordinario G2 como mínimo en cada piso. */
+/** Campos de la sub-pestaña CLASIFICACIÓN: tipo de sistema y construcción del techo — lo que
+ *  decide el área de diseño. El ALMACENAMIENTO vive por piso en Tipologías → Pisos del edificio
+ *  (columnas Almacenamiento/Zonas; ped. 2026-11-27). Ej: sistema «Seco» suma 30 % al área. */
 import type { DefCampo } from '../RCIGroupTable.tsx';
 import { CONSTR_OPCIONES, SINO } from '../../../utils/rci/RCIRowsModel.ts';
 
@@ -14,22 +14,9 @@ const CONSTR_PARES: readonly (readonly [string, string])[] = [
 ];
 
 export const GRUPO_CLASIFICACION: DefCampo[] = [
-  {
-    path: 'clas.almacen',
-    lbl: '¿La ocupación incluye almacenamiento?',
-    opts: SINO,
-    ayu: 'Con almacenamiento, el riesgo mínimo por piso es Riesgo ordinario G2',
-  },
-  {
-    path: 'clas.arrumeH',
-    lbl: 'Altura máxima de arrume',
-    num: true,
-    uni: 'm',
-    ayu: '> 3,66 m requiere NFPA 13 cap. 20–25',
-    dep: 'clas.almacen',
-  },
-  /* La fila global «Clasificación de riesgo» se retiró (ped. usuario 2026-11-20): el riesgo
-   *  se define POR PISO en Tipologías → Pisos del edificio (columna Riesgo NFPA 13). El motor
+  /* Sin filas de almacenamiento (ped. 2026-11-27): la decisión es POR PISO en Tipologías →
+   *  Pisos del edificio (columnas Almacenamiento y Zonas). La fila global «Clasificación de
+   *  riesgo» también se retiró (ped. 2026-11-20): el riesgo se define por piso y el motor
    *  cae a Riesgo leve cuando no hay ninguno (criteria.ts HZ[riesgo] || leve). */
   {
     path: 'clas.sistema',

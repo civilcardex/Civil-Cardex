@@ -129,4 +129,4 @@ export function checks(st: RciState, R: RciResult, dibujo?: DibujoPiso): Verific
   return L;
 }
 
-export type { DibujoPiso } from './checks/helpers';
+export type { DibujoPiso, CentroRociador } from './checks/helpers';

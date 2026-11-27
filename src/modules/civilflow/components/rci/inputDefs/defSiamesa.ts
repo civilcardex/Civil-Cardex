@@ -95,6 +95,7 @@ export const GRUPO_SIAMESA: DefCampo[] = [
     path: 'sia.cierre',
     lbl: '¿Hay válvula de cierre entre la siamesa y el sistema?',
     opts: SINO,
+    soloLectura: true,
     ayu: 'NFPA 14 no la permite',
     dep: 'local.exigeSP',
   },

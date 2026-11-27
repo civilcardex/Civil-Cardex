@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GRUPOS, notaDeps, NOTA_SUB, ICONO_SUB, FILAS_CLASE } from '../RCIInputDefs.ts';
+import { GRUPOS, notaDeps, ICONO_SUB, FILAS_CLASE } from '../RCIInputDefs.ts';
 
 /* Test de CARACTERIZACIÓN de RCIInputDefs (escrito ANTES del split en inputDefs/): congela el
  * total de defs por sub-pestaña, una def resuelta POR PAÍS (la ayuda lee perfilRciDe) y defs
@@ -53,17 +53,17 @@ describe('RCIInputDefs — caracterización', () => {
     const counts = Object.fromEntries(CATEGORIAS.map((k) => [k, GRUPOS[k].length]));
     expect(counts).toEqual({
       normativa: 15,
-      clasificacion: 7,
+      clasificacion: 5,
       tuberia: 5,
       montantes: 11,
       siamesa: 14,
       seleccion: 7,
       succion: 15,
       jockey: 1,
-      tanque: 1,
+      tanque: 2,
     });
     const total = Object.values(counts).reduce((a: number, b: number) => a + b, 0);
-    expect(total).toBe(76);
+    expect(total).toBe(75);
   });
 
   it('cada path aparece UNA vez en todo GRUPOS', () => {
@@ -141,16 +141,7 @@ describe('RCIInputDefs — caracterización', () => {
     expect(notaDeps(GRUPOS.jockey)).toBe('');
   });
 
-  it('NOTA_SUB e ICONO_SUB congelados', () => {
-    expect(NOTA_SUB).toEqual({
-      normativa: 'No interviene en los cálculos',
-      succion:
-        'NPSH (Net Positive Suction Head): energía disponible en la succión para evitar cavitación',
-      montantes:
-        'Clase y caudal se habilitan si el código exige gabinetes; el montante aplica siempre',
-      siamesa:
-        'Se habilita si el código exige montantes; se supone conectada en la base del montante',
-    });
+  it('ICONO_SUB congelado', () => {
     expect(ICONO_SUB).toEqual({
       normativa: '/iconos/normativa_local.webp',
       clasificacion: '/iconos/clasificacion_riesgo.webp',
