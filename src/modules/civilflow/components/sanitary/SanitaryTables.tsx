@@ -5,6 +5,7 @@
  * Ej: fila RS1-P1 con 4 UD, K 0.8, Q 0.38 L/s, diámetro diseñado 2" y chequeo "Ok".
  */
 import { rangoSanTxt, ftTxt } from '../../constants/countryStandards';
+import TableScroll from '../shared/TableScroll.tsx';
 import EmptyRow from '../shared/EmptyRow.tsx';
 import { SanitaryTableRow } from './sanitaryTableRow.tsx';
 import type { SanRow } from '../../utils/sanitaryRows.ts';
@@ -52,7 +53,7 @@ export default function SanitaryTables({
     [r.chequeoV, r.chequeoYn, r.chequeoFT, r.chequeoS].some((c) => c?.startsWith('NO CUMPLE')),
   ).length;
   return (
-    <div className="scroll-top san-pad-16">
+    <TableScroll label="Diseño de red sanitaria" className="san-pad-16">
       <div className="scroll-inner">
         <div className="sr-only" role="status" aria-live="polite">
           {`Red sanitaria: ${sanRows.length} tramos, ${noCumple} con chequeo NO CUMPLE`}
@@ -305,6 +306,6 @@ export default function SanitaryTables({
           </tbody>
         </table>
       </div>
-    </div>
+    </TableScroll>
   );
 }

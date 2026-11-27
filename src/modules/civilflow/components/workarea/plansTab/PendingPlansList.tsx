@@ -98,7 +98,7 @@ export function ListaPendientes(props: ListaPendientesProps) {
           ) : (
             <>
               <div style={{ fontSize: 24, opacity: 0.3 }}>&#x1F4D0;</div>
-              <span>Arrastra PDFs aquí o haz clic para subir varios planos</span>
+              <span>Arrastra PDFs aquí o haz clic para subir uno o varios planos</span>
             </>
           )}
         </button>

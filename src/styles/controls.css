@@ -171,9 +171,149 @@ input[type='number'].ni {
   align-items: flex-start;
 }
 
+.info-gral {
+  container: cf-info / inline-size;
+}
+
+.cf-info-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-content: start;
+  align-items: start;
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.cf-info-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-inline-size: 0;
+}
+
+.cf-info-active {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+@container cf-info (min-width: 32rem) {
+  .cf-info-settings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container cf-info (min-width: 64rem) {
+  .cf-info-layout {
+    grid-template-columns: clamp(260px, 24%, 360px) minmax(0, 1fr);
+  }
+}
+
+@container cf-info (min-width: 78rem) {
+  .cf-info-settings {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.cf-info-guide-body {
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--txt2);
+}
+
+.cf-info-guide-body ol {
+  list-style: decimal;
+  margin: 0;
+  padding-inline-start: 1.45em;
+}
+.cf-info-guide-body li + li {
+  margin-block-start: 10px;
+}
+.cf-info-guide-note {
+  margin-block: 6px 0;
+  padding: 5px 8px;
+  border-inline-start: 2px solid var(--txt3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cf-new-project {
+  display: grid;
+  gap: 8px;
+}
+
+.cf-new-project :is(input, select) {
+  min-block-size: 36px;
+  inline-size: 100%;
+  margin: 0;
+}
+
+.cf-new-project :is(input, select)[aria-invalid='true'] {
+  border-color: var(--bad, #ff9c93);
+}
+
+.cf-form-error {
+  color: var(--bad, #ff9c93);
+}
+
+.cf-field-error {
+  margin: -4px 0 2px;
+  font-size: 0.8125rem;
+}
+
+.cf-project-field-error {
+  margin: 3px 0 2px;
+  color: var(--err);
+  font-size: 0.75rem;
+}
+
+.cf-depth-error {
+  margin: 6px 8px;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.rci-input-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-inline-start: auto;
+}
+/* «Ver esquema» (ped. 2026-11-27: ligeramente más llamativo que un subrayado gris). */
+.rci-scheme-link {
+  background: rgba(37, 99, 235, 0.14);
+  border: 1px solid rgba(37, 99, 235, 0.55);
+  border-radius: var(--r, 6px);
+  min-block-size: 24px;
+  padding: 3px 12px;
+  color: var(--acc2, var(--acc, #3b82f6));
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+.rci-scheme-link:hover {
+  background: rgba(37, 99, 235, 0.28);
+  border-color: var(--acc, #3b82f6);
+}
+@media (any-pointer: coarse) {
+  .rci-scheme-link {
+    min-block-size: 44px;
+  }
+}
+
 .viewer-plan-steps button,
-.viewer-drawing-actions button,
-.viewer-drawing-actions details {
+.viewer-drawing-actions button {
   border: 1px solid var(--line, #52676e);
   border-radius: 4px;
   padding: 4px 8px;
@@ -202,13 +342,30 @@ input[type='number'].ni {
 .viewer-coarse-action {
   display: none;
 }
-.viewer-drawing-actions form {
-  display: grid;
-  gap: 4px;
-  max-width: 14rem;
+.viewer-drawing-actions .viewer-trace-action {
+  min-block-size: 24px;
+  min-inline-size: 24px;
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
-.viewer-drawing-actions input {
-  width: 100%;
+.viewer-trace-action span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-inline-size: 6em;
+  min-block-size: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--line, #52676e);
+  border-radius: 4px;
+  background: var(--surface, #1b2631);
+  font-size: 13px;
+  line-height: 1.25;
+}
+.viewer-trace-action:focus-visible {
+  outline: 2px solid var(--txt);
+  outline-offset: 2px;
 }
 
 @media (any-pointer: coarse) {
@@ -216,13 +373,13 @@ input[type='number'].ni {
     min-height: 48px;
   }
   .viewer-plan-control,
-  .viewer-drawing-actions button,
-  .viewer-drawing-actions summary {
+  .viewer-drawing-actions button {
     min-width: 44px;
     min-height: 44px;
   }
-  .viewer-drawing-actions summary {
-    align-content: center;
+  .viewer-drawing-actions .viewer-trace-action {
+    min-block-size: 48px;
+    min-inline-size: 44px;
   }
   .viewer-coarse-action {
     display: inline-block;

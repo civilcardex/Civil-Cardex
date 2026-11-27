@@ -11,6 +11,7 @@ import type { RejFila } from './rejillasShared.ts';
 import type { OverridesMap, RejOverride } from './rejillasStorage.ts';
 import { useStickyThead2Offset } from '../shared/useStickyThead2Offset';
 import { TablaTipologiasConfirmDel, TablaTipologiasHeader } from './typologiesChrome.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 
 export function TablaTipologias({
   filas,
@@ -58,9 +59,7 @@ export function TablaTipologias({
   // Los aparatos viven en SUBFILAS bajo el sector (Aparato/UN/P/Tipo) — una por aparato.
   // Sub-campo apilado: etiqueta mini + control.
   return (
-    // Solo scroll horizontal aquí: el scroll VERTICAL es el del contenido de la tarjeta
-    // (un solo scroller — el tope propio de la tabla daba doble scroll, orig. usuario).
-    <div className="rt-scroll-x">
+    <TableScroll label="Tabla de rejillas por sector" className="rt-scroll-x">
       {borrandoSub && (
         <div role="status" className="rt-borrar-banner">
           Haz clic en la subfila del aparato a eliminar
@@ -535,6 +534,6 @@ export function TablaTipologias({
           }}
         />
       )}
-    </div>
+    </TableScroll>
   );
 }

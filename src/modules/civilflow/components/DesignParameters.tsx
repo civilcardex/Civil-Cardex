@@ -2,14 +2,17 @@
  *  servicio, presiones de prueba y catálogos que alimentan las tablas de cada red.
  *  Ej: subir la presión mínima de rci (Red Contra Incendio) endurece el chequeo de todos sus tramos. */
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { useProject } from '../context/ProjectContext.tsx';
 import { useApparatus, type ApsItem } from '../context/ApparatusContext.tsx';
 import { NORM_COL, REDES_MAT, CAT_APS, APARATOS_DEF } from '../constants';
+import { materialInicialRed } from '../constants/defaults.ts';
 import { GasCatalogCard } from './designParameters/GasCatalogCard.tsx';
 import { fmt } from '../utils/formatUtils.ts';
 import { LazyDecimalInput } from './shared/LazyDecimalInput.tsx';
 import EditButton from './shared/EditButton.tsx';
+import { getActiveProyectoId } from '../services/storageService.ts';
+import { saveMaterialDeRed } from '../services/projectDataService.ts';
 
 interface NumericInputProps {
   value: number;
@@ -66,67 +69,70 @@ function NumericInput({
   );
 }
 
-interface RedMat {
-  id: string;
-  lbl: string;
-  mat: string;
-  prof: number;
-  fixed?: boolean;
-  opts?: string[];
-}
-
 export default function BaseDatos({ redes }: { redes: Set<string> }) {
-  const navigate = useNavigate();
-  const { mats, setMats, profs, setProfs } = useProject();
+  const { proy, setP, pisos, profs, setProfs } = useProject();
   const { aps, setAps } = useApparatus();
   const [profTexts, setProfTexts] = useState<Record<string, string>>({});
+  const [materialDraft, setMaterialDraft] = useState<Record<string, string>>({});
 
-  const activeRedes = REDES_MAT.filter((r) => redes?.has(r.id));
-
-  const matMap = Object.fromEntries(activeRedes.map((r: RedMat) => [r.id, r]));
+  const activeRedes = REDES_MAT.filter(
+    (r) => redes.has(r.id) || (r.id === 'san' && redes.has('vent')),
+  );
   const merged = activeRedes.map((r) => ({
     ...r,
     // Ventilación comparte material/profundidad con sanitaria (decisión usuario): una fila
     // «Sanitaria/Ventilación» — el set de material abajo escribe ambas claves.
     lbl: r.id === 'san' ? 'Sanitaria/Ventilación' : r.lbl,
-    matSel: (mats[r.id] && mats[r.id][0]?.val) || r.mat,
+    matSel:
+      materialDraft[r.id] ??
+      materialInicialRed(r.id, String(proy[`mat_${r.id}` as keyof typeof proy] ?? '')),
     prof: profs.find((p) => p.id === r.id)?.prof ?? r.prof,
   }));
 
-  const getOpts = (r: RedMat) =>
-    r.opts || (mats[r.id] && mats[r.id].length > 0 ? mats[r.id].map((o) => o.val) : [r.mat]);
-
-  const setMatSel = (redId: string, newVal: string) => {
-    setMats((prev) => {
-      const apply = (m: typeof prev, rid: string) => {
-        const list = m[rid] || [];
-        return list.length === 0
-          ? { ...m, [rid]: [{ id: rid + '_' + Date.now(), val: newVal }] }
-          : { ...m, [rid]: [{ ...list[0], val: newVal }, ...list.slice(1)] };
-      };
-      // Sanitaria/Ventilación comparten material: san escribe también vent.
-      const next = apply(prev, redId);
-      return redId === 'san' ? apply(next, 'vent') : next;
-    });
-  };
-
-  const setProf = (redId: string, v: number) => {
-    setProfs((prev) => {
-      const ix = prev.findIndex((p) => p.id === redId);
-      if (ix < 0)
-        return [
-          ...prev,
-          {
-            id: redId,
-            red: matMap[redId]?.lbl || redId,
-            col: (NORM_COL as Record<string, string>)[redId] || 'var(--txt2)',
-            prof: v,
+  const cotas = merged.map((r) => {
+    const raw = profTexts[r.id]?.trim().replace(',', '.') ?? String(r.prof);
+    return { ...r, valor: /^-?(?:\d+(?:\.\d*)?|\.\d+)$/.test(raw) ? Number(raw) : NaN };
+  });
+  const duplicadas = new Map<number, string[]>();
+  for (const c of cotas) {
+    if (!Number.isFinite(c.valor)) continue;
+    const cota = Number(c.valor.toFixed(2));
+    duplicadas.set(cota, [...(duplicadas.get(cota) ?? []), c.lbl]);
+  }
+  const conflictos = [...duplicadas].filter(([, nombres]) => nombres.length > 1);
+  const cotasInvalidas = cotas.some((c) => !Number.isFinite(c.valor));
+  const confirmarCotas = () => {
+    if (!isEditingMateriales) {
+      setIsEditingMateriales(true);
+      return;
+    }
+    if (cotasInvalidas || conflictos.length) return;
+    const proyectoId = getActiveProyectoId();
+    for (const [red, material] of Object.entries(materialDraft)) {
+      setP(`mat_${red}`, material);
+      if (proyectoId && pisos.length === 0) void saveMaterialDeRed(proyectoId, red, material);
+    }
+    if (Object.keys(profTexts).length) {
+      setProfs((prev) => {
+        const next = new Map(prev.map((p) => [p.id, p]));
+        for (const c of cotas) {
+          if (profTexts[c.id] === undefined) continue;
+          next.set(c.id, {
+            red: c.lbl,
+            col: (NORM_COL as Record<string, string>)[c.id] || 'var(--txt2)',
             norma: '',
             nota: '',
-          },
-        ];
-      return prev.map((p) => (p.id === redId ? { ...p, prof: v } : p));
-    });
+            ...next.get(c.id),
+            id: c.id,
+            prof: Number(c.valor.toFixed(2)),
+          });
+        }
+        return [...next.values()];
+      });
+    }
+    setProfTexts({});
+    setMaterialDraft({});
+    setIsEditingMateriales(false);
   };
 
   const apsMap = Object.fromEntries(CAT_APS.map((a) => [a.id, a]));
@@ -207,9 +213,17 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
             </h3>
             <div className="dp-row-auto">
               <span className="dp-fs12 card-s">{activeRedes.length} redes activas</span>
-              <EditButton edit={isEditingMateriales} setEdit={setIsEditingMateriales} />
+              <EditButton edit={isEditingMateriales} setEdit={confirmarCotas} />
             </div>
           </div>
+          {(conflictos.length > 0 || cotasInvalidas) && (
+            <p id="cf-depth-error" role="alert" className="cf-form-error cf-depth-error">
+              {cotasInvalidas ? 'Ingresa una cota válida en cada red. ' : ''}
+              {conflictos
+                .map(([cota, nombres]) => `${nombres.join(' y ')} coinciden en ${fmt(cota, 2)} m.`)
+                .join(' ')}
+            </p>
+          )}
           <div className="dp-scroll-xy">
             <table className="dp-fs12 tbl">
               <caption className="sr-only">Materiales y profundidad de instalación por red</caption>
@@ -244,7 +258,7 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                 </tr>
               </thead>
               <tbody>
-                {merged.map((r, ix) => {
+                {cotas.map((r, ix) => {
                   const isLast = ix === merged.length - 1;
                   return (
                     <tr
@@ -261,17 +275,31 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                       </td>
                       <td className="dp-pad-3x">
                         {r.fixed ? (
-                          <span className="dp-mat-fixed">{r.mat}</span>
+                          <span className="dp-mat-fixed">
+                            {r.id !== 'san'
+                              ? r.mat
+                              : redes.has('vent')
+                                ? redes.has('san')
+                                  ? 'PVC-S / PVC-V'
+                                  : 'PVC-V'
+                                : r.mat}
+                          </span>
                         ) : (
                           <select
-                            aria-label="Seleccionar material"
+                            aria-label={`Material de ${r.lbl}`}
                             disabled={!isEditingMateriales}
                             className="dp-ghost dp-fade"
                             value={r.matSel}
-                            onChange={(e) => setMatSel(r.id, e.target.value)}
+                            onChange={(e) => {
+                              const material = e.target.value;
+                              setMaterialDraft((prev) => ({ ...prev, [r.id]: material }));
+                            }}
                           >
-                            {getOpts(r).map((o: string, i: number) => (
-                              <option key={i} value={o} className="dp-light">
+                            <option value="" disabled>
+                              Selecciona un material
+                            </option>
+                            {r.opts?.map((o) => (
+                              <option key={o} value={o} className="dp-light">
                                 {o}
                               </option>
                             ))}
@@ -284,43 +312,27 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
                           disabled={!isEditingMateriales}
                           inputMode="decimal"
                           className="ni dp-w65 dp-fade"
-                          aria-label="Profundidad"
+                          aria-label={`Profundidad de ${r.lbl}`}
+                          aria-invalid={
+                            !Number.isFinite(r.valor) ||
+                            (duplicadas.get(Number(r.valor.toFixed(2)))?.length ?? 0) > 1
+                          }
+                          aria-describedby={
+                            !Number.isFinite(r.valor) ||
+                            (duplicadas.get(Number(r.valor.toFixed(2)))?.length ?? 0) > 1
+                              ? 'cf-depth-error'
+                              : undefined
+                          }
                           data-editing={isEditingMateriales ? 'true' : 'false'}
                           value={
-                            profTexts[r.id] !== undefined
-                              ? profTexts[r.id]
-                              : r.prof !== undefined && r.prof !== null
-                                ? String(r.prof)
-                                : '0'
+                            profTexts[r.id] !== undefined ? profTexts[r.id] : r.prof.toFixed(2)
                           }
                           onChange={(e) => {
-                            const raw = e.target.value.replace(',', '.');
-                            const cleaned = raw.replace(/[^0-9.-]/g, '').replace(/(?!^)-/g, '');
-                            setProfTexts((prev) => ({ ...prev, [r.id]: cleaned }));
+                            const raw = e.target.value;
+                            setProfTexts((prev) => ({ ...prev, [r.id]: raw }));
                           }}
                           onFocus={(e) => {
-                            setProfTexts((prev) => {
-                              if (prev[r.id] !== undefined) return prev;
-                              const cur =
-                                r.prof !== undefined && r.prof !== null ? String(r.prof) : '0';
-                              return { ...prev, [r.id]: cur };
-                            });
                             e.target.select();
-                          }}
-                          onBlur={() => {
-                            const v = profTexts[r.id];
-                            if (v === undefined) return;
-                            if (v === '' || v === '-') {
-                              setProf(r.id, 0);
-                            } else {
-                              const n = parseFloat(v);
-                              setProf(r.id, Number.isFinite(n) ? n : 0);
-                            }
-                            setProfTexts((prev) => {
-                              const next = { ...prev };
-                              delete next[r.id];
-                              return next;
-                            });
                           }}
                           onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                             if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
@@ -333,22 +345,17 @@ export default function BaseDatos({ redes }: { redes: Set<string> }) {
               </tbody>
             </table>
           </div>
-          <button
-            type="button"
-            onClick={() => navigate('/catalogomaestro')}
-            className="dp-cta"
-            title="Ver catálogo completo de materiales, diámetros y coeficientes"
-          >
+          <Link to="/catalogomaestro" className="dp-cta">
             <img
               src="/iconos_civilflow/parametros_de_diseno/catalogo_maestro.webp"
-              alt="Catálogo maestro"
+              alt=""
               width={18}
               height={18}
               className="dp-icon-18"
               loading="lazy"
-            />{' '}
+            />
             Catálogo maestro
-          </button>
+          </Link>
         </section>
 
         <section className="card dp-col-cut0" data-tour="datos-aparatos">

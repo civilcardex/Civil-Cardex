@@ -42,6 +42,39 @@ export function puntoEnPoligono(p: number[], poly: number[][]): boolean {
   return c;
 }
 
+/** ¿Los segmentos AB y CD se cortan de verdad (no solo comparten un extremo)? Se usa para
+ *  separar el CRUCE tubería–muro de la distancia mínima rociador–muro (NFPA 13-2025 §9.5.3).
+ *  Ej: tubería horizontal en y=0 y muro vertical x=2 → true. */
+export function segmentosSeCruzan(a: number[], b: number[], c: number[], d: number[]): boolean {
+  const cross = (p: number[], q: number[], r: number[]): number =>
+    (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  const c1 = cross(a, b, c);
+  const c2 = cross(a, b, d);
+  const c3 = cross(c, d, a);
+  const c4 = cross(c, d, b);
+  const eps = 1e-9;
+  if (Math.abs(c1) < eps && Math.abs(c2) < eps) {
+    /* H-09 (remediación 2026-11-27): colineales — cruce solo con SOLAPE de longitud positiva
+     * (el contacto en un punto, incluido compartir un extremo, NO cruza). Se mide el solape
+     * sobre el eje dominante y por construcción es SIMÉTRICO al intercambiar los segmentos;
+     * tramos degenerados (longitud 0) jamás cruzan. */
+    const eje = Math.abs(b[0] - a[0]) >= Math.abs(b[1] - a[1]) ? 0 : 1;
+    const lo1 = Math.min(a[eje], b[eje]);
+    const hi1 = Math.max(a[eje], b[eje]);
+    const lo2 = Math.min(c[eje], d[eje]);
+    const hi2 = Math.max(c[eje], d[eje]);
+    return Math.min(hi1, hi2) - Math.max(lo1, lo2) > 1e-9;
+  }
+  return c1 * c2 < -eps && c3 * c4 < -eps;
+}
+
+/** Centro del rociador dentro del rectángulo O sobre su borde (tolerancia numérica). El
+ *  ray-casting puro excluye el borde, pero un rociador centrado en la línea sí está en operación.
+ *  Ej: punto sobre el lado superior del área → true. */
+export function puntoEnORectangulo(p: number[], poly: number[][]): boolean {
+  return puntoEnPoligono(p, poly) || distToPolyline(p, poly) < 1e-9;
+}
+
 /** Distancia del punto p al segmento a→b (px): la proyección se recorta al tramo, así que "más allá del extremo" mide hasta el extremo. Es la base de todos los hit-tests de tuberías. */
 export function distToSegment(p: number[], a: number[], b: number[]): number {
   const dx = b[0] - a[0];

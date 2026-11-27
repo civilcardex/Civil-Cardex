@@ -10,6 +10,7 @@ import type { PisoRow } from '../../../lib/rci/types.ts';
 import type { DrawingData, RawElement } from '../../drawingSyncTypes.ts';
 import { extraerGris, mezclarOverrides, RCI_FORMAT_VERSION } from '../extract.ts';
 import type { PisoRciFuente } from '../extract.ts';
+import { extraerRedDePiso } from '../extractNetwork/pipeline.ts';
 
 /** Un trazo rci con `n` rociadores dibujados en sus primeros n vértices. */
 function ramalRci(
@@ -435,6 +436,31 @@ describe('mezclarOverrides — lo amarillo sobrevive por id estable', () => {
     expect(m2.estado.notas).toContain('T2');
   });
 
+  it('migración: el almacenamiento «Sí» global solo queda en los pisos dueños de fichas', () => {
+    const m1 = mezclarOverrides(extraerGris(pisosEjemplo()), null);
+    const prev = m1.estado;
+    prev.clas.almacen = 'Sí';
+    prev.clas.zonasAlmacenamiento = [
+      {
+        id: 'z1',
+        piso: String(prev.pisos.rows[0].planId || prev.pisos.rows[0].planta),
+        nombre: 'Bodega',
+      },
+    ];
+    const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m2.estado.pisos.rows[0].almacen).toBe('Sí');
+    expect(m2.estado.pisos.rows.slice(1).every((f) => f.almacen === '')).toBe(true);
+    /* La decisión explícita del piso se respeta aunque el global siga «Sí» (idempotente). */
+    prev.pisos.rows[0].almacen = 'No';
+    const m3 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m3.estado.pisos.rows[0].almacen).toBe('No');
+    /* Sin fichas el «Sí» global no se propaga a ningún piso (arrume histórico aparte). */
+    prev.pisos.rows[0].almacen = '';
+    prev.clas.zonasAlmacenamiento = [];
+    const m4 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
+    expect(m4.estado.pisos.rows.every((f) => f.almacen === '')).toBe(true);
+  });
+
   it('id eliminado del gris → huérfanos con sus datos, sin borrarlos del prev', () => {
     const m1 = mezclarOverrides(extraerGris(pisosEjemplo()), null);
     const prev = m1.estado;
@@ -526,5 +552,44 @@ describe('mezclarOverrides — lo amarillo sobrevive por id estable', () => {
     const m2 = mezclarOverrides(extraerGris(pisosEjemplo()), prev);
     expect(m2.estado.redes['p1'].ramales.map((r) => r.id)).toEqual(['p1|r2', 'p1|r1', 'p1|r3']);
     expect(m2.huerfanos).toEqual([]);
+  });
+});
+
+describe('Inicio/Final digitados en Datos del tramo', () => {
+  it('el flujo físico sale de la conexión aunque el ramal se haya dibujado en sentido contrario', () => {
+    const doc = docP1();
+    const leer = () => extraerRedDePiso({ planId: 'p1', label: 'P1', doc }, 5.3, []);
+    expect(leer().flujoDesdeFin?.get('r3')).toBe(true);
+    doc.ramales!.find((r) => r.id === 'r3')!.pts!.reverse();
+    expect(leer().flujoDesdeFin?.get('r3')).toBe(false);
+  });
+  it('el FIN digitado manda en la columna Fin de Ramales del piso', () => {
+    const doc = docP1();
+    const r3 = doc.ramales!.find((r) => r.id === 'r3') as RawElement;
+    r3.fin = 'zona z';
+    r3.accesorioFin = 'rociadorNF#4';
+    r3.ini = 'A';
+    const { estado } = extraerGris(pisosEjemplo(doc));
+    const fila = estado.redes['p1'].ramales.find((r) => r.id === 'p1|r3');
+    expect(fila?.finDibujo).toBe('ZONA Z');
+    expect(fila?.con).toBe('B'); // el texto no sustituye al nodo hidráulico
+    expect(fila?.iniDibujo).toBe('A');
+  });
+
+  it('sin texto digitado conserva la letra de nudo automática', () => {
+    const { estado } = extraerGris(pisosEjemplo());
+    const fila = estado.redes['p1'].ramales.find((r) => r.id === 'p1|r3');
+    expect(fila?.con).toMatch(/^[A-Z]$/);
+    expect(fila?.iniDibujo).toBe('');
+  });
+
+  it('sin Final usa ROC-N del extremo aunque ese rociador no fluya', () => {
+    const doc = docP1();
+    const r3 = doc.ramales!.find((r) => r.id === 'r3')!;
+    r3.accesorioFin = 'rociadorNF#4';
+    const fila = extraerGris(pisosEjemplo(doc)).estado.redes.p1.ramales.find(
+      (r) => r.id === 'p1|r3',
+    );
+    expect(fila).toMatchObject({ finDibujo: 'ROC-4', con: 'B' });
   });
 });

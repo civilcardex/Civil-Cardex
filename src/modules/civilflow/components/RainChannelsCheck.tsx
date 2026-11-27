@@ -1,6 +1,7 @@
 ﻿/** Chequeo de canales de ll (Lluvias): tabla por canal con Q (Caudal) de diseño, pendiente y
  *  diámetro Manning (fórmula de flujo en tubería). Ej: 80 m² de techo -> canal con su Q pluvial. */
 import React from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { leerDocDePlan } from '../utils/readPlanDrawing';
 import { FilaCanalRow } from './rainChannels/ChannelRow.tsx';
 import EditButton from './shared/EditButton.tsx';
@@ -152,7 +153,7 @@ export default function ChequeoCanalesLluvias() {
       ) : (
         <div className="rain-pad-12">
           {/* Ancho mínimo legible (25 columnas): en tablet scrollea en vez de aplastarse. */}
-          <div className="tbl-wrap-x">
+          <TableScroll label="Chequeo de canales de aguas lluvias" className="tbl-wrap-x">
             <table ref={tablaRef} className="tbl rain-table-fix" style={{ minWidth: 1250 }}>
               <colgroup>
                 <col data-w="4.5" />
@@ -471,7 +472,7 @@ export default function ChequeoCanalesLluvias() {
                 )}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </div>
       )}
     </section>

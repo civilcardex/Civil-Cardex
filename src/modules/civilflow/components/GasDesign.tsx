@@ -355,7 +355,6 @@ function GasDesign({ pagina = 1 }: { pagina?: number }) {
       <div
         style={{
           padding: 6,
-          overflow: 'auto',
           minHeight: 0,
           display: 'flex',
           flexDirection: 'column',

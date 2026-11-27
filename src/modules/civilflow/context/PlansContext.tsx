@@ -392,9 +392,23 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
     deletePDF(id).catch((e) => {
       devError('deletePDF error:', e);
     });
-    const proyectoId = getActiveProyectoId();
-    if (proyectoId) deletePlanPDF(proyectoId, id);
-    void deletePlanMeta(id);
+    // Auditoría 2026-11-27 (Alta 4): meta y binario se borran CON REINTENTOS; si algo falla se
+    // avisa (podría quedar un PDF huérfano o un plano sin su archivo) en vez de fingir éxito.
+    void (async () => {
+      const proyectoId = getActiveProyectoId();
+      const [pdfOk, metaOk] = await Promise.all([
+        proyectoId ? deletePlanPDF(proyectoId, id) : Promise.resolve(true),
+        deletePlanMeta(id),
+      ]);
+      if (!pdfOk || !metaOk)
+        setError(
+          !metaOk && pdfOk
+            ? 'El plano se retiró de la lista, pero su registro en la nube no se pudo borrar (reintentos agotados).'
+            : !pdfOk && metaOk
+              ? 'El plano se retiró de la lista, pero su PDF en la nube no se pudo borrar (reintentos agotados).'
+              : 'El plano se retiró de la lista, pero su borrado en la nube falló (reintentos agotados).',
+        );
+    })();
   }, []);
 
   const updatePlan = useCallback((id: number, updates: Partial<PlanItem>) => {

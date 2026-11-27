@@ -1,16 +1,15 @@
-/** Tarjeta de guía de uso del proyecto (pestaña Info): explica el flujo de trabajo del área
- *  (calibrar -> dibujar -> tablas) para el usuario nuevo. */
+/** Resume el recorrido de CivilFlow desde la identificación hasta la descarga de informes. */
 import React from 'react';
 
 const UsageGuideCard = React.memo(function UsageGuideCard() {
   return (
-    <section className="card" style={{ flex: '0 1 auto', minWidth: 0 }}>
+    <section className="card cf-info-guide">
       <div className="card-h" style={{ padding: '4px 8px' }}>
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <h3 className="card-t" style={{ fontSize: 13 }}>
             <img
               src="/iconos_civilflow/info_general/guia_de_uso.webp"
-              alt="Guía de uso"
+              alt=""
               width={22}
               height={22}
               style={{ width: 22, height: 22, verticalAlign: 'middle', marginRight: 2 }}
@@ -19,28 +18,46 @@ const UsageGuideCard = React.memo(function UsageGuideCard() {
             Guía de uso
           </h3>
           <span className="card-s" style={{ fontSize: 11 }}>
-            Recomendaciones
+            Del proyecto a los informes
           </span>
         </div>
       </div>
-      <div style={{ padding: '4px 8px', fontSize: 11, lineHeight: 1.6, color: 'var(--txt2)' }}>
-        <ol style={{ margin: 0, paddingLeft: 22, listStyle: 'decimal', fontWeight: 600 }}>
-          <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>
-            Complete los datos del proyecto con la información de la memoria de cálculo.
+      <div className="cf-info-guide-body">
+        <ol>
+          <li>
+            <strong>Identifica el proyecto.</strong> Completa el nombre, el país, el uso y la
+            ubicación del edificio.
           </li>
-          <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>
-            Active las redes que requiere el diseño según el uso del edificio.
+          <li>
+            <strong>Configura redes y equipos.</strong> Activa los que necesites y revisa los
+            materiales y profundidades en Parámetros de diseño.
+            <p className="cf-info-guide-note">
+              <strong>2.1. Contra incendio: primero Diseño de redes, después Dibujo.</strong> Abre
+              Contra incendio y define el riesgo y el sistema antes de trazar.
+            </p>
           </li>
-          <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>
-            Configure la cantidad de pisos y sótanos, luego pulse{' '}
-            <strong>"Generar niveles automáticamente"</strong>.
+          <li>
+            <strong>Genera los niveles.</strong> Define pisos, sótanos y cubierta. Compara alturas y
+            cotas con los planos de arquitectura.
           </li>
-          <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>
-            Verifique los NPT generados y ajústelos si es necesario.
+          <li>
+            <strong>Carga y calibra los planos.</strong> Sube uno o varios PDF, asígnalos a sus
+            niveles y comprueba la escala con una distancia conocida.
           </li>
-          <li style={{ marginBottom: 5, fontWeight: 400, paddingLeft: 3 }}>
-            Vaya a la pestaña <strong>Diseño de Redes y Equipos</strong> para iniciar el cálculo
-            hidráulico de cada red activa.
+          <li>
+            <strong>Dibuja las redes.</strong> Traza cada red sobre su plano y conecta tuberías y
+            aparatos.
+          </li>
+          <li>
+            <strong>Calcula y verifica.</strong> En Diseño de redes y equipos, revisa los cálculos y
+            corrige los incumplimientos.
+          </li>
+          <li>
+            <strong>Revisa la isometría.</strong> Comprueba recorridos y conexiones entre pisos.
+          </li>
+          <li>
+            <strong>Genera los informes.</strong> En Informes, revisa el resumen y descarga las
+            memorias de cálculo y los planos.
           </li>
         </ol>
       </div>

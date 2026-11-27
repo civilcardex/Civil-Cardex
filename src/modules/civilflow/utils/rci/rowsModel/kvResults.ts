@@ -17,86 +17,150 @@ export interface KvRci {
 }
 
 /** Criterios de rociadores — tabla 1 «Rociador y área de diseño» (9 filas, orden del HTML de
- *  referencia). qrTxt/sistemaTxt llegan de st.clas (no viven en Criterios).
+ *  referencia). qrTxt/sistemaTxt llegan del PISO BASE de la tipología (no de Entradas).
  *  Ej: con el ejemplo, «Área adoptada» = 1.066,2 ft² (QR −29 %). */
 export function kvRociadorDiseno(ro: Criterios, qrTxt: string, sistemaTxt: string): KvRci[] {
+  const qr = String(qrTxt || '').trim() === 'Sí';
+  const seco = String(sistemaTxt || '').trim() === 'Seco' || ro.FSeco > 1;
   return [
     {
-      l: 'Tipo: ¿respuesta rápida?',
-      v: qrTxt,
-      nota: 'reduce el área en húmedo, riesgo leve u ordinario y techo ≤ 6,1 m',
+      l: 'Tipo de rociador',
+      v: qr ? 'Respuesta rápida (QR)' : 'Respuesta estándar',
+      nota: qr
+        ? 'Reacciona antes al calor: puede reducir el área de diseño (cap. 19)'
+        : 'Sin reducción de área por respuesta rápida',
     },
-    { l: 'Factor K', v: f1(ro.K, 1), u: 'gpm/psi½' },
-    { l: 'Presión mínima', v: f1(ro.Pmin, 1), u: 'psi', nota: 'mín. 7 psi o la del listado' },
+    {
+      l: 'Factor K',
+      v: f1(ro.K, 1),
+      u: 'gpm/psi½',
+      nota: `${f1(ro.K * 14.4, 0)} L/min/bar½ · dato del fabricante`,
+    },
+    {
+      l: 'Presión mínima de operación',
+      v: f1(ro.Pmin, 1),
+      u: 'psi',
+      nota: 'Mínimo 7 psi o la del listado del rociador',
+    },
     {
       l: 'Sistema',
-      v: sistemaTxt,
-      nota: sistemaTxt === 'Seco' ? 'área +30 %, C acero 100' : undefined,
+      v: seco ? 'Seco' : 'Húmedo',
+      nota: seco ? 'Área de diseño +30 %' : 'Tubería llena de agua',
     },
     {
-      l: 'Densidad',
-      v: `${ro.hz.d.toLocaleString('es-CO', { maximumFractionDigits: 2 })}`,
+      l: 'Densidad de diseño',
+      v: f1(ro.hz.d, 2),
       u: 'gpm/ft²',
-      nota: ro.hz.d === ro.hz.a ? undefined : `área base ${f1(ro.hz.a, 0)} ft²`,
-    },
-    { l: 'Área base', v: f1(ro.hz.a, 0), u: 'ft²', nota: 'punto único de la Tabla 19.2.3.1.1' },
-    {
-      l: 'Reducción QR',
-      v: ro.RedQR > 0 ? `${f1(ro.RedQR * 100, 0)} %` : '—',
-      nota: 'solo sistema húmedo; área mínima 768 ft²',
+      nota: `${f1(ro.hz.d * 40.746, 2)} mm/min · Tabla 19.2.3.1.1`,
     },
     {
-      l: 'Factor sistema seco',
-      v: ro.FSeco > 1 ? `${f1(ro.FSeco, 2)}` : '—',
-      nota: ro.FSeco > 1 ? 'área +30 %' : 'sistema húmedo o pendiente ≤ 2:12',
+      l: 'Área de diseño base',
+      v: f1(ro.hz.a, 0),
+      u: 'ft²',
+      nota: `${f1(ro.hz.a * 0.092903, 1)} m²`,
     },
-    { l: 'Área adoptada', v: f1(ro.Adis, 1), u: 'ft²', nota: `${f1(ro.Adis * 0.092903, 1)} m²` },
+    {
+      l: 'Reducción por rociadores QR',
+      v: f1(ro.RedQR * 100, 1),
+      u: '%',
+      nota: ro.RedQR
+        ? `Techo ${f1(ro.HtFt, 1)} ft; y = 55 − 1,5x (10 < x ≤ 20 ft)`
+        : 'Solo sistema húmedo, riesgo leve u ordinario y techo ≤ 20 ft',
+    },
+    {
+      l: 'Factor por sistema seco',
+      v: f1(ro.FSeco, 2),
+      nota: seco ? '+30 % en sistema seco' : 'Sistema húmedo',
+    },
+    {
+      l: 'Área de diseño adoptada',
+      v: f1(ro.Adis, 1),
+      u: 'ft²',
+      nota: `${f1(ro.Adis * 0.092903, 1)} m²`,
+    },
   ];
 }
 
-/** Criterios de rociadores — tabla 2 «Cobertura y caudales» (9 filas, orden del HTML).
- *  Ej: con el ejemplo, «Rociadores exigidos» = 7 (3 ramales × 3; 7 con flujo). */
+/** Criterios de rociadores — tabla 2 «Cobertura y caudales» (10 filas, orden del HTML).
+ *  S y L faltantes se muestran «—» con la indicación del dato (nunca un cero calculado).
+ *  Ej: con el ejemplo, «Rociadores requeridos» = 7 (3 ramales × 3; 7 con flujo). */
 export function kvRociadorCobertura(ro: Criterios, Nop: number | null): KvRci[] {
+  const faltaSL = !(ro.S > 0) || !(ro.L > 0);
+  const faltaS = !(ro.S > 0);
+  const faltaL = !(ro.L > 0);
+  const faltante = [faltaS ? 'S' : '', faltaL ? 'L' : ''].filter(Boolean).join(' y ');
+  const notaSL = faltaSL ? `Falta ${faltante} del piso base (Pisos del edificio)` : undefined;
   return [
     {
       l: 'Cobertura máxima por rociador',
       v: f1(ro.Acmax, 0),
       u: 'ft²',
-      nota: 'según el techo (225/168/130 en leve)',
+      nota: `${f1(ro.Acmax * 0.092903, 1)} m² · cap. 10`,
     },
-    { l: 'S, L máximos', v: `${f1(ro.hz.s, 1)} / ${f1(ro.hz.l, 1)}`, u: 'm' },
     {
-      l: 'S × L real',
-      v: `${f1(ro.S)} × ${f1(ro.L)}`,
+      l: 'Separación máxima S / L',
+      v: `${f1(ro.hz.s, 1)} / ${f1(ro.hz.l, 1)}`,
       u: 'm',
-      nota: `área real ${f1(ro.Areal, 1)} ft²`,
+      nota: 'cap. 10',
     },
     {
-      l: 'Rociadores exigidos en el área',
-      v: `${ro.Nreq}`,
-      nota:
-        Nop !== null
-          ? `${Nop} con flujo en la red`
-          : `${ro.Nramales} ramales × ${ro.Nramal} (último: ${ro.Nultimo})`,
+      l: 'Área real por rociador S × L',
+      v: faltaSL ? '—' : f1(ro.Areal, 1),
+      u: 'ft²',
+      nota: faltaSL
+        ? notaSL
+        : `${f1(ro.S * ro.L, 1)} m² · S = ${f1(ro.S, 2)} m, L = ${f1(ro.L, 2)} m`,
     },
-    { l: 'Rociador más remoto', v: f1(ro.Q1), u: 'gpm', nota: `a ${f1(ro.Prem)} psi` },
     {
-      l: 'Presión del más remoto',
+      l: 'Rociadores requeridos en el área',
+      v: faltaSL ? '—' : `${ro.Nreq}`,
+      u: 'un',
+      nota: faltaSL
+        ? notaSL
+        : `Redondeo hacia arriba · ${ro.Nramales} ramales × ${ro.Nramal} (último: ${ro.Nultimo})${
+            Nop !== null
+              ? `. Red seleccionada: ${Nop} con flujo (dato de la red, no el mínimo exigido)`
+              : ''
+          }`,
+    },
+    {
+      l: 'Caudal mínimo del rociador más remoto',
+      v: f1(ro.Q1),
+      u: 'gpm',
+      nota: `${f1(ro.Q1 * 3.785411784, 1)} L/min = densidad × S × L`,
+    },
+    {
+      l: 'Presión del rociador más remoto',
       v: f1(ro.Prem, 1),
       u: 'psi',
-      nota: `K ${f1(ro.K, 1)} @ Pmin ${f1(ro.Pmin, 1)}`,
+      nota: `${f1(ro.Prem / 1.4223, 1)} m.c.a. = máx(Pmin, (Q/K)²)`,
     },
-    { l: 'Caudal teórico', v: f1(ro.Qteo, 1), u: 'gpm' },
     {
-      l: 'Mangueras (adicionales)',
+      l: 'Caudal teórico de rociadores',
+      v: f1(ro.Qteo, 1),
+      u: 'gpm',
+      nota: `${f1((ro.Qteo * 3.785411784) / 60, 2)} L/s`,
+    },
+    {
+      l: 'Caudal de mangueras (int. + ext.)',
       v: f1(ro.Qmang, 0),
       u: 'gpm',
-      nota: `tabla: ${ro.hz.hose} gpm`,
+      nota: 'Tabla 19.2.3.1.1',
     },
     {
-      l: 'Duración (mín–máx)',
+      l: 'Duración del rango',
       v: ro.dmin === ro.dmax ? `${ro.dmin}` : `${ro.dmin}–${ro.dmax}`,
       u: 'min',
+      nota: 'Tabla 19.2.3.1.1',
+    },
+    {
+      l: 'Distancia máxima a muro',
+      v: ro.Dmuro > 0 ? f1(ro.Dmuro, 2) : '—',
+      u: 'm',
+      nota:
+        ro.Dmuro > 0
+          ? `Entre 0,10 y ${f1(ro.hz.s / 2, 2)} m (S máx./2)`
+          : 'Falta la DMR del piso base (Pisos del edificio)',
     },
   ];
 }

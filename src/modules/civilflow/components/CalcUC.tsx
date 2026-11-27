@@ -1,5 +1,6 @@
 /** Tabla de UC (Unidades de Consumo, o sea cuántos aparatos sirve) de af (Agua Fría) y ac (Agua Caliente): cada fila es un ramal con su conteo de aparatos y el total que baja al dimensionamiento. Ej: RAF1 con 2 lavamanos -> 4 UC. */
 import React, { useMemo } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
@@ -132,7 +133,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
           </h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
-        <div className="scroll-top" style={{ padding: '16px' }}>
+        <TableScroll label="Cálculo de unidades de consumo" className="san-pad-16">
           <div className="scroll-inner">
             <table ref={tablaRef} className="tbl">
               <caption className="sr-only">{`Cálculo de unidades de consumo ${title}`}</caption>
@@ -362,7 +363,7 @@ function CalculoUC({ tipo }: CalculoUCProps) {
               </tfoot>
             </table>
           </div>
-        </div>
+        </TableScroll>
       </section>
     </>
   );

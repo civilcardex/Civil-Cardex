@@ -2,7 +2,13 @@
  *  siembra de los amarillos de un proyecto nuevo. Puro: sin React ni storage.
  *  Ej: RIESGOS[0] = 'Riesgo leve' (la primera opción del select de riesgo). */
 
-import { HZ, NOM, PIPES } from '../../../lib/rci/tables.ts';
+import {
+  HZ,
+  NOM,
+  PIPES,
+  RCI_STANDPIPE_MIN,
+  RCI_STANDPIPE_DEFAULT,
+} from '../../../lib/rci/tables.ts';
 import type { PisoRow, RciState } from '../../../lib/rci/types.ts';
 
 /* ============================ Catálogos de los desplegables ============================ */
@@ -27,6 +33,7 @@ export const CLASES_SP = ['Clase I', 'Clase II', 'Clase III'] as const;
 export const MATERIALES: string[] = Object.keys(PIPES);
 /** Diámetros nominales comerciales, con "auto" primero (el motor elige por velocidad). */
 export const DIAMETROS = ['auto', ...NOM] as const;
+export const DIAMETROS_MONTANTE = ['auto', ...NOM.slice(NOM.indexOf(RCI_STANDPIPE_DEFAULT))];
 /** Zonas de amenaza sísmica; vacío = auto con el perfil del país. */
 export const ZONAS_SIS = ['', 'Baja', 'Intermedia', 'Alta'] as const;
 
@@ -72,13 +79,13 @@ export function sembrarRci(est: RciState, metaProyecto = ''): RciState {
   const mang = { ...est.mang };
   const sp = {
     ...est.sp,
-    clase: graba(est.sp.clase, ''),
+    diam: graba(est.sp.diam, RCI_STANDPIPE_MIN),
   };
-  const sia = { ...est.sia };
+  const sia = { ...est.sia, cierre: graba(est.sia.cierre, 'No') };
   const bomba = { ...est.bomba };
   /* Cuarto de bombas SIN seed (ped. usuario: nada fabricado) — el diseñador llena la fila
    * Base→CB en Entradas → Selección de bomba. */
-  const mont = { ...est.mont };
+  const mont = { ...est.mont, dn: graba(est.mont.dn, RCI_STANDPIPE_DEFAULT) };
 
   /* Por piso SOLO se siembra la planta (mapeo piso→red, ver doc de arriba) y la DMR (distancia
    * máxima de rociador a muro): los criterios, la salida y la tipología NO se copian — la salida

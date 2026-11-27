@@ -1,4 +1,5 @@
 import EditButton from '../shared/EditButton.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { GAS_DN_LABELS } from '../../constants';
 import { CAT_GAS } from '../../constants/engineeringDataGas.ts';
 import { CONTADORES as CONTADORES_CAT } from '../../pages/catalog/catalogData.ts';
@@ -51,7 +52,7 @@ export function GasContadores(props: GasContadoresProps) {
         <span className="card-s">{equipos.length} equipos</span>
         <EditButton edit={edit} setEdit={setEdit} />
       </div>
-      <div className="gas-pad-6">
+      <TableScroll label="Contadores y calentadores de gas" className="gas-pad-6">
         <table className="tbl gas-tbl-105">
           <thead>
             <tr>
@@ -165,7 +166,7 @@ export function GasContadores(props: GasContadoresProps) {
             ))}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </section>
   );
 }

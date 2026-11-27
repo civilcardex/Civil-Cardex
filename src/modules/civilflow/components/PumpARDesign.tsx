@@ -363,7 +363,7 @@ function BombaARDesign() {
         ]}
       />
       {/* Contenedor plano como EP (sin marco extra: las Cards ya traen su borde) */}
-      <div style={{ flex: 1, padding: 6, overflowY: 'auto', overflowX: 'hidden', display: 'flex' }}>
+      <div className="cf-network-sheet" style={{ padding: 6 }}>
         {pages[bp - 1].c}
       </div>
     </div>

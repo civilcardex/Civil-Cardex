@@ -2,6 +2,7 @@
  *  Desague) acumuladas, diámetro y aportes por bajante en un solo lugar.
  *  Ej: BAN1 con 12 UD -> fila con su diámetro por Hunter (método de probabilidad de uso simultáneo). */
 import { memo, useMemo, useState, useEffect } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { leerDocDePlan } from '../utils/readPlanDrawing.ts';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
@@ -165,7 +166,7 @@ const BajantesTable = memo(function BajantesTable_() {
       </div>
       <div style={{ padding: '12px' }}>
         {/* Ancho mínimo legible (23 columnas): en tablet scrollea en vez de aplastarse. */}
-        <div className="tbl-wrap-x">
+        <TableScroll label="Bajantes de aguas negras y ventilación" className="tbl-wrap-x">
           <table
             ref={tablaRef}
             className="tbl"
@@ -214,7 +215,7 @@ const BajantesTable = memo(function BajantesTable_() {
               })()}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </section>
   );

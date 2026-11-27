@@ -94,6 +94,7 @@ try {
     alter table public.cm_config add column if not exists config_listas jsonb default '{}'::jsonb;
     alter table public.cm_config add column if not exists categorias_apu jsonb default '[]'::jsonb;
     grant select on all tables in schema public to authenticated;
+    grant insert on public.cm_config to authenticated;
     grant update on public.cm_proyectos to authenticated;
     create policy cm_fixture_shared on public.cm_proyectos for select to authenticated
       using (public.empresa_lectura(user_id, 'manage'));
@@ -113,6 +114,7 @@ try {
   await apply('20261123000000_cm_save_integrity');
   await apply('20261123000001_cm_read_scope');
   await apply('20261123000002_save_versions');
+  await apply('20261127000000_cm_save_parcial_y_cierre');
   const metaSql = await readFile(new URL('../migrations/20260925000000_repara_rpcs_reaplicacion_vieja.sql', import.meta.url), 'utf8');
   const metaRpc = metaSql.match(/create or replace function public\.save_planos_meta\([\s\S]*?\$\$;/);
   assert.ok(metaRpc, 'definición de guardado de metadatos');
@@ -138,7 +140,7 @@ try {
   assert.equal(snapshot.insumos[0].proveedor_id, 'prov');
   assert.equal(snapshot.insumos[0].costo_unitario, 1250);
   await assert.rejects(save({}, first), /conflicto_concurrencia/);
-  const third = await save(
+  let third = await save(
     {
       proveedores: [{ id: 'prov' }],
       insumos: [{ id: 'ins', proveedor_id: null }],
@@ -161,6 +163,63 @@ try {
   assert.equal(snapshot.proveedores[0].nombre, 'Conservar');
   assert.equal(snapshot.insumos[0].proveedor_id, null);
   assert.equal(await version(), third);
+
+  /* SAVE PARCIAL (2026-11-27): colección AUSENTE conserva sus filas — una pestaña vieja deja
+   * de reponer lo que nunca editó; la colección enviada manda (LWW sobre lo enviado). */
+  const tokenParcial = (
+    await db.query('select public.cm_save_state_versioned($1, $2, $3) as token', [
+      project,
+      JSON.stringify({ insumos: [{ id: 'ins', proveedor_id: null, costo_unitario: 2222 }] }),
+      third,
+    ])
+  ).rows[0].token;
+  snapshot = await read(project);
+  assert.equal(snapshot.proveedores[0].nombre, 'Conservar');
+  assert.equal(snapshot.proveedores[0].tipo[0], 'material');
+  assert.equal(snapshot.insumos[0].costo_unitario, 2222);
+  assert.equal(await version(), tokenParcial);
+
+  /* Preferencias de cuenta: solo se escriben si el payload las trae. */
+  await db.query("insert into public.cm_config(user_id, config) values ($1, $2)", [
+    owner,
+    JSON.stringify({ pais: 'CO' }),
+  ]);
+  const tokenParcial2 = (
+    await db.query('select public.cm_save_state_versioned($1, $2, $3) as token', [
+      project,
+      JSON.stringify({ insumos: [{ id: 'ins', costo_unitario: 3333 }] }),
+      tokenParcial,
+    ])
+  ).rows[0].token;
+  const cfg = (
+    await db.query('select config from public.cm_config where user_id = $1', [owner])
+  ).rows[0].config;
+  assert.equal(cfg.pais, 'CO');
+  // H-13: configuraciones DISJUNTAS de la misma cuenta sobreviven (merge por clave en
+  // cm_config) — guardar config y config_listas por separado conserva ambas ediciones.
+  const tCfg = (
+    await db.query('select public.cm_save_state_versioned($1, $2, $3) as token', [
+      project,
+      JSON.stringify({ config: { pais: 'CO' } }),
+      tokenParcial2,
+    ])
+  ).rows[0].token;
+  const tCfg2 = (
+    await db.query('select public.cm_save_state_versioned($1, $2, $3) as token', [
+      project,
+      JSON.stringify({ config_listas: { bandera: true } }),
+      tCfg,
+    ])
+  ).rows[0].token;
+  const cfg2 = (
+    await db.query('select config, config_listas from public.cm_config where user_id = $1', [owner])
+  ).rows[0];
+  assert.equal(cfg2.config.pais, 'CO');
+  assert.equal(cfg2.config_listas.bandera, true);
+
+  // El reloj avanzó con los guardados parciales: los tests de roles siguen desde el token nuevo.
+  third = tCfg2;
+
   const savePlan = async (token) =>
     (
       await db.query('select public.save_plano_data_versioned(1, \'{"v":1}\', $1) as token', [

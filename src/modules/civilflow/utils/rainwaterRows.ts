@@ -10,7 +10,7 @@ import { cDeCubierta } from '../constants/engineeringDataMaterials.ts';
 import { calcHydraulicCheck } from './hydraulicCheck.ts';
 import { compareTramosPisoDesc } from './componentHelpers.tsx';
 import { DIAM_OPTIONS } from '../constants';
-import { distToPolyline } from '../lib/shared/geometry';
+import { checkEndpointDe } from './endpointResolver.ts';
 import type { DrawingData, RawElement } from './drawingSync.ts';
 
 interface AreaRaw {
@@ -138,41 +138,10 @@ export function buildLlBajanteAssociations(
       const pEnd = r.pts[r.pts.length - 1];
       const rKey = `${r.id}-${plan.id}`;
 
-      const checkEndpoint = (pt: number[]) => {
-        for (const b of bajantes) {
-          const recibe = b.id ? recibePorBajante.get(b.id) : undefined;
-          const isExplicit = !!recibe && (recibe.has(r.id) || (!!r.label && recibe.has(r.label)));
-          const dist = Math.hypot(pt[0] - b.x!, pt[1] - b.y!);
-          if (isExplicit) {
-            const otherPt = pt === pEnd ? pStart : pEnd;
-            const otherDist = Math.hypot(otherPt[0] - b.x!, otherPt[1] - b.y!);
-            if (dist < otherDist) return { type: 'bajante' as const, id: b.id };
-            continue;
-          }
-          if (dist < 2.0) {
-            return { type: 'bajante' as const, id: b.id };
-          }
-        }
-        let bestRx: RawElement | null = null;
-        let minDist = Infinity;
-        for (const rx of ramales) {
-          if (rx.id === r.id) continue;
-          if (!rx.pts || rx.pts.length < 2) continue;
-          const dist = distToPolyline(pt, rx.pts);
-          if (dist < 2.0 && dist < minDist) {
-            minDist = dist;
-            bestRx = rx;
-          }
-        }
-        if (bestRx) {
-          return { type: 'ramal' as const, id: bestRx.id };
-        }
-        return null;
-      };
-
-      const connections = [checkEndpoint(pEnd), checkEndpoint(pStart)].filter(
-        (c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null,
-      );
+      const connections = [
+        checkEndpointDe(r, pEnd, pStart, pEnd, bajantes, recibePorBajante, ramales),
+        checkEndpointDe(r, pStart, pStart, pEnd, bajantes, recibePorBajante, ramales),
+      ].filter((c): c is { type: 'bajante' | 'ramal'; id: string } => c !== null);
 
       for (const connection of connections) {
         const targetKey = `${connection.id}-${plan.id}`;

@@ -2,6 +2,7 @@
  *  y tabla de diseño por tramo. Ej: editar la presión de acometida recalcula la tabla completa. */
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import EditButton from './shared/EditButton.tsx';
+import TableScroll from './shared/TableScroll.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
@@ -581,10 +582,7 @@ function WaterNetworkDesign({
 
   return (
     <>
-      <section
-        className="card"
-        style={{ display: 'flex', flexDirection: 'column', maxHeight: '70vh', overflow: 'hidden' }}
-      >
+      <section className="card">
         <div className="card-h">
           <h3 className="card-t">
             <img
@@ -602,8 +600,8 @@ function WaterNetworkDesign({
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
         </div>
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          <div className="scroll-top" style={{ padding: '6px' }}>
+        <TableScroll label={`Diseño de red ${title}`} style={{ padding: 6 }}>
+          <div>
             {/* Resumen compacto para lectores: la tabla de diseño es grande y viva. */}
             <div className="sr-only" role="status" aria-live="polite">
               {`Diseño de red ${title}: ${tramosOrden.length} tramos`}
@@ -649,7 +647,7 @@ function WaterNetworkDesign({
               </table>
             </div>
           </div>
-        </div>
+        </TableScroll>
       </section>
 
       {acometidaEl}

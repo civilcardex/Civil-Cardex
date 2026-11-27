@@ -71,8 +71,11 @@ export const VISOR_ACTIVE_INDEX_KEY = 'civilflow_visor_activeIndex';
 export const VISOR_TIPO_TRAMO_KEY = 'civilflow_visor_tipoTramo';
 /** ¿Snap (imán a rejilla/elementos) encendido en el visor? — sessionStorage ('true'/'false'). */
 export const VISOR_SNAP_ON_KEY = 'civilflow_visor_snapOn';
-/** ¿Cuadrícula visible en el visor? — sessionStorage ('true'/'false'). */
+/** ¿Cuadrícula visible en el visor? - sessionStorage ('true'/'false'). */
 export const VISOR_GRID_ON_KEY = 'civilflow_visor_gridOn';
+/** ¿Círculos guía de radio S (RCI) visibles en el visor? - sessionStorage ('true'/'false').
+ *  Se activan/desactivan desde el menú contextual y el panel derecho del ramal. */
+export const RCI_S_CIRCLES_KEY = 'civilflow_rci_circulos_s';
 
 /** Redes colapsadas en la vista isométrica (array de ids de red) — localStorage crudo. */
 export const ISO_COLLAPSED_KEY = 'civilflow_iso_collapsed';

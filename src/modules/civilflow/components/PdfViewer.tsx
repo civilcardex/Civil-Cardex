@@ -97,7 +97,7 @@ function PdfViewer_({
   onReady,
   onLoadingChange,
 }: PdfViewerProps) {
-  const { mats } = useProject();
+  const { mats, proy } = useProject();
   const planosCtx = usePlans();
   const plansRef = useRef(planosCtx.plans);
   useEffect(() => {
@@ -238,8 +238,7 @@ function PdfViewer_({
     // setActiveNet es el setState del hook (identidad estable).
   }, [selElement, tool, setTool, setActiveNet]);
 
-  /* Dmuro (RCI) INYECTADO al motor (hook useDmuroRciInjection — prefiere la DMR del piso
-   * activo, cae a la global): al montar, al reescribir RCI, al cambiar piso/pestaña. null = off. */
+  // El límite a muro se sincroniza con el riesgo del piso activo y requiere su separación S.
   useDmuroRciInjection(engineRef, currentId);
   /* Material/Ø de ramales rci desde Hidráulica → canvas vivo (ped. usuario 2026-11-21). */
   useMaterialRciInjection(engineRef, currentId);
@@ -291,7 +290,10 @@ function PdfViewer_({
       gridOn,
       mats,
       diamSel,
-      gasMatSel,
+      materialProyecto:
+        proy[
+          (activeNet === 'vent' ? 'mat_ven' : `mat_${activeNet}`) as keyof typeof proy
+        ]?.toString(),
       selectedNivel,
       pisos,
     });

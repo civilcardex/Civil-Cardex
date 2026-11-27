@@ -6,6 +6,12 @@
   position: relative;
 }
 
+/* Sin scroll vertical en NINGUNA isometría (ped. usuario 2026-11-26): el workspace se
+   ajusta al alto disponible — lo que sobre se recorta, no scrollea. El ÚNICO scroll
+   permitido es el del panel izquierdo de Redes (lista de tramos, overflow-y propio). */
+.iso-workspace {
+  overflow: hidden;
+}
 .iso-network-stage {
   flex: 1;
   min-width: 0;
@@ -124,7 +130,7 @@
 @media (max-width: 900px) and (orientation: portrait) {
   .iso-workspace [data-tour~='iso-panel'] {
     flex-direction: column;
-    overflow: auto;
+    overflow: hidden;
   }
 
   .iso-workspace [data-tour~='iso-panel'] > :first-child:not([data-tour='iso-canvas']) {

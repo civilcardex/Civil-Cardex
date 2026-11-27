@@ -13,6 +13,7 @@ import {
 import { loadFromStorage } from '../services/storage/localStorage.ts';
 import { diamPulgFromLabel } from './diamInchesFromLabel.ts';
 import { DIAMETROS_AF, DIAMETROS_AC } from '../constants/hydraulicsData.ts';
+import { canonicalRciPipeMaterial, NOM, PIPES, RCI_STANDPIPE_MIN } from '../lib/rci/tables.ts';
 
 /** Token de invalidación del memo: la CADENA cruda del catálogo (lectura barata, sin parse).
  *  La lista depende del CONTENIDO de civilflow_mats: si el catálogo cambia, cambia el token y
@@ -47,12 +48,17 @@ const memoOpciones = new WeakMap<
 export function opcionesDiametroElemento(el: {
   tipo?: string;
   net?: string;
+  material?: string;
 }): Array<{ pulg: number; nom: string }> {
   const aLista = (noms: string[]) => noms.map((nom) => ({ pulg: diamPulgFromLabel(nom), nom }));
-  if (
-    el.tipo === 'montante' &&
-    (el.net === 'gas' || el.net === 'af' || el.net === 'ac' || el.net === 'rci')
-  ) {
+  if (el.tipo === 'montante' && el.net === 'rci') {
+    const guardado =
+      el.material || loadFromStorage<{ mat_rci?: string } | null>('civilflow_proy', null)?.mat_rci;
+    const mat = canonicalRciPipeMaterial(guardado);
+    const disponibles = mat ? Object.keys(PIPES[mat] ?? {}) : NOM;
+    return aLista(disponibles).filter((d) => d.pulg >= RCI_STANDPIPE_MIN);
+  }
+  if (el.tipo === 'montante' && (el.net === 'gas' || el.net === 'af' || el.net === 'ac')) {
     const token = tokenMats();
     const hit = memoOpciones.get(el as object);
     if (hit && hit.token === token) return hit.lista;
@@ -73,10 +79,6 @@ export function opcionesDiametroElemento(el: {
       const porMat = matShort ? DIAM_BY_MAT[matShort] : undefined;
       if (porMat?.length) {
         out = aLista(porMat.map((d) => d.n));
-      } else if (el.net === 'rci') {
-        // Sin material en el PROP: el default de la red RCI es Acero SCH 40 (REDES_MAT) —
-        // su lista comercial, no la de agua fría.
-        out = aLista((DIAM_BY_MAT['Acero SCH 40'] || []).map((d) => d.n));
       } else {
         out = (el.net === 'af' ? DIAMETROS_AF : DIAMETROS_AC).map((d) => ({
           pulg: d.pulg,

@@ -80,7 +80,11 @@ export function construirInformeRci(st: RciState): RciInforme | null {
         'Bomba',
         `${f0(R.bomba.Qnom)} gpm @ ${f2(R.bomba.Pnom)} psi · Motor ${f0(R.bomba.HPmot)} HP`,
       ],
-      ['Tanque', `${f2(R.tanque.V)} m³`],
+      ['Reserva contra incendio', `${f2(R.tanque.Vincendio)} m³`],
+      [
+        'Tanque (volumen útil total)',
+        R.tanque.Vtotal === null ? 'Pendiente' : `${f2(R.tanque.Vtotal)} m³`,
+      ],
       ['Verificaciones', `${f0(R.count['CUMPLE'] ?? 0)} de ${f0(R.checks.length)} CUMPLE`],
     );
     return {

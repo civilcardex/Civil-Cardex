@@ -1,5 +1,6 @@
 /** Página de accesorios (codos, tees, válvulas) y diámetros por tramo de san (Sanitaria) y gas: sin ellos las pérdidas por Lh (longitud equivalente) salen en cero. Ej: 4 codos 90° en RG1 -> la pérdida Renouard (fórmula de pérdida en gas) del ramal sube. */
 import { memo, useEffect, useMemo, useState } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { computeAccesoriosTable } from '../utils/sanFittingsRows.ts';
@@ -130,15 +131,11 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
         display: 'flex',
         flexDirection: 'column',
         gap: '16px',
-        overflowY: 'auto',
         flex: 1,
         paddingBottom: '24px',
       }}
     >
-      <section
-        className="card"
-        style={{ display: 'flex', flexDirection: 'column', flexShrink: 0, alignSelf: 'center' }}
-      >
+      <section className="card" style={{ maxWidth: '100%', alignSelf: 'center' }}>
         <div className="card-h">
           <h3 className="card-t">
             <img
@@ -152,14 +149,7 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
             {table?.title || 'Resumen de accesorios por diámetro'}
           </h3>
         </div>
-        <div
-          style={{
-            padding: '8px 12px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
+        <TableScroll label="Resumen de accesorios por diámetro" style={{ padding: '8px 12px' }}>
           {rows.length > 0 ? (
             <table
               className="tbl"
@@ -219,7 +209,7 @@ const AccesoriosDiamPage = memo(function AccesoriosDiamPage({
               No hay accesorios.
             </div>
           )}
-        </div>
+        </TableScroll>
       </section>
     </div>
   );

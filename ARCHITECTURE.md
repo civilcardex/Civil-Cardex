@@ -26,6 +26,7 @@ pages/components  ──▶  context (módulo)  ──▶  services  ──▶  
 
 - `lib/` es **puro** (motor y cálculo sin React): testeable sin render, consumido por componentes y contextos.
 - Los componentes y páginas **no** importan `lib/supabase` directo: la capa `services/` (projectDataService, apparatusService, profileService, strokesDb…) es el único canal a BD. Excepciones auth-only (solo `supabase.auth`, cero tablas/RPC): `AuthContext` (arranque de sesión) y `ProfilePage` (refreshSession/signOut).
+- CivilFlow crea proyecto y perfil inicial (país y uso) en una transacción. Si todavía no hay pisos, guarda la elección de material por separado, sin enviar un snapshot vacío de niveles. En RCI el catálogo de tuberías alimenta las opciones del visor, el cálculo hidráulico y el Catálogo maestro; los coeficientes personalizados históricos son solo referencia.
 - `utils/` hospeda el cálculo por disciplina y las memorias exportables; entra por props/context, no toca red.
 
 ## Motor CAD (PlanoEngine)

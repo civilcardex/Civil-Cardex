@@ -124,6 +124,7 @@ export function extraerGris(pisos: readonly PisoRciFuente[], opciones?: Opciones
       planId: p.planId,
       uso: '',
       planta: '',
+      pisoTipo: '',
       riesgo: '',
       sistema: '',
       htecho: '',
@@ -260,7 +261,7 @@ function estadoVacio(
       margenNpsh: '',
       qjockey: '',
     },
-    tanque: { vextra: '' },
+    tanque: { vextra: '', vconsumo: '' },
     sia: {
       n: '',
       entradas: '',
@@ -369,6 +370,8 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
       planId: pid,
       uso: p?.uso ?? f.uso,
       planta: p?.planta ?? f.planta,
+      pisoTipo: p?.pisoTipo ?? f.pisoTipo ?? '',
+      almacen: p?.almacen ?? '',
       riesgo: p?.riesgo ?? f.riesgo,
       sistema: p?.sistema ?? f.sistema,
       htecho: p?.htecho ?? '',
@@ -388,6 +391,17 @@ export function mezclarOverrides(gris: GrisRci, prev?: RciState | null): MezclaR
       vrp: p?.vrp,
     };
   });
+  /* Migración del almacenamiento GLOBAL antiguo: con clas.almacen «Sí» heredado, solo los pisos
+   * dueños de fichas quedan «Sí» — el resto «Por definir» (nunca se propaga el Sí global). Los
+   * pisos con decisión explícita ('Sí'/'No') se respetan; idempotente en cada extracción. */
+  if (prev?.clas?.almacen === 'Sí') {
+    const conFichas = new Set(
+      (prev.clas.zonasAlmacenamiento ?? []).map((z) => z.piso).filter(Boolean),
+    );
+    if (conFichas.size)
+      for (const fila of filas)
+        if (!fila.almacen && conFichas.has(fila.planId || fila.planta)) fila.almacen = 'Sí';
+  }
   for (const [pid, f] of prevPisoPorId) {
     if (!planIdsGris.has(pid)) huerfanos.push({ tipo: 'piso', id: pid, nombre: f.nombre, fila: f });
   }
@@ -502,7 +516,9 @@ function mezclarFilas(
     if (tipo === 'ramal') {
       return {
         ...grisFila,
-        ini: siPrev(p?.ini, ''),
+        /* Inicio digitado en el dibujo manda (permite borrarlo); el prev solo lo hereda cuando
+           el plano todavía no trae el campo. */
+        ini: grisFila.ini || siPrev(p?.ini, ''),
         fluyen: siPrev(p?.fluyen, ''),
         dn: grisFila.dn && grisFila.dn !== 'auto' ? grisFila.dn : siPrev(p?.dn, ''),
         mat: grisFila.mat || siPrev(p?.mat, ''),

@@ -1,13 +1,15 @@
 import type * as THREE_NS from 'three';
 import type { Three } from './useRCI3DScene.ts';
+import { leerChunksGlb, leerAccesorGlb } from '../shared/glbBinReader.ts';
 
 // Parser GLB del HTML original (port): los GLB del cuarto de bombas solo traen
 // POSITION/NORMAL/COLOR_0 (uint8 VEC4) + índices, sin materiales usables — GLTFLoader daría
 // un aspecto distinto. fetch(url) → arrayBuffer → parse.
 // RESTRICCIÓN (ponytail): NO es un parser glTF general — ignora la jerarquía de nodes (sus
-// transforms), primitives.mode y bufferView.byteStride. Solo vale para estos 13 assets,
-// exportados con transforms de nodo identidad y primitivos TRIANGLES sin entrelazar;
-// re-exportarlos desde otra herramienta exige re-verificar el visor.
+// transforms) y primitives.mode. Solo vale para estos 13 assets con transforms de nodo
+// identidad y primitivos TRIANGLES; re-exportarlos desde otra herramienta exige re-verificar
+// el visor. SÍ respeta bufferViews con byteStride (bloques intercalados): glTF-Transform los
+// dejó así (commit 1842b36e) y leerlos seguidos daba posiciones NaN.
 // RENDIMIENTO: el original creaba 1 mesh por PRIMITIVO (cientos de draw calls por pieza).
 // Aquí los primitivos se FUNDEN en ≤3 meshes por pieza según material: con COLOR_0 (vertex
 // colors), sin COLOR_0 (gris) y — solo en grupos cheque — los primitivos de vértices
@@ -19,62 +21,20 @@ export async function parseGLB(
   buffer: ArrayBuffer,
   esCheque = false,
 ): Promise<InstanceType<Three['Group']>> {
-  const dv = new DataView(buffer);
-  let offset = 12;
-  let jsonChunk: {
-    meshes: Array<{
-      primitives: Array<{
-        attributes: Record<string, number | undefined>;
-        indices?: number;
-      }>;
-    }>;
-    accessors: Array<{
-      bufferView: number;
-      byteOffset?: number;
-      count: number;
-      type: string;
-      componentType: number;
-    }>;
-    bufferViews: Array<{ byteOffset?: number }>;
-  } | null = null;
-  let binChunk: ArrayBuffer | null = null;
-  const totalLen = dv.getUint32(8, true);
-  while (offset < totalLen) {
-    const clen = dv.getUint32(offset, true);
-    const ctype = dv.getUint32(offset + 4, true);
-    const cdata = buffer.slice(offset + 8, offset + 8 + clen);
-    if (ctype === 0x4e4f534a) jsonChunk = JSON.parse(new TextDecoder().decode(cdata));
-    if (ctype === 0x004e4942) binChunk = cdata;
-    offset += 8 + clen;
-  }
+  const { json: jsonChunk, bin: binChunk } = leerChunksGlb(buffer);
   const group = new THREE.Group();
   if (!jsonChunk || !binChunk) return group;
 
-  const accessors = jsonChunk.accessors || [];
-  const bufferViews = jsonChunk.bufferViews || [];
-
-  function compSize(ct: number): number {
-    return ct === 5126 ? 4 : ct === 5125 ? 4 : ct === 5123 ? 2 : 1;
-  }
-
-  function readAcc(idx: number): Uint8Array | Uint16Array | Uint32Array | Float32Array {
-    const acc = accessors[idx];
-    const bv = bufferViews[acc.bufferView];
-    const off = (bv.byteOffset || 0) + (acc.byteOffset || 0);
-    const n = ({ SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4 }[acc.type] || 1) as number;
-    const tot = acc.count * n;
-    const sl = binChunk!.slice(off, off + tot * compSize(acc.componentType));
-    if (acc.componentType === 5126) return new Float32Array(sl);
-    if (acc.componentType === 5125) return new Uint32Array(sl);
-    if (acc.componentType === 5123) return new Uint16Array(sl);
-    return new Uint8Array(sl);
-  }
+  // readAcc delega en el lector COMPARTIDO (glbBinReader): chunk-walk + accessors con
+  // byteStride eran ~45 líneas idénticas en los 3 parsers (EP, cuarto, red RCI).
+  const readAcc = (idx: number): Uint8Array | Uint16Array | Uint32Array | Float32Array =>
+    leerAccesorGlb(jsonChunk, idx, binChunk);
 
   const colorGeoms: THREE_NS.BufferGeometry[] = [];
   const plainGeoms: THREE_NS.BufferGeometry[] = [];
   const redGeoms: THREE_NS.BufferGeometry[] = [];
 
-  for (const mesh of jsonChunk.meshes) {
+  for (const mesh of jsonChunk.meshes ?? []) {
     for (const prim of mesh.primitives) {
       const geom = new THREE.BufferGeometry();
 

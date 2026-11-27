@@ -1,6 +1,7 @@
 /** Chequeo de bajantes de ll (Lluvias): tabla por bajante con área aportada, Q (Caudal) y
  *  diámetro. Ej: BLL1 que drena 120 m² -> fila con su caudal pluvial y diámetro propuesto. */
 import { useMemo } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { useRainwater, type BajanteLL } from '../context/RainwaterContext.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
 import EditButton from './shared/EditButton.tsx';
@@ -265,7 +266,7 @@ export default function ChequeoBajantesLluvias() {
           <EditButton edit={edit} setEdit={setEdit} />
         </div>
       </div>
-      <div style={{ padding: '16px', overflowX: 'auto' }}>
+      <TableScroll label="Chequeo de bajantes de aguas lluvias" className="san-pad-16">
         <table
           ref={tablaRef}
           className="tbl"
@@ -515,7 +516,7 @@ export default function ChequeoBajantesLluvias() {
             )}
           </tbody>
         </table>
-      </div>
+      </TableScroll>
     </section>
   );
 }

@@ -7,6 +7,59 @@ test.beforeEach(async ({ page, baseURL }) => {
   );
 });
 
+test.describe('Dibujo RCI táctil', () => {
+  test.use({ hasTouch: true, viewport: { width: 820, height: 1180 } });
+
+  for (const orden of ['brazo primero', 'tronco primero']) {
+    test(`tee en tres ramales conectados · ${orden}`, async ({ page }) => {
+      await page.goto('/e2e/tablet.html?rci-drawing=tee');
+      const canvas = page.getByLabel('Lienzo de prueba');
+      const tap = (x: number, y: number) => canvas.tap({ position: { x, y } });
+      const draw = async (points: [number, number][]) => {
+        for (const [x, y] of points) await tap(x, y);
+        await tap(...points.at(-1)!);
+      };
+      const tronco: [number, number][] = [
+        [65, 125],
+        [415, 125],
+      ];
+      const brazo: [number, number][] = [
+        [250, 45],
+        [250, 125],
+      ];
+      await page.getByRole('button', { name: 'Dibujar ramal', exact: true }).tap();
+      await draw(orden === 'brazo primero' ? brazo : tronco);
+      await expect(page.getByTestId('ramales')).toHaveText('1');
+      await draw(orden === 'brazo primero' ? tronco : brazo);
+      await expect(page.getByTestId('ramales')).toHaveText('3');
+      await expect(page.getByRole('alert')).toHaveCount(0);
+      const pts = JSON.parse((await canvas.getAttribute('data-topology'))!) as number[][][];
+      const extremos = pts.flatMap((r) => [r[0], r.at(-1)]).map((p) => JSON.stringify(p));
+      expect(extremos.some((x) => extremos.filter((y) => x === y).length === 3)).toBe(true);
+    });
+  }
+
+  test('DMR: no permite terminar un ramal en L con el muro vertical fuera del límite', async ({
+    page,
+  }) => {
+    await page.goto('/e2e/tablet.html?rci-drawing=dmr');
+    const canvas = page.getByLabel('Lienzo de prueba');
+    const tap = (x: number, y: number) => canvas.tap({ position: { x, y } });
+    await page.getByRole('button', { name: 'Dibujar ramal', exact: true }).tap();
+    await tap(70, 155);
+    await tap(245, 155);
+    await tap(245, 65);
+    await tap(245, 65);
+    await expect(page.getByRole('alert')).toContainText('distancia máxima a muro (DMR)');
+    await expect(page.getByTestId('ramales')).toHaveText('0');
+    await tap(70, 155);
+    await tap(390, 155);
+    await tap(390, 65);
+    await tap(390, 65);
+    await expect(page.getByTestId('ramales')).toHaveText('1');
+  });
+});
+
 for (const [width, height] of [
   [744, 1133],
   [820, 1180],
@@ -27,6 +80,9 @@ for (const [width, height] of [
       const at = async (x: number, y: number) =>
         hasTouch ? canvas.tap({ position: { x, y } }) : canvas.click({ position: { x, y } });
       await tap('Dibujar ramal');
+      const cancel = page.getByRole('button', { name: 'Cancelar', exact: true });
+      const cancelBox = await cancel.boundingBox();
+      const cancelFace = await cancel.locator('span').boundingBox();
       if (hasTouch) {
         const box = (await canvas.boundingBox())!;
         const cdp = await page.context().newCDPSession(page);
@@ -68,6 +124,20 @@ for (const [width, height] of [
       await expect(page.getByTestId('ramales')).toHaveText('1');
       await tap('Seleccionar');
       await at(160, 100);
+      const options = page.getByRole('button', { name: 'Opciones', exact: true });
+      await expect(options).toBeVisible();
+      const optionsBox = await options.boundingBox();
+      expect([optionsBox!.width, optionsBox!.height]).toEqual([
+        cancelBox!.width,
+        cancelBox!.height,
+      ]);
+      const optionsFace = (await options.locator('span').boundingBox())!;
+      expect([optionsFace.width, optionsFace.height]).toEqual([
+        cancelFace!.width,
+        cancelFace!.height,
+      ]);
+      expect(optionsFace.height).toBeGreaterThanOrEqual(30);
+      if (hasTouch) expect(optionsBox!.height).toBeGreaterThanOrEqual(48);
       await tap('Opciones');
       await expect(page.getByText('Opciones del ramal seleccionado')).toBeVisible();
       if (hasTouch) await tap('Acercar');
@@ -179,25 +249,42 @@ for (const [width, height] of [
     });
 
     if (!hasTouch) {
-      test('añade dos puntos y termina un ramal solo con teclado', async ({ page }) => {
+      // H-10 (remediación 2026-11-27): el escritorio recupera la entrada POR COORDENADAS —
+      // crear y terminar un ramal usando SOLO el teclado, sin un solo clic en el lienzo.
+      test('termina por teclado con coordenadas; fuera del plano se anuncia y Escape cancela', async ({
+        page,
+      }) => {
         await page.goto('/e2e/tablet.html', { waitUntil: 'commit' });
         await page.getByRole('button', { name: 'Dibujar ramal' }).press('Enter');
-        await page.locator('summary').press('Enter');
-        const x = page.getByRole('spinbutton', { name: 'X (px)' });
-        const y = page.getByRole('spinbutton', { name: 'Y (px)' });
-        await x.fill('100');
-        await y.fill('100');
-        await y.press('Enter');
-        await x.fill('220');
-        await y.press('Enter');
+        await expect(page.getByText('Trazar por coordenadas', { exact: true })).toBeVisible();
+        const x = page.getByLabel('X (px)');
+        const y = page.getByLabel('Y (px)');
+        // Fuera del plano: error anunciado, sin puntos.
+        await x.fill('99999');
+        await y.fill('99999');
+        await page.getByRole('button', { name: 'Añadir punto' }).press('Enter');
+        await expect(page.getByText('El punto debe quedar dentro del plano.')).toBeVisible();
+        await expect(page.getByTestId('puntos')).toHaveText('0');
+        // Dos puntos dentro, por teclado.
+        const punto = async (vx: string, vy: string) => {
+          await x.fill(vx);
+          await y.fill(vy);
+          await page.getByRole('button', { name: 'Añadir punto' }).press('Enter');
+        };
+        await punto('100', '100');
+        await punto('220', '100');
+        await expect(page.getByTestId('puntos')).toHaveText('2');
         await page.getByRole('button', { name: 'Terminar' }).press('Enter');
         await expect(page.getByTestId('ramales')).toHaveText('1');
         await expect(page.getByTestId('puntos')).toHaveText('2');
+        // Escape cancela un trazado nuevo sin crear ramal.
+        await page.getByRole('button', { name: 'Dibujar ramal' }).press('Enter');
+        await punto('300', '100');
+        await page.keyboard.press('Escape');
+        await expect(page.getByTestId('ramales')).toHaveText('1');
         await page.getByRole('button', { name: /^Editar .+/ }).press('Enter');
         await expect(page.getByText('Opciones del ramal seleccionado')).toBeVisible();
-        await page.getByRole('button', { name: /^Borrar .+/ }).press('Enter');
-        await expect(page.getByTestId('ramales')).toHaveText('0');
-        await expect(page.getByRole('heading', { name: 'Elementos del plano (0)' })).toBeFocused();
+        await expect(page.getByRole('button', { name: /^Borrar .+/ })).toHaveCount(0);
       });
     }
 

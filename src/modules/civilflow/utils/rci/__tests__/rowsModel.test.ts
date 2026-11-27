@@ -102,14 +102,16 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
   it('criterios de rociadores: área de diseño 1066.24 ft², 7 rociadores y remoto 16.34 @ 8.51', () => {
     const diseno = kvRociadorDiseno(R.roc, R.roc.hz.qr ? 'Sí' : 'No', 'Húmedo');
     const porL = new Map(diseno.map((k) => [k.l, k]));
-    expect(porL.get('Área adoptada')!.v).toContain('1.066,2');
-    expect(porL.get('Reducción QR')!.v).toContain('29');
+    expect(porL.get('Área de diseño adoptada')!.v).toContain('1.066,2');
+    expect(porL.get('Reducción por rociadores QR')!.v).toContain('28,9');
     const cob = kvRociadorCobertura(R.roc, R.Nop);
     const porC = new Map(cob.map((k) => [k.l, k]));
-    expect(porC.get('Rociadores exigidos en el área')!.v).toBe('7');
-    expect(porC.get('Rociadores exigidos en el área')!.nota).toContain('16 con flujo');
-    expect(porC.get('Rociador más remoto')!.v).toBe('16,34');
-    expect(porC.get('Presión del más remoto')!.v).toBe('8,5');
+    expect(cob).toHaveLength(10); // 8 del HTML + DMR añadida
+    expect(porC.get('Rociadores requeridos en el área')!.v).toBe('7');
+    expect(porC.get('Rociadores requeridos en el área')!.nota).toContain('16 con flujo');
+    expect(porC.get('Caudal mínimo del rociador más remoto')!.v).toBe('16,34');
+    expect(porC.get('Presión del rociador más remoto')!.v).toBe('8,5');
+    expect(porC.get('Distancia máxima a muro')!.v).toBe('1,70');
   });
 
   it('tipologías: una T1 con los 3 pisos, representativo P3 y derivación 45.08 psi / 311.17 gpm', () => {
@@ -146,7 +148,7 @@ describe('rowsModel · tablas del piso activo contra el ejemplo de verificación
 });
 
 describe('rowsModel · verificaciones agrupadas', () => {
-  it('las 43 del ejemplo quedan repartidas entre los grupos y todas CUMPLE', () => {
+  it('las verificaciones del ejemplo quedan repartidas entre los grupos y todas CUMPLE', () => {
     const grupos = filasVerificaciones(R.checks);
     const total = grupos.reduce((a, g) => a + g.items.length, 0);
     expect(total).toBe(43);
@@ -271,7 +273,7 @@ describe('rowsModel · flujo completo dibujo → sembrar → compute', () => {
   function ramalRci(id: string, pts: number[][], totalL: number, rociadores: number): RawElement {
     const accMed: Record<string, string> = {};
     for (let i = 0; i < rociadores; i++) accMed[`accMed${i}`] = 'rociador';
-    return { id, net: 'rci', tipo: 'ramal', pts, totalL, accMed };
+    return { id, net: 'rci', tipo: 'ramal', pts, totalL, accMed, material: 'Acero SCH 40' };
   }
 
   it('la planta extraída, sembrada con planta = planId, computa: la red cierra en la derivación', () => {
@@ -280,6 +282,7 @@ describe('rowsModel · flujo completo dibujo → sembrar → compute', () => {
       ramales: [
         {
           id: 't1',
+          material: 'Acero SCH 40',
           net: 'rci',
           tipo: 'ramal',
           pts: [
@@ -290,6 +293,7 @@ describe('rowsModel · flujo completo dibujo → sembrar → compute', () => {
         },
         {
           id: 't2',
+          material: 'Acero SCH 40',
           net: 'rci',
           tipo: 'ramal',
           pts: [
@@ -325,10 +329,21 @@ describe('rowsModel · flujo completo dibujo → sembrar → compute', () => {
           5,
         ),
       ],
-      bajantes: [{ id: 'm1', net: 'rci', tipo: 'montante', code: 'MRCI1', x: 5.79, y: 0 }],
+      bajantes: [
+        {
+          id: 'm1',
+          net: 'rci',
+          tipo: 'montante',
+          code: 'MRCI1',
+          x: 5.79,
+          y: 0,
+          material: 'Acero SCH 10',
+        },
+      ],
     };
     const gris = extraerGris([{ planId: '9', label: 'P1', npt: 0, doc }]);
     const est = sembrarRci(gris.estado, 'Torre');
+    est.clas.sistema = 'Húmedo';
     /* Numéricos VACÍOS por defecto (ped. usuario): aquí se digitan K/S/L — el conteo del
        área de diseño los necesita (los defaults de norma cubren presión/velocidad). */
     est.roc.K = 5.6;

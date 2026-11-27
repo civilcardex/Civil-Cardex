@@ -1,6 +1,7 @@
 import React from 'react';
 import { GAS } from '../../constants/engineeringDataGas.ts';
 import { CONTADORES, MATERIALES_POR_RED, COEF_FRICCION } from './catalogData.ts';
+import { RciInputTableScroll } from '../../components/rci/RCIInputTableScroll.tsx';
 import {
   MATERIALES_CUBIERTA_LL,
   MATERIALES_CANAL_LL,
@@ -228,66 +229,76 @@ export function ManningCanalesLlTable() {
   );
 }
 
-/** Tabla de coeficientes de fricción por tubería: Manning (formula de flujo en tuberia) n,
- *  Hazen-Williams C (y C de uso) y rugosidad ε (mm) — la fuente de las pérdidas de carga que
- *  usan las tablas de dimensionamiento por red. */
+/** Muestra coeficientes de fricción por red y material. Ej.: cobre con Hazen C (coeficiente de pérdida por fricción) de 130 en gas. */
 export function CoefFriccionTable() {
   return (
     <div className="cat-scroll">
-      <table className="cat-table">
-        <caption className="sr-only">Coeficientes de fricción por tipo de tubería</caption>
-        <thead>
-          <tr>
-            <th scope="colgroup" colSpan={9} className="cat-th-group">
-              Coeficiente fricción tuberías
-            </th>
-          </tr>
-          <tr>
-            <th scope="col" className="cat-coef-th" data-w="14">
-              Tipo
-            </th>
-            <th scope="col" className="cat-coef-th" data-w="14">
-              Descripción
-            </th>
-            <th scope="col" className="cat-coef-th" data-w="10">
-              Sistema
-            </th>
-            <th scope="col" className="cat-coef-th" data-w="7">
-              Material
-            </th>
-            <th scope="col" className="cat-coef-th">
-              Manning n
-            </th>
-            <th scope="col" className="cat-coef-th">
-              Hazen C
-            </th>
-            <th scope="col" className="cat-coef-th">
-              Hazen C Uso
-            </th>
-            <th scope="col" className="cat-coef-th">
-              Rugosidad ε (mm)
-            </th>
-            <th scope="col" className="cat-coef-th">
-              Presión Nominal
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {COEF_FRICCION.map((c, i) => (
-            <tr key={i} className={i % 2 === 0 ? 'cat-tr-even' : 'cat-tr-odd'}>
-              <td className="cat-coef-td">{c.tipo}</td>
-              <td className="cat-coef-td cat-coef-td-body">{c.desc}</td>
-              <td className="cat-coef-td cat-coef-td-body">{c.sis}</td>
-              <td className="cat-coef-td cat-coef-td-body">{c.mat}</td>
-              <td className="cat-coef-td">{c.n.toFixed(3)}</td>
-              <td className="cat-coef-td">{c.c}</td>
-              <td className="cat-coef-td">{c.cu}</td>
-              <td className="cat-coef-td">{c.e.toFixed(4)}</td>
-              <td className="cat-coef-td cat-coef-td-body">{c.pn}</td>
+      <RciInputTableScroll label="Coeficiente fricción tuberías">
+        <table id="coef-friccion-rci" className="cat-table">
+          <caption className="sr-only">Coeficientes de fricción por tipo de tubería</caption>
+          <thead>
+            <tr>
+              <th colSpan={10} className="cat-th-group">
+                Coeficiente fricción tuberías
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+            <tr>
+              <th scope="col" className="cat-coef-th" data-w="14">
+                Tipo
+              </th>
+              <th scope="col" className="cat-coef-th" data-w="14">
+                Descripción
+              </th>
+              <th scope="col" className="cat-coef-th" data-w="10">
+                Sistema
+              </th>
+              <th scope="col" className="cat-coef-th" data-w="7">
+                Material
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Manning n
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Hazen C húmedo
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Hazen C seco
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Hazen C uso
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Rugosidad ε (mm)
+              </th>
+              <th scope="col" className="cat-coef-th">
+                Presión Nominal
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {COEF_FRICCION.map((c, i) => (
+              <tr key={`${c.tipo}:${c.sis}`} className={i % 2 === 0 ? 'cat-tr-even' : 'cat-tr-odd'}>
+                <th scope="row" className="cat-coef-td">
+                  {c.tipo}
+                </th>
+                <td className="cat-coef-td cat-coef-td-body">{c.desc}</td>
+                <td className="cat-coef-td cat-coef-td-body">{c.sis}</td>
+                <td className="cat-coef-td cat-coef-td-body">{c.mat}</td>
+                <td className="cat-coef-td">{c.n?.toFixed(3) ?? '—'}</td>
+                <td className="cat-coef-td">{c.cHumedo}</td>
+                <td className="cat-coef-td">
+                  {/* Solo se muestra si hay coeficiente SECO explícito y validado; hueco o
+                      no aplicable = «—» (nunca copiar el de húmedo). */}
+                  {c.cSeco ?? '—'}
+                </td>
+                <td className="cat-coef-td">{c.cUso ?? '—'}</td>
+                <td className="cat-coef-td">{c.e.toFixed(4)}</td>
+                <td className="cat-coef-td cat-coef-td-body">{c.pn ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </RciInputTableScroll>
     </div>
   );
 }

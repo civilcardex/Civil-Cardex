@@ -1,6 +1,7 @@
 ﻿/** Tarjeta contenedora genérica (borde, fondo, título opcional) de paneles y formularios.
  *  Ej: las tarjetas de la pestaña Info son este componente con distinto título. */
 import React from 'react';
+import TableScroll from './TableScroll.tsx';
 
 interface CardProps {
   title?: string;
@@ -54,9 +55,12 @@ const Card = React.memo(function Card({
           {subtitle && <span className="card-s">{subtitle}</span>}
         </div>
       )}
-      <div className={`card-b card-b-tight${bodyClassName ? ` ${bodyClassName}` : ''}`}>
+      <TableScroll
+        label={title ?? 'Datos del cálculo'}
+        className={`card-b card-b-tight${bodyClassName ? ` ${bodyClassName}` : ''}`}
+      >
         {children}
-      </div>
+      </TableScroll>
     </div>
   );
 });

@@ -54,7 +54,7 @@ src/
 │  └─ pricing/         3
 ├─ seo/                3              # prerenderEntry.tsx (SSR), routeMeta.ts (fuente única de rutas)
 ├─ styles/            18              # CSS por dominio (tokens, tables, landing, dialogs…)
-├─ test/              12              # infra de test: renderEnJsdom, axe, domStubs, fixtures
+├─ test/              18              # infra de test: renderEnJsdom, axe, domStubs, fixtures (glbFixture: GLB intercalado de prueba)
 └─ utils/              6              # saveToCloud, devError, exportLoaders, authMessage…
 ```
 
@@ -75,7 +75,7 @@ civilflow/
 │  ├─ fixtures/       31              # aparatos sanitarios: herencia montantes↔bajantes entre pisos
 │  ├─ workareaContent/18              # tabs de contenido (networksTab, reportTab, use*Tables)
 │  ├─ shared/         20              # UI común (Tbl, Card, glbCache, threeStage.ts staging 3D)
-│  ├─ rci3d/ epc3d/ aparatos3d/ rciNetwork3d/ 30  # visores 3D GLB (staging común en shared/)
+│  ├─ rci3d/ epc3d/ aparatos3d/ rciNetwork3d/ 30  # visores 3D GLB (staging común en shared/); parsers propios probados en sus __tests__/
 │  ├─ Regulations/    10              # normativa visible al usuario
 │  ├─ ep/ waterNetworkDesign/ supplyConnection/ rejillasVentilation/ gas/ sanitary/ …
 │  └─ __tests__/       5

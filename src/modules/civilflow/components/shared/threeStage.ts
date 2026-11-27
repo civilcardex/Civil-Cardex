@@ -18,7 +18,6 @@ export interface EscenaOpts {
   maxDistance?: number;
   /** Legacy del HTML: PCFSoft fue REMOVIDO de three moderno — la opción queda muerta y
    *  siempre es PCF (sin aviso en consola). */
-  shadowType?: 'pcf' | 'pcfsoft';
   /** Canvas con buffer preservado (aparatos: captura PNG del visor). */
   preserveDrawingBuffer?: boolean;
   /** powerPreference del renderer (rci: 'high-performance'). */

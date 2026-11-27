@@ -5,42 +5,19 @@ import type { Verificacion } from '../../../lib/rci/types.ts';
 
 const st = ejemploVerificacion();
 const R = compute(st);
-// DMR INALTERABLE (ped. 2026-11-18): se deriva del riesgo del piso activo = S máx./2
-// (riesgo leve → 4,6/2 = 2,30 m). El check JAMÁS queda PENDIENTE por dato faltante.
+/* La fila DMR («Distancia de ramales a muros ≤ DMR») ya NO existe aquí (ped. usuario
+ * 2026-11-27): ese chequeo vive SOLO en el dibujo (RCIAutoDraw.chequeoMurosTrazo). Quedan
+ * la distancia MÍNIMA rociador–muro y el cruce de tubería. */
+const checkMin = (L: Verificacion[]) =>
+  L.find((v) => v.lab === 'Distancia mínima ramal–muro ≥ 0,10 m');
 
-const checkDe = (L: Verificacion[]) =>
-  L.find((v) => v.lab === 'Distancia de ramales a muros ≤ DMR');
-
-describe('verificación: distancia de ramales a muros (guías esMuro, DMR derivada = S máx./2)', () => {
-  const checkMin = (L: Verificacion[]) =>
-    L.find((v) => v.lab === 'Distancia mínima ramal–muro ≥ 0,10 m');
-
-  it('sin dibujo no aparece la verificación (motor puro intacto)', () => {
-    expect(checkDe(R.checks)).toBeUndefined();
+describe('verificación de dibujo: mínimo rociador–muro y cruce (la DMR es solo del dibujo)', () => {
+  it('sin dibujo no aparecen las verificaciones (motor puro intacto)', () => {
+    expect(checkMin(R.checks)).toBeUndefined();
+    expect(R.checks.some((v) => v.lab.includes('muro'))).toBe(false);
   });
 
-  it('la DMR se DERIVA (riesgo leve → 2,30 m): sin columna DMR nunca queda PENDIENTE por dato', () => {
-    const st2 = { ...st, roc: { ...st.roc, Dmuro: '' } };
-    const L = checks(st2, R, {
-      muros: [
-        [
-          [0, 1],
-          [10, 1],
-        ],
-      ],
-      ramPts: [
-        [
-          [0, 0],
-          [10, 0],
-        ],
-      ],
-    });
-    const v = checkDe(L);
-    expect(v?.st).toBe('CUMPLE'); // muro a 1 m ≤ 2,30 m derivados
-    expect(v?.nor).toContain('2,30');
-  });
-
-  it('sin muros marcados → PENDIENTE', () => {
+  it('sin muros marcados no hay filas de muro', () => {
     const L = checks(st, R, {
       muros: [],
       ramPts: [
@@ -50,114 +27,32 @@ describe('verificación: distancia de ramales a muros (guías esMuro, DMR deriva
         ],
       ],
     });
-    expect(checkDe(L)?.st).toBe('PENDIENTE');
-    expect(checkDe(L)?.val).toBe('Sin muros marcados');
+    expect(checkMin(L)).toBeUndefined();
+    expect(L.find((v) => v.lab === 'Cruce de tubería con muro')).toBeUndefined();
   });
 
-  it('muro dentro de Dmuro (1 m ≤ 1.7 m) → CUMPLE', () => {
+  it('rociador estándar pegado al muro → MÍNIMO NO CUMPLE', () => {
     const dibujo: DibujoPiso = {
       muros: [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+      ],
+      ramPts: [
         [
           [0, 1],
           [10, 1],
         ],
       ],
-      ramPts: [
-        [
-          [0, 0],
-          [10, 0],
-        ],
-      ],
+      rocPts: [{ x: 5, y: 0.05, tipo: 'montante', fluye: true, ramalId: 'RRCI1' }],
     };
     const L = checks(st, R, dibujo);
-    expect(checkDe(L)?.st).toBe('CUMPLE');
+    expect(checkMin(L)?.st).toBe('NO CUMPLE');
+    expect(checkMin(L)?.val).toContain('0,05 m');
   });
 
-  it('muro descubierto (a 4,9 m de todo ramal > Dmuro 1,7) → NO CUMPLE; el ramal interior no se juzga', () => {
-    // Muro 1 a 4,9 m del ramal más cercano (descubierto); muro 2 pegado al ramal 2 (cubierto).
-    // El ramal 1 está a 4,9 m de TODO muro — regla POR MURO: no se juzga (interior).
-    const dibujo: DibujoPiso = {
-      muros: [
-        [
-          [0, 5.1],
-          [10, 5.1],
-        ],
-        [
-          [0, 0.1],
-          [10, 0.1],
-        ],
-      ],
-      ramPts: [
-        [
-          [0, 0.2],
-          [10, 0.2],
-        ],
-        [
-          [0, 0],
-          [10, 0],
-        ],
-      ],
-    };
-    const L = checks(st, R, dibujo);
-    const v = checkDe(L);
-    expect(v?.st).toBe('NO CUMPLE');
-    expect(v?.val).toContain('1 de 2');
-    expect(v?.val).toContain('4,90 m');
-  });
-
-  it('ramal interior lejos de todo muro (4,9 m) NO reprueba — el peor MURO manda, no el ramal', () => {
-    // 2 muros cubiertos (ramal 2 a 0,2 y ramal 1 a 0,4 de ellos) + un ramal interior a 4,9 m.
-    const dibujo: DibujoPiso = {
-      muros: [
-        [
-          [0, 0.6],
-          [10, 0.6],
-        ],
-        [
-          [0, -0.2],
-          [10, -0.2],
-        ],
-      ],
-      ramPts: [
-        [
-          [0, 5],
-          [10, 5],
-        ],
-        [
-          [0, 0.2],
-          [10, 0.2],
-        ],
-        [
-          [0, 0],
-          [10, 0],
-        ],
-      ],
-    };
-    const L = checks(st, R, dibujo);
-    expect(checkDe(L)?.st).toBe('CUMPLE');
-  });
-
-  it('muro que cruza el ramal → máx CUMPLE (dist 0) pero MÍNIMO NO CUMPLE', () => {
-    const dibujo: DibujoPiso = {
-      muros: [
-        [
-          [5, -3],
-          [5, 3],
-        ],
-      ],
-      ramPts: [
-        [
-          [0, 0],
-          [10, 0],
-        ],
-      ],
-    };
-    const L = checks(st, R, dibujo);
-    expect(checkDe(L)?.st).toBe('CUMPLE'); // máx: 0 ≤ Dmuro
-    expect(checkMin(L)?.st).toBe('NO CUMPLE'); // mín: 0 < 0,10 — cruzar el muro viola
-  });
-
-  it('MÍNIMO: ramal pegado a 0,05 m del muro → NO CUMPLE', () => {
+  it('MÍNIMO: ramal pegado a 0,05 m del muro → NO CUMPLE (vértices como centros)', () => {
     const dibujo: DibujoPiso = {
       muros: [
         [
@@ -175,7 +70,7 @@ describe('verificación: distancia de ramales a muros (guías esMuro, DMR deriva
     const L = checks(st, R, dibujo);
     const v = checkMin(L);
     expect(v?.st).toBe('NO CUMPLE');
-    expect(v?.val).toContain('1 de 1');
+    expect(v?.val).toContain('2 de 2');
     expect(v?.val).toContain('0,05 m');
   });
 
@@ -201,5 +96,66 @@ describe('verificación: distancia de ramales a muros (guías esMuro, DMR deriva
     const L = checks(st, R, dibujo);
     const v = checkMin(L);
     expect(v?.st).toBe('CUMPLE');
+  });
+
+  it('mide la perpendicular desde el CENTRO del rociador', () => {
+    const dibujo: DibujoPiso = {
+      muros: [
+        [
+          [0, 2],
+          [10, 2],
+        ],
+      ],
+      ramPts: [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+      ],
+      rocPts: [{ x: 5, y: 0.4, tipo: 'colgante', fluye: true, ramalId: 'RRCI1' }],
+    };
+    const L = checks(st, R, dibujo);
+    expect(checkMin(L)?.st).toBe('CUMPLE'); // 0,40 m ≥ 0,10 m
+  });
+
+  it('muro que cruza el ramal → se informa SOLO en la fila de cruce', () => {
+    const dibujo: DibujoPiso = {
+      muros: [
+        [
+          [5, -3],
+          [5, 3],
+        ],
+      ],
+      ramPts: [
+        [
+          [0, 0],
+          [10, 0],
+        ],
+      ],
+    };
+    const L = checks(st, R, dibujo);
+    expect(checkMin(L)?.st).toBe('CUMPLE');
+    const cruce = L.find((v) => v.lab === 'Cruce de tubería con muro');
+    expect(cruce?.st).toBe('NO CUMPLE');
+    expect(cruce?.val).toContain('1 cruce');
+  });
+
+  it('cruce de tubería–muro: CUMPLE sin cruces aunque el ramal pase cerca', () => {
+    const L = checks(st, R, {
+      muros: [
+        [
+          [0, 3],
+          [10, 3],
+        ],
+      ],
+      ramPts: [
+        [
+          [0, 0.2],
+          [10, 0.2],
+        ],
+      ],
+    });
+    expect(L.find((v) => v.lab === 'Cruce de tubería con muro')?.st).toBe('CUMPLE');
+    expect(checkMin(L)?.st).toBe('CUMPLE');
   });
 });

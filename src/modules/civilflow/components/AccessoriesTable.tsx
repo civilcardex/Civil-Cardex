@@ -2,6 +2,7 @@
  *  sin ellos la Lh (longitud equivalente) y las pérdidas del tramo salen en cero.
  *  Ej: RG1 con 3 codos 90° -> fila editable que suma a la ficha hidráulica del ramal. */
 import { memo } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { ACCESORIOS_HIDRO, pisoCorto } from '../constants';
 import { RCI_ACCESORIOS } from '../utils/accessoryOptions.ts';
 import EmptyRow from './shared/EmptyRow.tsx';
@@ -84,7 +85,7 @@ const AccesoriosTable = memo(function AccesoriosTable({
       </div>
       <div style={{ padding: '12px' }}>
         {/* Ancho mínimo legible (19 columnas): en tablet scrollea en vez de aplastarse. */}
-        <div className="tbl-wrap-x">
+        <TableScroll label="Accesorios por tramo" className="tbl-wrap-x">
           <table
             className="tbl"
             style={{ width: '100%', minWidth: 950, borderCollapse: 'collapse', fontSize: 10 }}
@@ -157,7 +158,7 @@ const AccesoriosTable = memo(function AccesoriosTable({
               {filtered.length === 0 && <EmptyRow colSpan={1 + cols.length} fontSize={9} />}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </section>
   );

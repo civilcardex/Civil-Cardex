@@ -204,14 +204,3 @@
   background: var(--line);
   border-radius: 3px;
 }
-
-.scroll-top {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: 62vh;
-  transform: rotateX(180deg);
-}
-
-.scroll-top > .scroll-inner {
-  transform: rotateX(180deg);
-}

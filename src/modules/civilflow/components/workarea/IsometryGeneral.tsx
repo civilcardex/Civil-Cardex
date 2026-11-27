@@ -671,6 +671,21 @@ function IsometriaGeneral({ state }: IsometriaGeneralProps) {
             {...pointerHandlers}
             onContextMenu={(e) => e.preventDefault()}
           />
+          {/* Sin planos confirmados no hay nada que dibujar: aviso en lugar del lienzo
+           *  vacío (ped. usuario 2026-11-26). El canvas queda debajo (transparente). */}
+          {confirmedPlanos.length === 0 && (
+            <div
+              role="status"
+              className="iso-loading-overlay"
+              style={{ background: 'rgba(10, 14, 20, 0.82)' }}
+            >
+              <div style={{ fontSize: 40 }}>🗂️</div>
+              <div className="iso-loading-title">No hay planos para dibujar en isometría</div>
+              <div className="iso-loading-sub">
+                Confirma planos en la pestaña «Planos» para ver las redes en 3D.
+              </div>
+            </div>
+          )}
           <div className="iso-quick-controls">
             <button
               type="button"

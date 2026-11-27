@@ -318,3 +318,13 @@ export const REDES_MAT = [
     opts: ['Acero HG', 'A.C.', 'Cobre rígido', 'Cobre flexible', 'PE al PE', 'PEAD'],
   },
 ];
+
+/** Devuelve la elección válida del proyecto (o el único material disponible), no la primera opción.
+ * Ej.: una red de Gas aún sin elección devuelve vacío. */
+export function materialInicialRed(red: string, guardado: string | undefined): string {
+  if (red === 'vent') return 'PVC-V';
+  const opciones = REDES_MAT.find((fila) => fila.id === red);
+  if (!opciones) return guardado ?? '';
+  if (!opciones.opts) return opciones.mat;
+  return guardado && opciones.opts.includes(guardado) ? guardado : '';
+}

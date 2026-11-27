@@ -1,5 +1,4 @@
-/** Pestaña de Información del área de trabajo: tarjetas de identificación, niveles (npt
- *  (nivel de piso topográfico)), pisos, equipos activos y redes activas del proyecto. */
+/** Información general: guía, identificación, redes, equipos y niveles del proyecto. */
 import React from 'react';
 import type { useWorkAreaState } from '../useWorkAreaState.ts';
 import ProjectIdCard from './infoTab/ProjectIdCard.tsx';
@@ -31,18 +30,6 @@ const InfoTab_S3: React.CSSProperties = {
   padding: '2px 8px',
   flexShrink: 0,
 };
-const InfoTab_S4: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'row',
-  flexWrap: 'nowrap',
-  gap: 6,
-  flex: 1,
-  minHeight: 0,
-  overflowY: 'hidden',
-  overflowX: 'auto',
-  alignItems: 'stretch',
-};
-
 type WorkAreaState = ReturnType<typeof useWorkAreaState>;
 
 interface InfoTabProps {
@@ -66,6 +53,7 @@ function InfoTab({ state }: InfoTabProps) {
     setConCubierta,
     generarPisos,
     alertMsg,
+    nivelesGenerados,
     setAlertMsg,
     onIntChange,
     onIntBlur,
@@ -104,44 +92,47 @@ function InfoTab({ state }: InfoTabProps) {
           </button>
         </div>
       )}
-      <div style={InfoTab_S4}>
-        <ProjectIdCard proy={proy} setP={setP} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 auto' }}>
-          <ActiveNetsCard
-            redes={redes}
-            setRedes={setRedes}
-            netColors={netColors}
-            setNetColors={setNetColors}
-          />
-          <ActiveEquiposCard redes={redes} setRedes={setRedes} />
-        </div>
-        <FloorGeneratorCard
-          nSotanos={nSotanos}
-          nPisos={nPisos}
-          altPiso={altPiso}
-          altSotano={altSotano}
-          nptPiso1={nptPiso1}
-          conCubierta={conCubierta}
-          setConCubierta={setConCubierta}
-          onIntChange={onIntChange}
-          onIntBlur={onIntBlur}
-          onDecChange={onDecChange}
-          onDecBlur={onDecBlur}
-          setNSotanos={state.setNSotanos}
-          setNPisos={state.setNPisos}
-          setAltPiso={state.setAltPiso}
-          setAltSotano={state.setAltSotano}
-          setNptPiso1={state.setNptPiso1}
-          generarPisos={generarPisos}
-        />
-        <LevelsCard
-          pisos={pisos}
-          delPiso={delPiso}
-          addPiso={addPiso}
-          addSotano={addSotano}
-          setPisos={state.setPisos}
-        />
+      <div className="cf-info-layout">
         <UsageGuideCard />
+        <div className="cf-info-settings">
+          <ProjectIdCard proy={proy} setP={setP} />
+          <div className="cf-info-active">
+            <ActiveNetsCard
+              redes={redes}
+              setRedes={setRedes}
+              netColors={netColors}
+              setNetColors={setNetColors}
+            />
+            <ActiveEquiposCard redes={redes} setRedes={setRedes} />
+          </div>
+          <FloorGeneratorCard
+            nSotanos={nSotanos}
+            nPisos={nPisos}
+            altPiso={altPiso}
+            altSotano={altSotano}
+            nptPiso1={nptPiso1}
+            conCubierta={conCubierta}
+            setConCubierta={setConCubierta}
+            onIntChange={onIntChange}
+            onIntBlur={onIntBlur}
+            onDecChange={onDecChange}
+            onDecBlur={onDecBlur}
+            setNSotanos={state.setNSotanos}
+            setNPisos={state.setNPisos}
+            setAltPiso={state.setAltPiso}
+            setAltSotano={state.setAltSotano}
+            setNptPiso1={state.setNptPiso1}
+            generarPisos={generarPisos}
+            nivelesGenerados={nivelesGenerados}
+          />
+          <LevelsCard
+            pisos={pisos}
+            delPiso={delPiso}
+            addPiso={addPiso}
+            addSotano={addSotano}
+            setPisos={state.setPisos}
+          />
+        </div>
       </div>
     </div>
   );

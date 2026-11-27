@@ -25,6 +25,10 @@ export interface FilaTipologia {
   planId: string;
   uso: string;
   planta: string;
+  /** Piso tipo digitado (vacío por defecto); distinto de `planta`, que el motor usa para su red. */
+  pisoTipo?: string;
+  /** Almacenamiento del piso: '' = Por definir, 'No', 'Sí'. */
+  almacen: string;
   riesgo: string;
   sistema: string;
   htecho: string;
@@ -68,6 +72,8 @@ export function filasTipologias(est: RciState, tips: Tips | null): FilaTipologia
       planId: String((r as PisoRow & { planId?: string }).planId || ''),
       uso: txtDe(r.uso),
       planta: txtDe(r.planta),
+      pisoTipo: txtDe(r.pisoTipo),
+      almacen: txtDe(r.almacen),
       riesgo: txtDe(r.riesgo),
       sistema: txtDe(r.sistema),
       htecho: txtDe(r.htecho),
@@ -138,6 +144,8 @@ export interface FilaRamalRci {
   nombre: string;
   /** Nudo donde conecta (A, B…; la última letra es la derivación del montante). */
   con: string;
+  iniDibujo?: string;
+  finDibujo?: string;
   /** Rociadores dibujados en el plano (gris 🔒). */
   dib: number | null;
   /** Rociadores con flujo en el cálculo (el amarillo o el reparto automático). */
@@ -193,6 +201,8 @@ export function filasRamales(red: Red | undefined, rd: RedResult | null): FilaRa
       id: txtDe((r as TuberiaRow & { id?: string }).id),
       nombre: txtDe(r.nombre) || `R${i + 1}`,
       con: txtDe(r.con),
+      iniDibujo: txtDe(r.iniDibujo),
+      finDibujo: txtDe(r.finDibujo),
       dib: num(r.dib),
       fluyen: x ? x.fl : null,
       auto: x ? x.auto : true,

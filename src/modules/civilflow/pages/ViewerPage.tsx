@@ -18,14 +18,8 @@ import { RainwaterProvider } from '../context/RainwaterContext.tsx';
 import { PlansContext, usePlans } from '../context/PlansContext.tsx';
 import { ProjectContext, useProject } from '../context/ProjectContext.tsx';
 import { usePageMeta } from '../../../hooks/usePageMeta.ts';
-import { fetchProyectos } from '../services/projectsService.ts';
-import { abrirProyectoDesdeUrl } from '../services/workspaceReset.ts';
 import { EnlaceLegacyBanner } from './EnlaceLegacyBanner.tsx';
-import {
-  getActiveProyectoId,
-  setActiveProyectoId,
-  loadFromStorage,
-} from '../services/storageService.ts';
+import { getActiveProyectoId, loadFromStorage } from '../services/storageService.ts';
 import { prefetchAllTrazos } from '../utils/prefetchStrokes.ts';
 import {
   ACTIVE_NETS_KEY,
@@ -37,6 +31,7 @@ import { setAyudaContext } from '../../../components/help/helpContext.ts';
 import { EV_STORAGE } from '../utils/fixtureEvents.ts';
 import { CargandoProyecto } from '../components/shared/LoadingProject';
 import { useProyectoCargado } from '../hooks/useProjectLoaded';
+import { useProyectoPorUrl } from '../../../hooks/useProyectoPorUrl.ts';
 import { useTour } from '../../../components/tour/useTour.tsx';
 import {
   ViewerPage_S2,
@@ -140,64 +135,10 @@ export default function ViewerPage() {
   const enlaceLegacy = wantsCrudo != null && wantsId == null;
   const projectCtx = useContext(ProjectContext);
   const plansCtx = useContext(PlansContext);
-  const switchPendiente = wantsId != null && wantsId !== getActiveProyectoId();
-  const [switching, setSwitching] = useState(switchPendiente);
-  const switchingRef = useRef(false);
-  // Un segundo switch en la misma sesión quedaba bloqueado (ref sin reset): al asentarse
-  // la URL se permite de nuevo (setState idéntico no re-renderiza, no cascada).
-  useEffect(() => {
-    if (wantsId == null || wantsId === getActiveProyectoId()) {
-      switchingRef.current = false;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSwitching(false);
-    }
-  }, [wantsId]);
-
-  useEffect(() => {
-    if (proyectoId != null) return;
-    const activeId = getActiveProyectoId();
-    if (!activeId) return;
-    let alive = true;
-    void (async () => {
-      try {
-        const rows = await fetchProyectos();
-        if (!alive) return;
-        const found = rows.find((r) => r.id === activeId);
-        if (found) navigate(`/dibujoRedes/${found.id}`, { replace: true });
-      } catch {
-        /* cosmético: sin redirect */
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [proyectoId, navigate]);
-
-  useEffect(() => {
-    if (wantsId == null || switchingRef.current) return;
-    if (wantsId === getActiveProyectoId()) return;
-    switchingRef.current = true;
-    void (async () => {
-      // Fuera del cuerpo síncrono del efecto (regla set-state-in-effect).
-      await Promise.resolve();
-      setSwitching(true);
-      await abrirProyectoDesdeUrl({
-        wantsId,
-        pausar: () => {
-          projectCtx?.pauseCloudSync();
-          plansCtx?.pauseCloudSync();
-        },
-        resetear: () => {
-          plansCtx?.resetPlans();
-          projectCtx?.resetToDefaults();
-        },
-        activar: (id) => setActiveProyectoId(String(id)),
-        rutaConId: `/dibujoRedes/${wantsId}`,
-        rutaBase: '/dibujoRedes',
-      });
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantsId]);
+  const { switching } = useProyectoPorUrl(proyectoId, (id) => `/dibujoRedes/${id}`, {
+    projectCtx,
+    plansCtx,
+  });
 
   useEffect(() => {
     if (!dropdownOpen) return;
@@ -323,8 +264,7 @@ export default function ViewerPage() {
     const t = window.setTimeout(() => setMinHoldCarga(false), 900);
     return () => window.clearTimeout(t);
   }, []);
-  const isDrawingLoading =
-    !listo || pdfPendiente || switchPendiente || switching || visorLoading || minHoldCarga;
+  const isDrawingLoading = !listo || pdfPendiente || switching || visorLoading || minHoldCarga;
   // Hook ANTES de cualquier early return (reglas-de-hooks); arranca al bajar la carga.
   const tourVisor = useTour('cf:visor', !isDrawingLoading);
   // El overlay grande SOLO en la primera carga de la sesión (ped. usuario: entre cambio de

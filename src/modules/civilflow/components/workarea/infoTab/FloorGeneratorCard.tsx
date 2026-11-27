@@ -88,6 +88,7 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
   onDecChange: (setter: (v: string) => void) => (e: ChangeEvent<HTMLInputElement>) => void;
   onDecBlur: (setter: (v: string) => void) => (e: FocusEvent<HTMLInputElement>) => void;
   generarPisos: () => void;
+  nivelesGenerados?: number | null;
 }) {
   const [isEditing, setIsEditing] = React.useState(false);
   // ponytail: 1 style derivado para las 6 superficies que se atenúan fuera de edición (0.5 el botón).
@@ -233,6 +234,15 @@ const FloorGeneratorCard = React.memo(function FloorGeneratorCard(props: {
         >
           Generar niveles automáticamente
         </button>
+        <p className="cf-info-guide-note">
+          <strong>NPT significa Nivel de Piso Terminado.</strong> Es la cota de referencia de cada
+          piso.
+        </p>
+        <p role="status" className={props.nivelesGenerados ? 'cf-info-guide-note' : undefined}>
+          {props.nivelesGenerados
+            ? `Niveles generados: ${props.nivelesGenerados}. Revisa las cotas antes de asignar planos.`
+            : ''}
+        </p>
       </div>
     </section>
   );

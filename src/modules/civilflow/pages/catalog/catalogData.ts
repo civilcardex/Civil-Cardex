@@ -5,7 +5,10 @@
  * diámetro del motor se apoya en estas tablas.
  */
 
-/** Diámetros internos del PVC-S sanitario: 2" = 54.48 mm ... 6" = 160.04 mm (arranca en 2": el 1-1/2" fue retirado por pedido del usuario). */
+import { MAT_MANNING } from '../../constants/manningByMaterial.ts';
+import { PIPES, RCI_PIPE_CATALOG } from '../../lib/rci/tables.ts';
+
+/** Diámetros internos del PVC-S sanitario: 2" = 54.48 mm ... 6" = 160.04 mm. */
 export const SANITARIAS = [
   {
     mat: 'PVC-S',
@@ -32,63 +35,14 @@ export const VENTILACION = [
   },
 ];
 
-/** Diámetros por material de la RCI (Red Contra Incendio): acero SCH 10/40, PVC C900 RDE 14/18 y acero galvanizado, de ½" a 10". */
+/** Diámetros de la red contra incendio: la geometría comercial viene del catálogo del motor. */
 export const RCI = [
-  {
-    mat: 'Acero al carbono SCH 10',
-    rows: [
-      { dn: '¾"', d: 22.48 },
-      { dn: '1"', d: 27.86 },
-      { dn: '1¼"', d: 36.66 },
-      { dn: '1 ½"', d: 42.76 },
-      { dn: '2"', d: 54.76 },
-      { dn: '2 ½"', d: 66.9 },
-      { dn: '3"', d: 82.8 },
-      { dn: '4"', d: 108.2 },
-      { dn: '5"', d: 134.5 },
-      { dn: '6"', d: 161.5 },
-      { dn: '8"', d: 209.54 },
-      { dn: '10"', d: 263.44 },
-    ],
-  },
-  {
-    mat: 'Acero al carbono SCH 40',
-    rows: [
-      { dn: '½"', d: 15.76 },
-      { dn: '¾"', d: 20.96 },
-      { dn: '1"', d: 26.64 },
-      { dn: '1¼"', d: 35.08 },
-      { dn: '1 ½"', d: 40.94 },
-      { dn: '2"', d: 52.48 },
-      { dn: '2 ½"', d: 62.68 },
-      { dn: '3"', d: 77.92 },
-      { dn: '4"', d: 102.26 },
-      { dn: '5"', d: 128.2 },
-      { dn: '6"', d: 154.08 },
-      { dn: '8"', d: 202.74 },
-      { dn: '10"', d: 254.46 },
-    ],
-  },
-  {
-    mat: 'PVC C900 RDE 14',
-    rows: [
-      { dn: '4"', d: 104.88 },
-      { dn: '6"', d: 150.26 },
-      { dn: '8"', d: 197.08 },
-      { dn: '10"', d: 241.62 },
-      { dn: '12"', d: 287.4 },
-    ],
-  },
-  {
-    mat: 'PVC C900 RDE 18',
-    rows: [
-      { dn: '4"', d: 108.34 },
-      { dn: '6"', d: 155.84 },
-      { dn: '8"', d: 204.34 },
-      { dn: '10"', d: 250.56 },
-      { dn: '12"', d: 298.06 },
-    ],
-  },
+  ...['Acero SCH 10', 'Acero SCH 40', 'PVC C900 RDE 14', 'PVC C900 RDE 18', 'CPVC SDR 13,5'].map(
+    (mat) => ({
+      mat,
+      rows: Object.entries(PIPES[mat]).map(([dn, pipe]) => ({ dn, d: pipe.id })),
+    }),
+  ),
   {
     mat: 'Acero galvanizado',
     rows: [
@@ -173,7 +127,7 @@ export const MATERIALES_POR_RED = [
       'Acero al carbono',
     ],
   },
-  { red: 'Contra incendio', mats: ['Acero galvanizado', 'PVC C900', 'Acero al carbono'] },
+  { red: 'Contra incendio', mats: Object.keys(PIPES) },
 ];
 
 // Derivación de MATERIALES_POR_RED por id de red — tabla canónica de cuántos materiales
@@ -197,38 +151,54 @@ export const NETS_WITH_MULTIPLE_MATERIALS = new Set(
     .filter((id): id is string => !!id),
 );
 
-/** Coeficientes de fricción por material y sistema: n (Manning), c/cu (Hazen-Williams nuevo/usado), e (rugosidad absoluta, mm) y pn (nota de presión nominal). */
-export const COEF_FRICCION = [
+interface FrictionRow {
+  tipo: string;
+  desc: string;
+  sis: string;
+  mat: string;
+  n: number | null;
+  cUso?: number;
+  cHumedo: number;
+  cSeco?: number | null;
+  e: number;
+  pn: string | null;
+}
+
+const SERIES_RCI = ['PVC C900 RDE 18', 'PVC C900 RDE 14', 'CPVC SDR 13,5'] as const;
+
+/** Coeficientes de fricción de consulta; Hazen-Williams corresponde al flujo de agua, no al de gas.
+ * Ej.: cobre → C húmedo de 130 como referencia del material en agua. */
+export const COEF_FRICCION: FrictionRow[] = [
   {
     tipo: 'PVC-S',
     desc: 'PVC Sanitario',
     sis: 'Sanitaria',
     mat: 'PVC',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING['PVC-S'],
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
-    pn: 'N/A',
+    pn: null,
   },
   {
     tipo: 'PVC-S',
     desc: 'PVC Sanitario',
     sis: 'Aguas lluvias',
     mat: 'PVC',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING['PVC-S'],
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
-    pn: 'N/A',
+    pn: null,
   },
   {
     tipo: 'PVC-Pr',
     desc: 'PVC Presión',
     sis: 'Agua fría',
     mat: 'PVC',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING['PVC-PR'],
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
     pn: 'Según RDE',
   },
@@ -237,9 +207,9 @@ export const COEF_FRICCION = [
     desc: 'CPVC Agua caliente',
     sis: 'Agua caliente',
     mat: 'CPVC',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING.CPVC,
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
     pn: 'Según SDR',
   },
@@ -248,9 +218,9 @@ export const COEF_FRICCION = [
     desc: 'Acero galvanizado',
     sis: 'Gas',
     mat: 'Acero',
-    n: 0.015,
-    c: 120,
-    cu: 100,
+    n: MAT_MANNING['Acero HG'],
+    cHumedo: 120,
+    cUso: 100,
     e: 0.15,
     pn: 'Según cédula',
   },
@@ -259,9 +229,9 @@ export const COEF_FRICCION = [
     desc: 'Cobre Tipo L/K',
     sis: 'Gas',
     mat: 'Cobre',
-    n: 0.011,
-    c: 130,
-    cu: 120,
+    n: MAT_MANNING['Cobre rígido'],
+    cHumedo: 130,
+    cUso: 120,
     e: 0.0015,
     pn: 'Según tipo',
   },
@@ -270,9 +240,9 @@ export const COEF_FRICCION = [
     desc: 'Cobre flexible',
     sis: 'Gas',
     mat: 'Cobre',
-    n: 0.011,
-    c: 130,
-    cu: 120,
+    n: MAT_MANNING['Cobre flexible'],
+    cHumedo: 130,
+    cUso: 120,
     e: 0.0015,
     pn: 'Según tipo',
   },
@@ -281,9 +251,9 @@ export const COEF_FRICCION = [
     desc: 'PE Baja Densidad',
     sis: 'Gas',
     mat: 'PE',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING['PE al PE'],
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
     pn: 'Según SDR',
   },
@@ -292,9 +262,9 @@ export const COEF_FRICCION = [
     desc: 'Polietileno alta densidad',
     sis: 'Gas',
     mat: 'PEAD',
-    n: 0.009,
-    c: 150,
-    cu: 145,
+    n: MAT_MANNING.PEAD,
+    cHumedo: 150,
+    cUso: 145,
     e: 0.0015,
     pn: 'PE80/PE100',
   },
@@ -303,9 +273,10 @@ export const COEF_FRICCION = [
     desc: 'Acero negro',
     sis: 'Contra incendio',
     mat: 'Acero',
-    n: 0.012,
-    c: 120,
-    cu: 100,
+    n: MAT_MANNING['A.C. SCH 40'],
+    cHumedo: RCI_PIPE_CATALOG['Acero SCH 40'].humedo,
+    cSeco: RCI_PIPE_CATALOG['Acero SCH 40'].seco,
+    cUso: 100,
     e: 0.045,
     pn: 'Según cédula',
   },
@@ -314,21 +285,27 @@ export const COEF_FRICCION = [
     desc: 'Acero galvanizado',
     sis: 'Contra incendio',
     mat: 'Acero',
-    n: 0.015,
-    c: 120,
-    cu: 100,
+    n: MAT_MANNING['Acero HG'],
+    // Tabla de Hazen-Williams del capítulo 28 de la norma de rociadores de la NFPA (National Fire Protection Association).
+    cHumedo: 120,
+    cSeco: 100,
+    cUso: 100,
     e: 0.15,
     pn: 'Según cédula',
   },
-  {
-    tipo: 'PVC C900',
-    desc: 'PVC C900',
-    sis: 'Contra incendio',
-    mat: 'PVC',
-    n: 0.009,
-    c: 150,
-    cu: 145,
-    e: 0.0015,
-    pn: 'DR 18/25',
-  },
+  ...SERIES_RCI.map((tipo) => {
+    const ficha = RCI_PIPE_CATALOG[tipo];
+    return {
+      tipo,
+      desc: ficha.familia === 'PVC' ? 'PVC para red enterrada' : 'CPVC para rociadores',
+      sis: 'Contra incendio',
+      mat: ficha.familia,
+      n: tipo === 'CPVC SDR 13,5' ? null : MAT_MANNING[tipo],
+      cHumedo: ficha.humedo,
+      cSeco: ficha.seco,
+      cUso: 145,
+      e: ficha.rugosidad,
+      pn: ficha.presion,
+    };
+  }),
 ];

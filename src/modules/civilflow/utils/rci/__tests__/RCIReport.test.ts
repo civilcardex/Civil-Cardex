@@ -25,7 +25,8 @@ describe('construirInformeRci', () => {
     expect(valor('Normativa')).toContain('NFPA 101');
     expect(inf!.tabla.rows.some((r) => String(r[0]).startsWith('Tipología T1'))).toBe(true);
     expect(valor('Bomba')).toMatch(/500 gpm @ .* psi · Motor .* HP/);
-    expect(valor('Tanque')).toMatch(/m³$/);
+    expect(valor('Reserva contra incendio')).toMatch(/m³$/);
+    expect(valor('Tanque (volumen útil total)')).toMatch(/m³$/);
     expect(valor('Verificaciones')).toMatch(/^\d+ de \d+ CUMPLE$/);
   });
 

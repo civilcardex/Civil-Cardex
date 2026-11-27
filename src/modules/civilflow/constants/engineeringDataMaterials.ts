@@ -6,6 +6,10 @@
  */
 import { AGUA_CALIENTE, VENTILACION } from '../pages/catalog/catalogData.ts';
 import { diamPulgFromLabel } from '../utils/diamInchesFromLabel.ts';
+import { PIPES, canonicalRciPipeMaterial } from '../lib/rci/tables.ts';
+import { MAT_MANNING } from './manningByMaterial.ts';
+
+export { MAT_MANNING } from './manningByMaterial.ts';
 
 const MATS_RAW = {
   af: ['PVC-PR', 'CPVC', 'Cobre rígido', 'Polipropileno PP-R'],
@@ -65,25 +69,17 @@ export function matLongName(short: string) {
 /** Alias de MIGRACIÓN del catálogo rci (pre-unificación): los dibujos guardados antes del
  *  cambio guardan los nombres viejos — sus listas de Ø deben seguir resolviendo y el valor
  *  se NORMALIZA a la clave de PIPES al mostrarse/editarse. */
-const MAT_RCI_LEGACY: Record<string, string> = {
-  'A.C. SCH 40': 'Acero SCH 40',
-  'A.C. SCH 10': 'Acero SCH 10',
-  'PVC C900 DR14': 'PVC C900 RDE 14',
-  'PVC C900 DR18': 'PVC C900 RDE 18',
-  'CPVC CPVC-CI': 'CPVC SDR 13,5',
-};
-
 /** Lista de diámetros de un material: directa por clave, o vía alias de migración rci.
  *  Ej: diamListPorMaterial('A.C. SCH 40') = lista de 'Acero SCH 40' (dibujo viejo). */
 export function diamListPorMaterial(mat: string): Array<{ n: string; id?: number }> {
-  return DIAM_BY_MAT[mat] || DIAM_BY_MAT[MAT_RCI_LEGACY[mat] || ''] || [];
+  return DIAM_BY_MAT[canonicalRciPipeMaterial(mat)] || [];
 }
 
 /** Material rci NORMALIZADO para mostrar/persistir: el alias viejo se ve con su nombre nuevo.
  *  Ej: material guardado 'A.C. SCH 40' se despliega como 'Acero SCH 40' (al cambiar se
  *  persiste la clave nueva). */
 export function matRciNormalizado(mat: string): string {
-  return MAT_RCI_LEGACY[mat] || mat;
+  return canonicalRciPipeMaterial(mat);
 }
 
 /** NORMALIZA un mapa de materiales persistido (localStorage 'civilflow_mats' o nube): la
@@ -107,31 +103,6 @@ export function matShortKey(longName: string): string {
   if (!longName) return '';
   return MAT_SHORT_REVERSE[longName] || longName;
 }
-
-/** Rugosidad n de Manning (fórmula de flujo en tubería) por material: plásticos 0.009, hierro fundido/concreto 0.013, acero 0.015. */
-export const MAT_MANNING = {
-  'PVC-S': 0.009,
-  'PVC-V': 0.009,
-  'PVC-PR': 0.009,
-  'PVC C900 RDE 14': 0.009,
-  'PVC C900 RDE 18': 0.009,
-  Novatec: 0.009,
-  CPVC: 0.009,
-  'Hierro fundido': 0.013,
-  Concreto: 0.013,
-  'Gres cerámico': 0.013,
-  'Cobre rígido': 0.011,
-  'Cobre flexible': 0.011,
-  'Polipropileno PP-R': 0.009,
-  PEX: 0.009,
-  'PE al PE': 0.009,
-  Polietileno: 0.009,
-  PEAD: 0.009,
-  'A.C.': 0.015,
-  'A.C. SCH 10': 0.012,
-  'A.C. SCH 40': 0.012,
-  'Acero HG': 0.015,
-};
 
 /** n de Manning del material, o null si no está en el catálogo. Ej: matManning('PVC-S') → 0.009; matManning('Acero HG') → 0.015. */
 export function matManning(short: string) {
@@ -293,25 +264,12 @@ export const DIAM_BY_MAT: Record<string, Array<{ n: string; id?: number }>> = {
     { n: '3"' },
     { n: '4"' },
   ],
-  'CPVC SDR 13,5': [
-    { n: '3/4"' },
-    { n: '1"' },
-    { n: '1-1/4"' },
-    { n: '1-1/2"' },
-    { n: '2"' },
-    { n: '2-1/2"' },
-    { n: '3"' },
-  ],
-  'PVC C900 RDE 14': [{ n: '4"' }, { n: '6"' }, { n: '8"' }, { n: '10"' }, { n: '12"' }],
-  // id = diámetro interno (mm) del C900 RDE 18: OD − 2×espesor (tabla PIPES del cálculo rci:
-  // 4" 121.9−2×6.78, 6" 175.3−2×9.73, 8" 229.9−2×12.78, 10" 281.9−2×15.67, 12" 335.3−2×18.62).
-  'PVC C900 RDE 18': [
-    { n: '4"', id: 108.34 },
-    { n: '6"', id: 155.84 },
-    { n: '8"', id: 204.34 },
-    { n: '10"', id: 250.56 },
-    { n: '12"', id: 298.06 },
-  ],
+  ...Object.fromEntries(
+    ['CPVC SDR 13,5', 'PVC C900 RDE 14', 'PVC C900 RDE 18'].map((material) => [
+      material,
+      Object.entries(PIPES[material]).map(([n, pipe]) => ({ n: n.replace(' ', '-'), id: pipe.id })),
+    ]),
+  ),
   'PE al PE': [
     { n: '1/2"' },
     { n: '3/4"' },

@@ -6,6 +6,7 @@ import { num } from '../../../lib/rci/hydraulics.ts';
 import { factorMPorPx } from '../../../lib/PlanoEngine/planoCoords.ts';
 import type { TuberiaRow } from '../../../lib/rci/types.ts';
 import type { BajanteRaw, DrawingData } from '../../drawingSyncTypes.ts';
+import { numeroRociador } from '../../../lib/PlanoEngine/RCIAutoDraw.ts';
 import {
   TOL_PUNTO,
   TOL_BAJANTE,
@@ -166,7 +167,7 @@ export function extraerRedDePiso(
     let mejor: TrazoDib | null = null;
     let mejorBajaEsA = false;
     for (const t of trazos) {
-      if (t.roci > 0 || enTronco.has(t.orden)) continue;
+      if (t.rociTot > 0 || enTronco.has(t.orden)) continue;
       const tocaA = Math.hypot(t.a.x - punto.x, t.a.y - punto.y) < TOL_PUNTO;
       const tocaB = Math.hypot(t.b.x - punto.x, t.b.y - punto.y) < TOL_PUNTO;
       if (!tocaA && !tocaB) continue;
@@ -182,6 +183,7 @@ export function extraerRedDePiso(
     punto = mejorBajaEsA ? mejor.b : mejor.a;
   }
   tronco.reverse(); // orden remoto → derivación
+  const flujoDesdeFin = new Map(tronco.map((x) => [x.t.el.id, !x.bajaEsA]));
   const totalTronco = tronco.reduce((s, x) => s + x.t.L, 0);
   let acum = 0;
   const troncoPos: TramoTronco[] = tronco.map((x) => {
@@ -445,9 +447,15 @@ export function extraerRedDePiso(
     const dirSal = dirSalidaTronco(troncoPos, conecta.pos);
     const gira =
       !esLlegada && !!dirSal && anguloEntre(dirEnt.x, dirEnt.y, dirSal.x, dirSal.y) > UMBRAL_GIRO;
+    flujoDesdeFin.set(t.el.id, esB);
+    const delExtremo = (idx: number, texto?: string, accesorio?: string) => {
+      const med = t.el.accMed?.[`accMed${idx}`];
+      return texto?.trim().toUpperCase() || numeroRociador(accesorio) || numeroRociador(med) || '';
+    };
     const fila: TuberiaRow = {
       nombre: `R${++iR}`,
-      ini: '',
+      iniDibujo: delExtremo(0, t.el.ini, t.el.accesorioInicio),
+      finDibujo: delExtremo(pts.length - 1, t.el.fin, t.el.accesorioFin),
       dib: t.rociTot,
       fluDib: t.roci,
       fluyen: '',
@@ -564,6 +572,7 @@ export function extraerRedDePiso(
   nodos[letraDeriv] = { z: altDeriv };
 
   return {
+    flujoDesdeFin,
     red: {
       raiz: letraDeriv,
       mat: '',

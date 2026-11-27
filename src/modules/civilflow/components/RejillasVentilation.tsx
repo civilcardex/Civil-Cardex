@@ -110,14 +110,7 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
           Sectores: áreas dibujadas con la red Gas activa en el visor (etiqueta = sector).
         </span>
       </div>
-      {/* Altura TOPE inline en la tarjeta: el layout externo la recorta con overflow:hidden
-          sin dar scroll (la memoria quedaba inalcanzable, orig. usuario ×3). Con el tope aquí,
-          el contenido interno (flex:1 + overflowY) scrollea SIEMPRE dentro de la tarjeta. */}
-      <section
-        className="card"
-        aria-label="Rejillas de ventilación"
-        style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 190px)' }}
-      >
+      <section className="card" aria-label="Rejillas de ventilación">
         <div
           style={{
             display: 'flex',
@@ -177,18 +170,7 @@ const REJILLAS = React.memo(function RejillasVentilacion() {
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
         </div>
-        {/* Scroll VERTICAL propio y autocontenido (maxHeight propio: no depende del layout
-            externo, que recorta la tarjeta con overflow:hidden sin dar scroll — orig. usuario
-            "sigue sin estar el scroll vertical para ver las memorias del sector"). */}
-        <div
-          style={{
-            padding: '8px 10px',
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            maxHeight: 'calc(100vh - 205px)',
-          }}
-        >
+        <div style={{ padding: '8px 10px' }}>
           <TablaTipologias
             filas={filas}
             resultados={resultados}

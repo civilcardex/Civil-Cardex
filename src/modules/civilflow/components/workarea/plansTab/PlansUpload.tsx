@@ -162,7 +162,7 @@ export function PlansUpload({
         <button
           type="button"
           style={PlanosTab_S6}
-          aria-label="Seleccionar archivo de plano"
+          aria-label="Seleccionar uno o varios archivos PDF"
           onClick={() => fileRef.current?.click()}
         >
           {planDrag ? (
@@ -196,7 +196,7 @@ export function PlansUpload({
                   lineHeight: 1.5,
                 }}
               >
-                Sube un plano desde el panel derecho o arrastra un PDF aquí
+                Selecciona o arrastra uno o varios archivos PDF a la vez
               </div>
             </>
           )}

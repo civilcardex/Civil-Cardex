@@ -250,10 +250,23 @@ export function kvTanque(b: BombaResult, t: TanqueResult): KvRci[] {
       nota: b.D2 ? '30 min' : 'Sin demanda de montantes',
     },
     {
-      l: 'Volumen útil del tanque',
-      v: fmt(t.V, 1),
+      l: 'Reserva contra incendio',
+      v: fmt(t.Vincendio, 1),
       u: 'm³',
-      nota: `Mayor de los dos + reserva${t.tip ? ` · gobierna ${t.tip}` : ''}`,
+      nota: `Mayor de los dos${t.tip ? ` · gobierna ${t.tip}` : ''}`,
+    },
+    {
+      l: 'Consumo del edificio',
+      v: t.Vconsumo === null ? 'Pendiente' : fmt(t.Vconsumo, 1),
+      u: 'm³',
+      nota: 'Dato manual',
+    },
+    { l: 'Volumen adicional', v: fmt(t.Vextra, 1), u: 'm³', nota: 'Sin incluir consumo' },
+    {
+      l: 'Volumen útil total del tanque',
+      v: t.Vtotal === null ? 'Pendiente' : fmt(t.Vtotal, 1),
+      u: 'm³',
+      nota: 'Reserva contra incendio + consumo + volumen adicional',
     },
   ];
 }
@@ -529,7 +542,7 @@ export const SUBS_POR_TAB: Record<string, SubTab[]> = {
   ],
   tipologias: [
     { id: 'pisos', l: 'Pisos del edificio' },
-    { id: 'tipos', l: 'Tipologías y avisos' },
+    { id: 'tipos', l: 'Resumen de tipologías' },
     { id: 'criterios', l: 'Criterios de diseño' },
     { id: 'rectangulo', l: 'Rectángulo de fuego' },
     { id: 'corte', l: 'Corte esquemático' },

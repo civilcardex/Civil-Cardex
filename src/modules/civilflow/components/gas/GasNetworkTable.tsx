@@ -1,4 +1,5 @@
 import React from 'react';
+import TableScroll from '../shared/TableScroll.tsx';
 import EditButton from '../shared/EditButton.tsx';
 import EmptyRow from '../shared/EmptyRow.tsx';
 import { pisoCorto } from '../../constants';
@@ -106,7 +107,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
       </div>
       <div className="gas-pad-6">
         {/* Ancho mínimo legible (25 columnas): en tablet scrollea en vez de aplastarse. */}
-        <div className="tbl-wrap-x">
+        <TableScroll label="Diseño de red de gas" className="tbl-wrap-x">
           <table ref={tablaRef} className="gas-net-table tbl" style={{ minWidth: 1250 }}>
             <caption className="sr-only">Diseño de red</caption>
             <thead>
@@ -384,7 +385,7 @@ export function GasTablaRed(props: GasTablaRedProps) {
               })}
             </tbody>
           </table>
-        </div>
+        </TableScroll>
       </div>
     </section>
   );

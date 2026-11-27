@@ -77,6 +77,8 @@ export interface PiezaTronco {
 /** Resultado de la extracción de UN piso: su red (o null si no se pudo) y su montante de derivación. */
 export interface RedDePiso {
   red: Red | null;
+  /** Tramos cuyo extremo de llegada de agua es el último punto dibujado. */
+  flujoDesdeFin?: ReadonlyMap<string, boolean>;
   idMont: string;
   nombreMont: string;
   matMont: string;

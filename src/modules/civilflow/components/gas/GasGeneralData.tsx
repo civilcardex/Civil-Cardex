@@ -1,5 +1,6 @@
 import React from 'react';
 import EditButton from '../shared/EditButton.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import { SI } from '../../styles/sharedTableStyles.ts';
 import { loadFromStorage } from '../../services/storageService.ts';
 import { APARATOS_BY_TRAMO_KEY } from '../../constants/storage-keys.ts';
@@ -138,14 +139,7 @@ export function GasDatosGenerales(props: GasDatosGeneralesProps) {
             </h3>
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
-          <div
-            style={{
-              padding: '8px 12px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-            }}
-          >
+          <TableScroll label="Datos generales de gas" style={{ padding: '8px 12px' }}>
             <table className="tbl" style={{ fontSize: 13 }}>
               <caption className="sr-only">Datos generales</caption>
               <tbody>
@@ -204,7 +198,7 @@ export function GasDatosGenerales(props: GasDatosGeneralesProps) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScroll>
         </section>
         <section className="card" style={{ flexShrink: 0 }}>
           <div className="card-h" style={{ padding: '6px 12px' }}>

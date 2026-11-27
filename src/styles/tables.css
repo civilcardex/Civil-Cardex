@@ -101,6 +101,69 @@
   overscroll-behavior-x: contain;
 }
 
+.cf-network-design {
+  min-inline-size: 0;
+  overflow: hidden;
+}
+.cf-network-pages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-block-size: 0;
+  min-inline-size: 0;
+}
+.cf-network-design nav[aria-label='Paginación'] {
+  flex-wrap: wrap;
+}
+.cf-network-sheet {
+  container: network-sheet / size;
+  flex: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.cf-table-scroll {
+  box-sizing: border-box;
+  min-block-size: 0;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+}
+.cf-table-scroll:focus-visible {
+  outline: 2px solid var(--acc2);
+  outline-offset: -2px;
+}
+@container network-sheet (height > 0px) {
+  .cf-network-sheet .cf-table-scroll {
+    max-block-size: max(7rem, calc(100cqh - 4.5rem));
+  }
+  [data-rci-tab-content] .cf-table-scroll {
+    max-block-size: max(7rem, calc(100cqh - 10rem));
+  }
+  .cf-network-sheet .cf-table-scroll tfoot {
+    position: sticky;
+    inset-block-end: 0;
+    z-index: 1;
+    background: var(--bg3);
+  }
+}
+/* RCI en pantalla alta (útil ≥ 48 rem = 768 px): sin scroll VERTICAL interno — desplaza la
+ * SECCIÓN completa (el pie de red queda debajo de la tabla). El scroll HORIZONTAL sigue en la
+ * tabla para no apretar columnas. */
+@media (min-height: 48rem) {
+  [data-rci-tab-content] .cf-table-scroll {
+    max-block-size: none;
+    overflow-y: visible;
+    overflow-x: auto;
+  }
+  [data-rci-tab-content] .cf-table-scroll tfoot {
+    position: static;
+  }
+}
+
 /* ── TABLET (ped. usuario 2026-11-25): tablas legibles en puntero táctil ≤1366 px ──
  * Regla de producto: una tabla necesita su ancho mínimo legible; si no cabe, SCROLLEA —
  * nunca se aprieta en columnas de 32 px con cabeceras partidas en sílabas. El tier 1200 de
@@ -581,9 +644,10 @@
   font-size: 13px;
 }
 
-/* CoefFriccionTable: wrapper con scroll, th de grupo (S6) y th/td de coeficientes. */
+/* La página desplaza la tabla en vertical; la región interna se desplaza en horizontal. */
 .cat-scroll {
-  overflow-x: auto;
+  min-width: 0;
+  flex-shrink: 0;
 }
 .cat-th-group {
   padding: 2px 8px;
@@ -600,11 +664,11 @@
   background: var(--bg3);
   color: #00dce5;
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 1px 4px;
+  padding: 2px 5px;
   border: 1px solid var(--line);
   text-align: center;
   white-space: nowrap;
@@ -620,9 +684,9 @@
 }
 .cat-coef-td {
   font-family: var(--mono);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
-  padding: 0 3px;
+  padding: 1px 4px;
   text-align: center;
   color: var(--txt);
   border: 1px solid var(--line);
@@ -632,7 +696,6 @@
 .cat-coef-td-body {
   font-family: var(--body);
 }
-
 /* ── Rejillas de ventilación: tabla de tipologías y chrome del header
    (antes TD/TH/INP/SEL/TXT en rejillasShared.ts y props inline) ── */
 
@@ -1040,6 +1103,32 @@ tr.rt-subrow-selected > td {
   font-size: 11.5px;
   color: #e05252;
 }
+/* Aviso de «Piso tipo pendiente»: un poco más visible que una nota roja suelta, sin gritar.
+   Borde izquierdo grueso, fondo tenue y boleta «!» — el foco sigue en la celda pendiente. */
+.rci-err-note-highlight {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, #e05252 45%, var(--line, #52676e));
+  border-left: 3px solid #e05252;
+  border-radius: 4px;
+  background: color-mix(in srgb, #e05252 9%, var(--bg3, #1b2631));
+  font-weight: 600;
+}
+.rci-err-note-highlight::before {
+  content: '!';
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #e05252;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+}
 
 /* ── Estilos compartidos de tablas de diseño (antes SI/SD/TH/TD en sharedTableStyles.ts) ──
    Las celdas llevan las clases del contenedor .tbl del archivo. */
@@ -1426,22 +1515,34 @@ tr.rt-subrow-selected > td {
 }
 .dp-cta {
   width: 100%;
+  box-sizing: border-box;
+  flex: none;
   padding: 8px 10px;
   background: rgba(0, 220, 229, 0.08);
   border: none;
-  border-top: 1px solid rgba(0, 220, 229, 0.25);
+  border-bottom: 1px solid rgba(0, 220, 229, 0.25);
   color: #00dce5;
   cursor: pointer;
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.5px;
+  text-decoration: none;
   text-transform: uppercase;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   transition: all 0.15s;
+}
+.dp-cta:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+@media (any-pointer: coarse) {
+  .dp-cta {
+    min-block-size: 44px;
+  }
 }
 .dp-ghost {
   width: 100%;
@@ -1521,12 +1622,14 @@ tr.rt-subrow-selected > td {
   flex-direction: column;
 }
 .dp-col-10 {
+  container: design-parameters / inline-size;
   display: flex;
   flex-direction: column;
   gap: 10px;
   flex: 1;
-  min-height: 0;
-  overflow: hidden;
+  min-block-size: 0;
+  min-inline-size: 0;
+  overflow-y: auto;
 }
 .dp-col-cut {
   display: flex;
@@ -1541,11 +1644,26 @@ tr.rt-subrow-selected > td {
 }
 .dp-grid-3 {
   display: grid;
-  grid-template-columns: 1fr 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
-  flex: 1;
-  min-height: 0;
+  flex: none;
   align-items: start;
+}
+@container design-parameters (min-width: 52rem) {
+  .dp-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dp-grid-3 > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+@container design-parameters (min-width: 74rem) {
+  .dp-grid-3 {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  .dp-grid-3 > :last-child {
+    grid-column: auto;
+  }
 }
 
 .dp-pad-8 {

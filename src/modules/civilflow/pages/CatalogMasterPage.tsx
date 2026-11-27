@@ -1,5 +1,5 @@
-import { useState, lazy, Suspense } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState, lazy, Suspense } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { GAS } from '../constants/engineeringDataGas.ts';
 import { OPEN_TAB_KEY } from '../constants/storage-keys.ts';
 import { SANITARIAS, RCI, AGUA_FRIA, AGUA_CALIENTE, VENTILACION } from './catalog/catalogData.ts';
@@ -54,7 +54,13 @@ const pageBtn = {
 export default function CatalogMasterPage() {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { hash } = useLocation();
   const [subpage, setSubpage] = useState(1);
+  useEffect(() => {
+    if (subpage === 1 && hash === '#coef-friccion-rci') {
+      document.getElementById('coef-friccion-rci')?.scrollIntoView();
+    }
+  }, [hash, subpage]);
   usePageMeta(
     'Catálogo Maestro',
     'Catálogo de materiales, tuberías y equipos para diseño hidrosanitario. PVC, CPVC, cobre, acero y más según NTC 1500.',
@@ -143,7 +149,7 @@ export default function CatalogMasterPage() {
           style={{
             flex: 1,
             minHeight: 0,
-            overflow: subpage === 1 ? 'hidden' : 'auto',
+            overflow: 'auto',
             padding: '6px 0',
             display: 'flex',
             flexDirection: 'column',

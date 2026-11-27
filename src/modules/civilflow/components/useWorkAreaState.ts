@@ -180,10 +180,12 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
     let ignore = false;
     (async () => {
       const data = await loadProyectoData(proyectoId);
-      if (!ignore && data?.redesActivas && data.redesActivas.length > 0) {
+      /* La lectura tarda: solo se aplica si este sigue siendo el proyecto activo del usuario. */
+      if (ignore || getActiveProyectoId() !== proyectoId) return;
+      if (data?.redesActivas && data.redesActivas.length > 0) {
         setRedes(new Set(data.redesActivas));
       }
-      if (!ignore) setRedesRestoreDone(true);
+      setRedesRestoreDone(true);
     })();
     return () => {
       ignore = true;
@@ -352,6 +354,7 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
   ]);
 
   const [alertMsg, setAlertMsg] = useState<string | null>(null);
+  const [nivelesGenerados, setNivelesGenerados] = useState<number | null>(null);
 
   useEffect(() => {
     if (!alertMsg) return;
@@ -360,6 +363,7 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
   }, [alertMsg]);
 
   const generarPisos = () => {
+    setNivelesGenerados(null);
     const MAX = 50;
     const nSot = Math.min(parseIntInput(nSotanosRef.current) || 0, MAX);
     const nPis = Math.min(parseIntInput(nPisosRef.current) || 0, MAX);
@@ -418,6 +422,7 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
       });
     projectCtx.setPisos(l);
     setAlertMsg(null);
+    setNivelesGenerados(l.length);
   };
 
   const onIntChange = useCallback(
@@ -656,6 +661,7 @@ export function useWorkAreaState(tabInicial?: string | null, onTabChange?: (t: s
     setConCubierta,
     generarPisos,
     alertMsg,
+    nivelesGenerados,
     setAlertMsg,
     onIntChange,
     onIntBlur,

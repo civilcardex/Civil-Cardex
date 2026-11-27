@@ -23,11 +23,29 @@ import {
 import { RUTA_DE } from '../src/modules/civilflow/utils/rci/RCIRowsModelExtras.ts';
 import WorkAreaCivilManager from '../src/modules/civilmanager/WorkAreaCivilManager.tsx';
 import { TOURS } from '../src/components/tour/tourSteps.ts';
+import { CivilFlowSetupFixture, stubCivilFlowSetup } from './civilFlowSetupFixture.tsx';
+import CatalogMasterPage from '../src/modules/civilflow/pages/CatalogMasterPage.tsx';
 import '../src/styles/controls.css';
 import '../src/styles/tables.css';
 
 function RciInputsFixture() {
-  const [estado, editar] = useState(ejemploVerificacion);
+  const zonas = new URLSearchParams(location.search).has('rci-zonas');
+  const [estado, editar] = useState(() => {
+    const saved = zonas ? sessionStorage.getItem('tablet-rci-zonas') : null;
+    if (saved) return JSON.parse(saved) as ReturnType<typeof ejemploVerificacion>;
+    const e = ejemploVerificacion();
+    if (zonas) {
+      const p = e.pisos.rows[0];
+      e.pisos.rows = [
+        { ...p, nombre: 'Piso de prueba 1', planId: 'piso-1', htecho: 4 },
+        { ...p, nombre: 'Piso de prueba 2', planId: 'piso-2', htecho: 5, npt: 4 },
+      ];
+    }
+    return e;
+  });
+  useEffect(() => {
+    if (zonas) sessionStorage.setItem('tablet-rci-zonas', JSON.stringify(estado));
+  }, [zonas, estado]);
   const [sub, setSub] = useState<string | null>(null);
   const irA: NavRci['irA'] = (_tab, next, field) => {
     setSub(next ?? null);
@@ -36,6 +54,19 @@ function RciInputsFixture() {
   const tips = clasificar(estado);
   return (
     <main>
+      {zonas && (
+        <button
+          type="button"
+          onClick={() =>
+            editar((e) => ({
+              ...e,
+              pisos: { ...e.pisos, rows: e.pisos.rows.filter((p) => p.planId !== 'piso-1') },
+            }))
+          }
+        >
+          Simular eliminación del piso 1
+        </button>
+      )}
       <button
         type="button"
         onClick={() => {
@@ -64,8 +95,9 @@ function FlowFixture() {
   const [elements, setElements] = useState<ElementItem[]>([]);
   const [options, setOptions] = useState(false);
   const [index, setIndex] = useState(0);
+  const [alerta, setAlerta] = useState('');
   const { isMobile, isNarrow } = useViewerResponsive();
-  // El contrato real del visor: «tablet» = puntero grueso. Terminar/Coordenadas son solo
+  // El contrato real del visor: «tablet» = puntero grueso. Terminar es solo
   // de escritorio; en táctil se cierra con doble toque y Cancelar sigue disponible.
   const esTactil = matchMedia('(any-pointer: coarse)').matches;
   useEffect(() => {
@@ -76,10 +108,30 @@ function FlowFixture() {
     engine.snapMode = false;
     engine.gridMode = false;
     engine.resizeCanvas(500, 250);
+    const modo = new URLSearchParams(location.search).get('rci-drawing');
+    if (modo) {
+      engine.activeNet = 'rci';
+      engine.scaleM = 0.5;
+      engine.onAlert((titulo, mensaje) => setAlerta(`${titulo}: ${mensaje}`));
+      if (modo === 'dmr') {
+        engine.dmuroRci = 1.7;
+        engine.guideLines.push({
+          id: 'muro-l',
+          net: 'rci',
+          esMuro: true,
+          pts: [
+            [10, 200],
+            [460, 200],
+            [460, 35],
+          ],
+        });
+      }
+    }
     engine.onDirty(() => {
       setCount(engine.ramales.length);
       setPoints(engine.ramales.at(-1)?.pts.length ?? 0);
       setElements(engine.getElementsByNet(engine.activeNet));
+      canvas.current!.dataset.topology = JSON.stringify(engine.ramales.map((r) => r.pts));
     });
     engine.onSelect(() => {
       const element = engine.getSelected();
@@ -164,6 +216,7 @@ function FlowFixture() {
       </div>
       <p data-testid="ramales">{count}</p>
       <p data-testid="puntos">{points}</p>
+      {alerta && <p role="alert">{alerta}</p>}
       {!isMobile && (
         <PdfViewerDrawnElements
           drawnElements={elements}
@@ -171,11 +224,6 @@ function FlowFixture() {
           selectedId={selectedId}
           engineRef={eng}
           onEdit={() => setOptions(true)}
-          onDelete={(id, _label, onDeleted) => {
-            eng.current?.selectById(id);
-            eng.current?.deleteSelected();
-            onDeleted();
-          }}
         />
       )}
       {options && (
@@ -224,6 +272,8 @@ const fixture = {
   ],
 };
 const isManager = location.pathname.startsWith('/civilmanagerareatrabajo/');
+const cfSetup = new URLSearchParams(location.search).has('cf-setup');
+if (cfSetup) await stubCivilFlowSetup();
 if (isManager) {
   localStorage.setItem('cm_proyecto_activo_id', id);
   for (const tour of Object.keys(TOURS).filter((key) => key.startsWith('cm:'))) {
@@ -258,6 +308,12 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/civilmanagerareatrabajo/*" element={<WorkAreaCivilManager />} />
       </Routes>
+    </BrowserRouter>
+  ) : cfSetup ? (
+    <CivilFlowSetupFixture />
+  ) : new URLSearchParams(location.search).has('catalogo-friccion') ? (
+    <BrowserRouter>
+      <CatalogMasterPage />
     </BrowserRouter>
   ) : new URLSearchParams(location.search).has('rci-entradas') ? (
     <RciInputsFixture />

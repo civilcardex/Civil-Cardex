@@ -1,5 +1,6 @@
 /** Selección de calentadores para ac (Agua Caliente): elige modelo del catálogo, lo estampa en el dibujo y recalcula el total de la red. Ej: 2 duchas + 1 lavadero -> el Q (Caudal) ac define el calentador de paso necesario. */
 import { useMemo } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { useTramos } from '../context/TramosContext.tsx';
 import { CAT_GAS } from '../constants/engineeringDataGas.ts';
 import { fmt } from '../utils/formatUtils.ts';
@@ -96,116 +97,120 @@ export default function HeaterSelection() {
   return (
     <div style={{ padding: 16, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <section className="card" style={{ width: '100%', maxWidth: 600, marginBottom: 20 }}>
-        <table className="tbl">
-          <thead>
-            <tr>
-              <th scope="col" title="Aparato conectado a la red de agua caliente.">
-                Aparato
-              </th>
-              <th scope="col" title="Cantidad de ese aparato en el proyecto." className="c">
-                Cantidad
-              </th>
-              <th scope="col" title="Unidades de consumo por aparato." className="c">
-                UC
-              </th>
-              <th scope="col" title="Unidades de consumo totales del aparato." className="c">
-                Total UC
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {summary.map((item) => (
-              <tr key={item.id}>
-                <td>{item.nombre}</td>
-                <td className="c">{item.cant}</td>
-                <td className="c">{fmt(item.uc, 2)}</td>
-                <td className="c">{fmt(item.total, 2)}</td>
-              </tr>
-            ))}
-            {summary.length === 0 && (
+        <TableScroll label="Aparatos para selección de calentador">
+          <table className="tbl">
+            <thead>
               <tr>
-                <td colSpan={4} className="c" style={{ color: 'var(--txt2)', padding: 10 }}>
-                  No hay aparatos en la red de agua caliente
-                </td>
-              </tr>
-            )}
-            {summary.length > 0 && (
-              <tr style={{ background: 'var(--bg3)', fontWeight: 'bold' }}>
-                <td colSpan={3} style={{ textAlign: 'right', paddingRight: 10 }}>
+                <th scope="col" title="Aparato conectado a la red de agua caliente.">
+                  Aparato
+                </th>
+                <th scope="col" title="Cantidad de ese aparato en el proyecto." className="c">
+                  Cantidad
+                </th>
+                <th scope="col" title="Unidades de consumo por aparato." className="c">
+                  UC
+                </th>
+                <th scope="col" title="Unidades de consumo totales del aparato." className="c">
                   Total UC
-                </td>
-                <td className="c">{fmt(totalUC, 2)}</td>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {summary.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.nombre}</td>
+                  <td className="c">{item.cant}</td>
+                  <td className="c">{fmt(item.uc, 2)}</td>
+                  <td className="c">{fmt(item.total, 2)}</td>
+                </tr>
+              ))}
+              {summary.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="c" style={{ color: 'var(--txt2)', padding: 10 }}>
+                    No hay aparatos en la red de agua caliente
+                  </td>
+                </tr>
+              )}
+              {summary.length > 0 && (
+                <tr style={{ background: 'var(--bg3)', fontWeight: 'bold' }}>
+                  <td colSpan={3} style={{ textAlign: 'right', paddingRight: 10 }}>
+                    Total UC
+                  </td>
+                  <td className="c">{fmt(totalUC, 2)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </TableScroll>
       </section>
 
       <section className="card" style={{ maxWidth: 600 }}>
-        <table className="tbl">
-          <tbody>
-            <tr>
-              <td className="c" style={{ width: '50%' }}>
-                Caudal probable
-              </td>
-              <td className="c">{fmt(caudalProbableLps, 3)} Lps</td>
-            </tr>
-            <tr>
-              <td className="c"></td>
-              <td className="c">{fmt(caudalProbableGpm, 2)} GPM</td>
-            </tr>
-            <tr>
-              <td className="c">Caudal de diseño</td>
-              <td className="c" style={{ fontWeight: 'bold' }}>
-                {fmt(caudalAjustado, 2)} LPM
-              </td>
-            </tr>
-            <tr>
-              <td className="c">Calentador seleccionado</td>
-              <td className="c" style={{ fontWeight: 'bold' }}>
-                <select
-                  className="ni"
-                  style={{
-                    ...HeaterSelection_S1,
-                    color: selectedHeater ? 'var(--fg1)' : 'var(--txt2)',
-                    cursor: selectedHeaterTram ? 'pointer' : 'not-allowed',
-                  }}
-                  aria-label="Calentador seleccionado"
-                  value={selectedHeaterId || ''}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (selectedHeaterTram) {
-                      const calId = selectedHeaterTram.fin;
-                      const planId = selectedHeaterTram.planId;
-                      const bajanteKey = `${calId}-${planId}`;
-                      writeBajantePropToDrawing(bajanteKey, 'ac', 'capacidad', val, plans);
-                    }
-                  }}
-                  disabled={!selectedHeaterTram}
+        <TableScroll label="Selección de calentador">
+          <table className="tbl">
+            <tbody>
+              <tr>
+                <td className="c" style={{ width: '50%' }}>
+                  Caudal probable
+                </td>
+                <td className="c">{fmt(caudalProbableLps, 3)} Lps</td>
+              </tr>
+              <tr>
+                <td className="c"></td>
+                <td className="c">{fmt(caudalProbableGpm, 2)} GPM</td>
+              </tr>
+              <tr>
+                <td className="c">Caudal de diseño</td>
+                <td className="c" style={{ fontWeight: 'bold' }}>
+                  {fmt(caudalAjustado, 2)} LPM
+                </td>
+              </tr>
+              <tr>
+                <td className="c">Calentador seleccionado</td>
+                <td className="c" style={{ fontWeight: 'bold' }}>
+                  <select
+                    className="ni"
+                    style={{
+                      ...HeaterSelection_S1,
+                      color: selectedHeater ? 'var(--fg1)' : 'var(--txt2)',
+                      cursor: selectedHeaterTram ? 'pointer' : 'not-allowed',
+                    }}
+                    aria-label="Calentador seleccionado"
+                    value={selectedHeaterId || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (selectedHeaterTram) {
+                        const calId = selectedHeaterTram.fin;
+                        const planId = selectedHeaterTram.planId;
+                        const bajanteKey = `${calId}-${planId}`;
+                        writeBajantePropToDrawing(bajanteKey, 'ac', 'capacidad', val, plans);
+                      }
+                    }}
+                    disabled={!selectedHeaterTram}
+                  >
+                    <option value="">Ninguno</option>
+                    {CAT_GAS.filter((g) => g.id.startsWith('cal')).map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.n}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+              </tr>
+              <tr style={{ background: 'var(--bg3)' }}>
+                <td
+                  colSpan={2}
+                  className="c"
+                  style={{ fontStyle: 'italic', fontWeight: 'bold', color: 'var(--acc)' }}
                 >
-                  <option value="">Ninguno</option>
-                  {CAT_GAS.filter((g) => g.id.startsWith('cal')).map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.n}
-                    </option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-            <tr style={{ background: 'var(--bg3)' }}>
-              <td
-                colSpan={2}
-                className="c"
-                style={{ fontStyle: 'italic', fontWeight: 'bold', color: 'var(--acc)' }}
-              >
-                {/* El veredicto cambia al recalcular el caudal: live para que el lector lo oiga. */}
-                <span role="status" aria-live="polite">
-                  {heaterRecommendation}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  {/* El veredicto cambia al recalcular el caudal: live para que el lector lo oiga. */}
+                  <span role="status" aria-live="polite">
+                    {heaterRecommendation}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </TableScroll>
       </section>
     </div>
   );

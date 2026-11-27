@@ -125,7 +125,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
 
   return (
     <div
-      className="fu"
+      className="fu cf-network-design"
       data-tour="cf-tab-redes"
       style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}
     >
@@ -178,18 +178,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
         ))}
       </fieldset>
       {redActiva === 'san' && redes.has('san') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           <PageNav
             data-tour="redes-paginas"
             page={sanPage}
@@ -204,41 +193,32 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             ]}
             onPageHover={prefetchSan}
           />
-          {sanPage === 1 && (
-            <Suspense fallback={FALLBACK}>
-              <CalculoUD />
-            </Suspense>
-          )}
-          {sanPage === 2 && (
-            <Suspense fallback={FALLBACK}>
-              <DisenosSanitarios />
-            </Suspense>
-          )}
-          {sanPage === 3 && (
-            <Suspense fallback={FALLBACK}>
-              <BajantesTable />
-            </Suspense>
-          )}
-          {sanPage === 4 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosDiamPage net="san" />
-            </Suspense>
-          )}
+          <div className="cf-network-sheet">
+            {sanPage === 1 && (
+              <Suspense fallback={FALLBACK}>
+                <CalculoUD />
+              </Suspense>
+            )}
+            {sanPage === 2 && (
+              <Suspense fallback={FALLBACK}>
+                <DisenosSanitarios />
+              </Suspense>
+            )}
+            {sanPage === 3 && (
+              <Suspense fallback={FALLBACK}>
+                <BajantesTable />
+              </Suspense>
+            )}
+            {sanPage === 4 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosDiamPage net="san" />
+              </Suspense>
+            )}
+          </div>
         </div>
       )}
       {redActiva === 'll' && redes.has('ll') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           <PageNav
             data-tour="redes-paginas"
             page={llPage}
@@ -253,41 +233,32 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             ]}
             onPageHover={prefetchLl}
           />
-          {llPage === 1 && (
-            <Suspense fallback={FALLBACK}>
-              <DisenoLluvias />
-            </Suspense>
-          )}
-          {llPage === 2 && (
-            <Suspense fallback={FALLBACK}>
-              <ChequeoBajantesLluvias />
-            </Suspense>
-          )}
-          {llPage === 3 && (
-            <Suspense fallback={FALLBACK}>
-              <ChequeoCanalesLluvias />
-            </Suspense>
-          )}
-          {llPage === 4 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosDiamPage net="ll" />
-            </Suspense>
-          )}
+          <div className="cf-network-sheet">
+            {llPage === 1 && (
+              <Suspense fallback={FALLBACK}>
+                <DisenoLluvias />
+              </Suspense>
+            )}
+            {llPage === 2 && (
+              <Suspense fallback={FALLBACK}>
+                <ChequeoBajantesLluvias />
+              </Suspense>
+            )}
+            {llPage === 3 && (
+              <Suspense fallback={FALLBACK}>
+                <ChequeoCanalesLluvias />
+              </Suspense>
+            )}
+            {llPage === 4 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosDiamPage net="ll" />
+              </Suspense>
+            )}
+          </div>
         </div>
       )}
       {redActiva === 'af' && redes.has('af') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           <PageNav
             data-tour="redes-paginas"
             page={afPage}
@@ -303,51 +274,42 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             ]}
             onPageHover={prefetchAfAc}
           />
-          {afPage === 1 && (
-            <Suspense fallback={FALLBACK}>
-              <CalculoUC tipo="af" />
-            </Suspense>
-          )}
-          {afPage === 2 && (
-            <Suspense fallback={FALLBACK}>
-              <WaterNetworkDesign
-                networkType="af"
-                diamTable={DIAMETROS_AF}
-                lookupFn={lookupInterno as (pulg: number) => number}
-                hideAcometida
-              />
-            </Suspense>
-          )}
-          {afPage === 3 && (
-            <Suspense fallback={FALLBACK}>
-              <AcometidaPage />
-            </Suspense>
-          )}
-          {afPage === 4 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosTable tramos={tramosAf} red="af" />
-            </Suspense>
-          )}
-          {afPage === 5 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosDiamPage net="af" />
-            </Suspense>
-          )}
+          <div className="cf-network-sheet">
+            {afPage === 1 && (
+              <Suspense fallback={FALLBACK}>
+                <CalculoUC tipo="af" />
+              </Suspense>
+            )}
+            {afPage === 2 && (
+              <Suspense fallback={FALLBACK}>
+                <WaterNetworkDesign
+                  networkType="af"
+                  diamTable={DIAMETROS_AF}
+                  lookupFn={lookupInterno as (pulg: number) => number}
+                  hideAcometida
+                />
+              </Suspense>
+            )}
+            {afPage === 3 && (
+              <Suspense fallback={FALLBACK}>
+                <AcometidaPage />
+              </Suspense>
+            )}
+            {afPage === 4 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosTable tramos={tramosAf} red="af" />
+              </Suspense>
+            )}
+            {afPage === 5 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosDiamPage net="af" />
+              </Suspense>
+            )}
+          </div>
         </div>
       )}
       {redActiva === 'ac' && redes.has('ac') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           <PageNav
             data-tour="redes-paginas"
             page={acPage}
@@ -363,35 +325,37 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             ]}
             onPageHover={prefetchAfAc}
           />
-          {acPage === 1 && (
-            <Suspense fallback={FALLBACK}>
-              <CalculoUC tipo="ac" />
-            </Suspense>
-          )}
-          {acPage === 2 && (
-            <Suspense fallback={FALLBACK}>
-              <WaterNetworkDesign
-                networkType="ac"
-                diamTable={DIAMETROS_AC}
-                lookupFn={lookupInternoAC as (pulg: number) => number}
-              />
-            </Suspense>
-          )}
-          {acPage === 3 && (
-            <Suspense fallback={FALLBACK}>
-              <HeaterSelection />
-            </Suspense>
-          )}
-          {acPage === 4 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosTable tramos={tramosAc} red="ac" />
-            </Suspense>
-          )}
-          {acPage === 5 && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosDiamPage net="ac" />
-            </Suspense>
-          )}
+          <div className="cf-network-sheet">
+            {acPage === 1 && (
+              <Suspense fallback={FALLBACK}>
+                <CalculoUC tipo="ac" />
+              </Suspense>
+            )}
+            {acPage === 2 && (
+              <Suspense fallback={FALLBACK}>
+                <WaterNetworkDesign
+                  networkType="ac"
+                  diamTable={DIAMETROS_AC}
+                  lookupFn={lookupInternoAC as (pulg: number) => number}
+                />
+              </Suspense>
+            )}
+            {acPage === 3 && (
+              <Suspense fallback={FALLBACK}>
+                <HeaterSelection />
+              </Suspense>
+            )}
+            {acPage === 4 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosTable tramos={tramosAc} red="ac" />
+              </Suspense>
+            )}
+            {acPage === 5 && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosDiamPage net="ac" />
+              </Suspense>
+            )}
+          </div>
         </div>
       )}
       {redActiva === 'bom' && redes.has('bom') && (
@@ -400,18 +364,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
         </Suspense>
       )}
       {redActiva === 'rci' && redes.has('rci') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           {/* Una sola página (secciones apiladas con anclas): sin PageNav. */}
           <Suspense fallback={FALLBACK}>
             <RciDesign />
@@ -424,18 +377,7 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
         </Suspense>
       )}
       {redActiva === 'gas' && redes.has('gas') && (
-        <div
-          className="fu"
-          data-tour="redes-contenido"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 8,
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-          }}
-        >
+        <div className="fu cf-network-pages" data-tour="redes-contenido">
           <PageNav
             data-tour="redes-paginas"
             page={gasPage}
@@ -452,21 +394,23 @@ export function RedesTab({ state }: { state: WorkAreaState }) {
             ]}
             onPageHover={prefetchHeavy}
           />
-          {gasPage <= 3 && (
-            <Suspense fallback={FALLBACK}>
-              <GasDesign pagina={gasPage} />
-            </Suspense>
-          )}
-          {gasPage === 4 && redes.has('rejillas') && (
-            <Suspense fallback={FALLBACK}>
-              <RejillasVentilacion />
-            </Suspense>
-          )}
-          {(gasPage === 5 || (gasPage >= 4 && !redes.has('rejillas'))) && (
-            <Suspense fallback={FALLBACK}>
-              <AccesoriosDiamPage net="gas" />
-            </Suspense>
-          )}
+          <div className="cf-network-sheet">
+            {gasPage <= 3 && (
+              <Suspense fallback={FALLBACK}>
+                <GasDesign pagina={gasPage} />
+              </Suspense>
+            )}
+            {gasPage === 4 && redes.has('rejillas') && (
+              <Suspense fallback={FALLBACK}>
+                <RejillasVentilacion />
+              </Suspense>
+            )}
+            {(gasPage === 5 || (gasPage >= 4 && !redes.has('rejillas'))) && (
+              <Suspense fallback={FALLBACK}>
+                <AccesoriosDiamPage net="gas" />
+              </Suspense>
+            )}
+          </div>
         </div>
       )}
     </div>

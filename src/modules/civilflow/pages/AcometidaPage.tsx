@@ -15,7 +15,6 @@ export default function AcometidaPage() {
         gap: 8,
         flex: 1,
         minHeight: 0,
-        overflowY: 'auto',
       }}
     >
       <Suspense fallback={<div style={{ padding: 16, color: 'var(--txt3)' }}>Cargando...</div>}>

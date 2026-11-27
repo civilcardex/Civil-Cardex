@@ -2,6 +2,7 @@
  *  simultaneidad, base del dimensionamiento por Renouard (fórmula de pérdida en gas).
  *  Ej: RG1 con 2 estufas + 1 calentador -> Q del ramal y su diámetro propuesto. */
 import React, { useMemo } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import { usePlans } from '../context/PlansContext.tsx';
 import { loadFromStorage } from '../services/storageService.ts';
 
@@ -234,7 +235,7 @@ function GasCalcUC() {
           </h3>
           <span className="card-s">{tramos.length} tramos</span>
         </div>
-        <div className="gas-scroll">
+        <TableScroll label="Cálculo de unidades de consumo de gas" className="gas-scroll">
           <table ref={tablaRef} className="tbl">
             <caption className="sr-only">Cálculo de unidades de consumo gas</caption>
             {tableHeader}
@@ -300,7 +301,7 @@ function GasCalcUC() {
               </tr>
             </tfoot>
           </table>
-        </div>
+        </TableScroll>
       </section>
     </>
   );

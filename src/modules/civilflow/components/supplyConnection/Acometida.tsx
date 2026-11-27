@@ -1,5 +1,6 @@
 ﻿import React from 'react';
 import { SeccionFlujoHidraulico } from './FlowSection.tsx';
+import TableScroll from '../shared/TableScroll.tsx';
 import type { AcometidaProps } from './types.ts';
 import { SCROLL_INNER } from './styles.ts';
 import { SeccionResumenParametros } from './ParametersSection.tsx';
@@ -23,13 +24,13 @@ function Acometida(props: AcometidaProps) {
           Acometida
         </h3>
       </div>
-      <div className="scroll-top" style={{ padding: '16px' }}>
+      <TableScroll label="Tablas de acometida" className="san-pad-16">
         <div className="scroll-inner" style={SCROLL_INNER}>
           <SeccionFlujoHidraulico {...props} />
           <SeccionResumenParametros {...props} />
           <SeccionVerificacion {...props} />
         </div>
-      </div>
+      </TableScroll>
     </section>
   );
 }

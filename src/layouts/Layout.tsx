@@ -18,7 +18,11 @@ function Layout() {
           {/* overflow-y auto: las páginas altas (perfil, módulos) scrollean aquí; el workarea
               no desborda (usa h-full + scroll interno propio), así que no cambia para él. */}
           <main id="main-content" className="flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto">
-            <div className="flex-1">
+            {/* min-h-0: sin él este divisor crece con el contenido y el MAIN scrollea entero —
+             *  en isometría el pedido es que NO haya scroll de página y que recorte el propio
+             *  workarea (el scroll interno queda en cada vista). Las páginas altas siguen
+             *  scrolleando aquí: su contenido desborda el divisor igual que antes. */}
+            <div className="flex-1 min-h-0">
               <Outlet />
             </div>
           </main>

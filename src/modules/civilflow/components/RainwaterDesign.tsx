@@ -3,6 +3,7 @@
  * Ej: bajar la pendiente de un canal puede marcar la fila en rojo si el régimen o la fuerza tractiva salen del rango permitido.
  */
 import { useMemo, useCallback, useEffect, useState } from 'react';
+import TableScroll from './shared/TableScroll.tsx';
 import EditButton from './shared/EditButton.tsx';
 import { useStickyThead2Offset } from './shared/useStickyThead2Offset';
 import EmptyRow from './shared/EmptyRow.tsx';
@@ -146,7 +147,7 @@ export default function DisenoLluvias() {
             <EditButton edit={edit} setEdit={setEdit} />
           </div>
         </div>
-        <div className="san-pad-16 scroll-top">
+        <TableScroll label="Diseño de aguas lluvias" className="san-pad-16">
           <div className="scroll-inner">
             <table ref={tablaRef} className="ll-fs tbl">
               <thead>
@@ -386,7 +387,7 @@ export default function DisenoLluvias() {
               </tbody>
             </table>
           </div>
-        </div>
+        </TableScroll>
       </section>
     </>
   );
