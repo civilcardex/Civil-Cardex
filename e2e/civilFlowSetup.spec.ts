@@ -41,7 +41,7 @@ test.describe('Acceso táctil al catálogo', () => {
   });
 });
 
-test('zonas de almacenamiento: conservar al suspender y reasignar tras eliminar el piso', async ({
+test('zonas de almacenamiento: crear por piso, conservar al suspender y reasignar tras eliminar el piso', async ({
   page,
   baseURL,
 }) => {
@@ -51,43 +51,66 @@ test('zonas de almacenamiento: conservar al suspender y reasignar tras eliminar 
   );
   await page.setViewportSize({ width: 820, height: 1180 });
   await page.goto('/e2e/tablet.html?rci-entradas&rci-zonas');
-  const irClasificacion = async () => {
-    await page.getByRole('button', { name: /Clasificación y riesgo$/ }).click({ timeout: 20_000 });
-  };
-  await irClasificacion();
-  const almacen = page.getByLabel('¿La ocupación incluye almacenamiento?');
-  const cambiar = async (valor: string) => {
-    if (await almacen.isDisabled())
-      await page.getByRole('button', { name: 'EDITAR', exact: true }).click();
-    await almacen.selectOption(valor);
-  };
-  await cambiar('Sí');
-  await page.getByRole('button', { name: 'Añadir zona' }).click();
-  await page.getByLabel('Nombre de la zona').fill('Depósito de repuestos');
-  const ficha = page.getByRole('group', { name: 'Depósito de repuestos' });
-  await ficha.getByLabel('Piso', { exact: true }).selectOption('piso-1');
-  await ficha.getByLabel('Forma de almacenamiento').selectOption('Rack de una fila');
-  await expect(ficha.getByLabel('Repisas')).toBeVisible();
-  await ficha.getByLabel('Clase de mercancía').selectOption('Plástico grupo A');
-  await expect(ficha.getByLabel('Plástico grupo A', { exact: true })).toBeVisible();
-  await ficha.getByLabel('Altura de arrume (m)', { exact: true }).fill('2.5');
-  await expect(ficha.getByLabel('Altura de techo de la zona (m)')).toHaveAccessibleDescription(
+  /* Flujo NUEVO (2026-11-27): la decisión de almacenamiento vive POR PISO en Pisos del
+   * edificio (columnas Almacenamiento/Zonas) y las fichas se editan en el modal. */
+  const editar = () => page.getByRole('button', { name: 'EDITAR', exact: true }).click();
+  const fila1 = page.getByRole('row', { name: /Piso de prueba 1/ });
+  const almacen1 = () => fila1.getByLabel('Almacenamiento de Piso de prueba 1');
+  const modal = page.getByRole('dialog', { name: 'Zonas de almacenamiento' });
+
+  await editar({ timeout: 20_000 });
+  await almacen1().selectOption('Sí');
+  await fila1.getByRole('button', { name: 'Agregar zona' }).click();
+  await modal.getByRole('button', { name: 'Agregar zona' }).click(); // ficha directa
+  await modal.getByLabel('Nombre de la zona').fill('Depósito de repuestos');
+  await modal.getByLabel('Forma de almacenamiento').selectOption('Rack de una fila');
+  await expect(modal.getByLabel('Repisas')).toBeVisible();
+  await modal.getByLabel('Clase de mercancía').selectOption('Plástico grupo A');
+  await expect(modal.getByLabel('Plástico grupo A', { exact: true })).toBeVisible();
+  await modal.getByLabel('Altura de arrume (m)', { exact: true }).fill('2.5');
+  await expect(modal.getByLabel('Altura de techo de la zona (m)')).toHaveAccessibleDescription(
     /hereda.*4 m/,
   );
-  await cambiar('No');
-  await expect(ficha).toHaveCount(0);
-  await cambiar('Sí');
-  await expect(ficha.getByLabel('Altura de arrume (m)')).toHaveValue('2.5');
+  await modal.getByRole('button', { name: 'Guardar zona' }).click(); // vuelve a la LISTA
+  await modal.getByRole('button', { name: 'Guardar zonas' }).click(); // confirma y cierra
+
+  // Suspender con «No»: la celda deja de ofrecer botón (las fichas se conservan en el estado).
+  await almacen1().selectOption('No');
+  await expect(fila1.getByRole('button', { name: /zona/ })).toHaveCount(0);
+  await almacen1().selectOption('Sí');
+  await fila1.getByRole('button', { name: '1 zona' }).click();
+  await modal.getByRole('button', { name: 'Editar' }).click();
+  await expect(modal.getByLabel('Altura de arrume (m)', { exact: true })).toHaveValue('2.5');
+  await modal.getByRole('button', { name: 'Guardar zona' }).click();
+  await modal.getByRole('button', { name: 'Guardar zonas' }).click();
+
+  // Recarga: el almacenamiento del piso y su ficha sobreviven en el estado del proyecto.
   await page.reload();
-  await irClasificacion();
-  await expect(ficha.getByLabel('Piso', { exact: true })).toHaveValue('piso-1');
+  await editar({ timeout: 20_000 });
+  await expect(fila1.getByLabel('Almacenamiento de Piso de prueba 1')).toHaveValue('Sí');
+  await fila1.getByRole('button', { name: '1 zona' }).click();
+  await modal.getByRole('button', { name: 'Guardar zonas' }).click();
+
+  // Piso eliminado → ficha HUÉRFANA: nota por reasignar y reasignación explícita a piso 2.
   await page.getByRole('button', { name: 'Simular eliminación del piso 1' }).click();
-  await expect(ficha.getByText(/Reasigne la ficha/)).toBeVisible();
-  await ficha.getByLabel('Piso', { exact: true }).selectOption('piso-2');
-  await expect(ficha.getByText(/Reasigne la ficha/)).toBeHidden();
-  await expect(ficha.getByLabel('Altura de techo de la zona (m)')).toHaveAccessibleDescription(
+  await expect(page.getByText(/Zonas por reasignar/)).toBeVisible();
+  await page.getByRole('button', { name: 'Reasignar zonas' }).click();
+  await modal.getByRole('button', { name: 'Editar' }).click(); // abre la ficha huérfana
+  await expect(modal.getByText(/El piso asignado ya no existe/)).toBeVisible();
+  await modal.getByLabel('Piso', { exact: true }).selectOption('piso-2');
+  await expect(modal.getByText(/El piso asignado ya no existe/)).toBeHidden();
+  await expect(modal.getByLabel('Altura de techo de la zona (m)')).toHaveAccessibleDescription(
     /hereda.*5 m/,
   );
+  await modal.getByRole('button', { name: 'Guardar zona' }).click(); // ficha → lista
+  await modal.getByRole('button', { name: 'Guardar zonas' }).click(); // cierra
+
+  // El piso 2 hereda la ficha y su contador; el piso 1 ya no existe en la tabla. La celda
+  // del piso 2 muestra su botón solo tras marcarlo «Sí» (su decisión era «Por definir»).
+  const fila2 = page.getByRole('row', { name: /Piso de prueba 2/ });
+  await fila2.getByLabel('Almacenamiento de Piso de prueba 2').selectOption('Sí');
+  await expect(fila2.getByRole('button', { name: '1 zona' })).toBeVisible();
+  await expect(page.getByRole('row', { name: /Piso de prueba 1/ })).toHaveCount(0);
 });
 
 test('creación, guía, elección de material, cotas y carga múltiple de planos', async ({ page }) => {

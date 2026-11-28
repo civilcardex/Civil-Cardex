@@ -13,6 +13,9 @@ import { ViewerMobileChrome } from '../src/modules/civilflow/components/pdfViewe
 import { useViewerResponsive } from '../src/modules/civilflow/components/pdfViewer/useViewerResponsive.ts';
 import { RciRamalesTable } from '../src/modules/civilflow/components/rci/RCIRamalesTable.tsx';
 import RciInputs from '../src/modules/civilflow/components/rci/RCIInputs.tsx';
+import { TablaPisos } from '../src/modules/civilflow/components/rci/RCIFloorsTable.tsx';
+import { filasTipologias } from '../src/modules/civilflow/utils/rci/RCIRowsModel.ts';
+import type { PisoRow } from '../src/modules/civilflow/lib/rci/types.ts';
 import { NavRciProvider, type NavRci } from '../src/modules/civilflow/components/rci/RCIUI.tsx';
 import { focusRciInput } from '../src/modules/civilflow/components/rci/RCIInputTableScroll.tsx';
 import {
@@ -76,8 +79,28 @@ function RciInputsFixture() {
       >
         Ir al dato
       </button>
-      <NavRciProvider nav={{ tab: 'entradas', sub, irA }}>
-        <RciInputs ctx={{ estado, tips, R: compute(estado, tips), edit: false, editar }} />
+      <NavRciProvider nav={{ tab: 'tipologias', sub, irA }}>
+        {zonas ? (
+          /* Flujo NUEVO de zonas (2026-11-27): la decisión vive por piso en Pisos del
+           * edificio — columnas Almacenamiento/Zonas + modal de fichas. */
+          <TablaPisos
+            ctx={{ estado, tips, R: compute(estado, tips), edit: false, editar }}
+            filas={filasTipologias(estado, tips)}
+            nota={`${estado.pisos.rows.length} piso(s) · ${tips.groups.length} tipología(s)`}
+            grupos={tips.groups.map((g) => g.id)}
+            setPiso={(i: number, k: keyof PisoRow) => (v: string) =>
+              editar((e) => ({
+                ...e,
+                pisos: {
+                  ...e.pisos,
+                  rows: e.pisos.rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)),
+                },
+              }))
+            }
+          />
+        ) : (
+          <RciInputs ctx={{ estado, tips, R: compute(estado, tips), edit: false, editar }} />
+        )}
       </NavRciProvider>
     </main>
   );

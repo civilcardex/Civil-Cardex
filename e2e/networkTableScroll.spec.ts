@@ -85,8 +85,15 @@ test('las tablas de diseño se desplazan sin mover la barra de redes', async ({
       await region.evaluate((el) => (el as HTMLElement).focus({ preventScroll: true }));
     }
     await page.keyboard.press('End');
+    /* Fijar el fondo EXPLÍCITO dentro del poll: en CI (Linux) la inercia del touch y las
+     * métricas de fuente dejaban un residual de ~35 px tras un solo 'End'. */
     await expect
-      .poll(() => region.evaluate((el) => el.scrollHeight - el.clientHeight - el.scrollTop))
+      .poll(() =>
+        region.evaluate((el) => {
+          el.scrollTop = el.scrollHeight;
+          return el.scrollHeight - el.clientHeight - el.scrollTop;
+        }),
+      )
       .toBeLessThanOrEqual(1);
     expect(await region.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     expect(await sheet.evaluate((el) => el.scrollTop), red).toBe(sheetTop);

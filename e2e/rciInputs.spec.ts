@@ -8,7 +8,9 @@ test('Catálogo maestro integra las tres series en la tabla original de fricció
   const region = page.getByRole('region', { name: 'Coeficiente fricción tuberías', exact: true });
   const table = region.getByRole('table', { name: 'Coeficientes de fricción por tipo de tubería' });
   await expect(table).toHaveCount(1);
-  await expect(table).toHaveAccessibleDescription(/No se usa en los cálculos/);
+  /* La nota «* Valor copiado…» se RETIRÓ (ped. usuario 2026-11-27): sin descripción
+   * accesible y sin asteriscos — el valor seco sin dato muestra el húmedo tal cual. */
+  await expect(table).toHaveAccessibleDescription('');
   await expect(
     page.getByRole('heading', { name: 'Coeficiente fricción tuberías · Contra incendio' }),
   ).toHaveCount(0);
@@ -30,11 +32,12 @@ test('Catálogo maestro integra las tres series en la tabla original de fricció
   await expect(dryCell(steel)).toHaveText('100');
   await expect(dryCell(galvanized)).toHaveText('100');
   const rows = await table.locator('tbody tr').all();
-  await expect(table.locator('tbody td sup')).toHaveCount(rows.length - 2);
+  await expect(table.locator('tbody td sup')).toHaveCount(0);
+  // Sin dato seco VALIDADO la celda muestra «—» (nunca copia el húmedo): solo el acero
+  // trae 100 explícito.
   for (const row of rows) {
-    const dry = dryCell(row);
-    if ((await dry.textContent())?.trim() === '100') continue;
-    await expect(dry).toHaveText(`${(await wetCell(row).textContent())?.trim()}*`);
+    const dry = (await dryCell(row).textContent())?.trim();
+    expect(['100', '—']).toContain(dry);
   }
   for (const [material, description] of [
     ['PVC C900 RDE 18', 'PVC para red enterrada'],
@@ -45,7 +48,7 @@ test('Catálogo maestro integra las tres series en la tabla original de fricció
     await expect(row).toHaveCount(1);
     await expect(row.getByRole('cell').first()).toHaveText(description);
     await expect(wetCell(row)).toHaveText('150');
-    await expect(dryCell(row)).toHaveText('150*');
+    await expect(dryCell(row)).toHaveText('—');
     await expect(dryCell(row)).toHaveCSS('text-align', 'center');
   }
   const sizes = await region.evaluate((el) => [el.scrollWidth, el.clientWidth]);

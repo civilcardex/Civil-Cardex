@@ -473,6 +473,7 @@ function TablaPisos({
                     edit,
                     <select
                       value={f.almacen}
+                      aria-label={`Almacenamiento de ${f.nombre}`}
                       onChange={(e) => {
                         setErr(null);
                         setPiso(f.i, 'almacen')(e.target.value);
