@@ -4,6 +4,7 @@ import { showToast } from '../shared/Toast.tsx';
 import { DimEnLectura, TableHeader, useEditable } from '../shared/EditLock.tsx';
 import { autoDetectarFilaInicio, detectarFilaCapitulo, type ColumnMapping } from './formImport.ts';
 import { loadXlsx } from '../../../utils/exportLoaders.ts';
+import { FILAS_TOPE_XLSX, hojaTruncada } from '../excelRowLimit.ts';
 import type { Presupuesto, PresupuestoItem } from '../types.ts';
 
 interface Props {
@@ -46,8 +47,18 @@ export function FormularioImportPanel({ pres, onUpdate }: Props) {
     const buf = await file.arrayBuffer();
     // sheetRows: 5000 — archivo hostil/enorme no materializa todas las filas (self-DoS,
     // mismo guard que excelImport.tsx).
-    const wb = XLSX.read(new Uint8Array(buf), { type: 'array', sheetRows: 5000 });
+    const wb = XLSX.read(new Uint8Array(buf), { type: 'array', sheetRows: FILAS_TOPE_XLSX + 1 });
     const ws = wb.Sheets[wb.SheetNames[0]];
+    if (hojaTruncada(String(ws['!ref'] ?? ''))) {
+      // H-05: la hoja traía más filas de las leídas — importar aquí sería pegar un
+      // presupuesto incompleto como si fuera completo. El estado queda intacto.
+      showToast(
+        `La hoja supera ${FILAS_TOPE_XLSX.toLocaleString('es-CO')} filas: divídala o recórtela antes de importar. No se importó nada.`,
+        { type: 'err' },
+      );
+      e.target.value = '';
+      return;
+    }
     const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
       header: 1,
       defval: '',

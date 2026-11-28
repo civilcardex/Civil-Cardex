@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { parseNum } from './calc.ts';
 import { showToast } from './shared/Toast.tsx';
 import { loadXlsx } from '../../utils/exportLoaders.ts';
+import { FILAS_TOPE_XLSX, hojaTruncada } from './excelRowLimit.ts';
 import { filaSegura } from './excelSafe.ts';
 
 const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
@@ -202,8 +203,18 @@ export function useExcelImportExport<T extends { codigo?: string }>(
         const data = new Uint8Array(ev.target?.result as ArrayBuffer);
         // sheetRows: acota cuántas filas se materializan (una hoja con 1 M de filas no
         // es un presupuesto: es un archivo hostil).
-        const wb = XLSX.read(data, { type: 'array', sheetRows: 5000 });
+        const wb = XLSX.read(data, { type: 'array', sheetRows: FILAS_TOPE_XLSX + 1 });
         const ws = wb.Sheets[wb.SheetNames[0]];
+        if (hojaTruncada(String(ws['!ref'] ?? ''))) {
+          // H-05: hoja truncada en silencio = catálogo incompleto importado como completo.
+          showToast(
+            `La hoja supera ${FILAS_TOPE_XLSX.toLocaleString('es-CO')} filas: divídala o recórtela antes de importar. No se importó nada.`,
+            { type: 'err' },
+          );
+          setPreviewModal(null);
+          e.target.value = '';
+          return;
+        }
         const json = XLSX.utils.sheet_to_json<(string | number)[]>(ws, {
           header: 1,
           defval: '',
