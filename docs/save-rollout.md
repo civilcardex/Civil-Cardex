@@ -7,6 +7,10 @@
 
 No activar pagos sin una prueba integral en el sandbox de Paddle. Dejar por separado el resultado de Chromium emulado y el de Safari de iPadOS y Chrome de Android en dispositivos reales.
 
+## Revisión mínima del backend para el cliente actual
+
+El cliente CivilManager (guarda parcial + cierre) exige en el destino, como mínimo: `20261123000000`–`20261123000002` (integridad, alcance de lectura, versiones) y `20261127000000` (guarda parcial + cierre). El cliente CivilFlow exige `20261118000001` (concurrencia de planos). Un backend anterior debe bloquear la publicación del cliente nuevo; el contrato `supabase/tests/saveContracts.mjs` verifica ambas direcciones (cliente actual y firmas sin versión de clientes antiguos sobre el backend nuevo) y corre en CI antes del despliegue.
+
 ## Comprobaciones antes de publicar esta ronda
 
 - Solicitar al responsable del entorno destino evidencia de solo lectura del historial de migraciones, políticas por fila, permisos de funciones de guardado y políticas del bucket privado de planos. No copiar credenciales, datos de proyectos ni tokens. El fixture local prueba las políticas PDF, pero simula la resolución de membresías; no certifica el despliegue.

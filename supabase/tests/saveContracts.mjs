@@ -235,9 +235,37 @@ try {
   assert.equal(metaGuardada.name, 'Piso 1');
   assert.equal(Number(metaGuardada.scale), 66.6667);
   // El guardado de calibración cambió el meta, pero no invalida la versión de los trazos.
-  const plan2 = await savePlan(plan1);
+  let plan2 = await savePlan(plan1);
   assert.notEqual(plan1, plan2);
   await assert.rejects(savePlan(plan1), /conflicto_concurrencia/);
+  // Cliente ANTERIOR sobre el backend nuevo (H-08, G3): las firmas sin versión siguen
+  // funcionando durante la transición. cm_save_state a 2 args (sin reloj) y
+  // save_plano_data con el token QUE EL CLIENTE LEYÓ (get_plano_data trae updated_at).
+  await as(owner);
+  await db.query(
+    'select public.cm_save_state($1, $2)',
+    [project, JSON.stringify({ ...state, proveedores: [{ id: 'prov', nombre: 'Antiguo' }] })],
+  );
+  const snapAntiguo = await read(project);
+  assert.equal(snapAntiguo.proveedores[0].nombre, 'Antiguo');
+  await db.query("select public.save_plano_data(1, '{\"v\":2}', null)");
+  const planoTs = (
+    await db.query('select updated_at from public.cf_planos where id=1')
+  ).rows[0].updated_at.toISOString();
+  const plan3 = (
+    await db.query("select public.save_plano_data_versioned(1, '{\"v\":3}', $1) as token", [
+      planoTs,
+    ])
+  ).rows[0].token;
+  assert.notEqual(plan3, planoTs);
+  console.log('Cliente anterior (firmas sin versión) sobre el backend nuevo: OK');
+  // El cliente antiguo adelantó AMBOS relojes: los tokens de las pruebas de roles se
+  // re-leen para que el editor siga teniendo una base vigente.
+  third = await version();
+  plan2 = (
+    (await db.query('select updated_at from public.cf_planos where id=1'))
+  ).rows[0].updated_at.toISOString();
+  await as(owner);
   await as(reader);
   assert.equal((await read(project)).proveedores.length, 1);
   await assert.rejects(save({}, third), /no_autorizado/);
