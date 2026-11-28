@@ -1,5 +1,11 @@
 import { hayRespaldoLegado, loadFromIdb, saveToIdb } from './storage/idb.ts';
-import { cmPendientesDe, fijarBaseCm, loadFromSupabase, saveToSupabase } from './storage/rpc.ts';
+import {
+  cmPendientesDe,
+  fijarBaseCm,
+  loadFromSupabase,
+  saveToSupabase,
+  superponerColecciones,
+} from './storage/rpc.ts';
 import { captureCmScope, cmScopeKey, type CmStorageScope } from './storage/session.ts';
 import type { CivilManagerState } from './types.ts';
 
@@ -8,28 +14,40 @@ export { defaultState, migrateState } from './storage/serialize.ts';
 const saveQueues = new Map<string, Promise<void>>();
 const latestDrafts = new Map<string, CivilManagerState>();
 
-/** Deja el borrador en disco antes del guardado diferido. */
-export async function saveCmDraft(scope: CmStorageScope, state: CivilManagerState): Promise<void> {
+/** Deja el borrador en disco antes del guardado diferido. Registra su ALCANCE (H-01): las
+ *  colecciones que difieren de la base confirmada — la recuperación las superpone sobre el
+ *  servidor en vez de pisarlo entero. Devuelve false si IndexedDB falló (H-04): el llamador
+ *  avisa de verdad que la copia local quedó desactualizada. */
+export async function saveCmDraft(
+  scope: CmStorageScope,
+  state: CivilManagerState,
+): Promise<boolean> {
   const key = cmScopeKey(scope);
   latestDrafts.set(key, state);
-  await saveToIdb(scope, state, null, true);
+  const alcance = cmPendientesDe(scope, state);
+  return saveToIdb(scope, state, null, true, alcance);
 }
 
 /** Borrador de SALIDA (H-02): pending solo si quedan colecciones sin confirmar contra la
  *  base — salir tras un guardado aceptado NO vuelve a marcar pendiente lo confirmado.
- *  @throws si IndexedDB falla: el llamador conserva la señal de error. */
+ *  Registra el alcance igual que saveCmDraft. @throws si IndexedDB falla: el llamador
+ *  conserva la señal de error. */
 export async function guardarCmSalida(
   scope: CmStorageScope,
   state: CivilManagerState,
 ): Promise<void> {
-  const pendiente = cmPendientesDe(scope, state).length > 0;
-  await saveToIdb(scope, state, null, pendiente);
+  const alcance = cmPendientesDe(scope, state);
+  const ok = await saveToIdb(scope, state, null, alcance.length > 0, alcance);
+  if (!ok) throw new Error('IndexedDB rechazó la escritura del borrador de salida.');
 }
 
 /** ¿Existe el respaldo legado de la era sin proyecto? (aviso one-shot, H-08). */
 export const hayRespaldoAnterior = hayRespaldoLegado;
 
-/** Recupera un borrador del mismo proyecto y mantiene su versión base. */
+/** Recupera el estado del proyecto: borrador pendiente SUPERPUESTO sobre el servidor (H-01)
+ *  cuando trae alcance registrado — las colecciones del alcance vienen del borrador, el
+ *  resto del servidor (lo que otro cliente guardó sobrevive). Borrador LEGADO (sin alcance)
+ *  se recupera entero, como siempre. La base confirmada es SIEMPRE lo del servidor. */
 export async function civilManagerLoad(scope: CmStorageScope): Promise<CivilManagerState | null> {
   const draft = await loadFromIdb(scope);
   let remote: Awaited<ReturnType<typeof loadFromSupabase>>;
@@ -41,10 +59,11 @@ export async function civilManagerLoad(scope: CmStorageScope): Promise<CivilMana
     return draft.state;
   }
   if (!remote) throw new Error('Proyecto no encontrado o sin acceso.');
-  /* La base confirmada es SIEMPRE lo que tiene el servidor (H-01): si hay borrador pendiente,
-   * sus colecciones difieren de esta base y el primer guardado las incluye. */
   fijarBaseCm(scope, remote.state);
-  if (draft?.pending) return draft.state;
+  if (draft?.pending) {
+    if (draft.scope) return superponerColecciones(remote.state, draft.state, draft.scope);
+    return draft.state; // legado: sin alcance registrado, estado entero del borrador
+  }
   await saveToIdb(scope, remote.state, null, false);
   return remote.state;
 }
@@ -62,14 +81,17 @@ export async function civilManagerSave(
     .catch(() => {})
     .then(async () => {
       // LWW (ped. usuario 2026-11-24): sin reloj — el borrador local SIEMPRE pisa la nube.
-      const local = await saveToIdb(scope, latestDrafts.get(key) ?? state, null, true);
+      const enVuelo = latestDrafts.get(key) ?? state;
+      const local = await saveToIdb(scope, enVuelo, null, true, cmPendientesDe(scope, enVuelo));
       await saveToSupabase(state, scope).catch((error) => {
         if (local === false)
           throw new Error('No se pudo guardar en nube ni en el navegador.', { cause: error });
         throw error;
       });
       const latest = latestDrafts.get(key);
-      await saveToIdb(scope, latest ?? state, null, latest !== undefined && latest !== state);
+      const final = latest ?? state;
+      const pendientes = cmPendientesDe(scope, final);
+      await saveToIdb(scope, final, null, pendientes.length > 0, pendientes);
       if (latest === state && latestDrafts.get(key) === state) latestDrafts.delete(key);
     });
   saveQueues.set(key, job);

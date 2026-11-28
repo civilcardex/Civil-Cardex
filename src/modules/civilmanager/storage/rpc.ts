@@ -81,8 +81,10 @@ async function verificarScopeActual(scope: CmStorageScope): Promise<void> {
   }
 }
 
-/** Claves de colección + preferencias que puede traer el payload (save parcial 2026-11-27). */
-const CLAVES_PAYLOAD = [
+/** Claves de colección + preferencias que puede traer el payload (save parcial 2026-11-27).
+ *  Exportada para el alcance del borrador (H-01): las mismas claves delimitan qué colecciones
+ *  del estado recuperado manda el borrador y cuáles el servidor. */
+export const CLAVES_CM = [
   'factoresPrestaciones',
   'cargos',
   'proveedores',
@@ -95,6 +97,23 @@ const CLAVES_PAYLOAD = [
   'config_listas',
   'categorias_apu',
 ] as const;
+
+export type ClaveCm = (typeof CLAVES_CM)[number];
+
+/** Mezcla H-01: sobre la base del servidor, superpone SOLO las colecciones dentro del
+ *  alcance del borrador recuperado — lo que otro cliente guardó fuera del alcance sobrevive.
+ *  Ej: borrador con alcance ['insumos'] + remoto con equipos nuevos de otro cliente →
+ *  insumos del borrador + equipos del remoto. */
+export function superponerColecciones(
+  base: CivilManagerState,
+  draft: CivilManagerState,
+  claves: string[],
+): CivilManagerState {
+  const out = { ...base } as Record<string, unknown>;
+  const record = draft as unknown as Record<string, unknown>;
+  for (const k of claves) if (k in record) out[k] = record[k];
+  return out as unknown as CivilManagerState;
+}
 
 /** Base CONFIRMADA por cuenta+proyecto (H-01): lo que SE SABE que está en el servidor. El
  *  delta del guardado se calcula contra esto AL EJECUTAR cada operación de la cola, y solo
@@ -115,10 +134,10 @@ export function fijarBaseCm(scope: CmStorageScope, state: CivilManagerState | nu
 export function cmPendientesDe(scope: CmStorageScope, state: CivilManagerState): string[] {
   const key = cmScopeKey(scope);
   const base = key ? basesConfirmadas.get(key) : undefined;
-  if (!base) return [...CLAVES_PAYLOAD]; // sin base: nada confirmado en el servidor
+  if (!base) return [...CLAVES_CM]; // sin base: nada confirmado en el servidor
   const full = payloadCmDeEstado(state, scope.userId, scope.proyectoId);
   const baseFull = payloadCmDeEstado(base, scope.userId, scope.proyectoId);
-  return CLAVES_PAYLOAD.filter((k) => JSON.stringify(full[k]) !== JSON.stringify(baseFull[k]));
+  return CLAVES_CM.filter((k) => JSON.stringify(full[k]) !== JSON.stringify(baseFull[k]));
 }
 
 /** Guarda el estado (last-write-wins, ped. usuario 2026-11-24: sin reloj, el borrador local
@@ -136,12 +155,12 @@ export async function saveToSupabase(
   const base = key ? (basesConfirmadas.get(key) ?? null) : null;
   const completo = payloadCmDeEstado(state, userId, proyectoUid);
   let p_state: Record<string, unknown> = completo;
-  let enviadas: string[] = [...CLAVES_PAYLOAD];
+  let enviadas: string[] = [...CLAVES_CM];
   if (base) {
     const baseFull = payloadCmDeEstado(base, userId, proyectoUid);
     p_state = {};
     enviadas = [];
-    for (const k of CLAVES_PAYLOAD)
+    for (const k of CLAVES_CM)
       if (JSON.stringify(completo[k]) !== JSON.stringify(baseFull[k])) {
         p_state[k] = completo[k];
         enviadas.push(k);

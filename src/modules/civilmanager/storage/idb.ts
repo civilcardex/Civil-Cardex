@@ -17,6 +17,10 @@ interface StoredSnapshot {
   d: Partial<CivilManagerState>;
   version: string | null;
   pending: boolean;
+  /** Alcance del borrador (H-01): claves de colección que el borrador EDITÓ respecto de la
+   *  base confirmada al escribirse. Null/ausente = borrador LEGADO sin alcance registrado
+   *  (era anterior al guarda parcial) — se recupera entero, como siempre. */
+  scope: string[] | null;
 }
 
 export async function loadFromIdb(scope: CmStorageScope) {
@@ -26,7 +30,12 @@ export async function loadFromIdb(scope: CmStorageScope) {
       store.get(cmScopeKey(scope)),
     );
     return record
-      ? { state: migrateState(record.d), version: record.version, pending: record.pending }
+      ? {
+          state: migrateState(record.d),
+          version: record.version,
+          pending: record.pending,
+          scope: record.scope ?? null,
+        }
       : null;
   } catch (e) {
     devError('civilManagerStorage load IDB:', e);
@@ -39,11 +48,19 @@ export async function saveToIdb(
   state: CivilManagerState,
   version: string | null,
   pending: boolean,
+  /** Alcance pendiente del borrador (H-01); null = confirmado/sin alcance. */
+  scopeCol: string[] | null = null,
 ): Promise<boolean> {
   try {
     const db = await openIdb(DB_NAME, DB_VERSION, STORE_NAME, 'k');
     await idbTx<void>(db, STORE_NAME, 'readwrite', (store) =>
-      store.put({ k: cmScopeKey(scope), d: state, version, pending } satisfies StoredSnapshot),
+      store.put({
+        k: cmScopeKey(scope),
+        d: state,
+        version,
+        pending,
+        scope: scopeCol,
+      } satisfies StoredSnapshot),
     );
     return true;
   } catch (e) {

@@ -132,6 +132,8 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
    * estado; el borrador solo se marca pendiente si quedan colecciones sin confirmar contra
    * la base. Si IndexedDB falla, se conserva la señal de error (no se afirma que quedó). */
   const flushHechoDe = useRef<CivilManagerState | null>(null);
+  /** H-04: el fallo de IndexedDB avisa UNA vez por sesión (no por pulsación). */
+  const idbAvisado = useRef(false);
   useEffect(() => {
     const flush = () => {
       const scope = scopeRef.current;
@@ -160,7 +162,17 @@ export function CivilManagerProvider({ children }: { children?: ReactNode }) {
     // Borrador a IDB con debounce corto (H-11): escribir TODO el estado en cada tecla
     // clonaba el objeto completo por pulsación; el autosave a BD sigue a los 300 ms.
     const t = setTimeout(() => {
-      void saveCmDraft(scope, state);
+      void saveCmDraft(scope, state).then((ok) => {
+        // H-04: fallo de IndexedDB con aviso VERAZ y UNA vez por sesión de proyecto —
+        // la nube sigue siendo la verdad; lo mentiroso sería callarlo o culpar a la red.
+        if (!ok && !idbAvisado.current) {
+          idbAvisado.current = true;
+          emitErrorGuardado(
+            'civilmanager-idb',
+            'No se pudo escribir la copia local (IndexedDB): el respaldo de este dispositivo quedó desactualizado. Los guardados en la nube siguen funcionando.',
+          );
+        }
+      });
       const nowEmpty =
         !state.apus.length &&
         !state.equipos.length &&
