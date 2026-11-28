@@ -1,5 +1,5 @@
 import { useCivilManager } from '../context.tsx';
-import { flattenPresupuestos, getTipoProyecto } from '../calc.ts';
+import { fechaCivil, flattenPresupuestos, getTipoProyecto } from '../calc.ts';
 import { getPaisData } from '../seedData.ts';
 import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
@@ -35,7 +35,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
       contrato: '',
       objeto: '',
       plazo: '',
-      fecha_creacion: new Date().toISOString().slice(0, 10),
+      fecha_creacion: fechaCivil(),
       ciudad: '',
       departamento: '',
       elaborado_por: '',
@@ -54,14 +54,16 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
         // IVA del país activo (CO 19, PE 18, EC 15, CL 19, AR 21, BO 13).
         iva_pct: getPaisData(state.config.pais, state.config_listas.perfiles_pais).iva_pct,
       },
-      factores_snap: state.factoresPrestaciones,
-      cargos_snap: state.cargos,
-      apus_snap: state.apus,
-      insumos_snap: state.insumos,
-      equipos_snap: state.equipos,
-      cuadrillas_snap: state.cuadrillas,
-      perfil_pais_snap:
-        state.config_listas.perfiles_pais.find((pp) => pp.codigo === state.config.pais) ?? null,
+      /* H-10 (plan 2026-11-27): las snaps se capturan AL CIERRE, no aquí — un borrador
+       * recalcula con catálogos vivos (calcMapParaPres ignora las snaps) y capturarlas en
+       * la creación congelaba referencias que ya serían viejas al cerrar. */
+      factores_snap: [],
+      cargos_snap: [],
+      apus_snap: [],
+      insumos_snap: [],
+      equipos_snap: [],
+      cuadrillas_snap: [],
+      perfil_pais_snap: null,
       herr_pct_snap: state.config.herr_pct,
       usar_fp_en_apu_snap: state.config.usar_fp_en_apu,
     };
@@ -95,7 +97,7 @@ export function ProyectosPanel({ selId, onSelect }: Props) {
           return {
             ...p,
             estado: 'cerrado',
-            fecha_cierre: new Date().toISOString().slice(0, 10),
+            fecha_cierre: fechaCivil(),
             factores_snap: state.factoresPrestaciones,
             cargos_snap: state.cargos,
             apus_snap: state.apus,

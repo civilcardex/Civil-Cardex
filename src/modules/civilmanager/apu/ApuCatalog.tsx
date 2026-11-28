@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useCivilManager } from '../context.tsx';
-import { fmtMoneda } from '../calc.ts';
+import { fechaCivil, fmtMoneda } from '../calc.ts';
 import { genCodeFor } from '../codeGen.ts';
 import { askConfirm } from '../shared/ConfirmDialog.tsx';
 import { showToast } from '../shared/Toast.tsx';
@@ -40,7 +40,7 @@ export function ApuCatalog() {
       nombre: 'Nuevo APU',
       categoria: state.categorias_apu[0]?.categoria ?? '',
       unidad: state.config_listas.unidades[0]?.abreviatura ?? 'un',
-      fecha_creacion: new Date().toISOString().slice(0, 10),
+      fecha_creacion: fechaCivil(),
       es_basico: false,
       recursos_mo: [],
       recursos_eq: [],

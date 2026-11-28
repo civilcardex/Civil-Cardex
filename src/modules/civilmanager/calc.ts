@@ -49,6 +49,17 @@ export function parseNum(v: unknown): number {
   return typeof v === 'number' && Number.isFinite(v) ? v : (parseNumInput(v, false) ?? 0);
 }
 
+/** Fecha civil LOCAL (H-12, plan 2026-11-27): año-mes-día en la zona del usuario, no el
+ *  corte UTC de toISOString() — cerca de medianoche UTC el corte daba el día de ayer o de
+ *  mañana según el país. Ej: 1 ene 23:30 en Colombia (UTC-5) -> '2026-01-01' (toISOString
+ *  daba '2026-01-02'). */
+export function fechaCivil(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+}
+
 /** Formatea un número con separador de miles y d decimales (0-4) estilo en-US; NaN cae en 0 para no pintar "NaN" en la tabla. Ej: fmt(1234.5) -> "1,234.50". */
 export function fmt(v: number, d = 2): string {
   const n = Number(v);
