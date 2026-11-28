@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type RefObject } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from 'react';
 import type PlanoEngine from '../../lib/PlanoEngine/PlanoEngine.ts';
 
 interface Props {
@@ -23,6 +23,21 @@ export function ViewerDrawingActions({
   tablet,
 }: Props) {
   const [message, setMessage] = useState('');
+  /* H-10: el keydown global del motor trata Enter/Escape como CANCELAR el trazado — sin
+   * frenarlo, enviar el form por Enter cancelaba el ramal en curso. El listener va IMPERATIVO
+   * (ref + addEventListener, sin stopPropagation en JSX) para satisfacer jsx-a11y
+   * no-noninteractive-element-interactions en <details>/<form>. */
+  const coordRef = useRef<HTMLDetailsElement | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+  useEffect(() => {
+    const details = coordRef.current;
+    if (!details) return;
+    const frenar = (e: Event): void => e.stopPropagation();
+    details.addEventListener('keydown', frenar);
+    return () => details.removeEventListener('keydown', frenar);
+    /* `drawing` en deps: el <details> SOLO existe dibujando (montaje diferido) — sin esto el
+     * ref era null al correr el efecto y el freno nunca se adjuntaba (H-10). */
+  }, [drawing]);
 
   /* H-10 (remediación 2026-11-27): entrada de puntos POR COORDENADAS, recuperada como opción
    * accesible del visor de ESCRITORIO (crear/completar un ramal sin puntero). Los límites del
@@ -88,9 +103,12 @@ export function ViewerDrawingActions({
             <span>Terminar</span>
           </button>
           {/* Accesible con teclado (H-10): X/Y + Enter agrega el punto sin puntero. */}
-          <details>
+          <details ref={coordRef}>
             <summary>Trazar por coordenadas</summary>
-            <form onSubmit={addPoint} noValidate>
+            {/* stopPropagation: el keydown global del motor trata Enter/Escape como
+             *  CANCELAR el trazado — sin esto, enviar el form por Enter cancelaba el
+             *  ramal que se está trazando (H-10). */}
+            <form ref={formRef} onSubmit={addPoint} noValidate>
               <label>
                 X (px) <input name="x" type="number" min="0" step="any" required />
               </label>

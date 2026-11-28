@@ -257,6 +257,7 @@ for (const [width, height] of [
         await page.goto('/e2e/tablet.html', { waitUntil: 'commit' });
         await page.getByRole('button', { name: 'Dibujar ramal' }).press('Enter');
         await expect(page.getByText('Trazar por coordenadas', { exact: true })).toBeVisible();
+        await page.getByText('Trazar por coordenadas', { exact: true }).press('Enter'); // abre el <details>
         const x = page.getByLabel('X (px)');
         const y = page.getByLabel('Y (px)');
         // Fuera del plano: error anunciado, sin puntos.
@@ -273,18 +274,20 @@ for (const [width, height] of [
         };
         await punto('100', '100');
         await punto('220', '100');
-        await expect(page.getByTestId('puntos')).toHaveText('2');
+        // El conteo de puntos se publica en onDirty (al TERMINAR), no en cada vértice.
         await page.getByRole('button', { name: 'Terminar' }).press('Enter');
         await expect(page.getByTestId('ramales')).toHaveText('1');
         await expect(page.getByTestId('puntos')).toHaveText('2');
-        // Escape cancela un trazado nuevo sin crear ramal.
-        await page.getByRole('button', { name: 'Dibujar ramal' }).press('Enter');
-        await punto('300', '100');
-        await page.keyboard.press('Escape');
-        await expect(page.getByTestId('ramales')).toHaveText('1');
         await page.getByRole('button', { name: /^Editar .+/ }).press('Enter');
         await expect(page.getByText('Opciones del ramal seleccionado')).toBeVisible();
         await expect(page.getByRole('button', { name: /^Borrar .+/ })).toHaveCount(0);
+        // Escape cancela un trazado nuevo sin crear ramal (foco FUERA del form: dentro de
+        // él las teclas no llegan al motor — Enter debe poder enviar el punto).
+        await page.getByRole('button', { name: 'Dibujar ramal' }).press('Enter');
+        await punto('300', '100');
+        await page.getByLabel('X (px)').blur();
+        await page.keyboard.press('Escape');
+        await expect(page.getByTestId('ramales')).toHaveText('1');
       });
     }
 

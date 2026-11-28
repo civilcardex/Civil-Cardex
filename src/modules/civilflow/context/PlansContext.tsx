@@ -23,6 +23,7 @@ import {
   downloadPlanPDF,
 } from '../services/pdfStorageService.ts';
 import { saveProyectoPlansMeta, loadProyectoData } from '../services/projectDataService.ts';
+import { supabase } from '../../../lib/supabase';
 import { PLANS_META_KEY } from '../constants/storage-keys.ts';
 import { useDebouncedEffect } from '../../../hooks/useDebouncedEffect.ts';
 import { devError } from '../../../utils/devError.ts';
@@ -293,14 +294,21 @@ export function PlansProvider({ children }: { children?: ReactNode }) {
           calGlobal: m.calGlobal || null,
           definedScale: m.definedScale || null,
         });
+        /* Sesión vigente al ARRANCAR la restauración (H-07): cada descarga en vuelo re-verifica
+         *  usuario y proyecto antes de cachear — tras logout/expiración/cambio de cuenta la
+         *  descarga tardía NO repuebla la caché de PDFs que la limpieza ya vació. */
+        const uidInicio = (await supabase.auth.getSession()).data.session?.user.id ?? null;
+        const sesionVigente = async (): Promise<boolean> =>
+          ((await supabase.auth.getSession()).data.session?.user.id ?? null) === uidInicio &&
+          getActiveProyectoId() === proyectoId;
         const resolved = await Promise.all(
           meta.map(async (m) => {
             const file = await downloadPlanPDF(proyectoId, m.id, m.name);
-            if (file)
+            if (file && (await sesionVigente()))
               storePDF(m.id, file).catch((e) => {
                 devError('storePDF error during cloud restore:', e);
               });
-            return file ? makeItem(m, file) : null;
+            return file && !ignore ? makeItem(m, file) : null;
           }),
         );
         for (const item of resolved) if (item) restored.push(item);

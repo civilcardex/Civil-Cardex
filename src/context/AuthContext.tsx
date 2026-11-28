@@ -70,6 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               void import('../modules/civilflow/services/workspaceReset.ts').then((m) =>
                 m.clearLocalWorkspace(),
               );
+              // H-07: la bodega de PDFs también se vacía — una descarga en vuelo no puede
+              // repoblarla después (PlansContext re-verifica sesión antes de cachear).
+              void import('../modules/civilflow/services/idbStorage.ts').then((m) =>
+                m.clearAllPDFs(),
+              );
             } catch {
               /* storage bloqueado: ignorar */
             }
