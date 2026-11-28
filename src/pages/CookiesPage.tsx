@@ -11,7 +11,7 @@ function CookiesPage() {
   return (
     <LegalShell
       titulo="Política de Cookies"
-      subtitulo={<>Cookies y almacenamiento local · [FECHA]</>}
+      subtitulo={<>Cookies y almacenamiento local · 27 de noviembre de 2026</>}
     >
       <h2 className="legal-h2">1. Qué usamos</h2>
       <p className="legal-p">
@@ -61,7 +61,7 @@ function CookiesPage() {
 
       <h2 className="legal-h2">5. Contacto</h2>
       <p className="legal-p">
-        <strong>[RAZÓN SOCIAL]</strong> — <strong>[CORREO DE CONTACTO]</strong>.
+        <strong>CivilCardex</strong> — <strong>soporte@civilcardex.com</strong>.
       </p>
 
       <p className="legal-p legal-p-spaced">

@@ -3,22 +3,22 @@ import LegalShell from './LegalShell.tsx';
 import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 
-/** Página pública de Términos y Condiciones. Contenido legal inline con placeholders
- *  [ENTRE CORCHETES] para que el titular los edite (ponytail: sin CMS ni MDX). */
+/** Página pública de Términos y Condiciones. Contenido legal inline (ponytail: sin CMS ni
+ *  MDX); el canal de contacto vigente es soporte@civilcardex.com. */
 
 function TermsPage() {
   usePageMeta(metaDeRuta('/terminos')?.title, metaDeRuta('/terminos')?.description);
   return (
     <LegalShell
       titulo="Términos y Condiciones"
-      subtitulo={<>Fecha de entrada en vigencia: [FECHA]</>}
+      subtitulo={<>Fecha de entrada en vigencia: 27 de noviembre de 2026</>}
     >
       <h2 className="legal-h2">1. Identificación del titular</h2>
       <p className="legal-p">
         CivilCardex (&laquo;la Plataforma&raquo;) es un servicio de software como servicio (SaaS)
-        titularidad de <strong>[RAZÓN SOCIAL]</strong>, identificado con NIT <strong>[NIT]</strong>,
-        con domicilio en <strong>[CIUDAD, DEPARTAMENTO], Colombia</strong>, y correo electrónico de
-        contacto <strong>[CORREO DE CONTACTO]</strong> (en adelante, &laquo;el Titular&raquo;).
+        titularidad de <strong>CivilCardex</strong>, con presencia en <strong>Colombia</strong> y
+        correo electrónico de contacto{}
+        <strong>soporte@civilcardex.com</strong> (en adelante, &laquo;el Titular&raquo;).
       </p>
 
       <h2 className="legal-h2">2. Objeto y aceptación</h2>
@@ -132,7 +132,7 @@ function TermsPage() {
       <p className="legal-p">
         El Titular procurará la disponibilidad continua del servicio, sin garantizarla de forma
         absoluta. Podrá realizar mantenimiento programado y suspensiones temporales por causas
-        técnicas o de fuerza mayor. Soporte técnico: <strong>[CORREO/CANAL DE SOPORTE]</strong>.
+        técnicas o de fuerza mayor. Soporte técnico: <strong>soporte@civilcardex.com</strong>.
       </p>
 
       <h2 className="legal-h2">8. Limitación de responsabilidad</h2>
@@ -163,8 +163,8 @@ function TermsPage() {
       <h2 className="legal-h2">10. Ley aplicable y jurisdicción</h2>
       <p className="legal-p">
         Estos Términos se rigen por las leyes de la República de Colombia. Cualquier controversia se
-        someterá a los jueces competentes de <strong>[CIUDAD]</strong>, salvo la competencia del
-        régimen de protección al consumidor aplicable.
+        someterá a los jueces competentes del domicilio del Titular en Colombia, salvo la
+        competencia del régimen de protección al consumidor aplicable.
       </p>
 
       <div className="legal-footer px-6 py-5 border-t mt-12 text-center">

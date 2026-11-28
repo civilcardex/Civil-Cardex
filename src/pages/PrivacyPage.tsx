@@ -4,20 +4,20 @@ import { usePageMeta } from '../hooks/usePageMeta.ts';
 import { metaDeRuta } from '../seo/routeMeta.ts';
 
 /** Página pública de Política de Tratamiento de Datos Personales (Ley 1581 de 2012).
- *  Contenido inline con placeholders [ENTRE CORCHETES] editable por el titular (ponytail). */
+ *  Contenido legal inline (ponytail); canal de solicitudes: soporte@civilcardex.com. */
 
 function PrivacyPage() {
   usePageMeta(metaDeRuta('/privacidad')?.title, metaDeRuta('/privacidad')?.description);
   return (
     <LegalShell
       titulo="Política de Privacidad"
-      subtitulo={<>Tratamiento de datos personales · Ley 1581 de 2012 · [FECHA]</>}
+      subtitulo={<>Tratamiento de datos personales · Ley 1581 de 2012 · 27 de noviembre de 2026</>}
     >
       <h2 className="legal-h2">1. Responsable del tratamiento</h2>
       <p className="legal-p">
-        <strong>[RAZÓN SOCIAL]</strong>, identificado con NIT <strong>[NIT]</strong>, con domicilio
-        en <strong>[CIUDAD, DEPARTAMENTO], Colombia</strong>, correo electrónico de contacto{' '}
-        <strong>[CORREO DE CONTACTO]</strong> (en adelante, &laquo;el Responsable&raquo;).
+        <strong>CivilCardex</strong>, con presencia en <strong>Colombia</strong>, correo electrónico
+        de contacto <strong>soporte@civilcardex.com</strong> (en adelante, &laquo;el
+        Responsable&raquo;).
       </p>
 
       <h2 className="legal-h2">2. Datos que se tratan</h2>
@@ -52,7 +52,7 @@ function PrivacyPage() {
 
       <h2 className="legal-h2">5. Procedimiento para ejercer derechos</h2>
       <p className="legal-p">
-        Las solicitudes se presentan escribiendo a <strong>[CORREO DE CONTACTO]</strong> con
+        Las solicitudes se presentan escribiendo a <strong>soporte@civilcardex.com</strong> con
         identificación del titular y descripción de la petición. La consulta se responderá en un
         término máximo de diez (10) días hábiles y los reclamos en quince (15) días hábiles,
         prorrogables conforme al artículo 15 de la Ley 1581 de 2012.
@@ -72,9 +72,9 @@ function PrivacyPage() {
       <h2 className="legal-h2">7. Encargados del tratamiento</h2>
       <p className="legal-p">
         El Responsable utiliza proveedores tecnológicos que procesan datos en su nombre bajo
-        contratos de encargo: [PROVEEDOR DE ALOJAMIENTO/Base de datos], [PASARELA DE PAGOS],
-        [PROVEEDOR DE CORREO ELECTRÓNICO]. La información se almacena y procesa con medidas de
-        seguridad técnicas y administrativas razonables.
+        contratos de encargo: Supabase (alojamiento y base de datos) y Paddle Billing (pasarela de
+        pagos). La información se almacena y procesa con medidas de seguridad técnicas y
+        administrativas razonables.
       </p>
 
       <div className="legal-footer px-6 py-5 border-t mt-12 text-center">
